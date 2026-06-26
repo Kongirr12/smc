@@ -918,7 +918,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
     if (r.isDenied) {
       showLoading('กำลังลบ...');
       
-      const targetClassroom = viewType === 'teacher' ? e.classroom : SchedState.classroom;
+      const targetClassroom = viewType === 'teacher' ? r.value.classroom : SchedState.classroom;
       
       google.script.run
         .withSuccessHandler(res => {
@@ -955,18 +955,27 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
             confirmButtonText: 'รับทราบ'
           });
         } else {
-          showToast('success', 'บันทึกตารางสอนสำเร็จ');
+          showToast('success', res.message || 'บันทึกตารางสอนสำเร็จ');
         }
 
         // อัพเดต local state (แทนที่ตัวเก่าถ้าแก้ไข หรือเพิ่มใหม่)
-        const targetClassroom = viewType === 'teacher' ? e.classroom : SchedState.classroom;
-        const idx = SchedState.entries.findIndex(x =>
-          x.classroom === targetClassroom &&
-          x.day === Number(day) &&
-          x.period_no === Number(periodNo)
-        );
-        if (idx >= 0) SchedState.entries[idx] = res.data;
-        else          SchedState.entries.push(res.data);
+        const targetClassroom = viewType === 'teacher' ? r.value.classroom : SchedState.classroom;
+        
+        if (res.data) {
+          const idx = SchedState.entries.findIndex(x =>
+            x.classroom === targetClassroom &&
+            x.day === Number(day) &&
+            x.period_no === Number(periodNo)
+          );
+          if (idx >= 0) SchedState.entries[idx] = res.data;
+          else          SchedState.entries.push(res.data);
+        } else if (res.message === 'ลบคาบสำเร็จ') {
+          SchedState.entries = SchedState.entries.filter(x => !(
+            x.classroom === targetClassroom &&
+            x.day === Number(day) &&
+            x.period_no === Number(periodNo)
+          ));
+        }
 
         if (viewType === 'class') renderClassView();
         else renderTeacherView();
