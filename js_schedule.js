@@ -643,7 +643,7 @@ function buildScheduleGrid(view) {
            ${e.activity_label ? '' : `<div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>`}
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`
         : `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-           <div class="entry-teacher">ห้อง ${escapeHTML(e.classroom)}\x3c/div>
+           <div class="entry-teacher">${escapeHTML(e.classroom)}\x3c/div>
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
       return `
@@ -918,7 +918,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
     if (r.isDenied) {
       showLoading('กำลังลบ...');
       
-      const targetClassroom = viewType === 'teacher' ? r.value.classroom : SchedState.classroom;
+      const targetClassroom = viewType === 'teacher' ? e.classroom : SchedState.classroom;
       
       google.script.run
         .withSuccessHandler(res => {
