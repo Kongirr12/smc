@@ -281,7 +281,7 @@ function showImportSubjectsCSV() {
           ไฟล์ CSV ต้องมีหัวคอลัมน์ตามนี้ (UTF-8):
         \x3c/p>
         <code style="display:block; background:#F1F5F9; padding:8px 10px; border-radius:6px; font-size:11px; word-break:break-all;">
-          subject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_id
+          subject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_name
         \x3c/code>
         <div class="flex gap-2 mt-2">
           <button type="button" class="btn btn-outline" style="flex:1;" onclick="downloadSampleCSV('subjects')">
@@ -347,6 +347,20 @@ function previewSubjectsCSV(input) {
     const records = dataRows.map((row, idx) => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+      
+      let tId = '';
+      const tNameStr = (obj.teacher_name || '').trim();
+      if (tNameStr && AcademicState.teachers) {
+        // ลองหาชื่อครูจาก AcademicState.teachers (สมมติว่ามี .first_name หรือ .name ให้แมตช์)
+        // หรือดึงครูทั้งหมดมารอไว้ก่อน
+        const found = AcademicState.teachers.find(t => 
+          (t.name && t.name.includes(tNameStr)) || 
+          (t.first_name && (t.first_name + ' ' + t.last_name).includes(tNameStr)) ||
+          (t.first_name && t.first_name.includes(tNameStr))
+        );
+        if (found) tId = found.id;
+      }
+
       return {
         subject_code: obj.subject_code || '',
         subject_name: obj.subject_name || '',
@@ -357,7 +371,7 @@ function previewSubjectsCSV(input) {
         grade_level: obj.grade_level || '',
         semester: obj.semester || '1',
         academic_year: obj.academic_year || '',
-        teacher_id: obj.teacher_id || ''
+        teacher_id: tId
       };
     }).filter(r => r.subject_name);
     _csvImportSubjectRecords = records;
