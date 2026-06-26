@@ -1,5 +1,5 @@
 /* ============================================================
- *  Smart School Office — Stylesheet
+ *  Smart School Office â€” Stylesheet
  * ============================================================ */
 
 :root {
@@ -163,11 +163,11 @@ html, body {
   box-shadow: 0 3px 10px rgba(15,23,42,.1), 0 1px 3px rgba(15,23,42,.06);
 }
 
-/* Input wrap — ใช้ > i เพื่อ target เฉพาะ direct child
-   แก้ไขบัก: selector เดิม .input-wrap i ครอบคลุม icon ใน toggle-pwd button ด้วย
-   ทำให้ icon ของปุ่มถูก position:absolute ผิดที่ */
+/* Input wrap â€” à¹ƒà¸Šà¹‰ > i à¹€à¸žà¸·à¹ˆà¸­ target à¹€à¸‰à¸žà¸²à¸° direct child
+   à¹à¸à¹‰à¹„à¸‚à¸šà¸±à¸: selector à¹€à¸”à¸´à¸¡ .input-wrap i à¸„à¸£à¸­à¸šà¸„à¸¥à¸¸à¸¡ icon à¹ƒà¸™ toggle-pwd button à¸”à¹‰à¸§à¸¢
+   à¸—à¸³à¹ƒà¸«à¹‰ icon à¸‚à¸­à¸‡à¸›à¸¸à¹ˆà¸¡à¸–à¸¹à¸ position:absolute à¸œà¸´à¸”à¸—à¸µà¹ˆ */
 .input-wrap { position: relative; margin-bottom: 14px; }
-.input-wrap > i {                               /* direct child เท่านั้น */
+.input-wrap > i {                               /* direct child à¹€à¸—à¹ˆà¸²à¸™à¸±à¹‰à¸™ */
   position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
   color: #94A3B8; font-size: 18px; pointer-events: none;
   transition: color .2s;
@@ -187,7 +187,7 @@ html, body {
   box-shadow: 0 0 0 4px rgba(59,130,246,.13);
 }
 
-/* ===== FIX: ปุ่มแสดง/ซ่อนรหัสผ่าน ===== */
+/* ===== FIX: à¸›à¸¸à¹ˆà¸¡à¹à¸ªà¸”à¸‡/à¸‹à¹ˆà¸­à¸™à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™ ===== */
 .toggle-pwd {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   background: transparent; border: none; cursor: pointer;
@@ -196,7 +196,7 @@ html, body {
   display: inline-flex; align-items: center; justify-content: center;
   color: #94A3B8; transition: all .2s ease;
 }
-/* รีเซ็ต icon ใน toggle-pwd ไม่ให้รับ style จาก .input-wrap > i */
+/* à¸£à¸µà¹€à¸‹à¹‡à¸• icon à¹ƒà¸™ toggle-pwd à¹„à¸¡à¹ˆà¹ƒà¸«à¹‰à¸£à¸±à¸š style à¸ˆà¸²à¸ .input-wrap > i */
 .toggle-pwd i {
   position: static !important;
   left: auto !important; top: auto !important;
@@ -254,6 +254,7 @@ html, body {
   z-index: 40; transition: transform .25s ease;
 }
 .sidebar-header {
+  width: 100%;
   padding: 20px 18px;
   border-bottom: 1px solid rgba(255,255,255,.12);
   display: flex; align-items: center; gap: 12px;
@@ -323,6 +324,7 @@ html, body {
 }
 
 .sidebar-footer {
+  width: 100%;
   padding: 12px;
   border-top: 1px solid rgba(255,255,255,.12);
   display: flex; align-items: center; gap: 10px;
@@ -507,7 +509,7 @@ html, body {
 .empty-state i { font-size: 36px; opacity: .4; display: block; margin-bottom: 8px; }
 
 
-/* ----- Generic Page (สำหรับ Part 2-4) ----- */
+/* ----- Generic Page (à¸ªà¸³à¸«à¸£à¸±à¸š Part 2-4) ----- */
 .page-card {
   background: white; border-radius: 16px;
   border: 1px solid #F1F5F9;
@@ -554,7 +556,7 @@ html, body {
   justify-content: center; border-radius: 8px;
 }
 
-/* Pages container — placeholder pages */
+/* Pages container â€” placeholder pages */
 .coming-soon {
   background: white; border-radius: 16px;
   padding: 60px 20px; text-align: center;
@@ -619,7 +621,7 @@ html, body {
   .stat-grid { grid-template-columns: 1fr; }
 }
 
-/* Backdrop เมื่อ sidebar เปิดบนมือถือ */
+/* Backdrop à¹€à¸¡à¸·à¹ˆà¸­ sidebar à¹€à¸›à¸´à¸”à¸šà¸™à¸¡à¸·à¸­à¸–à¸·à¸­ */
 #sidebarBackdrop {
   display: none; position: fixed; inset: 0; z-index: 35;
   background: rgba(15,23,42,.5);
