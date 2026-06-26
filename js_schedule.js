@@ -417,7 +417,7 @@ function onDropGrid(event, dayNo, periodNo) {
     room_id: '',
     room_name: '',
     activity_label: '',
-    color: SUBJECT_GROUP_COLORS[subject.subject_group || ''] || '#64748B',
+    color: SUBJECT_COLORS[subject.subject_group || ''] || '#64748B',
     note: '',
     academic_year: SchedState.academic_year,
     semester: SchedState.semester
