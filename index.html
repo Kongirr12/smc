@@ -37,21 +37,20 @@
   </script>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycby_PLACEHOLDER/exec"; // UPDATE THIS URL LATER
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyIe7i5qQ3h4AKjDU2_9mOahz7XDp7IdpBuYh95zFYA_L-GJm1sifVp6k-0qqqAlQeT/exec"; // UPDATE THIS URL LATER
 
     function createRunner() {
       let successHandler = null;
       let failureHandler = null;
       
-      const builder = {
-        withSuccessHandler: function(fn) { successHandler = fn; return builder; },
-        withFailureHandler: function(fn) { failureHandler = fn; return builder; }
-      };
-      
-      return new Proxy(builder, {
+      const builder = {};
+      const proxy = new Proxy(builder, {
         get: function(target, prop) {
-          if (prop === 'withSuccessHandler' || prop === 'withFailureHandler') {
-            return target[prop];
+          if (prop === 'withSuccessHandler') {
+            return function(fn) { successHandler = fn; return proxy; };
+          }
+          if (prop === 'withFailureHandler') {
+            return function(fn) { failureHandler = fn; return proxy; };
           }
           return function(...args) {
             fetch(GAS_URL, {
@@ -72,10 +71,11 @@
               if (failureHandler) failureHandler(err);
               else console.error("Fetch Error:", err);
             });
-            return builder; // return builder for chaining if needed
+            return proxy; // return proxy for chaining if needed
           };
         }
       });
+      return proxy;
     }
 
     window.google = {
