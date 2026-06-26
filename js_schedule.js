@@ -15,7 +15,8 @@ const SchedState = {
   entries     : [],
   periods     : [],
   rooms       : [],
-  subjects    : []
+  subjects    : [],
+  isDirty     : false
 };
 
 /* ---------- สีตามกลุ่มสาระ ---------- */
@@ -124,18 +125,53 @@ function renderSchedule(container) {
   loadSchedData();
 }
 
+function checkDirtyState(callback) {
+  if (SchedState.isDirty) {
+    Swal.fire({
+      title: 'คุณมีตารางที่ยังไม่ได้บันทึก',
+      text: 'การเปลี่ยนหน้าจะทำให้ข้อมูลที่จัดไว้หายไป ต้องการบันทึกก่อนหรือไม่?',
+      icon: 'warning',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: 'บันทึกตาราง',
+      denyButtonText: 'ทิ้งการเปลี่ยนแปลง',
+      cancelButtonText: 'ยกเลิก'
+    }).then(r => {
+      if (r.isConfirmed) {
+         saveClassScheduleBatch();
+      } else if (r.isDenied) {
+         SchedState.isDirty = false;
+         callback();
+      } else {
+         if (document.getElementById('schedClassroom')) document.getElementById('schedClassroom').value = SchedState.classroom;
+         if (document.getElementById('schedYear')) document.getElementById('schedYear').value = SchedState.academic_year;
+         if (document.getElementById('schedSem')) document.getElementById('schedSem').value = SchedState.semester;
+      }
+    });
+  } else {
+    callback();
+  }
+}
+
 function onSchedYearSemChange() {
-  SchedState.academic_year = document.getElementById('schedYear').value;
-  SchedState.semester      = document.getElementById('schedSem').value;
-  loadSchedData();
+  checkDirtyState(() => {
+    SchedState.academic_year = document.getElementById('schedYear').value;
+    SchedState.semester      = document.getElementById('schedSem').value;
+    loadSchedData();
+  });
 }
 
 function switchSchedTab(tab) {
-  SchedState.tab = tab;
-  document.querySelectorAll('.sched-tab').forEach(el => {
-    el.classList.toggle('active', el.id === 'stab_' + tab);
+  checkDirtyState(() => {
+    SchedState.tab = tab;
+    document.querySelectorAll('.sched-tab').forEach(el => {
+      el.classList.toggle('active', el.id === 'stab_' + tab);
+    });
+    // If switching back to class view and data wasn't reloaded, it might need reload, 
+    // but we can just render the tab, as checkDirtyState handles the "discard" by loading fresh.
+    if(tab !== 'class') loadSchedData(); // ensure fresh data when leaving class view
+    renderSchedTab();
   });
-  renderSchedTab();
 }
 
 function loadSchedData() {
@@ -225,6 +261,9 @@ function renderClassView() {
       \x3c/div>
       <div class="flex-1">\x3c/div>
       ${SchedState.classroom ? `
+        <button id="btnSaveSchedule" class="btn btn-primary" onclick="saveClassScheduleBatch()" style="${SchedState.isDirty ? '' : 'display:none;'}">
+          <i class='bx bx-save'>\x3c/i> บันทึกตาราง
+        \x3c/button>
         <button class="btn btn-light" onclick="printClassSchedule()">
           <i class='bx bx-printer'>\x3c/i> พิมพ์ตารางสอน
         \x3c/button>
@@ -316,41 +355,88 @@ function onDropGrid(event, dayNo, periodNo) {
   const subject = SchedState.subjects.find(s => s.id === subjectId);
   if (!subject) return;
 
+  const tIds = subject.teacher_id ? subject.teacher_id.split(',').map(s=>s.trim()).filter(s=>s) : [];
+  let tNames = [], tShorts = [];
+  tIds.forEach(tid => {
+     const t = SchedState.teachers.find(x=>x.id===tid) || {};
+     if(t.name) {
+        tNames.push(t.name);
+        tShorts.push(t.first_name || t.name);
+     }
+  });
+
   const data = {
+    id: 'temp_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+    _kind: 'schedule_entry',
     classroom: SchedState.classroom,
     day: dayNo,
     period_no: periodNo,
     subject_id: subject.id,
+    subject_name: subject.subject_name || '',
+    subject_code: subject.subject_code || '',
+    subject_group: subject.subject_group || '',
     teacher_id: subject.teacher_id || '',
+    teacher_name: tNames.join(', '),
+    teacher_short: tShorts.join(', '),
+    room_id: '',
     room_name: '',
     activity_label: '',
-    is_homeroom_activity: false,
+    color: SUBJECT_GROUP_COLORS[subject.subject_group || ''] || '#64748B',
+    note: '',
     academic_year: SchedState.academic_year,
     semester: SchedState.semester
   };
 
-  showLoading('กำลังบันทึก...');
+  const idx = SchedState.entries.findIndex(e => e.classroom === SchedState.classroom && Number(e.day) === Number(dayNo) && Number(e.period_no) === Number(periodNo));
+  if (idx >= 0) SchedState.entries.splice(idx, 1);
+  SchedState.entries.push(data);
+  
+  SchedState.isDirty = true;
+  renderClassView();
+}
+
+function toggleSaveButton() {
+  const btn = document.getElementById('btnSaveSchedule');
+  if (btn) {
+    btn.style.display = SchedState.isDirty ? '' : 'none';
+  }
+}
+
+function saveClassScheduleBatch() {
+  if (!SchedState.classroom) return;
+  const myEntries = SchedState.entries.filter(e => e.classroom === SchedState.classroom && String(e.academic_year) === String(SchedState.academic_year) && String(e.semester) === String(SchedState.semester));
+  
+  showLoading('กำลังบันทึกตารางเรียนทั้งห้อง...');
   google.script.run
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status === 'success') {
+        SchedState.isDirty = false;
+        toggleSaveButton();
         if (res.conflict_warnings && res.conflict_warnings.length > 0) {
-          showToast('warning', 'บันทึกสำเร็จ แต่พบข้อขัดแย้ง: ' + res.conflict_warnings[0].msg);
+          Swal.fire({
+            icon: 'warning',
+            title: 'บันทึกสำเร็จ แต่พบข้อควรระวัง',
+            html: res.conflict_warnings.map(w => `<div style="font-size:13px; margin-bottom:6px;">⚠️ ${escapeHTML(w.message)}\x3c/div>`).join(''),
+            confirmButtonText: 'รับทราบ'
+          });
         } else {
           showToast('success', res.message);
         }
-        loadSchedData(); // โหลดตารางใหม่
+        loadSchedData(); // Load actual fresh data to sync IDs
       } else {
-        showToast('error', res.message);
+        Swal.fire({ icon:'error', title:'ผิดพลาด', text:res.message });
       }
     })
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message||err); })
-    .saveScheduleEntry(data, APP.token);
+    .saveClassroomScheduleBatch(SchedState.classroom, SchedState.academic_year, SchedState.semester, myEntries, APP.token);
 }
 
 function onClassroomChange() {
-  SchedState.classroom = document.getElementById('schedClassroom').value;
-  renderClassView();
+  checkDirtyState(() => {
+    SchedState.classroom = document.getElementById('schedClassroom').value;
+    loadSchedData();
+  });
 }
 
 
@@ -764,57 +850,69 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
   }).then(r => {
     if (r.isDenied) {
       // ลบคาบ
-      showLoading('กำลังลบ...');
-      google.script.run
-        .withSuccessHandler(res => {
-          hideLoading();
-          if (res.status === 'success') {
-            showToast('success', 'ลบคาบสำเร็จ');
-            SchedState.entries = SchedState.entries.filter(x => !(
-              x.classroom === SchedState.classroom &&
-              x.day === Number(day) &&
-              x.period_no === Number(periodNo)
-            ));
-            renderClassView();
-          } else showToast('error', res.message);
-        })
-        .deleteScheduleEntry(SchedState.classroom, day, periodNo,
-          SchedState.academic_year, SchedState.semester, APP.token);
+      SchedState.entries = SchedState.entries.filter(x => !(
+        x.classroom === SchedState.classroom &&
+        x.day === Number(day) &&
+        x.period_no === Number(periodNo)
+      ));
+      SchedState.isDirty = true;
+      renderClassView();
       return;
     }
     if (!r.isConfirmed) return;
 
-    showLoading('กำลังบันทึก...');
-    google.script.run
-      .withSuccessHandler(res => {
-        hideLoading();
-        if (res.status !== 'success') return Swal.fire({ icon:'error', text:res.message });
-
-        // แจ้งเตือน conflict
-        if (res.conflict_warnings && res.conflict_warnings.length > 0) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'บันทึกแล้ว — แต่มีข้อควรระวัง',
-            html: res.conflict_warnings.map(w => `<div style="font-size:13px; margin-bottom:6px;">⚠️ ${escapeHTML(w.message)}\x3c/div>`).join(''),
-            confirmButtonText: 'รับทราบ'
-          });
-        } else {
-          showToast('success', 'บันทึกตารางสอนสำเร็จ');
-        }
-
-        // อัพเดต local state
-        const idx = SchedState.entries.findIndex(x =>
-          x.classroom === SchedState.classroom &&
-          x.day === Number(day) &&
-          x.period_no === Number(periodNo)
-        );
-        if (idx >= 0) SchedState.entries[idx] = res.data;
-        else          SchedState.entries.push(res.data);
-
-        renderClassView();
-      })
-      .withFailureHandler(err => { hideLoading(); Swal.fire({ icon:'error', text:err.message||err }); })
-      .saveScheduleEntry(r.value, APP.token);
+    // อัพเดต local state
+    const data = {
+      id: 'temp_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+      _kind: 'schedule_entry',
+      classroom: SchedState.classroom,
+      day: Number(day),
+      period_no: Number(periodNo),
+      subject_id: r.value.subject_id,
+      activity_label: r.value.activity_label,
+      teacher_id: r.value.teacher_id,
+      room_id: r.value.room_id,
+      color: r.value.color,
+      note: r.value.note,
+      academic_year: SchedState.academic_year,
+      semester: SchedState.semester,
+    };
+    
+    // enrich names
+    const sub = SchedState.subjects.find(s=>s.id === data.subject_id) || {};
+    data.subject_name = sub.subject_name || '';
+    data.subject_code = sub.subject_code || '';
+    data.subject_group = sub.subject_group || '';
+    
+    const tIds = data.teacher_id ? data.teacher_id.split(',').map(s=>s.trim()).filter(s=>s) : [];
+    let tNames = [], tShorts = [];
+    tIds.forEach(tid => {
+       const t = SchedState.teachers.find(x=>x.id===tid) || {};
+       if(t.name) {
+          tNames.push(t.name);
+          tShorts.push(t.first_name || t.name);
+       }
+    });
+    data.teacher_name = tNames.join(', ');
+    data.teacher_short = tShorts.join(', ');
+    
+    const rm = SchedState.rooms.find(x=>x.id === data.room_id) || {};
+    data.room_name = rm.name || '';
+    
+    const idx = SchedState.entries.findIndex(x =>
+      x.classroom === SchedState.classroom &&
+      x.day === Number(day) &&
+      x.period_no === Number(periodNo)
+    );
+    if (idx >= 0) {
+      data.id = SchedState.entries[idx].id;
+      SchedState.entries[idx] = data;
+    } else {
+      SchedState.entries.push(data);
+    }
+    
+    SchedState.isDirty = true;
+    renderClassView();
   });
 }
 
@@ -1399,16 +1497,8 @@ function clearClassScheduleConfirm() {
     confirmButtonColor:'#EF4444'
   }).then(r => {
     if (!r.isConfirmed) return;
-    showLoading('กำลังล้าง...');
-    google.script.run
-      .withSuccessHandler(res => {
-        hideLoading();
-        if (res.status === 'success') {
-          showToast('success', res.message);
-          SchedState.entries = SchedState.entries.filter(e => e.classroom !== SchedState.classroom);
-          renderClassView();
-        } else showToast('error', res.message);
-      })
-      .clearClassroomSchedule(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
+    SchedState.entries = SchedState.entries.filter(e => !(e.classroom === SchedState.classroom && String(e.academic_year) === String(SchedState.academic_year) && String(e.semester) === String(SchedState.semester)));
+    SchedState.isDirty = true;
+    renderClassView();
   });
 }
