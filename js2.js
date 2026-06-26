@@ -1610,9 +1610,29 @@ function renderAttendanceReportData(res, start, end, rptType) {
   }
 
   const showPct = rptType === 'homeroom';
+  const rptClass = document.getElementById('rptClassroom').value;
+  const rptTypeEl = document.getElementById('rptType');
+  const typeText = showPct ? 'การเข้าแถวหน้าเสาธง' : 'เวลาเรียนรายวิชา ' + rptTypeEl.options[rptTypeEl.selectedIndex].text.replace(/\\s*\\(.*\\)/, '').trim();
+
+  const printHeader = `
+    <div class="hidden print:block text-center mb-6">
+      <div style="width: 70px; height: 70px; margin: 0 auto 10px auto; border-radius: 50%; border: 2px dashed #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; font-weight: bold;">
+        โลโก้โรงเรียน
+      \x3c/div>
+      <div style="font-size:18px; font-weight:bold;">รายงาน${typeText}\x3c/div>
+      <div style="font-size:16px; font-weight:bold; margin-top:4px;">ระดับชั้น ${escapeHTML(rptClass)} โรงเรียนมหาชัยพิทยาคาร\x3c/div>
+    \x3c/div>
+  `;
+
+  const printFooter = `
+    <div class="hidden print:block text-center mt-10 text-xs text-slate-500">
+      ระบบ Smart School Office | พัฒนาโดยครูก้องนที อุ่นเจริญ
+    \x3c/div>
+  `;
 
   area.innerHTML = `
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+    ${printHeader}
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4 print:hidden">
       <div class="rpt-card" style="background:#DCFCE7;color:#15803D;">
         <div class="lbl">มาเรียน\x3c/div>
         <div class="val">${formatNumber(res.summary.present)}\x3c/div>
@@ -1673,6 +1693,7 @@ function renderAttendanceReportData(res, start, end, rptType) {
         \x3c/tbody>
       \x3c/table>
     \x3c/div>
+    ${printFooter}
 
     <style>
       .rpt-card { padding: 12px 16px; border-radius:12px; }
