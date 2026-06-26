@@ -318,17 +318,17 @@ function previewSubjectsCSV(input) {
 
     body.innerHTML = records.map((r, i) => {
       const warn = !r.subject_code ? 'class="warn" title="รหัสวิชาว่างเปล่า"' : '';
-      return \`
-        <tr \${warn}>
-          <td>\${i+1}\x3c/td>
-          <td class="font-mono">\${escapeHTML(r.subject_code)}\x3c/td>
-          <td>\${escapeHTML(r.subject_name)}\x3c/td>
-          <td>\${escapeHTML(r.credit)}\x3c/td>
-          <td>\${escapeHTML(r.grade_level)} (\${escapeHTML(r.academic_year)})\x3c/td>
+      return `
+        <tr ${warn}>
+          <td>${i+1}\x3c/td>
+          <td class="font-mono">${escapeHTML(r.subject_code)}\x3c/td>
+          <td>${escapeHTML(r.subject_name)}\x3c/td>
+          <td>${escapeHTML(r.credit)}\x3c/td>
+          <td>${escapeHTML(r.grade_level)} (${escapeHTML(r.academic_year)})\x3c/td>
         \x3c/tr>
-      \`;
+      `;
     }).join('');
-    count.innerText = \`พบ \${records.length} รายการ\`;
+    count.innerText = `พบ ${records.length} รายการ`;
     box.style.display = 'block';
   };
   reader.readAsText(file);
