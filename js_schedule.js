@@ -514,7 +514,7 @@ function buildScheduleGrid(view) {
       
       const cellContent = view === 'class'
         ? `<div class="entry-subject">${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-           <div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>
+           ${e.activity_label ? '' : `<div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>`}
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`
         : `<div class="entry-subject">${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
            <div class="entry-teacher">ห้อง ${escapeHTML(e.classroom)}\x3c/div>
@@ -697,11 +697,21 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
           \x3c/div>
 
           <div class="col-span-12">
-            <label class="form-label">ครูผู้สอน\x3c/label>
-            <select id="ef_teacher_id" class="form-input">
-              <option value="">— ไม่ระบุ —\x3c/option>
-              ${SchedState.teachers.map(t => `<option value="${t.id}" ${e.teacher_id===t.id?'selected':''}>${escapeHTML(t.name)}${t.department?` (${escapeHTML(t.department)})`:''}\x3c/option>`).join('')}
-            \x3c/select>
+            <label class="form-label">ครูผู้สอน <span class="text-xs text-slate-400">(เลือกได้หลายคน)\x3c/span>\x3c/label>
+            <input type="text" id="ef_teacher_search" class="form-input" style="margin-bottom:5px; font-size:12px; padding:4px 8px;" placeholder="ค้นหาครู..." onkeyup="
+              const q = this.value.toLowerCase();
+              document.querySelectorAll('.tc-item').forEach(el => {
+                if(el.innerText.toLowerCase().includes(q)) el.style.display='block'; else el.style.display='none';
+              });
+            ">
+            <div style="max-height:120px; overflow-y:auto; border:1.5px solid #E2E8F0; border-radius:8px; padding:5px; background:#F8FAFC;">
+              ${SchedState.teachers.map(t => {
+                const selected = e.teacher_id && e.teacher_id.split(',').map(s=>s.trim()).includes(t.id) ? 'checked' : '';
+                return `<label class="tc-item" style="display:block; font-size:12px; margin-bottom:3px; cursor:pointer; padding:2px;">
+                  <input type="checkbox" name="ef_teacher_ids" value="${t.id}" ${selected}> ${escapeHTML(t.name)}${t.department?` (${escapeHTML(t.department)})`:''}
+                \x3c/label>`;
+              }).join('')}
+            \x3c/div>
           \x3c/div>
 
           <div class="col-span-8">
@@ -746,7 +756,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
       semester      : SchedState.semester,
       subject_id    : document.getElementById('ef_subject_id').value,
       activity_label: document.getElementById('ef_activity_label').value,
-      teacher_id    : document.getElementById('ef_teacher_id').value,
+      teacher_id    : Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked')).map(el => el.value).join(','),
       room_id       : document.getElementById('ef_room_id').value,
       color         : document.getElementById('ef_color').value || '#A62639',
       note          : document.getElementById('ef_note').value
