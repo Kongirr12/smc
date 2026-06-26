@@ -151,6 +151,7 @@ function routeApi(action, params, token) {
       case 'getSubjects': return getSubjects(params, token);
       case 'getSubjectById': return getSubjectById(params.id, token);
       case 'saveSubject': return saveSubject(params.data ? (typeof params.data === 'string' ? JSON.parse(params.data) : params.data) : params, token);
+      case 'importSubjectsBulk': return importSubjectsBulk(params.records, token);
       case 'deleteSubject': return deleteSubject(params.id, token);
       case 'getGradeSheet': return getGradeSheet(params.id || params.subject_id, token);
       case 'saveGradeSheet': return saveGradeSheet(params, token);
@@ -1796,6 +1797,54 @@ function saveSubject(data, sessionToken) {
   } catch (e) {
     logError({ fn:'saveSubject', error:e.message });
     return { status:'error', message:e.message };
+  }
+}
+
+function importSubjectsBulk(recordsJson, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    const records = typeof recordsJson === 'string' ? JSON.parse(recordsJson) : recordsJson;
+    if (!Array.isArray(records) || records.length === 0) {
+      return { status: 'error', message: 'ไม่มีข้อมูล หรือข้อมูลไม่ถูกต้อง' };
+    }
+
+    const arr = readJsonSheet_('Academic');
+    const now = new Date().toISOString();
+    let count = 0;
+
+    for (let r of records) {
+      if (!r.subject_name) continue; // ข้ามถ้ารายการไม่มีชื่อวิชา
+
+      const obj = {
+        _kind         : 'subject',
+        id            : generateId(),
+        subject_code  : sanitize(r.subject_code),
+        subject_name  : sanitize(r.subject_name),
+        subject_group : sanitize(r.subject_group),
+        subject_type  : r.subject_type || 'basic',
+        credit        : Number(r.credit) || 0,
+        hours_per_week: Number(r.hours_per_week) || 0,
+        grade_level   : sanitize(r.grade_level),
+        semester      : String(r.semester || '1'),
+        academic_year : sanitize(r.academic_year) || getConfig().academic_year,
+        teacher_id    : r.teacher_id || '',
+        midterm_weight: Number(r.midterm_weight) || 70,
+        final_weight  : Number(r.final_weight) || 30,
+        created_at    : now,
+        updated_at    : now
+      };
+      arr.push(obj);
+      count++;
+    }
+
+    writeJsonSheet_('Academic', arr);
+    return { status: 'success', message: 'นำเข้ารายวิชาเรียบร้อย จำนวน ' + count + ' รายการ' };
+
+  } catch (e) {
+    logError({ fn: 'importSubjectsBulk', error: e.message });
+    return { status: 'error', message: e.message };
   }
 }
 
