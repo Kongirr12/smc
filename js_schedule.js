@@ -16,7 +16,8 @@ const SchedState = {
   periods     : [],
   rooms       : [],
   subjects    : [],
-  isDirty     : false
+  isDirty     : false,
+  dragDropMode: false
 };
 
 /* ---------- สีตามกลุ่มสาระ ---------- */
@@ -261,7 +262,11 @@ function renderClassView() {
       \x3c/div>
       <div class="flex-1">\x3c/div>
       ${SchedState.classroom ? `
-        <button id="btnSaveSchedule" class="btn btn-primary" onclick="saveClassScheduleBatch()" style="${SchedState.isDirty ? '' : 'display:none;'}">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; background:#F1F5F9; padding:6px 12px; border-radius:8px; margin-right:8px; border:1px solid #E2E8F0;">
+          <input type="checkbox" id="toggleDragDrop" ${SchedState.dragDropMode ? 'checked' : ''} onchange="toggleDragDropMode(this.checked)" style="accent-color:#A62639; width:16px; height:16px; cursor:pointer;">
+          <span style="font-size:13px; font-weight:600; color:#475569;">โหมด Drag & Drop</span>
+        \x3c/label>
+        <button id="btnSaveSchedule" class="btn btn-primary" onclick="saveClassScheduleBatch()" style="${SchedState.isDirty && SchedState.dragDropMode ? '' : 'display:none;'}">
           <i class='bx bx-save'>\x3c/i> บันทึกตาราง
         \x3c/button>
         <button class="btn btn-light" onclick="printClassSchedule()">
@@ -279,13 +284,15 @@ function renderClassView() {
     <div id="classGridArea">
       ${SchedState.classroom ? `
         <div class="flex flex-col md:flex-row gap-4 items-start">
+          ${SchedState.dragDropMode ? `
           <div class="w-full md:w-1/4 bg-slate-50 border border-slate-200 rounded-xl p-3" style="max-height:600px; overflow-y:auto;">
             <div class="text-sm font-semibold text-slate-700 mb-2">
               <i class='bx bx-book-open'>\x3c/i> ลากรายวิชา
             \x3c/div>
             ${buildSubjectPalette()}
           \x3c/div>
-          <div class="w-full md:w-3/4 overflow-x-auto">
+          ` : ''}
+          <div class="${SchedState.dragDropMode ? 'w-full md:w-3/4' : 'w-full'} overflow-x-auto">
             ${buildScheduleGrid('class')}
           \x3c/div>
         \x3c/div>
@@ -297,6 +304,35 @@ function renderClassView() {
     \x3c/div>
     ${schedLegend()}
   `;
+}
+
+function toggleDragDropMode(checked) {
+  if (!checked && SchedState.isDirty) {
+    Swal.fire({
+      title: 'คุณมีตารางที่ยังไม่ได้บันทึก',
+      text: 'การปิดโหมด Drag & Drop จะทิ้งข้อมูลที่ยังไม่ได้บันทึก ต้องการบันทึกก่อนหรือไม่?',
+      icon: 'warning',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: 'บันทึกตาราง',
+      denyButtonText: 'ทิ้งการเปลี่ยนแปลง',
+      cancelButtonText: 'ยกเลิก'
+    }).then(r => {
+      if (r.isConfirmed) {
+         document.getElementById('toggleDragDrop').checked = true;
+         saveClassScheduleBatch();
+      } else if (r.isDenied) {
+         SchedState.isDirty = false;
+         SchedState.dragDropMode = false;
+         loadSchedData();
+      } else {
+         document.getElementById('toggleDragDrop').checked = true;
+      }
+    });
+    return;
+  }
+  SchedState.dragDropMode = checked;
+  renderClassView();
 }
 
 function buildSubjectPalette() {
@@ -586,15 +622,21 @@ function buildScheduleGrid(view) {
       const e = grid[d.no][p.no];
       const isEmpty = !e;
       const canEdit = view === 'class';
+      const isDragMode = canEdit && SchedState.dragDropMode;
       
-      const dropHandlers = canEdit 
+      const dropHandlers = isDragMode 
         ? `ondragover="onDragOverGrid(event)" ondragleave="onDragLeaveGrid(event)" ondrop="onDropGrid(event, ${d.no}, ${p.no})"` 
         : '';
+      
+      const clickHandlerEmpty = (canEdit && !isDragMode) ? `onclick="openEntryForm(${d.no},${p.no})"` : '';
+      const clickHandlerFilled = (canEdit && !isDragMode) 
+        ? `onclick="openEntryForm(${d.no},${p.no})"` 
+        : (view !== 'class' ? `onclick="viewEntryDetail('${e ? e.id : ''}')"` : '');
         
       if (isEmpty) {
         return `
-          <td class="sched-cell empty" ${canEdit ? `onclick="openEntryForm(${d.no},${p.no})"` : ''} ${dropHandlers}>
-            ${canEdit ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
+          <td class="sched-cell empty" ${clickHandlerEmpty} ${dropHandlers}>
+            ${(canEdit && !isDragMode) ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
           \x3c/td>`;
       }
       
@@ -607,7 +649,7 @@ function buildScheduleGrid(view) {
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
       return `
-        <td class="sched-cell filled" onclick="${view==='class'?`openEntryForm(${d.no},${p.no})`:`viewEntryDetail('${e.id}')`}" ${dropHandlers}>
+        <td class="sched-cell filled" ${clickHandlerFilled} ${dropHandlers}>
           <div class="entry-card" style="border-color:${e.color}; background:${e.color}18;">
             <div class="entry-bar" style="background:${e.color};">\x3c/div>
             <div class="entry-body">
@@ -850,69 +892,56 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
   }).then(r => {
     if (r.isDenied) {
       // ลบคาบ
-      SchedState.entries = SchedState.entries.filter(x => !(
-        x.classroom === SchedState.classroom &&
-        x.day === Number(day) &&
-        x.period_no === Number(periodNo)
-      ));
-      SchedState.isDirty = true;
-      renderClassView();
+      showLoading('กำลังลบ...');
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if (res.status === 'success') {
+            showToast('success', 'ลบคาบสำเร็จ');
+            SchedState.entries = SchedState.entries.filter(x => !(
+              x.classroom === SchedState.classroom &&
+              x.day === Number(day) &&
+              x.period_no === Number(periodNo)
+            ));
+            renderClassView();
+          } else showToast('error', res.message);
+        })
+        .deleteScheduleEntry(SchedState.classroom, day, periodNo, SchedState.academic_year, SchedState.semester, APP.token);
       return;
     }
     if (!r.isConfirmed) return;
 
-    // อัพเดต local state
-    const data = {
-      id: 'temp_' + Date.now() + '_' + Math.floor(Math.random()*1000),
-      _kind: 'schedule_entry',
-      classroom: SchedState.classroom,
-      day: Number(day),
-      period_no: Number(periodNo),
-      subject_id: r.value.subject_id,
-      activity_label: r.value.activity_label,
-      teacher_id: r.value.teacher_id,
-      room_id: r.value.room_id,
-      color: r.value.color,
-      note: r.value.note,
-      academic_year: SchedState.academic_year,
-      semester: SchedState.semester,
-    };
-    
-    // enrich names
-    const sub = SchedState.subjects.find(s=>s.id === data.subject_id) || {};
-    data.subject_name = sub.subject_name || '';
-    data.subject_code = sub.subject_code || '';
-    data.subject_group = sub.subject_group || '';
-    
-    const tIds = data.teacher_id ? data.teacher_id.split(',').map(s=>s.trim()).filter(s=>s) : [];
-    let tNames = [], tShorts = [];
-    tIds.forEach(tid => {
-       const t = SchedState.teachers.find(x=>x.id===tid) || {};
-       if(t.name) {
-          tNames.push(t.name);
-          tShorts.push(t.first_name || t.name);
-       }
-    });
-    data.teacher_name = tNames.join(', ');
-    data.teacher_short = tShorts.join(', ');
-    
-    const rm = SchedState.rooms.find(x=>x.id === data.room_id) || {};
-    data.room_name = rm.name || '';
-    
-    const idx = SchedState.entries.findIndex(x =>
-      x.classroom === SchedState.classroom &&
-      x.day === Number(day) &&
-      x.period_no === Number(periodNo)
-    );
-    if (idx >= 0) {
-      data.id = SchedState.entries[idx].id;
-      SchedState.entries[idx] = data;
-    } else {
-      SchedState.entries.push(data);
-    }
-    
-    SchedState.isDirty = true;
-    renderClassView();
+    showLoading('กำลังบันทึก...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status !== 'success') return Swal.fire({ icon:'error', text:res.message });
+
+        // แจ้งเตือน conflict
+        if (res.conflict_warnings && res.conflict_warnings.length > 0) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'บันทึกแล้ว — แต่มีข้อควรระวัง',
+            html: res.conflict_warnings.map(w => `<div style="font-size:13px; margin-bottom:6px;">⚠️ ${escapeHTML(w.message)}\x3c/div>`).join(''),
+            confirmButtonText: 'รับทราบ'
+          });
+        } else {
+          showToast('success', 'บันทึกตารางสอนสำเร็จ');
+        }
+
+        // อัพเดต local state
+        const idx = SchedState.entries.findIndex(x =>
+          x.classroom === SchedState.classroom &&
+          x.day === Number(day) &&
+          x.period_no === Number(periodNo)
+        );
+        if (idx >= 0) SchedState.entries[idx] = res.data;
+        else          SchedState.entries.push(res.data);
+
+        renderClassView();
+      })
+      .withFailureHandler(err => { hideLoading(); Swal.fire({ icon:'error', text:err.message||err }); })
+      .saveScheduleEntry(r.value, APP.token);
   });
 }
 
