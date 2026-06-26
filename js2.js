@@ -1764,9 +1764,9 @@ function downloadSampleCSV(type) {
       'เด็กชาย,สมชาย,ใจดี,1234567890123,male,2010-05-15,A,ม.1/1,2568,ไทย,พุทธ,สมหมาย ใจดี,0812345678,บิดา,123 หมู่ 4 ต.ตัวอย่าง,active\n' +
       'เด็กหญิง,สมหญิง,รักเรียน,1234567890124,female,2010-08-20,O,ม.1/1,2568,ไทย,พุทธ,สมหญิง รักเรียน,0898765432,มารดา,456 หมู่ 2 ต.ตัวอย่าง,active\n';
   } else if (type === 'subjects') {
-    content = '\uFEFFsubject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year\n' +
-      'ว21101,วิทยาศาสตร์พื้นฐาน,วิทยาศาสตร์,basic,1.5,3,ม.1,1,2568\n' +
-      'อ21201,ภาษาอังกฤษเพิ่มเติม,ภาษาต่างประเทศ,additional,1.0,2,ม.1,1,2568\n';
+    content = '\uFEFFsubject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_id\n' +
+      'ว21101,วิทยาศาสตร์พื้นฐาน,วิทยาศาสตร์,basic,1.5,3,ม.1,1,2568,\n' +
+      'อ21201,ภาษาอังกฤษเพิ่มเติม,ภาษาต่างประเทศ,additional,1.0,2,ม.1,1,2568,\n';
   } else {
     content = '\uFEFFprefix,first_name,last_name,national_id,gender,birth_date,position,department,type,academic_level,start_date,phone,email,address,status\n' +
       'นาย,สมศักดิ์,คุณครู,1234567890125,male,1985-03-10,ครูชำนาญการ,คณิตศาสตร์,teacher,ชำนาญการ,2020-05-01,0811111111,somsak@school.ac.th,789 หมู่ 1 ต.ตัวอย่าง,active\n' +
