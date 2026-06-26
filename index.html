@@ -43,15 +43,14 @@
       let successHandler = null;
       let failureHandler = null;
       
-      const builder = {
-        withSuccessHandler: function(fn) { successHandler = fn; return builder; },
-        withFailureHandler: function(fn) { failureHandler = fn; return builder; }
-      };
-      
-      return new Proxy(builder, {
+      const builder = {};
+      const proxy = new Proxy(builder, {
         get: function(target, prop) {
-          if (prop === 'withSuccessHandler' || prop === 'withFailureHandler') {
-            return target[prop];
+          if (prop === 'withSuccessHandler') {
+            return function(fn) { successHandler = fn; return proxy; };
+          }
+          if (prop === 'withFailureHandler') {
+            return function(fn) { failureHandler = fn; return proxy; };
           }
           return function(...args) {
             fetch(GAS_URL, {
@@ -72,10 +71,11 @@
               if (failureHandler) failureHandler(err);
               else console.error("Fetch Error:", err);
             });
-            return builder; // return builder for chaining if needed
+            return proxy; // return proxy for chaining if needed
           };
         }
       });
+      return proxy;
     }
 
     window.google = {
