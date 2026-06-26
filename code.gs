@@ -1540,27 +1540,31 @@ function getAttendanceReport(params, sessionToken) {
 
     if (mode === 'class') {
       if (!params.classroom) return { status:'error', message:'กรุณาเลือกชั้นเรียน' };
+      
+      const rtype = params.report_type || 'homeroom';
+      if (rtype === 'homeroom') {
+        attendance = attendance.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
+      } else if (rtype === 'all_subjects') {
+        attendance = attendance.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
+      } else {
+        // Specific subject id
+        attendance = attendance.filter(a => a.subject_id === rtype);
+      }
+
       const classStudents = students.filter(s => String(s.classroom) === String(params.classroom));
       const ids = new Set(classStudents.map(s => s.id));
       const list = attendance.filter(a => ids.has(a.student_id));
 
       const perStudent = classStudents.map(s => {
         const stu = list.filter(a => a.student_id === s.id);
-        const stuHomeroom = stu.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
-        const stuSubject  = stu.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
         return Object.assign(
           { student_id: s.id, student_code: s.student_id, prefix: s.prefix,
-            first_name: s.first_name, last_name: s.last_name,
-            homeroom_summary: _attendanceSummary_(stuHomeroom),
-            subject_summary: _attendanceSummary_(stuSubject) },
+            first_name: s.first_name, last_name: s.last_name },
           _attendanceSummary_(stu)
         );
       });
-      const listHomeroom = list.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
-      const listSubject  = list.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
+      
       const total = _attendanceSummary_(list);
-      total.homeroom_summary = _attendanceSummary_(listHomeroom);
-      total.subject_summary  = _attendanceSummary_(listSubject);
       return { status:'success', data:perStudent, summary:total };
     }
 

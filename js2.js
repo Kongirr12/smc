@@ -1522,10 +1522,16 @@ function renderAttendanceReport() {
   const todayStr = today.toISOString().slice(0,10);
 
   c.innerHTML = `
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
-      <select id="rptClassroom" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-2 mb-3">
+      <select id="rptClassroom" onchange="updateReportSubjects()" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
         <option value="">เลือกชั้น\x3c/option>
         ${AttendanceState.classrooms.map(c => `<option value="${escapeHTML(c)}">ชั้น ${escapeHTML(c)}\x3c/option>`).join('')}
+      \x3c/select>
+      <select id="rptType" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+        <option value="homeroom">หน้าเสาธง / โฮมรูม\x3c/option>
+        <option value="all_subjects">รวมทุกรายวิชา\x3c/option>
+        <optgroup label="แยกตามรายวิชา" id="rptSubjectGroup">
+        \x3c/optgroup>
       \x3c/select>
       <input type="date" id="rptStart" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${monthStart}">
       <input type="date" id="rptEnd"   class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${todayStr}">
@@ -1546,8 +1552,21 @@ function renderAttendanceReport() {
   `;
 }
 
+function updateReportSubjects() {
+  const cls = document.getElementById('rptClassroom').value;
+  const grp = document.getElementById('rptSubjectGroup');
+  if (!grp) return;
+  grp.innerHTML = '';
+  if (!cls) return;
+  const subjects = (AttendanceState.subjects || []).filter(s => String(s.grade_level) === String(cls));
+  subjects.forEach(s => {
+    grp.innerHTML += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)} (${escapeHTML(s.subject_code||'')})\x3c/option>`;
+  });
+}
+
 function loadAttendanceReport() {
   const classroom = document.getElementById('rptClassroom').value;
+  const rptType   = document.getElementById('rptType').value;
   const start = document.getElementById('rptStart').value;
   const end   = document.getElementById('rptEnd').value;
   if (!classroom) return showToast('warning', 'กรุณาเลือกชั้น');
@@ -1561,13 +1580,13 @@ function loadAttendanceReport() {
         area.innerHTML = `<div class="empty-state"><i class='bx bx-error'>\x3c/i>${escapeHTML(res.message)}\x3c/div>`;
         return;
       }
-      renderAttendanceReportData(res, start, end);
+      renderAttendanceReportData(res, start, end, rptType);
     })
     .withFailureHandler(err => { area.innerHTML = `<div class="empty-state"><i class='bx bx-error'>\x3c/i>${escapeHTML(err.message||err)}\x3c/div>`; })
-    .getAttendanceReport({ mode:'class', classroom:classroom, start_date:start, end_date:end }, APP.token);
+    .getAttendanceReport({ mode:'class', classroom:classroom, report_type:rptType, start_date:start, end_date:end }, APP.token);
 }
 
-function renderAttendanceReportData(res, start, end) {
+function renderAttendanceReportData(res, start, end, rptType) {
   const area = document.getElementById('rptArea');
   if (!res.data || res.data.length === 0) {
     area.innerHTML = `
@@ -1578,28 +1597,31 @@ function renderAttendanceReportData(res, start, end) {
     return;
   }
 
+  const showPct = rptType === 'homeroom';
+
   area.innerHTML = `
     <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
       <div class="rpt-card" style="background:#DCFCE7;color:#15803D;">
-        <div class="lbl">มาเรียนรวม\x3c/div>
+        <div class="lbl">มาเรียน\x3c/div>
         <div class="val">${formatNumber(res.summary.present)}\x3c/div>
       \x3c/div>
       <div class="rpt-card" style="background:#FEE2E2;color:#B91C1C;">
-        <div class="lbl">ขาด/ลา/สาย รวม\x3c/div>
-        <div class="val">${formatNumber(res.summary.absent + res.summary.leave + res.summary.late)}\x3c/div>
+        <div class="lbl">ขาด\x3c/div>
+        <div class="val">${formatNumber(res.summary.absent)}\x3c/div>
       \x3c/div>
-      <div class="rpt-card" style="background:#EFF6FF;color:#1D4ED8;">
-        <div class="lbl">% หน้าเสาธง\x3c/div>
-        <div class="val">${(res.summary.homeroom_summary?.attendance_pct || 0).toFixed(1)}%\x3c/div>
+      <div class="rpt-card" style="background:#FEF3C7;color:#B45309;">
+        <div class="lbl">ลา\x3c/div>
+        <div class="val">${formatNumber(res.summary.leave)}\x3c/div>
       \x3c/div>
-      <div class="rpt-card" style="background:#FEF2F2;color:#991B1B;">
-        <div class="lbl">% รายวิชา\x3c/div>
-        <div class="val">${(res.summary.subject_summary?.attendance_pct || 0).toFixed(1)}%\x3c/div>
+      <div class="rpt-card" style="background:#F2D5DA;color:#800020;">
+        <div class="lbl">มาสาย\x3c/div>
+        <div class="val">${formatNumber(res.summary.late)}\x3c/div>
       \x3c/div>
+      ${showPct ? `
       <div class="rpt-card" style="background:#F1F5F9;color:#0F172A;">
-        <div class="lbl">% รวมทั้งหมด\x3c/div>
+        <div class="lbl">% เข้าเรียน\x3c/div>
         <div class="val">${res.summary.attendance_pct.toFixed(1)}%\x3c/div>
-      \x3c/div>
+      \x3c/div>` : ''}
     \x3c/div>
 
     <div style="overflow-x:auto;">
@@ -1612,16 +1634,13 @@ function renderAttendanceReportData(res, start, end) {
             <th class="px-3 py-2.5 text-center">ลา\x3c/th>
             <th class="px-3 py-2.5 text-center">มาสาย\x3c/th>
             <th class="px-3 py-2.5 text-center">รวม\x3c/th>
-            <th class="px-3 py-2.5 text-center">% เสาธง\x3c/th>
-            <th class="px-3 py-2.5 text-center">% รายวิชา\x3c/th>
-            <th class="px-3 py-2.5 text-center">% รวม\x3c/th>
+            ${showPct ? `<th class="px-3 py-2.5 text-center">% เข้าเรียน\x3c/th>` : ''}
           \x3c/tr>
         \x3c/thead>
         <tbody>
           ${res.data.map(r => {
             const pct = r.attendance_pct || 0;
-            const hrPct = r.homeroom_summary?.attendance_pct || 0;
-            const sbPct = r.subject_summary?.attendance_pct || 0;
+            const bad = pct < 80;
             return `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
               <td class="px-3 py-2.5">
@@ -1633,15 +1652,10 @@ function renderAttendanceReportData(res, start, end) {
               <td class="px-3 py-2.5 text-center text-amber-700 font-semibold">${r.leave}\x3c/td>
               <td class="px-3 py-2.5 text-center text-blue-600 font-semibold">${r.late}\x3c/td>
               <td class="px-3 py-2.5 text-center text-slate-600">${r.total}\x3c/td>
+              ${showPct ? `
               <td class="px-3 py-2.5 text-center">
-                <span class="status-badge ${hrPct < 80 ? 'status-inactive' : 'status-active'}" title="> 80% ผ่านเกณฑ์">${hrPct.toFixed(1)}%\x3c/span>
-              \x3c/td>
-              <td class="px-3 py-2.5 text-center">
-                <span class="status-badge ${sbPct < 80 ? 'status-inactive' : 'status-active'}">${sbPct.toFixed(1)}%\x3c/span>
-              \x3c/td>
-              <td class="px-3 py-2.5 text-center">
-                <span class="status-badge ${pct < 80 ? 'status-inactive' : 'status-active'}">${pct.toFixed(1)}%\x3c/span>
-              \x3c/td>
+                <span class="status-badge ${bad ? 'status-inactive' : 'status-active'}">${pct.toFixed(1)}%\x3c/span>
+              \x3c/td>` : ''}
             \x3c/tr>`;
           }).join('')}
         \x3c/tbody>
