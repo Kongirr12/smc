@@ -534,7 +534,7 @@ function buildScheduleGrid(view) {
     return `
       <tr class="sched-row" style="height:72px;">
         <td class="period-label" style="text-align:center;">
-          <div style="font-size:13px; font-weight:700; color:#0F172A;">${d.label}\x3c/div>
+          <div style="font-size:13px; font-weight:700;">${d.label}\x3c/div>
         \x3c/td>
         ${cells}
       \x3c/tr>`;
@@ -564,8 +564,8 @@ function buildScheduleGrid(view) {
       }
       .period-label-header { width:80px; font-size:11px; }
       .period-label {
-        width:80px; background:#F8FAFC; padding:6px 8px;
-        border:1px solid #E2E8F0; border-radius:8px;
+        width:80px; background:#800020; color:white; padding:6px 8px;
+        border:1px solid #800020; border-radius:8px;
         vertical-align:middle; text-align:center;
       }
       .break-row td { height:36px; }
