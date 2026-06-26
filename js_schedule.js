@@ -145,10 +145,10 @@ function loadSchedData() {
   // เปลี่ยน tab ไป teacher อัตโนมัติถ้าเป็นครู
   if (APP.role === 'teacher') SchedState.tab = 'teacher';
 
-  // โหลดพร้อมกัน 3 ชุด
+  // โหลดพร้อมกัน 4 ชุด
   let done = 0;
   const check = () => {
-    if (++done < 3) return;
+    if (++done < 4) return;
     // ถ้าเป็นครู → เลือกตัวเองอัตโนมัติ
     if (APP.role === 'teacher') {
       const own = SchedState.teachers.find(t =>
@@ -189,6 +189,14 @@ function loadSchedData() {
     })
     .withFailureHandler(() => check())
     .getRooms({}, APP.token);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.status === 'success') SchedState.subjects = res.data;
+      check();
+    })
+    .withFailureHandler(() => check())
+    .getSubjects({ per_page: 500, academic_year: SchedState.academic_year, semester: SchedState.semester }, APP.token);
 }
 
 function renderSchedTab() {
@@ -230,14 +238,114 @@ function renderClassView() {
     \x3c/div>
 
     <div id="classGridArea">
-      ${SchedState.classroom ? buildScheduleGrid('class') : `
-        <div class="empty-state">
+      ${SchedState.classroom ? `
+        <div class="flex flex-col md:flex-row gap-4 items-start">
+          <div class="w-full md:w-1/4 bg-slate-50 border border-slate-200 rounded-xl p-3" style="max-height:600px; overflow-y:auto;">
+            <div class="text-sm font-semibold text-slate-700 mb-2">
+              <i class='bx bx-book-open'>\x3c/i> ลากรายวิชา
+            \x3c/div>
+            ${buildSubjectPalette()}
+          \x3c/div>
+          <div class="w-full md:w-3/4 overflow-x-auto">
+            ${buildScheduleGrid('class')}
+          \x3c/div>
+        \x3c/div>
+      ` : `
+        <div class="empty-state w-full">
           <i class='bx bxs-calendar-check'>\x3c/i>
           เลือกชั้นเรียนเพื่อดูและแก้ไขตารางสอน
         \x3c/div>`}
     \x3c/div>
     ${schedLegend()}
   `;
+}
+
+function buildSubjectPalette() {
+  if (!SchedState.subjects || SchedState.subjects.length === 0) {
+    return '<div class="text-xs text-slate-500">กำลังโหลดรายวิชา... หรือไม่มีรายวิชา\x3c/div>';
+  }
+  const clsMatch = SchedState.classroom; // e.g. ม.1/1
+  const gradeMatch = clsMatch ? clsMatch.split('/')[0] : '';
+  
+  const relevant = SchedState.subjects.filter(s => !s.grade_level || s.grade_level === clsMatch || s.grade_level === gradeMatch);
+  
+  if (relevant.length === 0) {
+    return '<div class="text-xs text-slate-500">ไม่มีวิชาที่เปิดสอนสำหรับชั้นนี้\x3c/div>';
+  }
+  
+  return relevant.map(s => {
+    const color = SUBJECT_COLORS[s.subject_group] || '#64748B';
+    return `
+      <div class="entry-card mb-2" draggable="true" ondragstart="onDragSubjectStart(event, '${s.id}')"
+           style="border-color:${color}; background:white; min-height:50px; cursor:grab;">
+        <div class="entry-bar" style="background:${color};">\x3c/div>
+        <div class="entry-body py-1 px-2">
+          <div class="entry-subject" style="font-size:12px;">${escapeHTML(s.subject_name)}\x3c/div>
+          <div class="entry-teacher" style="font-size:10px;">${escapeHTML(s.teacher_name || 'ไม่ระบุครูผู้สอน')}\x3c/div>
+        \x3c/div>
+      \x3c/div>
+    `;
+  }).join('');
+}
+
+function onDragSubjectStart(event, subjectId) {
+  event.dataTransfer.setData('subjectId', subjectId);
+  event.dataTransfer.effectAllowed = 'copy';
+}
+
+function onDragOverGrid(event) {
+  event.preventDefault(); // อนุญาตให้วางได้
+  event.dataTransfer.dropEffect = 'copy';
+  const cell = event.currentTarget;
+  cell.classList.add('drag-over');
+}
+
+function onDragLeaveGrid(event) {
+  const cell = event.currentTarget;
+  cell.classList.remove('drag-over');
+}
+
+function onDropGrid(event, dayNo, periodNo) {
+  event.preventDefault();
+  const cell = event.currentTarget;
+  cell.classList.remove('drag-over');
+  
+  const subjectId = event.dataTransfer.getData('subjectId');
+  if (!subjectId) return;
+  
+  const subject = SchedState.subjects.find(s => s.id === subjectId);
+  if (!subject) return;
+
+  const data = {
+    classroom: SchedState.classroom,
+    day: dayNo,
+    period_no: periodNo,
+    subject_id: subject.id,
+    teacher_id: subject.teacher_id || '',
+    room_name: '',
+    activity_label: '',
+    is_homeroom_activity: false,
+    academic_year: SchedState.academic_year,
+    semester: SchedState.semester
+  };
+
+  showLoading('กำลังบันทึก...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status === 'success') {
+        if (res.conflict_warnings && res.conflict_warnings.length > 0) {
+          showToast('warning', 'บันทึกสำเร็จ แต่พบข้อขัดแย้ง: ' + res.conflict_warnings[0].msg);
+        } else {
+          showToast('success', res.message);
+        }
+        loadSchedData(); // โหลดตารางใหม่
+      } else {
+        showToast('error', res.message);
+      }
+    })
+    .withFailureHandler(err => { hideLoading(); showToast('error', err.message||err); })
+    .saveScheduleEntry(data, APP.token);
 }
 
 function onClassroomChange() {
@@ -375,38 +483,35 @@ function buildScheduleGrid(view) {
 
   filtered.forEach(e => { if (grid[e.day]) grid[e.day][e.period_no] = e; });
 
-  // Header row
-  const headerCells = DAYS.map(d => `
-    <th style="width:${100/DAYS.length}%;">
-      <div class="font-bold" style="font-size:14px;">วัน${d.label}\x3c/div>
+  // Header row (Periods)
+  const headerCells = periods.map(p => `
+    <th style="min-width:90px; text-align:center;">
+      <div class="font-bold" style="font-size:12px;">${p.label}\x3c/div>
+      <div style="font-size:10px; opacity:0.8; font-weight:normal;">${p.start}-${p.end}\x3c/div>
     \x3c/th>`).join('');
 
-  // Body rows
-  const bodyRows = periods.map(p => {
-    if (p.is_break) {
-      return `
-        <tr class="break-row">
-          <td class="period-label" style="background:#F1F5F9;">
-            <div style="font-size:11px; color:#64748B; font-weight:600;">${p.label}\x3c/div>
-            <div style="font-size:10px; color:#94A3B8;">${p.start}–${p.end}\x3c/div>
-          \x3c/td>
-          <td colspan="${DAYS.length}" style="background:#F8FAFC; text-align:center; color:#94A3B8; font-size:12px; font-style:italic;">
-            ${p.label}
-          \x3c/td>
-        \x3c/tr>`;
-    }
+  // Body rows (Days)
+  const bodyRows = DAYS.map(d => {
+    const cells = periods.map(p => {
+      if (p.is_break) {
+        return `<td style="background:#F8FAFC; border-left:1px dashed #E2E8F0; border-right:1px dashed #E2E8F0; text-align:center; color:#94A3B8; font-size:11px; vertical-align:middle; width:40px;">\x3c/td>`;
+      }
 
-    const cells = DAYS.map(d => {
       const e = grid[d.no][p.no];
       const isEmpty = !e;
+      const canEdit = view === 'class';
+      
+      const dropHandlers = canEdit 
+        ? `ondragover="onDragOverGrid(event)" ondragleave="onDragLeaveGrid(event)" ondrop="onDropGrid(event, ${d.no}, ${p.no})"` 
+        : '';
+        
       if (isEmpty) {
-        // ช่องว่าง — คลิกเพื่อเพิ่มในแบบรายห้อง
-        const canEdit = view === 'class';
         return `
-          <td class="sched-cell empty" ${canEdit ? `onclick="openEntryForm(${d.no},${p.no})"` : ''}>
+          <td class="sched-cell empty" ${canEdit ? `onclick="openEntryForm(${d.no},${p.no})"` : ''} ${dropHandlers}>
             ${canEdit ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
           \x3c/td>`;
       }
+      
       const cellContent = view === 'class'
         ? `<div class="entry-subject">${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
            <div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>
@@ -416,7 +521,7 @@ function buildScheduleGrid(view) {
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
       return `
-        <td class="sched-cell filled" onclick="${view==='class'?`openEntryForm(${d.no},${p.no})`:`viewEntryDetail('${e.id}')`}">
+        <td class="sched-cell filled" onclick="${view==='class'?`openEntryForm(${d.no},${p.no})`:`viewEntryDetail('${e.id}')`}" ${dropHandlers}>
           <div class="entry-card" style="border-color:${e.color}; background:${e.color}18;">
             <div class="entry-bar" style="background:${e.color};">\x3c/div>
             <div class="entry-body">
@@ -427,11 +532,9 @@ function buildScheduleGrid(view) {
     }).join('');
 
     return `
-      <tr class="sched-row">
-        <td class="period-label">
-          <div style="font-size:11px; font-weight:700; color:#0F172A;">${p.label}\x3c/div>
-          <div style="font-size:10px; color:#94A3B8;">${p.start}\x3c/div>
-          <div style="font-size:10px; color:#94A3B8;">${p.end}\x3c/div>
+      <tr class="sched-row" style="height:72px;">
+        <td class="period-label" style="text-align:center;">
+          <div style="font-size:13px; font-weight:700; color:#0F172A;">${d.label}\x3c/div>
         \x3c/td>
         ${cells}
       \x3c/tr>`;
@@ -496,6 +599,7 @@ function buildScheduleGrid(view) {
       .entry-room    { font-size:9px;  color:#94A3B8;  margin-top:1px; display:flex; align-items:center; gap:2px; }
 
       .sched-row:hover .sched-cell.empty { border-color:#CBD5E1; }
+      .sched-cell.drag-over { background:#FEF2F2 !important; border-color:#EF4444 !important; }
     \x3c/style>
   `;
 }
@@ -1120,14 +1224,14 @@ function exportClassScheduleXLS() {
   const cls = SchedState.classroom;
   const periods = SchedState.periods.filter(p => !p.is_break);
 
-  const headers = ['คาบ / เวลา', ...DAYS.map(d => 'วัน' + d.label)];
-  const rows = periods.map(p => {
-    const cells = DAYS.map(d => {
+  const headers = ['วัน / เวลา', ...periods.map(p => p.label + '\\n' + p.start + '-' + p.end)];
+  const rows = DAYS.map(d => {
+    const cells = periods.map(p => {
       const e = SchedState.entries.find(x => x.classroom===cls && x.day===d.no && x.period_no===p.no);
       if (!e) return '';
       return (e.subject_name || e.activity_label || '') + (e.teacher_name ? ' (' + e.teacher_name + ')' : '');
     });
-    return [p.label + ' ' + p.start + '–' + p.end, ...cells];
+    return [d.label, ...cells];
   });
   exportToExcel(headers, rows, 'ตารางสอน_' + cls + '_' + SchedState.academic_year + '_' + SchedState.semester + '.xls');
   showToast('success', 'ดาวน์โหลดสำเร็จ');
