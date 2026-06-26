@@ -94,7 +94,11 @@ function renderAcademicSubjects() {
       <div class="text-base font-semibold text-slate-700">
         <i class='bx bx-book-open mr-1' style="color:#A62639;">\x3c/i> รายวิชาที่เปิดสอน
       \x3c/div>
-      ${APP.role !== 'teacher' ? `<button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'><\/i> เพิ่มรายวิชา<\/button>` : ''}
+      ${APP.role !== 'teacher' ? `
+      <div class="flex gap-2">
+        <button class="btn btn-light" onclick="showImportSubjectsCSV()"><i class='bx bx-import'><\/i> นำเข้า CSV<\/button>
+        <button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'><\/i> เพิ่มรายวิชา<\/button>
+      \x3c/div>` : ''}
     \x3c/div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -213,6 +217,134 @@ function renderSubjectsTable(res) {
     ${paginationHTML(res.page, res.total_pages, 'subjectsGoToPage')}
     <div class="text-xs text-slate-400 text-right mt-1">รวม ${res.total} รายวิชา\x3c/div>
   `;
+}
+
+let _csvImportSubjectRecords = [];
+
+function showImportSubjectsCSV() {
+  _csvImportSubjectRecords = [];
+  Swal.fire({
+    title: 'นำเข้ารายวิชาจาก CSV',
+    width: 640,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-upload">\x3c/i> นำเข้า',
+    cancelButtonText: 'ยกเลิก',
+    showCloseButton: true,
+    html: `
+      <div style="text-align:left; font-size:14px;">
+        <p class="text-sm text-slate-600 mb-2">
+          ไฟล์ CSV ต้องมีหัวคอลัมน์ตามนี้ (UTF-8):
+        \x3c/p>
+        <code style="display:block; background:#F1F5F9; padding:8px 10px; border-radius:6px; font-size:11px; word-break:break-all;">
+          subject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year
+        \x3c/code>
+        <div class="flex gap-2 mt-2">
+          <button type="button" class="btn btn-outline" style="flex:1;" onclick="downloadSampleCSV('subjects')">
+            <i class='bx bx-download'>\x3c/i> ดาวน์โหลดตัวอย่าง
+          \x3c/button>
+        \x3c/div>
+        <div class="mt-3">
+          <label class="form-label">เลือกไฟล์ CSV\x3c/label>
+          <input type="file" accept=".csv,text/csv" class="form-input"
+                 onchange="previewSubjectsCSV(this)">
+        \x3c/div>
+        <div id="csvSubjectPreviewBox" style="display:none; margin-top:12px;">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm font-semibold text-slate-700">ตัวอย่างข้อมูล\x3c/span>
+            <span id="csvSubjectPreviewCount" class="text-xs text-slate-500">\x3c/span>
+          \x3c/div>
+          <div style="max-height:260px; overflow:auto; border:1px solid #E2E8F0; border-radius:8px;">
+            <table class="w-full text-xs" style="border-collapse:collapse;">
+              <thead style="position:sticky; top:0; background:#F8FAFC;">
+                <tr>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b" style="min-width:28px;">#\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">รหัสวิชา\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">ชื่อวิชา\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">หน่วยกิต\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">ชั้น\x3c/th>
+                \x3c/tr>
+              \x3c/thead>
+              <tbody id="csvSubjectPreviewBody">\x3c/tbody>
+            \x3c/table>
+          \x3c/div>
+        \x3c/div>
+        <style>
+          .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
+          .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; }
+          #csvSubjectPreviewBody tr:nth-child(even) { background:#F8FAFC; }
+          #csvSubjectPreviewBody td { padding:5px 8px; border-bottom:1px solid #F1F5F9; }
+          #csvSubjectPreviewBody tr.warn td { background:#FEF2F2; color:#B91C1C; }
+        \x3c/style>
+      \x3c/div>
+    `,
+    preConfirm: () => {
+      if (!_csvImportSubjectRecords.length) { Swal.showValidationMessage('กรุณาเลือกไฟล์ CSV ที่มีข้อมูล'); return false; }
+      return _csvImportSubjectRecords;
+    }
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    confirmImportSubjectsCSV(r.value);
+  });
+}
+
+function previewSubjectsCSV(input) {
+  const file = input.files[0];
+  const box = document.getElementById('csvSubjectPreviewBox');
+  const body = document.getElementById('csvSubjectPreviewBody');
+  const count = document.getElementById('csvSubjectPreviewCount');
+  if (!file || !body) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCSV(e.target.result);
+    if (rows.length < 2) { body.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-3">ไม่พบข้อมูล\x3c/td>\x3c/tr>'; box.style.display='block'; return; }
+    const headers = rows[0].map(h => h.trim().toLowerCase().replace(/^\uFEFF/, ''));
+    const dataRows = rows.slice(1);
+    const records = dataRows.map((row, idx) => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+      return {
+        subject_code: obj.subject_code || '',
+        subject_name: obj.subject_name || '',
+        subject_group: obj.subject_group || '',
+        subject_type: obj.subject_type || 'basic',
+        credit: obj.credit || '0',
+        hours_per_week: obj.hours_per_week || '0',
+        grade_level: obj.grade_level || '',
+        semester: obj.semester || '1',
+        academic_year: obj.academic_year || ''
+      };
+    }).filter(r => r.subject_name);
+    _csvImportSubjectRecords = records;
+
+    body.innerHTML = records.map((r, i) => {
+      const warn = !r.subject_code ? 'class="warn" title="รหัสวิชาว่างเปล่า"' : '';
+      return \`
+        <tr \${warn}>
+          <td>\${i+1}\x3c/td>
+          <td class="font-mono">\${escapeHTML(r.subject_code)}\x3c/td>
+          <td>\${escapeHTML(r.subject_name)}\x3c/td>
+          <td>\${escapeHTML(r.credit)}\x3c/td>
+          <td>\${escapeHTML(r.grade_level)} (\${escapeHTML(r.academic_year)})\x3c/td>
+        \x3c/tr>
+      \`;
+    }).join('');
+    count.innerText = \`พบ \${records.length} รายการ\`;
+    box.style.display = 'block';
+  };
+  reader.readAsText(file);
+}
+
+function confirmImportSubjectsCSV(records) {
+  showLoading('กำลังนำเข้ารายวิชา...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status !== 'success') return showToast('error', res.message);
+      showToast('success', res.message);
+      loadSubjects();
+    })
+    .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
+    .importSubjectsBulk(JSON.stringify(records), APP.token);
 }
 
 function openSubjectForm(id) {
