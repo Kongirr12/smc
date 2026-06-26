@@ -96,6 +96,7 @@ function renderAcademicSubjects() {
       \x3c/div>
       ${APP.role !== 'teacher' ? `
       <div class="flex gap-2">
+        <button id="btnDeleteSelectedSubjects" class="btn btn-light" style="color:#EF4444; display:none;" onclick="deleteSelectedSubjects()"><i class='bx bx-trash'><\/i> ลบที่เลือก<\/button>
         <button class="btn btn-light" onclick="showImportSubjectsCSV()"><i class='bx bx-import'><\/i> นำเข้า CSV<\/button>
         <button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'><\/i> เพิ่มรายวิชา<\/button>
       \x3c/div>` : ''}
@@ -183,7 +184,8 @@ function renderSubjectsTable(res) {
       <table class="min-w-full text-sm">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-3 py-2.5 text-left rounded-l-lg">รหัส\x3c/th>
+            ${APP.role !== 'teacher' ? `<th class="px-3 py-2.5 rounded-l-lg w-10 text-center"><input type="checkbox" id="selectAllSubjects" onclick="toggleSelectAllSubjects(this)" style="cursor:pointer;"><\/th>` : ''}
+            <th class="px-3 py-2.5 text-left ${APP.role === 'teacher' ? 'rounded-l-lg' : ''}">รหัส\x3c/th>
             <th class="px-3 py-2.5 text-left">ชื่อวิชา\x3c/th>
             <th class="px-3 py-2.5 text-left">กลุ่มสาระ\x3c/th>
             <th class="px-3 py-2.5 text-left">ชั้น\x3c/th>
@@ -195,6 +197,7 @@ function renderSubjectsTable(res) {
         <tbody>
           ${res.data.map(s => `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
+              ${APP.role !== 'teacher' ? `<td class="px-3 py-2.5 text-center"><input type="checkbox" class="subject-checkbox" value="${s.id}" onclick="updateDeleteSelectedBtn()" style="cursor:pointer;"><\/td>` : ''}
               <td class="px-3 py-2.5 font-mono text-xs">${escapeHTML(s.subject_code || '-')}\x3c/td>
               <td class="px-3 py-2.5 font-semibold text-slate-800">${escapeHTML(s.subject_name || '-')}\x3c/td>
               <td class="px-3 py-2.5">${escapeHTML(s.subject_group || '-')}\x3c/td>
@@ -217,6 +220,48 @@ function renderSubjectsTable(res) {
     ${paginationHTML(res.page, res.total_pages, 'subjectsGoToPage')}
     <div class="text-xs text-slate-400 text-right mt-1">รวม ${res.total} รายวิชา\x3c/div>
   `;
+  updateDeleteSelectedBtn(); // reset button state on render
+}
+
+function toggleSelectAllSubjects(el) {
+  const checkboxes = document.querySelectorAll('.subject-checkbox');
+  checkboxes.forEach(cb => cb.checked = el.checked);
+  updateDeleteSelectedBtn();
+}
+
+function updateDeleteSelectedBtn() {
+  const checked = document.querySelectorAll('.subject-checkbox:checked').length;
+  const btn = document.getElementById('btnDeleteSelectedSubjects');
+  if (btn) btn.style.display = checked > 0 ? '' : 'none';
+}
+
+function deleteSelectedSubjects() {
+  const checked = document.querySelectorAll('.subject-checkbox:checked');
+  if (checked.length === 0) return;
+  const ids = Array.from(checked).map(cb => cb.value);
+  Swal.fire({
+    title: 'ยืนยันการลบ',
+    text: `ต้องการลบรายวิชาที่เลือก ${ids.length} รายการใช่หรือไม่? (ข้อมูลเกรดที่เกี่ยวข้องจะถูกลบด้วย)`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#EF4444',
+    confirmButtonText: 'ใช่, ลบเลย',
+    cancelButtonText: 'ยกเลิก'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      showLoading('กำลังลบ...');
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if (res.status === 'success') {
+            showToast('success', res.message);
+            loadSubjects();
+          } else showToast('error', res.message);
+        })
+        .withFailureHandler(err => { hideLoading(); showToast('error', err.message||err); })
+        .deleteSubjectsBulk(ids, APP.token);
+    }
+  });
 }
 
 let _csvImportSubjectRecords = [];
@@ -236,7 +281,7 @@ function showImportSubjectsCSV() {
           ไฟล์ CSV ต้องมีหัวคอลัมน์ตามนี้ (UTF-8):
         \x3c/p>
         <code style="display:block; background:#F1F5F9; padding:8px 10px; border-radius:6px; font-size:11px; word-break:break-all;">
-          subject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year
+          subject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_id
         \x3c/code>
         <div class="flex gap-2 mt-2">
           <button type="button" class="btn btn-outline" style="flex:1;" onclick="downloadSampleCSV('subjects')">
@@ -311,7 +356,8 @@ function previewSubjectsCSV(input) {
         hours_per_week: obj.hours_per_week || '0',
         grade_level: obj.grade_level || '',
         semester: obj.semester || '1',
-        academic_year: obj.academic_year || ''
+        academic_year: obj.academic_year || '',
+        teacher_id: obj.teacher_id || ''
       };
     }).filter(r => r.subject_name);
     _csvImportSubjectRecords = records;
