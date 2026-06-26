@@ -643,7 +643,7 @@ function buildScheduleGrid(view) {
            ${e.activity_label ? '' : `<div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>`}
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`
         : `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-           <div class="entry-teacher">${escapeHTML(e.classroom)}\x3c/div>
+           ${e.classroom !== 'กิจกรรม' ? `<div class="entry-teacher">${escapeHTML(e.classroom)}\x3c/div>` : ''}
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
       return `
@@ -811,8 +811,8 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
         <div class="grid grid-cols-12 gap-2">
           ${viewType === 'teacher' ? `
             <div class="col-span-12">
-              <label class="form-label">ผู้เรียน / ชั้นเรียน <span class="text-xs text-slate-400 text-red-500">*จำเป็น\x3c/span>\x3c/label>
-              <input type="text" id="ef_classroom_custom" class="form-input" placeholder="เช่น ม.1/1 หรือ ชุมนุม" value="${escapeHTML(e.classroom||'')}">
+              <label class="form-label">ผู้เรียน / ชั้นเรียน <span class="text-xs text-slate-400">(เว้นว่างได้ ถ้าเป็นกิจกรรมส่วนตัว)\x3c/span>\x3c/label>
+              <input type="text" id="ef_classroom_custom" class="form-input" placeholder="เช่น ม.1/1 หรือ ชุมนุม" value="${escapeHTML(e.classroom && e.classroom !== 'กิจกรรม' ? e.classroom : '')}">
             \x3c/div>
           ` : ''}
 
@@ -893,9 +893,12 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
     `,
     preConfirm: () => {
       const classInput = document.getElementById('ef_classroom_custom');
-      const finalClassroom = classInput ? classInput.value.trim() : SchedState.classroom;
+      let finalClassroom = SchedState.classroom;
+      if (viewType === 'teacher') {
+         finalClassroom = classInput && classInput.value.trim() !== '' ? classInput.value.trim() : 'กิจกรรม';
+      }
       
-      if (!finalClassroom) {
+      if (viewType === 'class' && !finalClassroom) {
         Swal.showValidationMessage('กรุณาระบุกลุ่มผู้เรียน / ชั้นเรียน');
         return false;
       }
