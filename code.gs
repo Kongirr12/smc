@@ -76,8 +76,17 @@ function doPost(e) {
   const args = payload.args || [];
   
   try {
-    if (action && typeof this[action] === 'function') {
-      const result = this[action].apply(this, args);
+    let fn = null;
+    try { fn = globalThis[action]; } catch(e) {}
+    if (!fn) {
+      try { fn = this[action]; } catch(e) {}
+    }
+    if (!fn) {
+      try { fn = eval(action); } catch(e) {}
+    }
+
+    if (typeof fn === 'function') {
+      const result = fn.apply(null, args);
       return jsonResponse(result);
     } else {
       return jsonResponse({ status: 'error', message: 'Action not found: ' + action });
