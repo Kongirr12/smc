@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  Smart School Office — js_manual
  *  หน้าคู่มือการใช้งานระบบ
@@ -827,4 +826,3 @@ function filterManual(q) {
     sec.classList.toggle('man-hidden', !text.includes(keyword));
   });
 }
-</script>

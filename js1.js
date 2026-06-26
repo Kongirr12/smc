@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  Smart School Office — js1
  *  Part 1: Auth | Session | Navigation | Dashboard | Upload
@@ -164,6 +163,25 @@ function doLogout() {
 function enterApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appLayout').style.display   = 'flex';
+
+  // Apply dynamic config
+  if (APP.dashboardData && APP.dashboardData.config) {
+    const config = APP.dashboardData.config;
+    if (config.school_name) {
+      const el = document.getElementById('brandSchoolName');
+      if (el) el.textContent = config.school_name;
+    }
+    if (config.school_logo) {
+      const logoBox = document.getElementById('logoBoxSidebar');
+      if (logoBox) {
+        logoBox.classList.add('has-image');
+        logoBox.innerHTML = `<img src="${config.school_logo}" 
+             onerror="handleLogoError(this, 'sidebarLogoIcon', 'logoBoxSidebar')"
+             style="max-height:100%; max-width:100%; border-radius:8px;">
+        <i class='bx bxs-graduation' id="sidebarLogoIcon" style="display:none;"></i>`;
+      }
+    }
+  }
 
   // ผู้ใช้
   document.getElementById('sidebarUserName').textContent = APP.user.name || APP.user.username;
@@ -710,4 +728,3 @@ function formatThaiDateShort(d) {
              'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   return d.getDate() + ' ' + m[d.getMonth()] + ' ' + ((d.getFullYear() + 543) % 100);
 }
-</script>

@@ -1,4 +1,3 @@
-<script>
 /* QR ATTENDANCE */
 var QRA = { scanning:false, scanner:null, date:'', results:[] };
 
@@ -144,4 +143,3 @@ function qraResult(res, code) {
       f.innerHTML = '<div style="color:#CBD5E1;"><i class="bx bx-scan" style="font-size:36px;display:block;margin-bottom:8px;"></i><div style="font-size:13px;">ผลจะแสดงที่นี่</div></div>'; }
   }, 4000);
 }
-</script>

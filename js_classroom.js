@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  CLASSROOM MANAGEMENT — จัดการห้องเรียน
  * ============================================================ */
@@ -416,4 +415,3 @@ function deleteClassroomConfirm(id, name) {
       .deleteClassroom(id, APP.token);
   });
 }
-</script>

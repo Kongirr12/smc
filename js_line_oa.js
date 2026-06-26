@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  Smart School Office — js_line_oa
  *  LINE OA Settings UI + Test Send
@@ -306,4 +305,3 @@ if (typeof _origRenderDashboard === 'function') {
     }, 1200);
   };
 }
-</script>

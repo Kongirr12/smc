@@ -61,30 +61,31 @@ function doOptions(e) {
 }
 
 function doGet(e) {
-  // ถ้าเป็น API call → ส่ง JSON
-  const action = e && e.parameter && e.parameter.action;
-  const token  = e && e.parameter && e.parameter.token;
-  if (action) {
-    const result = routeApi(action, e.parameter, token);
-    return jsonResponse(result);
-  }
-  // fallback: render HTML (สำหรับ transition period)
-  return HtmlService.createTemplateFromFile('index')
-    .evaluate()
-    .setTitle('Smart School Office')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+  // Simple API fallback for GET requests
+  return ContentService.createTextOutput(JSON.stringify({ status: 'ok', message: 'Smart School API is running' }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
   let payload = {};
-  try { payload = JSON.parse(e.postData.contents || '{}'); } catch (err) {}
-  const action = payload.action || (e.parameter && e.parameter.action);
-  const token  = payload.token  || (e.parameter && e.parameter.token);
-  // Merge top-level payload fields and payload.data so routeApi sees all params
-  const params = Object.assign({}, payload, payload.data || {});
-  const result = routeApi(action, params, token);
-  return jsonResponse(result);
+  try { 
+    payload = JSON.parse(e.postData.contents || '{}'); 
+  } catch (err) {}
+  
+  const action = payload.action;
+  const args = payload.args || [];
+  
+  try {
+    if (action && typeof this[action] === 'function') {
+      const result = this[action].apply(this, args);
+      return jsonResponse(result);
+    } else {
+      return jsonResponse({ status: 'error', message: 'Action not found: ' + action });
+    }
+  } catch (error) {
+    logError({ fn: 'doPost-' + action, error: error.message, stack: error.stack });
+    return jsonResponse({ status: 'error', message: error.message });
+  }
 }
 
 /**

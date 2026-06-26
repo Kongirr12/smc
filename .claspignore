@@ -1,0 +1,6 @@
+**/*.html
+**/*.css
+**/*.js
+backup/
+.DS_Store
+.git/

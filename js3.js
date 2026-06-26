@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  Smart School Office — js3
  *  Part 3: Academic | Finance | Documents | Approvals | Registration
@@ -2158,4 +2157,3 @@ function rejectRegConfirm(id) {
       .rejectRegistration(id, APP.token);
   });
 }
-</script>

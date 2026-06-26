@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  Smart School Office — js2
  *  Part 2: Students | Personnel | Attendance
@@ -2053,4 +2052,3 @@ function confirmImportPersonnelCSV(records) {
       .importPersonnelCSV(records, APP.token);
   });
 }
-</script>

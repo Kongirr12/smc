@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  Smart School Office — js4 (FINAL)
  *  Part 4: Reports | Calendar | Files | Users | Settings
@@ -1548,4 +1547,3 @@ function showSystemInfo() {
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
     .getSystemInfo(APP.token);
 }
-</script>

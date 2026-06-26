@@ -1,4 +1,3 @@
-<script>
 /* ============================================================
  *  Smart School Office — js_schedule
  *  ระบบตารางสอน มาตรฐาน สพฐ.
@@ -1299,4 +1298,3 @@ function clearClassScheduleConfirm() {
       .clearClassroomSchedule(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
   });
 }
-</script>

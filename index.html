@@ -37,6 +37,55 @@
   </script>
 
   <script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycby_PLACEHOLDER/exec"; // UPDATE THIS URL LATER
+
+    function createRunner() {
+      let successHandler = null;
+      let failureHandler = null;
+      
+      const builder = {
+        withSuccessHandler: function(fn) { successHandler = fn; return builder; },
+        withFailureHandler: function(fn) { failureHandler = fn; return builder; }
+      };
+      
+      return new Proxy(builder, {
+        get: function(target, prop) {
+          if (prop === 'withSuccessHandler' || prop === 'withFailureHandler') {
+            return target[prop];
+          }
+          return function(...args) {
+            fetch(GAS_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action: prop, args: args })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'error') {
+                if (failureHandler) failureHandler(data);
+                else console.error("GAS Error:", data);
+              } else {
+                if (successHandler) successHandler(data);
+              }
+            })
+            .catch(err => {
+              if (failureHandler) failureHandler(err);
+              else console.error("Fetch Error:", err);
+            });
+            return builder; // return builder for chaining if needed
+          };
+        }
+      });
+    }
+
+    window.google = {
+      script: {
+        get run() { return createRunner(); }
+      }
+    };
+  </script>
+  
+  <script>
     function handleLogoError(imgEl, iconId, containerId) {
       const driveBackup = 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
       if (imgEl.src !== driveBackup && !imgEl.dataset.failedBackup) {
@@ -76,8 +125,8 @@
 
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-
-  <?!= include('styles'); ?>
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -94,16 +143,9 @@
   <div id="loginScreen">
     <div class="login-card">
 
-      <div class="login-logo <?= getConfig().school_logo ? 'has-image' : '' ?>" id="loginLogoBox">
-        <? if (getConfig().school_logo) { ?>
-          <img src="<?= getConfig().school_logo ?>" 
-               onerror="handleLogoError(this, 'loginLogoIcon', 'loginLogoBox')"
-               style="max-height:100%; max-width:100%; border-radius:14px;">
-          <i class='bx bxs-graduation' id="loginLogoIcon" style="display:none;"></i>
-        <? } else { ?>
-          <i class='bx bxs-graduation'></i>
-        <? } ?>
-      </div>
+        <div class="login-logo" id="loginLogoBox">
+          <i class='bx bxs-graduation' id="loginLogoIcon"></i>
+        </div>
 
       <div class="text-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800 mb-1">Smart School Office</h1>
@@ -165,15 +207,8 @@
     <aside id="sidebar" class="sidebar">
 
       <div class="sidebar-header">
-        <div class="logo-box <?= getConfig().school_logo ? 'has-image' : '' ?>" id="logoBoxSidebar">
-          <? if (getConfig().school_logo) { ?>
-            <img src="<?= getConfig().school_logo ?>" 
-                 onerror="handleLogoError(this, 'sidebarLogoIcon', 'logoBoxSidebar')"
-                 style="max-height:100%; max-width:100%; border-radius:8px;">
-            <i class='bx bxs-graduation' id="sidebarLogoIcon" style="display:none;"></i>
-          <? } else { ?>
-            <i class='bx bxs-graduation'></i>
-          <? } ?>
+        <div class="logo-box" id="logoBoxSidebar">
+          <i class='bx bxs-graduation' id="sidebarLogoIcon"></i>
         </div>
         <div class="brand-text">
           <div class="brand">Smart School Office</div>
@@ -300,17 +335,17 @@
 
 
   <!-- ================== Scripts ================== -->
-  <?!= include('js1'); ?>
-  <?!= include('js2'); ?>
-  <?!= include('js3'); ?>
-  <?!= include('js4'); ?>
-  <?!= include('js_schedule'); ?>
-  <?!= include('js_classroom'); ?>
-  <?!= include('js_behavior'); ?>
-  <?!= include('js_student_card'); ?>
-  <?!= include('js_qr_attendance'); ?>
-  <?!= include('js_line_oa'); ?>
-  <?!= include('js_manual'); ?>
+  <script src="js1.js"></script>
+  <script src="js2.js"></script>
+  <script src="js3.js"></script>
+  <script src="js4.js"></script>
+  <script src="js_schedule.js"></script>
+  <script src="js_classroom.js"></script>
+  <script src="js_behavior.js"></script>
+  <script src="js_student_card.js"></script>
+  <script src="js_qr_attendance.js"></script>
+  <script src="js_line_oa.js"></script>
+  <script src="js_manual.js"></script>
 
 </body>
 </html>
