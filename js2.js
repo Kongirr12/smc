@@ -1233,13 +1233,13 @@ function renderAttendanceRecord() {
 
       ${mode === 'subject' ? `
       <select id="attSubject" onchange="loadAttendanceRecord()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1">
+              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
         <option value="">เลือกวิชา<\/option>
         ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
       <\/select>
       ` : `
       <select id="attClassroom" onchange="loadAttendanceRecord()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1">
+              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
         <option value="">เลือกชั้น<\/option>
         ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}<\/option>`).join('')}
       <\/select>
@@ -1247,6 +1247,22 @@ function renderAttendanceRecord() {
 
       <input type="date" id="attDate" onchange="loadAttendanceRecord()"
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${AttendanceState.date}">
+
+      ${mode === 'subject' ? `
+      <div class="flex items-center gap-2 w-full mt-2">
+        <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:<\/span>
+        <div class="flex flex-wrap gap-1">
+          ${[1,2,3,4,5,6,7,8,9,10].map(p => `
+            <label class="cursor-pointer select-none">
+              <input type="checkbox" name="att_period" value="${p}" class="hidden peer" ${p===1?'checked':''}>
+              <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
+                ${p}
+              <\/div>
+            <\/label>
+          `).join('')}
+        <\/div>
+      <\/div>
+      ` : ''}
 
       <button class="btn btn-light" onclick="setAllAttendance('present')">
         <i class='bx bx-check-circle'>\x3c/i> มาทั้งหมด
@@ -1465,9 +1481,20 @@ function saveAttendance() {
   if (!AttendanceState.records || AttendanceState.records.length === 0) return showToast('warning', 'ไม่มีรายการให้บันทึก');
 
   showLoading('กำลังบันทึก...');
+  
+  let selectedPeriods = [];
+  if (isSubjectMode) {
+    document.querySelectorAll('input[name="att_period"]:checked').forEach(el => selectedPeriods.push(el.value));
+    if (selectedPeriods.length === 0) {
+      hideLoading();
+      return showToast('warning', 'กรุณาเลือกคาบเรียนอย่างน้อย 1 คาบ');
+    }
+  }
+
   const payload = {
     date      : AttendanceState.date,
     subject_id: isSubjectMode ? subjectId : '',
+    periods   : isSubjectMode ? selectedPeriods : ['homeroom'],
     records   : AttendanceState.records.map(r => ({
       student_id : r.student_id,
       status     : r.status,
@@ -1554,23 +1581,23 @@ function renderAttendanceReportData(res, start, end) {
   area.innerHTML = `
     <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
       <div class="rpt-card" style="background:#DCFCE7;color:#15803D;">
-        <div class="lbl">มาเรียน\x3c/div>
+        <div class="lbl">มาเรียนรวม\x3c/div>
         <div class="val">${formatNumber(res.summary.present)}\x3c/div>
       \x3c/div>
       <div class="rpt-card" style="background:#FEE2E2;color:#B91C1C;">
-        <div class="lbl">ขาด\x3c/div>
-        <div class="val">${formatNumber(res.summary.absent)}\x3c/div>
+        <div class="lbl">ขาด/ลา/สาย รวม\x3c/div>
+        <div class="val">${formatNumber(res.summary.absent + res.summary.leave + res.summary.late)}\x3c/div>
       \x3c/div>
-      <div class="rpt-card" style="background:#FEF3C7;color:#B45309;">
-        <div class="lbl">ลา\x3c/div>
-        <div class="val">${formatNumber(res.summary.leave)}\x3c/div>
+      <div class="rpt-card" style="background:#EFF6FF;color:#1D4ED8;">
+        <div class="lbl">% หน้าเสาธง\x3c/div>
+        <div class="val">${(res.summary.homeroom_summary?.attendance_pct || 0).toFixed(1)}%\x3c/div>
       \x3c/div>
-      <div class="rpt-card" style="background:#F2D5DA;color:#800020;">
-        <div class="lbl">มาสาย\x3c/div>
-        <div class="val">${formatNumber(res.summary.late)}\x3c/div>
+      <div class="rpt-card" style="background:#FEF2F2;color:#991B1B;">
+        <div class="lbl">% รายวิชา\x3c/div>
+        <div class="val">${(res.summary.subject_summary?.attendance_pct || 0).toFixed(1)}%\x3c/div>
       \x3c/div>
       <div class="rpt-card" style="background:#F1F5F9;color:#0F172A;">
-        <div class="lbl">% เข้าเรียน\x3c/div>
+        <div class="lbl">% รวมทั้งหมด\x3c/div>
         <div class="val">${res.summary.attendance_pct.toFixed(1)}%\x3c/div>
       \x3c/div>
     \x3c/div>
@@ -1585,13 +1612,16 @@ function renderAttendanceReportData(res, start, end) {
             <th class="px-3 py-2.5 text-center">ลา\x3c/th>
             <th class="px-3 py-2.5 text-center">มาสาย\x3c/th>
             <th class="px-3 py-2.5 text-center">รวม\x3c/th>
-            <th class="px-3 py-2.5 text-center">% เข้าเรียน\x3c/th>
+            <th class="px-3 py-2.5 text-center">% เสาธง\x3c/th>
+            <th class="px-3 py-2.5 text-center">% รายวิชา\x3c/th>
+            <th class="px-3 py-2.5 text-center">% รวม\x3c/th>
           \x3c/tr>
         \x3c/thead>
         <tbody>
           ${res.data.map(r => {
             const pct = r.attendance_pct || 0;
-            const bad = pct < 80;
+            const hrPct = r.homeroom_summary?.attendance_pct || 0;
+            const sbPct = r.subject_summary?.attendance_pct || 0;
             return `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
               <td class="px-3 py-2.5">
@@ -1604,7 +1634,13 @@ function renderAttendanceReportData(res, start, end) {
               <td class="px-3 py-2.5 text-center text-blue-600 font-semibold">${r.late}\x3c/td>
               <td class="px-3 py-2.5 text-center text-slate-600">${r.total}\x3c/td>
               <td class="px-3 py-2.5 text-center">
-                <span class="status-badge ${bad ? 'status-inactive' : 'status-active'}">${pct.toFixed(1)}%\x3c/span>
+                <span class="status-badge ${hrPct < 80 ? 'status-inactive' : 'status-active'}" title="> 80% ผ่านเกณฑ์">${hrPct.toFixed(1)}%\x3c/span>
+              \x3c/td>
+              <td class="px-3 py-2.5 text-center">
+                <span class="status-badge ${sbPct < 80 ? 'status-inactive' : 'status-active'}">${sbPct.toFixed(1)}%\x3c/span>
+              \x3c/td>
+              <td class="px-3 py-2.5 text-center">
+                <span class="status-badge ${pct < 80 ? 'status-inactive' : 'status-active'}">${pct.toFixed(1)}%\x3c/span>
               \x3c/td>
             \x3c/tr>`;
           }).join('')}

@@ -1449,37 +1449,47 @@ function saveAttendanceBulk(payload, sessionToken) {
     const all = readJsonSheet_('Attendance');
     const studentIds = new Set(payload.records.map(r => r.student_id));
     const subjectId  = payload.subject_id || null;
+    const periods = Array.isArray(payload.periods) && payload.periods.length > 0 ? payload.periods : (subjectId ? ['1'] : ['homeroom']);
 
     // เก็บระเบียนที่ไม่ใช่ของบล็อกนี้
     const kept = all.filter(a => {
       if (a.date !== date) return true;
       if (!studentIds.has(a.student_id)) return true;
-      // ถ้า bulk เป็นรายวิชา ให้ลบเฉพาะระเบียนวิชาเดียวกัน
-      if (subjectId) return a.subject_id !== subjectId;
-      // ถ้า bulk เป็นรายวัน ให้ลบเฉพาะระเบียนรายวัน (ไม่มี subject_id)
-      return !!a.subject_id;
+      // ถ้า bulk เป็นรายวิชา ให้ลบเฉพาะระเบียนวิชาเดียวกัน และ period ตรงกัน
+      if (subjectId) {
+        if (a.subject_id !== subjectId) return true;
+        if (periods.includes(String(a.period))) return false;
+        return true;
+      }
+      // ถ้า bulk เป็นหน้าเสาธง (รายวัน) ให้ลบเฉพาะระเบียนที่เป็น homeroom หรือไม่มี subject_id
+      return a.subject_id && a.period !== 'homeroom';
     });
 
     const now = new Date().toISOString();
-    const inserted = payload.records
-      .filter(r => r.student_id && r.status)
-      .map(r => ({
-        id          : generateId(),
-        student_id  : r.student_id,
-        date        : date,
-        subject_id  : subjectId || '',
-        status      : r.status,
-        leave_type  : r.leave_type || '',
-        note        : sanitize(r.note),
-        recorded_by : recordedBy,
-        created_at  : now
-      }));
+    const inserted = [];
+    
+    payload.records.filter(r => r.student_id && r.status).forEach(r => {
+      periods.forEach(p => {
+        inserted.push({
+          id          : generateId(),
+          student_id  : r.student_id,
+          date        : date,
+          subject_id  : subjectId || '',
+          period      : String(p),
+          status      : r.status,
+          leave_type  : r.leave_type || '',
+          note        : sanitize(r.note),
+          recorded_by : recordedBy,
+          created_at  : now
+        });
+      });
+    });
 
     writeJsonSheet_('Attendance', kept.concat(inserted));
 
     // LINE OA แจ้งเตือนนักเรียนขาด/มาสาย
     try {
-      const absLate = (records||[]).filter(r => r.status==='absent' || r.status==='late');
+      const absLate = (payload.records||[]).filter(r => r.status==='absent' || r.status==='late');
       if (absLate.length > 0) {
         notifyAttendance_({ date:date, records:records }, payload.classroom || '');
       }
@@ -1536,13 +1546,21 @@ function getAttendanceReport(params, sessionToken) {
 
       const perStudent = classStudents.map(s => {
         const stu = list.filter(a => a.student_id === s.id);
+        const stuHomeroom = stu.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
+        const stuSubject  = stu.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
         return Object.assign(
           { student_id: s.id, student_code: s.student_id, prefix: s.prefix,
-            first_name: s.first_name, last_name: s.last_name },
+            first_name: s.first_name, last_name: s.last_name,
+            homeroom_summary: _attendanceSummary_(stuHomeroom),
+            subject_summary: _attendanceSummary_(stuSubject) },
           _attendanceSummary_(stu)
         );
       });
+      const listHomeroom = list.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
+      const listSubject  = list.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
       const total = _attendanceSummary_(list);
+      total.homeroom_summary = _attendanceSummary_(listHomeroom);
+      total.subject_summary  = _attendanceSummary_(listSubject);
       return { status:'success', data:perStudent, summary:total };
     }
 
