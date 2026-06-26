@@ -1226,7 +1226,7 @@ function renderAttendanceRecord() {
         <\/button>
         <button id="attModeClass" onclick="switchAttMode('class')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='class'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bxs-building'><\/i> รายห้อง
+          <i class='bx bxs-building'><\/i> หน้าเสาธง / โฮมรูม
         <\/button>
       <\/div>
       ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา<\/span>'}
