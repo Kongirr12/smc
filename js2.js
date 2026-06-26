@@ -1529,7 +1529,6 @@ function renderAttendanceReport() {
       \x3c/select>
       <select id="rptType" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
         <option value="homeroom">หน้าเสาธง / โฮมรูม\x3c/option>
-        <option value="all_subjects">รวมทุกรายวิชา\x3c/option>
         <optgroup label="แยกตามรายวิชา" id="rptSubjectGroup">
         \x3c/optgroup>
       \x3c/select>
@@ -1538,10 +1537,23 @@ function renderAttendanceReport() {
       <button class="btn btn-blue" onclick="loadAttendanceReport()">
         <i class='bx bx-search'>\x3c/i> ดูรายงาน
       \x3c/button>
-      <button class="btn btn-light" onclick="exportAttendance()">
-        <i class='bx bx-download'>\x3c/i> Export ทั้งหมด
+      <button class="btn btn-light" onclick="exportReportCSV()">
+        <i class='bx bx-spreadsheet'>\x3c/i> โหลด CSV
+      \x3c/button>
+      <button class="btn btn-light" onclick="window.print()">
+        <i class='bx bx-printer'>\x3c/i> พิมพ์ PDF
       \x3c/button>
     \x3c/div>
+
+    <style>
+      @media print {
+        body * { visibility: hidden !important; }
+        #rptArea, #rptArea * { visibility: visible !important; }
+        #rptArea { position: absolute; left: 0; top: 0; width: 100%; }
+        .rpt-card { border: 1px solid #ccc !important; }
+        .status-badge { border: 1px solid #ccc !important; }
+      }
+    \x3c/style>
 
     <div id="rptArea">
       <div class="empty-state">
@@ -1670,17 +1682,27 @@ function renderAttendanceReportData(res, start, end, rptType) {
   `;
 }
 
-function exportAttendance() {
-  showLoading('กำลังเตรียมไฟล์...');
-  google.script.run
-    .withSuccessHandler(res => {
-      hideLoading();
-      if (res.status !== 'success') return showToast('error', res.message);
-      exportToExcel(res.headers, res.rows, 'การเข้าเรียน_' + new Date().toISOString().slice(0,10) + '.xls');
-      showToast('success', 'ดาวน์โหลดสำเร็จ');
-    })
-    .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
-    .exportData('attendance', APP.token);
+function exportReportCSV() {
+  const table = document.querySelector('#rptArea table');
+  if (!table) return showToast('warning', 'ไม่มีข้อมูลให้ดาวน์โหลด');
+  
+  const headers = [];
+  table.querySelectorAll('thead th').forEach(th => headers.push(th.innerText.trim()));
+  
+  const rows = [];
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const row = [];
+    tr.querySelectorAll('td').forEach(td => row.push(td.innerText.replace(/\n/g, ' ').trim()));
+    rows.push(row);
+  });
+  
+  const rptClass = document.getElementById('rptClassroom').value;
+  const rptType = document.getElementById('rptType');
+  const typeText = rptType.options[rptType.selectedIndex].text.replace(/\//g, '-').trim();
+  const filename = 'รายงานเข้าเรียน_' + rptClass + '_' + typeText + '_' + new Date().toISOString().slice(0,10) + '.xls';
+  
+  exportToExcel(headers, rows, filename);
+  showToast('success', 'เตรียมไฟล์สำเร็จ');
 }
 
 /* ============================================================
