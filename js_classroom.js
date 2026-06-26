@@ -167,12 +167,22 @@ function openClassroomForm(id) {
               </div>
             </div>
             <div>
-              <label class="form-label">ครูประจำชั้น</label>
-              <input type="text" id="cf_teacher_search" class="form-input" placeholder="ค้นหาครูประจำชั้น..."
+              <label class="form-label">ครูประจำชั้นคนที่ 1</label>
+              <input type="text" id="cf_teacher_search_1" class="form-input" placeholder="ค้นหาครูประจำชั้น..."
                      value="${escapeHTML(r && r.homeroom_teacher_id ? (teachers.find(t=>t.id===r.homeroom_teacher_id)||{}).name||'' : '')}"
-                     autocomplete="off" oninput="filterTeacherDropdown(this.value)">
-              <input type="hidden" id="cf_teacher_id" value="${escapeHTML(r ? r.homeroom_teacher_id||'' : '')}">
-              <div id="cf_teacher_list" style="display:none;position:absolute;z-index:9999;background:white;
+                     autocomplete="off" oninput="filterTeacherDropdown(this.value, 1)">
+              <input type="hidden" id="cf_teacher_id_1" value="${escapeHTML(r ? r.homeroom_teacher_id||'' : '')}">
+              <div id="cf_teacher_list_1" style="display:none;position:absolute;z-index:9999;background:white;
+                   border:1.5px solid #E2E8F0;border-radius:10px;max-height:160px;overflow-y:auto;
+                   width:calc(100% - 80px);box-shadow:0 8px 24px rgba(0,0,0,.12);"></div>
+            </div>
+            <div style="margin-top:10px;">
+              <label class="form-label">ครูประจำชั้นคนที่ 2 (ถ้ามี)</label>
+              <input type="text" id="cf_teacher_search_2" class="form-input" placeholder="ค้นหาครูประจำชั้นคนที่ 2..."
+                     value="${escapeHTML(r && r.homeroom_teacher_id_2 ? (teachers.find(t=>t.id===r.homeroom_teacher_id_2)||{}).name||'' : '')}"
+                     autocomplete="off" oninput="filterTeacherDropdown(this.value, 2)">
+              <input type="hidden" id="cf_teacher_id_2" value="${escapeHTML(r ? r.homeroom_teacher_id_2||'' : '')}">
+              <div id="cf_teacher_list_2" style="display:none;position:absolute;z-index:9999;background:white;
                    border:1.5px solid #E2E8F0;border-radius:10px;max-height:160px;overflow-y:auto;
                    width:calc(100% - 80px);box-shadow:0 8px 24px rgba(0,0,0,.12);"></div>
             </div>
@@ -200,7 +210,8 @@ function openClassroomForm(id) {
             room_number        : room,
             academic_year      : year,
             capacity           : parseInt(document.getElementById('cf_cap').value) || 40,
-            homeroom_teacher_id: document.getElementById('cf_teacher_id').value,
+            homeroom_teacher_id: document.getElementById('cf_teacher_id_1').value,
+            homeroom_teacher_id_2: document.getElementById('cf_teacher_id_2').value,
             status             : document.getElementById('cf_status').value
           };
         }
@@ -221,8 +232,8 @@ function openClassroomForm(id) {
     .getPersonnel({ type:'teacher', per_page:200 }, APP.token);
 }
 
-function filterTeacherDropdown(q) {
-  const box = document.getElementById('cf_teacher_list');
+function filterTeacherDropdown(q, idx) {
+  const box = document.getElementById('cf_teacher_list_' + idx);
   if (!box) return;
   const filtered = q.length < 1 ? [] : CLS.teachers.filter(t =>
     (t.name||'').includes(q) || (t.first_name||'').includes(q)
@@ -231,15 +242,15 @@ function filterTeacherDropdown(q) {
   if (!filtered.length) { box.style.display = 'none'; return; }
   box.style.display = 'block';
   box.innerHTML = filtered.map(t => `
-    <div class="teacher-opt" onclick="selectTeacher('${escapeHTML(t.id)}','${escapeHTML(t.name||t.first_name||'')}')">
+    <div class="teacher-opt" onclick="selectTeacher('${escapeHTML(t.id)}','${escapeHTML(t.name||t.first_name||'')}', ${idx})">
       ${escapeHTML(t.name||t.first_name||'')}
     </div>`).join('');
 }
 
-function selectTeacher(id, name) {
-  const el = document.getElementById('cf_teacher_id');
-  const search = document.getElementById('cf_teacher_search');
-  const box = document.getElementById('cf_teacher_list');
+function selectTeacher(id, name, idx) {
+  const el = document.getElementById('cf_teacher_id_' + idx);
+  const search = document.getElementById('cf_teacher_search_' + idx);
+  const box = document.getElementById('cf_teacher_list_' + idx);
   if (el) el.value = id;
   if (search) search.value = name;
   if (box) box.style.display = 'none';
