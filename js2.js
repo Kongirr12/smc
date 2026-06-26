@@ -1616,9 +1616,7 @@ function renderAttendanceReportData(res, start, end, rptType) {
 
   const printHeader = `
     <div class="hidden print:block text-center mb-6">
-      <div style="width: 70px; height: 70px; margin: 0 auto 10px auto; border-radius: 50%; border: 2px dashed #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #64748b; font-weight: bold;">
-        โลโก้โรงเรียน
-      \x3c/div>
+      <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="โลโก้โรงเรียน" style="width: 80px; height: 80px; margin: 0 auto 10px auto; object-fit: contain;">
       <div style="font-size:18px; font-weight:bold;">รายงาน${typeText}\x3c/div>
       <div style="font-size:16px; font-weight:bold; margin-top:4px;">ระดับชั้น ${escapeHTML(rptClass)} โรงเรียนมหาชัยพิทยาคาร\x3c/div>
     \x3c/div>
