@@ -309,7 +309,12 @@ const EVENT_TYPES = {
 function renderCalendar(container) {
   container.innerHTML = `
     ${pageHeader('ปฏิทินและข่าวสาร', 'bxs-calendar-event', `
-      ${APP.role !== 'teacher' ? `<button class="btn btn-blue" onclick="openCalendarForm()"><i class='bx bx-plus'>\x3c/i> เพิ่มเหตุการณ์<\/button>` : ''}
+      ${APP.role !== 'teacher' ? `
+        <div class="flex gap-2">
+          <button class="btn btn-light" onclick="openCSVImportModal()"><i class='bx bx-upload'></i> นำเข้า CSV</button>
+          <button class="btn btn-blue" onclick="openCalendarForm()"><i class='bx bx-plus'></i> เพิ่มเหตุการณ์</button>
+        </div>
+      ` : ''}
     `)}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1547,3 +1552,236 @@ function showSystemInfo() {
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
     .getSystemInfo(APP.token);
 }
+
+function openCSVImportModal() {
+  Swal.fire({
+    title: 'นำเข้าเหตุการณ์ปฏิทินจาก CSV',
+    width: 700,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-check-circle"></i> ยืนยันนำเข้า',
+    cancelButtonText: 'ยกเลิก',
+    html: `
+      <div style="text-align:left; font-size:13px; font-family:'Sarabun', sans-serif;">
+        <div class="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200" style="font-size:12px; color:#475569; line-height:1.6;">
+          <strong>รูปแบบคอลัมน์ของไฟล์ CSV:</strong><br>
+          <code style="background:#fff; padding:2px 6px; border-radius:4px; display:inline-block; border:1px solid #E2E8F0; margin:4px 0;">
+            หัวข้อ,ประเภท,วันเริ่มต้น,วันสิ้นสุด,เวลาเริ่มต้น,เวลาสิ้นสุด,สถานที่,รายละเอียด,ปักหมุด
+          </code><br>
+          * <strong>หัวข้อ</strong> และ <strong>วันเริ่มต้น</strong> (YYYY-MM-DD) เป็นฟิลด์จำเป็นต้องมี<br>
+          * ประเภทที่รองรับ: <span class="badge" style="background:#F2D5DA;color:#800020;padding:1px 5px;font-size:10px;border-radius:4px;">academic</span>, <span class="badge" style="background:#DCFCE7;color:#15803D;padding:1px 5px;font-size:10px;border-radius:4px;">activity</span>, <span class="badge" style="background:#FEF3C7;color:#B45309;padding:1px 5px;font-size:10px;border-radius:4px;">meeting</span>, <span class="badge" style="background:#FEE2E2;color:#B91C1C;padding:1px 5px;font-size:10px;border-radius:4px;">holiday</span>, <span class="badge" style="background:#F1F5F9;color:#334155;padding:1px 5px;font-size:10px;border-radius:4px;">general</span>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">เลือกไฟล์ CSV (.csv)</label>
+          <input type="file" id="csv_file_input" accept=".csv" class="form-input" onchange="handleCSVFileSelect(this)">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">หรือ วางข้อความ CSV ที่นี่</label>
+          <textarea id="csv_text_input" class="form-input" rows="5" placeholder='หัวข้อ,ประเภท,วันเริ่มต้น,วันสิ้นสุด,เวลาเริ่มต้น,เวลาสิ้นสุด,สถานที่,รายละเอียด,ปักหมุด&#10;"สอบกลางภาค","academic","2026-07-06","2026-07-08","08:30","15:30","ห้องสอบ",false' oninput="handleCSVTextChange()"></textarea>
+        </div>
+
+        <div id="csv_preview_area" style="display:none; max-height:220px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:10px; background:white;">
+          <table class="min-w-full text-[11px]" style="border-collapse:collapse; width:100%;">
+            <thead class="bg-slate-50" style="position:sticky; top:0; z-index:10;">
+              <tr style="border-bottom:1px solid #E2E8F0;">
+                <th class="px-2 py-1.5 text-left">หัวข้อ</th>
+                <th class="px-2 py-1.5 text-left">ประเภท</th>
+                <th class="px-2 py-1.5 text-left">เริ่ม</th>
+                <th class="px-2 py-1.5 text-left">สถานที่</th>
+                <th class="px-2 py-1.5 text-center">ปักหมุด</th>
+              </tr>
+            </thead>
+            <tbody id="csv_preview_table_body">
+            </tbody>
+          </table>
+        </div>
+        <div id="csv_status_msg" class="mt-2 text-xs font-semibold" style="display:none;"></div>
+      </div>
+      <style>
+        .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
+        .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
+        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+      </style>
+    `,
+    preConfirm: () => {
+      if (!window._parsedCSVEvents || window._parsedCSVEvents.length === 0) {
+        Swal.showValidationMessage('กรุณาเลือกไฟล์หรือวางข้อความ CSV ที่ถูกต้อง');
+        return false;
+      }
+      return window._parsedCSVEvents;
+    }
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    showLoading('กำลังนำเข้าเหตุการณ์...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status === 'success') {
+          showToast('success', res.message);
+          loadCalendarEvents();
+        } else {
+          Swal.fire({ icon: 'error', text: res.message });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({ icon: 'error', text: err.message || err });
+      })
+      .importCalendarEvents(r.value, APP.token);
+  });
+
+  // Reset parsing state
+  window._parsedCSVEvents = null;
+}
+
+window.handleCSVFileSelect = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    document.getElementById('csv_text_input').value = text;
+    window.processCSVText(text);
+  };
+  reader.readAsText(file, 'UTF-8');
+};
+
+window.handleCSVTextChange = function() {
+  const text = document.getElementById('csv_text_input').value;
+  window.processCSVText(text);
+};
+
+window.processCSVText = function(text) {
+  const events = window.parseCSVText(text);
+  const previewArea = document.getElementById('csv_preview_area');
+  const tbody = document.getElementById('csv_preview_table_body');
+  const statusMsg = document.getElementById('csv_status_msg');
+  
+  if (!events || events.length === 0) {
+    previewArea.style.display = 'none';
+    statusMsg.style.display = 'block';
+    statusMsg.style.color = '#EF4444';
+    statusMsg.textContent = 'ไม่พบข้อมูลที่ถูกต้อง หรือไม่มีหัวข้อและวันที่เริ่มต้น';
+    window._parsedCSVEvents = null;
+    return;
+  }
+
+  tbody.innerHTML = events.map(e => `
+    <tr class="border-b border-slate-100">
+      <td class="px-2 py-1">${escapeHTML(e.title)}</td>
+      <td class="px-2 py-1"><span class="badge" style="background:#F1F5F9;color:#334155;padding:1px 5px;font-size:10px;border-radius:4px;">${escapeHTML(e.type)}</span></td>
+      <td class="px-2 py-1">${escapeHTML(e.start_date)}</td>
+      <td class="px-2 py-1">${escapeHTML(e.location || '-')}</td>
+      <td class="px-2 py-1 text-center">${e.is_pinned ? '✅' : '❌'}</td>
+    </tr>
+  `).join('');
+
+  previewArea.style.display = 'block';
+  statusMsg.style.display = 'block';
+  statusMsg.style.color = '#10B981';
+  statusMsg.textContent = `พบข้อมูลที่ถูกต้องทั้งหมด ${events.length} รายการ`;
+  window._parsedCSVEvents = events;
+};
+
+window.parseCSVText = function(text) {
+  if (!text) return [];
+  const lines = [];
+  let row = [""];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i+1];
+    if (c === '"') {
+      if (inQuotes && next === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      row.push("");
+    } else if ((c === '\\r' || c === '\\n' || c === '\r' || c === '\n') && !inQuotes) {
+      if (c === '\r' && next === '\n') { i++; }
+      lines.push(row);
+      row = [""];
+    } else {
+      row[row.length - 1] += c;
+    }
+  }
+  if (row.length > 1 || row[0] !== "") {
+    lines.push(row);
+  }
+
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].map(h => h.trim().toLowerCase());
+  
+  const getIndex = (keys) => {
+    return headers.findIndex(h => keys.includes(h));
+  };
+
+  const titleIdx = getIndex(['หัวข้อ', 'title', 'subject']);
+  const typeIdx = getIndex(['ประเภท', 'type', 'category']);
+  const startIdx = getIndex(['วันเริ่มต้น', 'start_date', 'date', 'startdate', 'เริ่ม']);
+  const endIdx = getIndex(['วันสิ้นสุด', 'end_date', 'enddate', 'สิ้นสุด']);
+  const startTimeIdx = getIndex(['เวลาเริ่มต้น', 'start_time', 'starttime']);
+  const endTimeIdx = getIndex(['เวลาสิ้นสุด', 'end_time', 'endtime']);
+  const locationIdx = getIndex(['สถานที่', 'location']);
+  const descIdx = getIndex(['รายละเอียด', 'description', 'desc']);
+  const pinIdx = getIndex(['ปักหมุดหน้าหลัก', 'is_pinned', 'pinned', 'pin', 'ปักหมุด']);
+
+  if (titleIdx === -1 || startIdx === -1) return [];
+
+  const validTypes = ['academic', 'activity', 'meeting', 'holiday', 'general'];
+  const typeMap = {
+    'วิชาการ': 'academic',
+    'กิจกรรม': 'activity',
+    'ประชุม': 'meeting',
+    'วันหยุด': 'holiday',
+    'ทั่วไป': 'general'
+  };
+
+  const events = [];
+  for (let i = 1; i < lines.length; i++) {
+    const r = lines[i];
+    if (r.length <= Math.max(titleIdx, startIdx)) continue;
+    
+    const title = r[titleIdx]?.trim();
+    const start_date = r[startIdx]?.trim();
+    if (!title || !start_date) continue;
+
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start_date) && !/^\d{4}-\d{2}-\d{2}$/.test(start_date)) continue;
+
+    let type = r[typeIdx]?.trim().toLowerCase() || 'general';
+    if (typeMap[type]) {
+      type = typeMap[type];
+    } else if (!validTypes.includes(type)) {
+      type = 'general';
+    }
+
+    const end_date = (endIdx !== -1 ? r[endIdx]?.trim() : '') || start_date;
+    const start_time = startTimeIdx !== -1 ? r[startTimeIdx]?.trim() : '';
+    const end_time = endTimeIdx !== -1 ? r[endTimeIdx]?.trim() : '';
+    const location = locationIdx !== -1 ? r[locationIdx]?.trim() : '';
+    const description = descIdx !== -1 ? r[descIdx]?.trim() : '';
+    
+    const pinVal = pinIdx !== -1 ? r[pinIdx]?.trim().toLowerCase() : '';
+    const is_pinned = pinVal === 'true' || pinVal === 'yes' || pinVal === '1' || pinVal === 'ปักหมุด' || pinVal === 'ใช่';
+
+    events.push({
+      title,
+      type,
+      start_date,
+      end_date,
+      start_time,
+      end_time,
+      location,
+      description,
+      is_pinned
+    });
+  }
+
+  return events;
+};
