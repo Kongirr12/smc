@@ -1246,7 +1246,7 @@ function renderAttendanceRecord() {
         <div class="flex flex-wrap gap-1">
           ${[1,2,3,4,5,6,7].map(p => `
             <label class="cursor-pointer select-none">
-              <input type="checkbox" name="att_period" value="${p}" onchange="syncSubjectFromSchedule()" class="hidden peer" ${p===1?'checked':''}>
+              <input type="checkbox" name="att_period" value="${p}" onchange="onPeriodCheckboxChange(this)" class="hidden peer" ${p===1?'checked':''}>
               <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
                 ${p}
               <\/div>
@@ -1254,12 +1254,11 @@ function renderAttendanceRecord() {
           `).join('')}
         <\/div>
       <\/div>
-      
-      <select id="attSubject" onchange="loadAttendanceRecord()"
+
+      <select id="attSubject" onchange="onAttSubjectChange()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
         <option value="">เลือกวิชา<\/option>
-        ${subjects
-            .map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')}) - ${escapeHTML(s.teacher_name||'')}<\/option>`).join('')}
+        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
       <\/select>
       ` : ''}
 
@@ -1279,10 +1278,14 @@ function renderAttendanceRecord() {
     \x3c/div>
   `;
 
-  // auto-select วิชาแรก แล้ว load รายชื่อทันที (ถ้าถูกเลือกแล้ว)
-  if (AttendanceState.mode === 'subject' && AttendanceState.classroom && subjects.length > 0 && !AttendanceState.subject_id) {
-    // let syncSubjectFromSchedule handle the auto-selection, do nothing here.
-  }
+  // auto-select handled by syncSubjectFromSchedule
+}
+
+function switchAttMode(mode) {
+  AttendanceState.mode = mode;
+  AttendanceState.subject_id = '';
+  AttendanceState.classroom  = '';
+  renderAttendanceRecord();
 }
 
 function onAttClassroomChange() {
@@ -1314,7 +1317,6 @@ function loadScheduleForSync() {
   if (!AttendanceState.classroom) return;
   const ay = APP.dashboardData?.config?.academic_year || '';
   const sem = APP.dashboardData?.config?.semester || '';
-  // Call getSchedule
   google.script.run
     .withSuccessHandler(res => {
       if (res.status === 'success') {
@@ -1364,68 +1366,138 @@ function updateSubjectDropdownUI() {
   select.innerHTML = html;
 }
 
+function onPeriodCheckboxChange(el) {
+  if (AttendanceState.mode !== 'subject') return;
+  if (!AttendanceState.scheduleCache || !AttendanceState.date) return;
+
+  const parts = AttendanceState.date.split('-');
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  const dayOfWeek = d.getDay();
+
+  if (el.checked) {
+    const periodNo = Number(el.value);
+    const entry = AttendanceState.scheduleCache.find(e => 
+      Number(e.day) === dayOfWeek && Number(e.period_no) === periodNo && e.subject_id
+    );
+
+    if (entry) {
+      const subjectDropdown = document.getElementById('attSubject');
+      if (subjectDropdown) {
+        subjectDropdown.value = entry.subject_id;
+        AttendanceState.subject_id = entry.subject_id;
+      }
+
+      const matchingPeriods = AttendanceState.scheduleCache
+        .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
+        .map(e => Number(e.period_no));
+
+      document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+        if (matchingPeriods.includes(Number(cb.value))) {
+          cb.checked = true;
+        }
+      });
+    }
+  }
+  loadAttendanceRecord();
+}
+
+function onAttSubjectChange() {
+  const select = document.getElementById('attSubject');
+  if (!select) return;
+  
+  const subjectId = select.value;
+  AttendanceState.subject_id = subjectId;
+  
+  if (subjectId && AttendanceState.scheduleCache && AttendanceState.date) {
+    const parts = AttendanceState.date.split('-');
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const dayOfWeek = d.getDay();
+    
+    const matchingPeriods = AttendanceState.scheduleCache
+      .filter(e => Number(e.day) === dayOfWeek && e.subject_id === subjectId)
+      .map(e => Number(e.period_no));
+      
+    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+      cb.checked = matchingPeriods.includes(Number(cb.value));
+    });
+  }
+  
+  loadAttendanceRecord();
+}
+
 function syncSubjectFromSchedule() {
   if (AttendanceState.mode !== 'subject') return;
   if (!AttendanceState.classroom || !AttendanceState.date || !AttendanceState.scheduleCache) {
     loadAttendanceRecord();
     return;
   }
-  
+
   const parts = AttendanceState.date.split('-');
   const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ...
-  
-  // Find the lowest checked period
-  let checkedPeriods = [];
-  document.querySelectorAll('input[name="att_period"]:checked').forEach(el => checkedPeriods.push(parseInt(el.value)));
-  if (checkedPeriods.length === 0) {
-    loadAttendanceRecord();
-    return;
-  }
-  const minPeriod = Math.min(...checkedPeriods);
-  
-  // Find matching entry
-  const entry = AttendanceState.scheduleCache.find(e => 
-    Number(e.day) === dayOfWeek && Number(e.period_no) === minPeriod && 
-    (e.subject_id || e.activity_label)
-  );
-  
-  if (entry && entry.subject_id) {
-    // Check if the teacher actually teaches this subject (is in the dropdown)
-    const subjectDropdown = document.getElementById('attSubject');
-    if (subjectDropdown) {
-      let found = false;
-      for (let i = 0; i < subjectDropdown.options.length; i++) {
-        if (subjectDropdown.options[i].value === entry.subject_id) {
-          subjectDropdown.value = entry.subject_id;
-          AttendanceState.subject_id = entry.subject_id;
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        // Teacher might not teach this subject, fallback
-        AttendanceState.subject_id = '';
-        subjectDropdown.value = '';
-      }
-    }
-  } else {
-    // No subject in schedule, clear selection
-    const subjectDropdown = document.getElementById('attSubject');
-    if (subjectDropdown) {
-       subjectDropdown.value = '';
-       AttendanceState.subject_id = '';
-    }
-  }
-  
-  loadAttendanceRecord();
-}
+  const dayOfWeek = d.getDay();
 
-function switchAttMode(mode) {
-  AttendanceState.mode = mode;
-  AttendanceState.subject_id = '';
-  AttendanceState.classroom  = '';
-  renderAttendanceRecord();
+  const subjectDropdown = document.getElementById('attSubject');
+  if (!subjectDropdown) return;
+
+  if (AttendanceState.subject_id) {
+    const targetSubjectId = AttendanceState.subject_id;
+    const matchingPeriods = AttendanceState.scheduleCache
+      .filter(e => Number(e.day) === dayOfWeek && e.subject_id === targetSubjectId)
+      .map(e => Number(e.period_no));
+
+    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+      cb.checked = matchingPeriods.includes(Number(cb.value));
+    });
+  } else {
+    let checkedPeriods = [];
+    document.querySelectorAll('input[name="att_period"]:checked').forEach(el => checkedPeriods.push(parseInt(el.value)));
+    
+    let targetPeriod = null;
+    if (checkedPeriods.length > 0) {
+      targetPeriod = Math.min(...checkedPeriods);
+    } else {
+      targetPeriod = 1;
+    }
+
+    const entry = AttendanceState.scheduleCache.find(e => 
+      Number(e.day) === dayOfWeek && Number(e.period_no) === targetPeriod && e.subject_id
+    );
+
+    if (entry) {
+      subjectDropdown.value = entry.subject_id;
+      AttendanceState.subject_id = entry.subject_id;
+      
+      const matchingPeriods = AttendanceState.scheduleCache
+        .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
+        .map(e => Number(e.period_no));
+        
+      document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+        cb.checked = matchingPeriods.includes(Number(cb.value));
+      });
+    } else {
+      const anyEntry = AttendanceState.scheduleCache.find(e => Number(e.day) === dayOfWeek && e.subject_id);
+      if (anyEntry) {
+        subjectDropdown.value = anyEntry.subject_id;
+        AttendanceState.subject_id = anyEntry.subject_id;
+        
+        const matchingPeriods = AttendanceState.scheduleCache
+          .filter(e => Number(e.day) === dayOfWeek && e.subject_id === anyEntry.subject_id)
+          .map(e => Number(e.period_no));
+          
+        document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+          cb.checked = matchingPeriods.includes(Number(cb.value));
+        });
+      } else {
+        subjectDropdown.value = '';
+        AttendanceState.subject_id = '';
+        document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+          cb.checked = false;
+        });
+      }
+    }
+  }
+
+  loadAttendanceRecord();
 }
 
 function loadAttendanceRecord() {
@@ -1897,9 +1969,9 @@ function downloadSampleCSV(type) {
       'เด็กชาย,สมชาย,ใจดี,1234567890123,male,2010-05-15,A,ม.1/1,2568,ไทย,พุทธ,สมหมาย ใจดี,0812345678,บิดา,123 หมู่ 4 ต.ตัวอย่าง,active\n' +
       'เด็กหญิง,สมหญิง,รักเรียน,1234567890124,female,2010-08-20,O,ม.1/1,2568,ไทย,พุทธ,สมหญิง รักเรียน,0898765432,มารดา,456 หมู่ 2 ต.ตัวอย่าง,active\n';
   } else if (type === 'subjects') {
-    content = '\uFEFFsubject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_name\n' +
-      'ว21101,วิทยาศาสตร์พื้นฐาน,วิทยาศาสตร์,basic,1.5,3,ม.1,1,2568,สมศักดิ์ คุณครู\n' +
-      'อ21201,ภาษาอังกฤษเพิ่มเติม,ภาษาต่างประเทศ,additional,1.0,2,ม.1,1,2568,สมใจ ใจดี\n';
+    content = '\uFEFFsubject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year\n' +
+      'ว21101,วิทยาศาสตร์พื้นฐาน,วิทยาศาสตร์,basic,1.5,3,ม.1,1,2568\n' +
+      'อ21201,ภาษาอังกฤษเพิ่มเติม,ภาษาต่างประเทศ,additional,1.0,2,ม.1,1,2568\n';
   } else {
     content = '\uFEFFprefix,first_name,last_name,national_id,gender,birth_date,position,department,type,academic_level,start_date,phone,email,address,status\n' +
       'นาย,สมศักดิ์,คุณครู,1234567890125,male,1985-03-10,ครูชำนาญการ,คณิตศาสตร์,teacher,ชำนาญการ,2020-05-01,0811111111,somsak@school.ac.th,789 หมู่ 1 ต.ตัวอย่าง,active\n' +
