@@ -1498,9 +1498,8 @@ function loadAttendanceRecord() {
   const fail = err => { area.innerHTML = `<div class="empty-state"><i class='bx bx-error'>\x3c/i>${escapeHTML(err.message||err)}\x3c/div>`; };
 
   if (AttendanceState.mode === 'subject') {
-    const subjectEl = document.getElementById('attSubject');
-    const subject_id = subjectEl ? subjectEl.value : AttendanceState.subject_id;
-    AttendanceState.subject_id = subject_id;
+    // subject_id is now driven by period checkbox sync (badge display, no dropdown)
+    const subject_id = AttendanceState.subject_id;
     if (!subject_id || !date) return;
     area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
     google.script.run
@@ -1821,10 +1820,57 @@ function updateReportSubjects() {
   if (!grp) return;
   grp.innerHTML = '';
   if (!cls) return;
-  const subjects = (AttendanceState.subjects || []).filter(s => String(s.grade_level) === String(cls));
-  subjects.forEach(s => {
-    grp.innerHTML += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)} (${escapeHTML(s.subject_code||'')})\x3c/option>`;
+
+  // ลองหาวิชาจาก scheduleCache ก่อน (ถ้ามี)
+  const schedCache = AttendanceState.scheduleCache || [];
+  const schedSubjects = [];
+  if (schedCache.length > 0 && AttendanceState.classroom === cls) {
+    // มี cache ของชั้นนี้
+    schedCache.forEach(e => {
+      if (e.subject_id && !schedSubjects.some(x => x.id === e.subject_id)) {
+        schedSubjects.push({ id: e.subject_id, subject_name: e.subject_name || e.subject_id, subject_code: e.subject_code || '' });
+      }
+    });
+  }
+
+  // Fallback: กรองจาก subjects list ทั่วไป
+  let fallbackSubjects = (AttendanceState.subjects || []).filter(s => {
+    const gl = String(s.grade_level || '');
+    return gl === String(cls) || gl.includes(cls) || String(cls).includes(gl);
   });
+
+  const finalSubjects = schedSubjects.length > 0 ? schedSubjects : fallbackSubjects;
+
+  if (finalSubjects.length === 0) {
+    grp.innerHTML = `<option value="" disabled>ไม่พบรายวิชาในชั้นนี้</option>`;
+  } else {
+    finalSubjects.forEach(s => {
+      grp.innerHTML += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)}${s.subject_code ? ' (' + escapeHTML(s.subject_code) + ')' : ''}\x3c/option>`;
+    });
+  }
+
+  // ถ้ายังไม่มี scheduleCache สำหรับชั้นนี้ ให้ดึงเพื่อโหลดวิชาแบบ real-time
+  if (schedSubjects.length === 0) {
+    const ay = APP.dashboardData?.config?.academic_year || '';
+    const sem = APP.dashboardData?.config?.semester || '';
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.status === 'success' && res.data && res.data.length > 0) {
+          // บันทึก cache เฉพาะถ้าชั้นยังตรงกัน
+          if (document.getElementById('rptClassroom').value === cls) {
+            grp.innerHTML = '';
+            const seen = new Set();
+            res.data.forEach(e => {
+              if (e.subject_id && !seen.has(e.subject_id)) {
+                seen.add(e.subject_id);
+                grp.innerHTML += `<option value="${escapeHTML(e.subject_id)}">${escapeHTML(e.subject_name || e.subject_id)}${e.subject_code ? ' (' + escapeHTML(e.subject_code) + ')' : ''}\x3c/option>`;
+              }
+            });
+          }
+        }
+      })
+      .getSchedule({ classroom: cls, academic_year: ay, semester: sem }, APP.token);
+  }
 }
 
 function loadAttendanceReport() {
