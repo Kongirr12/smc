@@ -576,8 +576,6 @@ select {
   font-family: inherit; font-weight: 700; font-size: 13.5px;
   cursor: pointer; transition: all var(--spring); line-height: 1;
   position: relative; overflow: hidden; white-space: nowrap;
-  transform: translateZ(0);
-  will-change: transform, box-shadow;
 }
 /* shimmer on hover */
 .btn::after {
