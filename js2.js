@@ -1244,7 +1244,7 @@ function renderAttendanceRecord() {
       <div class="flex items-center gap-2 w-full mt-2">
         <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:<\/span>
         <div class="flex flex-wrap gap-1">
-          ${[1,2,3,4,5,6,7,8,9,10].map(p => `
+          ${[1,2,3,4,5,6,7].map(p => `
             <label class="cursor-pointer select-none">
               <input type="checkbox" name="att_period" value="${p}" onchange="syncSubjectFromSchedule()" class="hidden peer" ${p===1?'checked':''}>
               <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
@@ -1313,6 +1313,7 @@ function onAttDateChange() {
 function loadScheduleForSync() {
   if (!AttendanceState.classroom) return;
   const ay = APP.dashboardData?.config?.academic_year || '';
+  const sem = APP.dashboardData?.config?.semester || '';
   // Call getSchedule
   google.script.run
     .withSuccessHandler(res => {
@@ -1321,7 +1322,7 @@ function loadScheduleForSync() {
         syncSubjectFromSchedule();
       }
     })
-    .getSchedule({ classroom: AttendanceState.classroom, academic_year: ay }, APP.token);
+    .getSchedule({ classroom: AttendanceState.classroom, academic_year: ay, semester: sem }, APP.token);
 }
 
 function syncSubjectFromSchedule() {
@@ -1331,7 +1332,8 @@ function syncSubjectFromSchedule() {
     return;
   }
   
-  const d = new Date(AttendanceState.date);
+  const parts = AttendanceState.date.split('-');
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
   const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ...
   
   // Find the lowest checked period
@@ -1345,7 +1347,7 @@ function syncSubjectFromSchedule() {
   
   // Find matching entry
   const entry = AttendanceState.scheduleCache.find(e => 
-    e.day === dayOfWeek && e.period_no === minPeriod && 
+    Number(e.day) === dayOfWeek && Number(e.period_no) === minPeriod && 
     (e.subject_id || e.activity_label)
   );
   
