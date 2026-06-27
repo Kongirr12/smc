@@ -1234,19 +1234,19 @@ function renderAttendanceRecord() {
       <div class="flex rounded-lg overflow-hidden border border-slate-200" style="font-size:13px;">
         <button id="attModeSubject" onclick="switchAttMode('subject')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='subject'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bx-book-open'>\\x3c/i> รายวิชา
+          <i class='bx bx-book-open'>\x3c/i> รายวิชา
         </button>
         <button id="attModeClass" onclick="switchAttMode('class')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='class'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bxs-building'>\\x3c/i> หน้าเสาธง / โฮมรูม
+          <i class='bx bxs-building'>\x3c/i> หน้าเสาธง / โฮมรูม
         </button>
       </div>
-      ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา\\x3c/span>'}
+      ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา\x3c/span>'}
 
       <select id="attClassroom" onchange="onAttClassroomChange()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
-        <option value="">เลือกชั้น\\x3c/option>
-        ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}\\x3c/option>`).join('')}
+        <option value="">เลือกชั้น\x3c/option>
+        ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}\x3c/option>`).join('')}
       </select>
 
       <input type="date" id="attDate" onchange="onAttDateChange()"
@@ -1254,7 +1254,7 @@ function renderAttendanceRecord() {
 
       ${mode === 'subject' ? `
       <div class="flex items-center gap-2 w-full mt-2">
-        <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:\\x3c/span>
+        <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:\x3c/span>
         <div class="flex flex-wrap gap-1">
           ${(AttendanceState.periods && AttendanceState.periods.length > 0
               ? AttendanceState.periods.filter(p => !p.is_break && !p.is_homeroom)
@@ -1266,7 +1266,7 @@ function renderAttendanceRecord() {
                   <input type="checkbox" name="att_period" value="${p.no}" onchange="onPeriodCheckboxChange(this)" class="hidden peer">
                   <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
                     ${labelText}
-                  \\x3c/div>
+                  \x3c/div>
                 </label>
               `;
             }).join('')}
@@ -1275,8 +1275,8 @@ function renderAttendanceRecord() {
 
       <select id="attSubject" onchange="onAttSubjectChange()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
-        <option value="">เลือกวิชา\\x3c/option>
-        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})\\x3c/option>`).join('')}
+        <option value="">เลือกวิชา\x3c/option>
+        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})\x3c/option>`).join('')}
       </select>
       ` : ''}
 
@@ -1285,7 +1285,7 @@ function renderAttendanceRecord() {
 
     <div id="attRecordArea">
       <div class="empty-state">
-        <i class='bx bx-calendar-check'>\\x3c/i>
+        <i class='bx bx-calendar-check'>\x3c/i>
         ${mode==='subject' ? 'กรุณาเลือกวิชาและวันที่เพื่อเริ่มบันทึก' : 'กรุณาเลือกชั้นเรียนและวันที่เพื่อเริ่มบันทึก'}
       </div>
     </div>
@@ -1370,13 +1370,13 @@ function updateSubjectDropdownUI() {
     }
   });
   
-  let html = `<option value="">เลือกวิชา\\x3c/option>`;
+  let html = `<option value="">เลือกวิชา\x3c/option>`;
   if (todaySubjects.length > 0) {
     html += todaySubjects.map(s => 
-      `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} - ${escapeHTML(s.teacher_name||'')}\\x3c/option>`
+      `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} - ${escapeHTML(s.teacher_name||'')}\x3c/option>`
     ).join('');
   } else {
-    html += `<option value="" disabled>ไม่มีวิชาเรียนในวันนี้\\x3c/option>`;
+    html += `<option value="" disabled>ไม่มีวิชาเรียนในวันนี้\x3c/option>`;
   }
   select.innerHTML = html;
 }
@@ -1579,7 +1579,7 @@ function renderAttendanceList() {
   if (!AttendanceState.records || AttendanceState.records.length === 0) {
     area.innerHTML = `
       <div class="empty-state">
-        <i class='bx bx-user-x'>\\x3c/i>
+        <i class='bx bx-user-x'>\x3c/i>
         ไม่มีนักเรียนในชั้นนี้ — กรุณาเพิ่มนักเรียนก่อน
       </div>`;
     document.getElementById('attSaveBtn').style.display = 'none';
