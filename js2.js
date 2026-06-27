@@ -1259,7 +1259,6 @@ function renderAttendanceRecord() {
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
         <option value="">เลือกวิชา<\/option>
         ${subjects
-            .filter(s => !AttendanceState.classroom || s.grade_level === AttendanceState.classroom)
             .map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
       <\/select>
       ` : ''}
