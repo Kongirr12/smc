@@ -141,6 +141,7 @@ function manualTOC() {
     { id:'sec-students', icon:'bxs-user-detail',      label:'ข้อมูลนักเรียน' },
     { id:'sec-personnel',icon:'bxs-group',            label:'ครูและบุคลากร' },
     { id:'sec-attend',   icon:'bxs-check-square',     label:'การเข้าเรียน' },
+    { id:'sec-schedule', icon:'bxs-calendar-check',   label:'ตารางสอน' },
     { id:'sec-academic', icon:'bxs-book-content',     label:'งานวิชาการ' },
     { id:'sec-reg',      icon:'bxs-id-card',          label:'งานทะเบียน' },
     { id:'sec-finance',  icon:'bxs-wallet',           label:'งานการเงิน' },
@@ -343,54 +344,113 @@ function manualContent() {
 
     <!-- Attendance -->
     ${manSection('sec-attend','bxs-check-square','#F59E0B','การเข้าเรียน',`
-      <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">Tab บันทึกรายวัน\x3c/h3>
-      <div class="man-step">
-        <div class="num">1\x3c/div>
-        <div class="text">
-          <div class="title">เลือกชั้นเรียน\x3c/div>
-          <div class="desc">Dropdown จะแสดงเฉพาะชั้นที่มีนักเรียนในระบบ\x3c/div>
-        \x3c/div>
-      \x3c/div>
-      <div class="man-step">
-        <div class="num">2\x3c/div>
-        <div class="text">
-          <div class="title">เลือกวันที่\x3c/div>
-          <div class="desc">ค่าเริ่มต้นเป็นวันนี้ สามารถย้อนหลังบันทึกได้\x3c/div>
-        \x3c/div>
-      \x3c/div>
-      <div class="man-step">
-        <div class="num">3\x3c/div>
-        <div class="text">
-          <div class="title">กดปุ่มสถานะรายคน\x3c/div>
-          <div class="desc">
-            <span style="background:#DCFCE7;color:#15803D;padding:2px 8px;border-radius:5px;font-weight:600;">มา\x3c/span>
-            <span style="background:#FEE2E2;color:#B91C1C;padding:2px 8px;border-radius:5px;font-weight:600;">ขาด\x3c/span>
-            <span style="background:#FEF3C7;color:#B45309;padding:2px 8px;border-radius:5px;font-weight:600;">ลา\x3c/span>
-            <span style="background:#F2D5DA;color:#800020;padding:2px 8px;border-radius:5px;font-weight:600;">มาสาย\x3c/span>
-            <br>ค่าเริ่มต้นทุกคน = <b>มา\x3c/b>
-          \x3c/div>
-        \x3c/div>
-      \x3c/div>
-      <div class="man-step">
-        <div class="num">4\x3c/div>
-        <div class="text">
-          <div class="title">กด "บันทึก" (มุมขวาบน)\x3c/div>
-          <div class="desc">บันทึกพร้อมกันทุกคนในห้องครั้งเดียว\x3c/div>
-        \x3c/div>
+      <div class="man-tip"><i class='bx bx-mobile-alt'>\x3c/i>
+        <b>รองรับมือถืออย่างเต็มรูปแบบ:</b> ระบบปรับการแสดงผลหน้าตารางเช็คชื่อให้เหมาะกับจอมือถือโดยอัตโนมัติ โดยซ่อนรูปประจำตัวและเอาช่องหมายเหตุออกเพื่อให้เหลือพื้นที่ใช้งานสะดวก
       \x3c/div>
 
-      <div class="man-tip"><i class='bx bx-check-double'>\x3c/i>
-        ปุ่ม <b>"มาทั้งหมด"\x3c/b> ตั้งค่าทุกคนเป็น "มา" ด้วยคลิกเดียว — ประหยัดเวลาในวันที่ไม่มีขาด
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดหน้าเสาธง / โฮมรูม (Class Mode)</h3>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">เลือกชั้นเรียนและวันที่</div>
+          <div class="desc">เลือกห้องเรียนที่ต้องการเช็คชื่อโฮมรูมตอนเช้า และเลือกวันที่บันทึก (ค่าเริ่มต้นเป็นวันนี้)</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">บันทึกสถานะการเช็คชื่อ</div>
+          <div class="desc">กดเลือกสถานะของนักเรียนรายบุคคล (มา / ขาด / ลา / สาย) หรือใช้แถบ <b>"เช็คด่วนทั้งหมด"</b> ด้านบนเพื่อระบุสถานะเดียวกันรวดเดียวทั้งห้อง</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดเช็คชื่อรายวิชา (Subject Mode)</h3>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">เลือกระดับชั้นและวันที่</div>
+          <div class="desc">เมื่อเลือกระดับชั้นเรียนและวันที่เรียนแล้ว ระบบจะโหลดตารางเรียนขึ้นมาเตรียมพร้อมสอดประสานข้อมูลอัตโนมัติ</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">เลือกคาบเรียน (Period)</div>
+          <div class="desc">ติ๊กเลือกคาบเรียนที่ต้องการบันทึก (ข้ามคาบพักกลางวันและคาบกิจกรรมให้โดยอัตโนมัติ)
+            <br>• <b>ระบบเช็คชื่อควบคู่คาบต่อเนื่อง:</b> หากวิชานั้นเรียนต่อเนื่อง 2 คาบติด เมื่อครูติ๊กเลือกคาบใดคาบหนึ่ง ระบบจะเลือกอีกคาบเรียนควบคู่กันให้อัตโนมัติและบันทึกชื่อรอบเดียวขึ้นทั้ง 2 คาบ
+          </div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">3</div>
+        <div class="text">
+          <div class="title">ตรวจสอบรายวิชา (Smart Sync)</div>
+          <div class="desc">เมื่อติ๊กเลือกคาบ ระบบจะทำการเลือกรายวิชาใน Dropdown ให้สอดคล้องกันโดยอ้างอิงจากตารางเรียนจริงของห้องเรียนและวันนั้นๆ ทันที
+            <br>• <b>การกรองอัจฉริยะ:</b> ตัวเลือกรายวิชาจะแสดงผลเฉพาะวิชาที่มีเรียนในห้องนั้นๆ ในวันของสัปดาห์ที่เลือกเท่านั้น
+            <br>• <b>ข้อจำกัดความปลอดภัย:</b> ไม่สามารถติ๊กเลือกคาบเรียนที่มีรายวิชาแตกต่างกันพร้อมกันได้ เพื่อป้องกันข้อมูลการเช็คชื่อสับสน
+          </div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">4</div>
+        <div class="text">
+          <div class="title">กดปุ่ม "บันทึก" เพื่อเซฟข้อมูลขึ้นเซิร์ฟเวอร์</div>
+        </div>
+      </div>
+    `)}
+
+    <!-- Schedule -->
+    ${manSection('sec-schedule','bxs-calendar-check','#0EA5E9','ตารางสอน',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        ระบบจัดการตารางสอนรองรับทั้งการแก้ไขรายคาบ และการลากวาง (Drag & Drop) เพื่อความสะดวกรวดเร็วในการจัดตารางเรียน
       \x3c/div>
 
-      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">Tab รายงาน\x3c/h3>
-      <p style="font-size:14px; color:#475569;">เลือกชั้น + ช่วงวันที่ → แสดงสถิติรายนักเรียน\x3c/p>
-      <div class="man-warn"><i class='bx bx-error'>\x3c/i>
-        นักเรียนที่ % เข้าเรียน &lt; 80% จะขึ้น <span style="background:#FEE2E2;color:#B91C1C;padding:2px 8px;border-radius:5px;">สีแดง\x3c/span> เกณฑ์ปรับได้ในหน้าตั้งค่า
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดปกติ (ปิด Drag & Drop)</h3>
+      <p style="font-size:13px; color:#475569; margin-bottom:12px;">เหมาะสำหรับการแก้ไขรายละเอียดเล็กๆ น้อยๆ เช่น การเปลี่ยนตัวผู้สอน หรือลบเพียงบางคาบเรียน</p>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">คลิกที่ช่องคาบเรียนว่าง</div>
+          <div class="desc">กดไอคอน <b>+</b> ในช่องคาบที่ต้องการ เพื่อเปิดฟอร์มกรอกข้อมูลการสอน (วิชา, ครูผู้สอน, ห้องเรียน)</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">บันทึกข้อมูล</div>
+          <div class="desc">กรอกข้อมูลให้ครบถ้วนแล้วกดบันทึก ข้อมูลตารางจะอัปเดตและเซฟขึ้นคลาวด์ทันที</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดจัดตารางด่วน (เปิด Drag & Drop)</h3>
+      <p style="font-size:13px; color:#475569; margin-bottom:12px;">เหมาะสำหรับการจัดตารางสอนใหม่พร้อมกันทั้งหมดหรือการปรับโครงสร้างตารางเรียนอย่างรวดเร็ว</p>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">สับสวิตช์เปิด "โหมด Drag & Drop" ที่มุมขวาบน</div>
+          <div class="desc">แถบกล่องรายวิชาจะปรากฏขึ้นมาด้านซ้ายของจอ และระบบจะทำการล็อกการคลิกธรรมดาเอาไว้เพื่อป้องกันการกดพลาด</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">ลากวิชาไปวางในคาบเรียน</div>
+          <div class="desc">คลิกซ้ายค้างที่วิชาด้านซ้าย แล้วลากไปปล่อย (Drop) ลงในช่องตารางวันและคาบที่ต้องการ ระบบจะวาดคาบเรียนให้อย่างรวดเร็วแบบออฟไลน์</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">3</div>
+        <div class="text">
+          <div class="title">กดปุ่ม "💾 บันทึกตาราง"</div>
+          <div class="desc">เมื่อจัดตารางเรียนเสร็จสิ้นแล้ว ให้กดปุ่มบันทึกเพื่อส่งข้อมูลไปเขียนลง Google Sheets รวดเดียวทั้งหมด</div>
+        </div>
+      </div>
+      <div class="man-warn"><i class='bx bx-time-five'>\x3c/i>
+        หากมีการลากวางตารางเรียนค้างไว้แล้วกดยกเลิกโหมดลากวางโดยไม่ได้กดเซฟ ระบบจะเด้งกล่องข้อความแจ้งเตือนความปลอดภัยเพื่อป้องกันข้อมูลหาย
       \x3c/div>
     `)}
 
-    <!-- Academic -->
+<!-- Academic -->
     ${manSection('sec-academic','bxs-book-content','#8B5CF6','งานวิชาการ',`
       <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">ขั้นตอนการใช้งาน (ตามลำดับ)\x3c/h3>
       <div class="man-step">
@@ -656,43 +716,41 @@ function manualContent() {
 
     <!-- Reports -->
     ${manSection('sec-reports','bxs-bar-chart-alt-2','#EF4444','รายงาน',`
-      <p style="color:#475569; font-size:14px;">รายงาน 5 ประเภท พร้อมกรองข้อมูลได้:\x3c/p>
+      <p style="color:#475569; font-size:14px;">รายงาน 5 ประเภท พร้อมกรองข้อมูลได้:</p>
       <table class="man-table">
-        <thead><tr><th>รายงาน\x3c/th><th>กรองได้\x3c/th><th>เนื้อหา\x3c/th>\x3c/tr>\x3c/thead>
+        <thead><tr><th>รายงาน</th><th>กรองได้</th><th>เนื้อหา</th></tr></thead>
         <tbody>
           <tr>
-            <td>นักเรียนแยกตามชั้น\x3c/td>
-            <td>ชั้นเรียน\x3c/td>
-            <td>สรุปจำนวนชาย/หญิง หรือรายชื่อเต็ม\x3c/td>
-          \x3c/tr>
+            <td>นักเรียนแยกตามชั้น</td>
+            <td>ชั้นเรียน</td>
+            <td>สรุปจำนวนชาย/หญิง หรือรายชื่อเต็ม</td>
+          </tr>
           <tr>
-            <td>สรุปการเข้าเรียน\x3c/td>
-            <td>ชั้น + ช่วงวันที่\x3c/td>
-            <td>มา/ขาด/ลา/มาสาย/% แต่ละคน\x3c/td>
-          \x3c/tr>
+            <td>สรุปการเข้าเรียน</td>
+            <td>ชั้น + ประเภทรายงาน + ช่วงวันที่</td>
+            <td>สถิติการเข้าเรียน (มา/ขาด/ลา/สาย/%) แยกตามรายวิชาเดี่ยว, รวมทุกวิชา (วิชาทั้งหมด) หรือหน้าเสาธง/โฮมรูม</td>
+          </tr>
           <tr>
-            <td>สรุปการเงิน\x3c/td>
-            <td>ช่วงวันที่\x3c/td>
-            <td>รายการ + รายรับ/รายจ่าย/คงเหลือสุทธิ\x3c/td>
-          \x3c/tr>
+            <td>สรุปการเงิน</td>
+            <td>ช่วงวันที่</td>
+            <td>รายการ + รายรับ/รายจ่าย/คงเหลือสุทธิ</td>
+          </tr>
           <tr>
-            <td>GPA นักเรียน\x3c/td>
-            <td>ชั้น + ปีการศึกษา\x3c/td>
-            <td>GPA ของนักเรียนแต่ละคน\x3c/td>
-          \x3c/tr>
+            <td>GPA นักเรียน</td>
+            <td>ชั้น + ปีการศึกษา</td>
+            <td>GPA ของนักเรียนแต่ละคน</td>
+          </tr>
           <tr>
-            <td>รายชื่อบุคลากร\x3c/td>
-            <td>—\x3c/td>
-            <td>ข้อมูลบุคลากรทั้งหมด\x3c/td>
-          \x3c/tr>
-        \x3c/tbody>
-      \x3c/table>
+            <td>รายชื่อบุคลากร</td>
+            <td>—</td>
+            <td>ข้อมูลบุคลากรทั้งหมด</td>
+          </tr>
+        </tbody>
+      </table>
       <div class="man-tip"><i class='bx bx-spreadsheet'>\x3c/i>
-        ไฟล์ที่ดาวน์โหลดเป็น <b>.xls\x3c/b> (Excel) เปิดได้ด้วย Microsoft Excel, Google Sheets, LibreOffice
-      \x3c/div>
-    `)}
-
-    <!-- Users -->
+        ไฟล์ที่ดาวน์โหลดเป็น <b>.xls</b> (Excel) เปิดได้ด้วย Microsoft Excel, Google Sheets, LibreOffice
+      </div>
+    `)}<!-- Users -->
     ${manSection('sec-users','bxs-user-account','#8B5CF6','จัดการผู้ใช้งาน (Admin)',`
       <div class="man-warn"><i class='bx bx-lock'>\x3c/i>
         เมนูนี้มองเห็นเฉพาะ <b>Admin\x3c/b> เท่านั้น
