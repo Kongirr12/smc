@@ -1330,37 +1330,35 @@ function updateSubjectDropdownUI() {
   const select = document.getElementById('attSubject');
   if (!select) return;
   
-  const subjects = AttendanceState.subjects || [];
-  if (subjects.length === 0) return;
+  let todaySubjects = [];
+  let seenIds = new Set();
   
-  let scheduledSubjIds = new Set();
   if (AttendanceState.scheduleCache && AttendanceState.date) {
     const parts = AttendanceState.date.split('-');
     const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
     const dayOfWeek = dObj.getDay();
     
     AttendanceState.scheduleCache.forEach(e => {
-      if (Number(e.day) === dayOfWeek && e.subject_id) {
-        scheduledSubjIds.add(e.subject_id);
+      if (Number(e.day) === dayOfWeek && e.subject_id && !seenIds.has(e.subject_id)) {
+        seenIds.add(e.subject_id);
+        todaySubjects.push({
+          id: e.subject_id,
+          subject_code: e.subject_code,
+          subject_name: e.subject_name,
+          teacher_name: e.teacher_name
+        });
       }
     });
   }
   
-  const todaySubjects = subjects.filter(s => scheduledSubjIds.has(s.id));
-  const otherSubjects = subjects.filter(s => !scheduledSubjIds.has(s.id));
-  
   let html = `<option value="">เลือกวิชา<\/option>`;
   
   if (todaySubjects.length > 0) {
-    html += `<optgroup label="วิชาที่มีสอนในวันนี้">`;
-    html += todaySubjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')}) - ${escapeHTML(s.teacher_name||'')}<\/option>`).join('');
-    html += `<\/optgroup>`;
-  }
-  
-  if (otherSubjects.length > 0) {
-    html += `<optgroup label="${todaySubjects.length > 0 ? 'วิชาทั้งหมดของคุณครู' : 'วิชาทั้งหมดของคุณครู'}">`;
-    html += otherSubjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')}) - ${escapeHTML(s.teacher_name||'')}<\/option>`).join('');
-    html += `<\/optgroup>`;
+    html += todaySubjects.map(s => 
+      `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} - ${escapeHTML(s.teacher_name||'')}<\/option>`
+    ).join('');
+  } else {
+    html += `<option value="" disabled>ไม่มีวิชาเรียนในวันนี้<\/option>`;
   }
   
   select.innerHTML = html;
