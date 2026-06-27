@@ -1972,7 +1972,6 @@ function renderAttendanceReportData(res, start, end, rptType) {
             <tr class="border-b border-slate-100 hover:bg-slate-50">
               <td class="px-3 py-2.5">
                 <div class="font-semibold text-slate-800">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
-                <div class="text-xs text-slate-400 font-mono">${escapeHTML(r.student_code||'')}\x3c/div>
               \x3c/td>
               <td class="px-3 py-2.5 text-center text-green-700 font-semibold">${r.present}\x3c/td>
               <td class="px-3 py-2.5 text-center text-red-600 font-semibold">${r.absent}\x3c/td>
