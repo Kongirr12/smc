@@ -1152,8 +1152,7 @@ const AttendanceState = {
   records: [],
   reportMode: 'class',
   classrooms: [],
-  subjects: [],  // loaded subjects (filtered for teacher role)
-  periods: []    // loaded period config
+  subjects: []  // loaded subjects (filtered for teacher role)
 };
 
 function renderAttendance(container) {
@@ -1181,7 +1180,7 @@ function renderAttendance(container) {
   AttendanceState.mode = APP.role === 'teacher' ? 'subject' : 'class';
 
   let loaded = 0;
-  const checkReady = () => { if (++loaded >= 3) renderAttendanceRecord(); };
+  const checkReady = () => { if (++loaded >= 2) renderAttendanceRecord(); };
 
   google.script.run
     .withSuccessHandler(res => {
@@ -1198,16 +1197,6 @@ function renderAttendance(container) {
     })
     .withFailureHandler(() => checkReady())
     .getSubjects({}, APP.token);
-
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success' && res.data) {
-        AttendanceState.periods = res.data.periods || [];
-      }
-      checkReady();
-    })
-    .withFailureHandler(() => checkReady())
-    .getPeriodConfig(APP.dashboardData?.config?.academic_year || '', APP.dashboardData?.config?.semester || '', APP.token);
 }
 
 function switchAttendanceTab(tab) {
@@ -1224,8 +1213,8 @@ function renderAttendanceRecord() {
   const c = document.getElementById('attRecord');
   if (!c) return;
   const mode = AttendanceState.mode;
-  const classrooms = AttendanceState.classrooms || [];
   const subjects = AttendanceState.subjects || [];
+  const classrooms = AttendanceState.classrooms || [];
 
   c.innerHTML = `
     <div class="flex gap-2 mb-3 flex-wrap items-center">
@@ -1233,59 +1222,51 @@ function renderAttendanceRecord() {
       <div class="flex rounded-lg overflow-hidden border border-slate-200" style="font-size:13px;">
         <button id="attModeSubject" onclick="switchAttMode('subject')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='subject'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bx-book-open'>\x3c/i> รายวิชา
-        \x3c/button>
+          <i class='bx bx-book-open'><\/i> รายวิชา
+        <\/button>
         <button id="attModeClass" onclick="switchAttMode('class')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='class'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bxs-building'>\x3c/i> หน้าเสาธง / โฮมรูม
-        \x3c/button>
-      \x3c/div>
-      ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา\x3c/span>'}
+          <i class='bx bxs-building'><\/i> หน้าเสาธง / โฮมรูม
+        <\/button>
+      <\/div>
+      ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา<\/span>'}
 
-      <select id="attClassroom" onchange="onAttClassroomChange()"
+      ${mode === 'subject' ? `
+      <select id="attSubject" onchange="loadAttendanceRecord()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
-        <option value="">เลือกชั้น\x3c/option>
-        ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}\x3c/option>`).join('')}
-      \x3c/select>
+        <option value="">เลือกวิชา<\/option>
+        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
+      <\/select>
+      ` : `
+      <select id="attClassroom" onchange="loadAttendanceRecord()"
+              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
+        <option value="">เลือกชั้น<\/option>
+        ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}<\/option>`).join('')}
+      <\/select>
+      `}
 
-      <input type="date" id="attDate" onchange="onAttDateChange()"
+      <input type="date" id="attDate" onchange="loadAttendanceRecord()"
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${AttendanceState.date}">
 
       ${mode === 'subject' ? `
       <div class="flex items-center gap-2 w-full mt-2">
-        <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:\x3c/span>
+        <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:<\/span>
         <div class="flex flex-wrap gap-1">
-          ${(AttendanceState.periods && AttendanceState.periods.length > 0
-              ? AttendanceState.periods.filter(p => !p.is_break && !p.is_homeroom)
-              : [{ no: 1, label: '1' }, { no: 2, label: '2' }, { no: 3, label: '3' }, { no: 4, label: '4' }, { no: 5, label: '5' }, { no: 6, label: '6' }, { no: 7, label: '7' }]
-            ).map((p, idx) => {
-              const labelText = p.label ? p.label.replace('คาบ', '').trim() : p.no;
-              return `
-                <label class="cursor-pointer select-none">
-                  <input type="checkbox" name="att_period" value="${p.no}" onchange="onPeriodCheckboxChange(this)" class="hidden peer">
-                  <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
-                    ${labelText}
-                  \x3c/div>
-                \x3c/label>
-              `;
-            }).join('')}
-        \x3c/div>
-      \x3c/div>
-
-      <select id="attSubject" onchange="onAttSubjectChange()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
-        <option value="">เลือกวิชา\x3c/option>
-        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})\x3c/option>`).join('')}
-      \x3c/select>
+          ${[1,2,3,4,5,6,7,8,9,10].map(p => `
+            <label class="cursor-pointer select-none">
+              <input type="checkbox" name="att_period" value="${p}" class="hidden peer" ${p===1?'checked':''}>
+              <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
+                ${p}
+              <\/div>
+            <\/label>
+          `).join('')}
+        <\/div>
+      <\/div>
       ` : ''}
 
-      <div class="flex flex-wrap gap-1.5 items-center w-full mt-2 sm:mt-0 sm:w-auto">
-        <span class="text-xs font-semibold text-slate-500">เช็คด่วนทั้งหมด:</span>
-        <button class="btn btn-sm btn-light text-emerald-600 border-emerald-200 hover:bg-emerald-50 px-2 py-1 text-xs" onclick="setAllAttendance('present')">มา</button>
-        <button class="btn btn-sm btn-light text-rose-600 border-rose-200 hover:bg-rose-50 px-2 py-1 text-xs" onclick="setAllAttendance('absent')">ขาด</button>
-        <button class="btn btn-sm btn-light text-amber-600 border-amber-200 hover:bg-amber-50 px-2 py-1 text-xs" onclick="setAllAttendance('leave')">ลา</button>
-        <button class="btn btn-sm btn-light text-red-800 border-red-200 hover:bg-red-50 px-2 py-1 text-xs" onclick="setAllAttendance('late')">สาย</button>
-      </div>
+      <button class="btn btn-light" onclick="setAllAttendance('present')">
+        <i class='bx bx-check-circle'>\x3c/i> มาทั้งหมด
+      \x3c/button>
       <button class="btn btn-blue" onclick="saveAttendance()" id="attSaveBtn" style="display:none;">
         <i class='bx bx-save'>\x3c/i> บันทึก
       \x3c/button>
@@ -1298,6 +1279,13 @@ function renderAttendanceRecord() {
       \x3c/div>
     \x3c/div>
   `;
+
+  // auto-select วิชาแรก แล้ว load รายชื่อทันที
+  if (AttendanceState.mode === 'subject' && subjects.length > 0 && !AttendanceState.subject_id) {
+    AttendanceState.subject_id = subjects[0].id;
+    renderAttendanceRecord();  // re-render with subject pre-selected
+    loadAttendanceRecord();    // load students immediately
+  }
 }
 
 function switchAttMode(mode) {
@@ -1305,226 +1293,6 @@ function switchAttMode(mode) {
   AttendanceState.subject_id = '';
   AttendanceState.classroom  = '';
   renderAttendanceRecord();
-}
-
-function onAttClassroomChange() {
-  const c = document.getElementById('attClassroom');
-  if (c) AttendanceState.classroom = c.value;
-  
-  if (AttendanceState.mode === 'subject') {
-    AttendanceState.subject_id = '';
-    renderAttendanceRecord();
-    loadScheduleForSync();
-  } else {
-    loadAttendanceRecord();
-  }
-}
-
-function onAttDateChange() {
-  const d = document.getElementById('attDate');
-  if (d) AttendanceState.date = d.value;
-  
-  if (AttendanceState.mode === 'subject') {
-    updateSubjectDropdownUI();
-    syncSubjectFromSchedule();
-  } else {
-    loadAttendanceRecord();
-  }
-}
-
-function loadScheduleForSync() {
-  if (!AttendanceState.classroom) return;
-  const ay = APP.dashboardData?.config?.academic_year || '';
-  const sem = APP.dashboardData?.config?.semester || '';
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success') {
-        AttendanceState.scheduleCache = res.data;
-        updateSubjectDropdownUI();
-        syncSubjectFromSchedule();
-      }
-    })
-    .getSchedule({ classroom: AttendanceState.classroom, academic_year: ay, semester: sem }, APP.token);
-}
-
-function updateSubjectDropdownUI() {
-  const select = document.getElementById('attSubject');
-  if (!select) return;
-  
-  let todaySubjects = [];
-  let seenIds = new Set();
-  
-  if (AttendanceState.scheduleCache && AttendanceState.date) {
-    const parts = AttendanceState.date.split('-');
-    const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
-    const dayOfWeek = dObj.getDay();
-    
-    AttendanceState.scheduleCache.forEach(e => {
-      if (Number(e.day) === dayOfWeek && e.subject_id && !seenIds.has(e.subject_id)) {
-        seenIds.add(e.subject_id);
-        todaySubjects.push({
-          id: e.subject_id,
-          subject_code: e.subject_code,
-          subject_name: e.subject_name,
-          teacher_name: e.teacher_name
-        });
-      }
-    });
-  }
-  
-  let html = `<option value="">เลือกวิชา\x3c/option>`;
-  
-  if (todaySubjects.length > 0) {
-    html += todaySubjects.map(s => 
-      `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} - ${escapeHTML(s.teacher_name||'')}\x3c/option>`
-    ).join('');
-  } else {
-    html += `<option value="" disabled>ไม่มีวิชาเรียนในวันนี้\x3c/option>`;
-  }
-  
-  select.innerHTML = html;
-}
-
-function onPeriodCheckboxChange(el) {
-  if (AttendanceState.mode !== 'subject') return;
-  if (!AttendanceState.scheduleCache || !AttendanceState.date) return;
-
-  const parts = AttendanceState.date.split('-');
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  const dayOfWeek = d.getDay();
-
-  if (el.checked) {
-    const periodNo = Number(el.value);
-    const entry = AttendanceState.scheduleCache.find(e => 
-      Number(e.day) === dayOfWeek && Number(e.period_no) === periodNo && e.subject_id
-    );
-
-    if (entry) {
-      const subjectDropdown = document.getElementById('attSubject');
-      
-      // If another subject is already selected, reject the click
-      if (AttendanceState.subject_id && AttendanceState.subject_id !== entry.subject_id) {
-        showToast('error', 'ไม่สามารถเลือกคาบเรียนที่มีรายวิชาแตกต่างกันพร้อมกันได้');
-        el.checked = false;
-        return;
-      }
-
-      if (subjectDropdown) {
-        subjectDropdown.value = entry.subject_id;
-        AttendanceState.subject_id = entry.subject_id;
-      }
-
-      const matchingPeriods = AttendanceState.scheduleCache
-        .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
-        .map(e => Number(e.period_no));
-
-      document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-        if (matchingPeriods.includes(Number(cb.value))) {
-          cb.checked = true;
-        }
-      });
-    } else {
-      showToast('warning', 'คาบเรียนนี้ไม่มีการสอนวิชาใดๆ');
-      el.checked = false;
-      return;
-    }
-  } else {
-    // Check if any checkboxes are still checked. If none, clear dropdown
-    let checkedCount = document.querySelectorAll('input[name="att_period"]:checked').length;
-    if (checkedCount === 0) {
-      const subjectDropdown = document.getElementById('attSubject');
-      if (subjectDropdown) subjectDropdown.value = '';
-      AttendanceState.subject_id = '';
-    }
-  }
-  loadAttendanceRecord();
-}
-
-function onAttSubjectChange() {
-  const select = document.getElementById('attSubject');
-  if (!select) return;
-  
-  const subjectId = select.value;
-  AttendanceState.subject_id = subjectId;
-  
-  if (subjectId && AttendanceState.scheduleCache && AttendanceState.date) {
-    const parts = AttendanceState.date.split('-');
-    const d = new Date(parts[0], parts[1] - 1, parts[2]);
-    const dayOfWeek = d.getDay();
-    
-    const matchingPeriods = AttendanceState.scheduleCache
-      .filter(e => Number(e.day) === dayOfWeek && e.subject_id === subjectId)
-      .map(e => Number(e.period_no));
-      
-    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-      cb.checked = matchingPeriods.includes(Number(cb.value));
-    });
-  } else {
-    // If they cleared the subject selection, clear all checkboxes
-    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-      cb.checked = false;
-    });
-  }
-  
-  loadAttendanceRecord();
-}
-
-function syncSubjectFromSchedule() {
-  if (AttendanceState.mode !== 'subject') return;
-  if (!AttendanceState.classroom || !AttendanceState.date || !AttendanceState.scheduleCache) {
-    loadAttendanceRecord();
-    return;
-  }
-
-  const parts = AttendanceState.date.split('-');
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  const dayOfWeek = d.getDay();
-
-  const subjectDropdown = document.getElementById('attSubject');
-  if (!subjectDropdown) return;
-
-  if (AttendanceState.subject_id) {
-    const targetSubjectId = AttendanceState.subject_id;
-    const matchingPeriods = AttendanceState.scheduleCache
-      .filter(e => Number(e.day) === dayOfWeek && e.subject_id === targetSubjectId)
-      .map(e => Number(e.period_no));
-
-    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-      cb.checked = matchingPeriods.includes(Number(cb.value));
-    });
-  } else {
-    let checkedPeriods = [];
-    document.querySelectorAll('input[name="att_period"]:checked').forEach(el => checkedPeriods.push(parseInt(el.value)));
-    
-    if (checkedPeriods.length > 0) {
-      const targetPeriod = Math.min(...checkedPeriods);
-      const entry = AttendanceState.scheduleCache.find(e => 
-        Number(e.day) === dayOfWeek && Number(e.period_no) === targetPeriod && e.subject_id
-      );
-
-      if (entry) {
-        subjectDropdown.value = entry.subject_id;
-        AttendanceState.subject_id = entry.subject_id;
-        
-        const matchingPeriods = AttendanceState.scheduleCache
-          .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
-          .map(e => Number(e.period_no));
-          
-        document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-          cb.checked = matchingPeriods.includes(Number(cb.value));
-        });
-      }
-    } else {
-      // Initialize with completely empty selections by default (as per user request)
-      subjectDropdown.value = '';
-      AttendanceState.subject_id = '';
-      document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-        cb.checked = false;
-      });
-    }
-  }
-
-  loadAttendanceRecord();
 }
 
 function loadAttendanceRecord() {
@@ -1581,30 +1349,125 @@ function renderAttendanceList() {
   document.getElementById('attSaveBtn').style.display = '';
 
   area.innerHTML = `
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <div class="text-xs sm:text-sm font-bold text-slate-800">รายชื่อนักเรียน</div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-[10px] sm:text-xs font-semibold text-slate-500">เช็คด่วนทั้งหมด:</span>
+      <button id="attSaveBtn" style="display:none;"></button>
+    \x3c/div>
+
+    <div id="attRecordArea">
+      <div class="empty-state">
+        <i class='bx bx-calendar-check'>\x3c/i>
+        ${mode==='subject' ? 'กรุณาเลือกวิชาและวันที่เพื่อเริ่มบันทึก' : 'กรุณาเลือกชั้นเรียนและวันที่เพื่อเริ่มบันทึก'}
+      \x3c/div>
+    \x3c/div>
+  `;
+
+  // auto-select วิชาแรก แล้ว load รายชื่อทันที
+  if (AttendanceState.mode === 'subject' && subjects.length > 0 && !AttendanceState.subject_id) {
+    AttendanceState.subject_id = subjects[0].id;
+    renderAttendanceRecord();  // re-render with subject pre-selected
+    loadAttendanceRecord();    // load students immediately
+  }
+}
+
+function switchAttMode(mode) {
+  AttendanceState.mode = mode;
+  AttendanceState.subject_id = '';
+  AttendanceState.classroom  = '';
+  renderAttendanceRecord();
+}
+
+function loadAttendanceRecord() {
+  const date = document.getElementById('attDate').value;
+  AttendanceState.date = date;
+  const area = document.getElementById('attRecordArea');
+  const fail = err => { area.innerHTML = `<div class="empty-state"><i class='bx bx-error'>\x3c/i>${escapeHTML(err.message||err)}\x3c/div>`; };
+
+  if (AttendanceState.mode === 'subject') {
+    const subjectEl = document.getElementById('attSubject');
+    const subject_id = subjectEl ? subjectEl.value : AttendanceState.subject_id;
+    AttendanceState.subject_id = subject_id;
+    if (!subject_id || !date) return;
+    area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.status !== 'success') { fail({ message: res.message }); return; }
+        AttendanceState.records = res.data;
+        AttendanceState._subject_id_save = subject_id;
+        renderAttendanceList();
+      })
+      .withFailureHandler(fail)
+      .getAttendanceBySubjectDate(subject_id, date, APP.token);
+  } else {
+    const classEl = document.getElementById('attClassroom');
+    const classroom = classEl ? classEl.value : AttendanceState.classroom;
+    AttendanceState.classroom = classroom;
+    if (!classroom || !date) return;
+    area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.status !== 'success') { fail({ message: res.message }); return; }
+        AttendanceState.records = res.data;
+        AttendanceState._subject_id_save = null;
+        renderAttendanceList();
+      })
+      .withFailureHandler(fail)
+      .getAttendanceByClassDate(classroom, date, APP.token);
+  }
+}
+
+function renderAttendanceList() {
+  const area = document.getElementById('attRecordArea');
+  if (!AttendanceState.records || AttendanceState.records.length === 0) {
+    area.innerHTML = `
+      <div class="empty-state">
+        <i class='bx bx-user-x'>\x3c/i>
+        ไม่มีนักเรียนในชั้นนี้ — กรุณาเพิ่มนักเรียนก่อน
+      \x3c/div>`;
+    document.getElementById('attSaveBtn').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('attSaveBtn').style.display = '';
+
+  area.innerHTML = `
+    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <div class="text-xs sm:text-sm font-bold text-slate-800">รายชื่อนักเรียน</div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-[10px] sm:text-xs font-semibold text-slate-500">เช็คด่วนทั้งหมด:</span>
+        <button class="btn btn-light text-emerald-600 border-emerald-200 hover:bg-emerald-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('present')">มา</button>
+        <button class="btn btn-light text-rose-600 border-rose-200 hover:bg-rose-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('absent')">ขาด</button>
+        <button class="btn btn-light text-amber-600 border-amber-200 hover:bg-amber-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('leave')">ลา</button>
+        <button class="btn btn-light text-red-800 border-red-200 hover:bg-red-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('late')">สาย</button>
+      </div>
+    </div>
+
     <div style="overflow-x:auto;">
       <table class="min-w-full text-sm">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-3 py-2.5 text-left rounded-l-lg" style="width:50px;">ลำดับ\x3c/th>
-            <th class="px-3 py-2.5 text-left">นักเรียน\x3c/th>
-            <th class="px-3 py-2.5 text-center rounded-r-lg" style="width:280px;">สถานะ\x3c/th>
-          \x3c/tr>
-        \x3c/thead>
+            <th class="px-3 py-2.5 text-left rounded-l-lg" style="width:50px;">ลำดับ</th>
+            <th class="px-3 py-2.5 text-left">นักเรียน</th>
+            <th class="px-3 py-2.5 text-center rounded-r-lg" style="width:280px;">สถานะ</th>
+          </tr>
+        </thead>
         <tbody>
           ${AttendanceState.records.map((r, i) => `
             <tr class="border-b border-slate-100" data-row="${i}">
-              <td class="px-3 py-2 text-center text-slate-500">${i+1}\x3c/td>
+              <td class="px-3 py-2 text-center text-slate-500">${i+1}</td>
               <td class="px-3 py-2">
                 <div class="flex items-center gap-2">
                   <div class="hidden sm:block">
                     ${avatarHTML(r.photo, r.first_name, 32)}
                   </div>
                   <div>
-                    <div class="font-semibold text-slate-800 text-xs sm:text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
+                    <div class="font-semibold text-slate-800 text-xs sm:text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
                     <div class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.student_code||'')}</div>
                   </div>
                 </div>
-              \x3c/td>
+              </td>
               <td class="px-3 py-2 text-center">
                 <div class="att-status-group">
                   ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
@@ -1612,29 +1475,34 @@ function renderAttendanceList() {
                   ${attStatusButton(i, 'leave',   r.status, '#F59E0B', 'ลา')}
                   ${attStatusButton(i, 'late',    r.status, '#A62639', 'สาย')}
                 </div>
-              \x3c/td>
+              </td>
             </tr>
           `).join('')}
-        \x3c/tbody>
-      \x3c/table>
-    \x3c/div>
+        </tbody>
+      </table>
+    </div>
 
-    <div class="flex justify-end gap-3 mt-3 text-xs text-slate-600 flex-wrap">
-      <div class="att-summary-pill" style="background:#DCFCE7;color:#15803D;">
-        <span>มา\x3c/span> <b id="cntPresent">0\x3c/b>
-      \x3c/div>
-      <div class="att-summary-pill" style="background:#FEE2E2;color:#B91C1C;">
-        <span>ขาด\x3c/span> <b id="cntAbsent">0\x3c/b>
-      \x3c/div>
-      <div class="att-summary-pill" style="background:#FEF3C7;color:#B45309;">
-        <span>ลา\x3c/span> <b id="cntLeave">0\x3c/b>
-      \x3c/div>
-      <div class="att-summary-pill" style="background:#F2D5DA;color:#800020;">
-        <span>สาย\x3c/span> <b id="cntLate">0\x3c/b>
-      \x3c/div>
-      <div class="att-summary-pill" style="background:#F1F5F9;color:#334155;">
-        <span>รวม\x3c/span> <b>${AttendanceState.records.length}\x3c/b>
-      \x3c/div>
+    <div class="flex justify-between items-center gap-3 mt-4 pt-3 border-t border-slate-100 flex-wrap">
+      <div class="flex flex-wrap gap-1.5 text-xs text-slate-600">
+        <div class="att-summary-pill" style="background:#DCFCE7;color:#15803D;">
+          <span>มา</span> <b id="cntPresent">0</b>
+        </div>
+        <div class="att-summary-pill" style="background:#FEE2E2;color:#B91C1C;">
+          <span>ขาด</span> <b id="cntAbsent">0</b>
+        </div>
+        <div class="att-summary-pill" style="background:#FEF3C7;color:#B45309;">
+          <span>ลา</span> <b id="cntLeave">0</b>
+        </div>
+        <div class="att-summary-pill" style="background:#F2D5DA;color:#800020;">
+          <span>สาย</span> <b id="cntLate">0</b>
+        </div>
+        <div class="att-summary-pill" style="background:#F1F5F9;color:#334155;">
+          <span>รวม</span> <b>${AttendanceState.records.length}</b>
+        </div>
+      </div>
+      <button class="btn btn-blue w-full sm:w-auto" onclick="saveAttendance()" style="box-shadow: 0 4px 14px rgba(128, 0, 32, 0.25);">
+        <i class='bx bx-save'></i> บันทึกข้อมูล
+      </button>
     </div>
 
     <style>
@@ -1651,13 +1519,48 @@ function renderAttendanceList() {
         font-weight:600; align-items:center;
       }
       @media (max-width: 640px) {
+        #attRecordArea table, 
+        #attRecordArea tbody, 
+        #attRecordArea tr, 
+        #attRecordArea td {
+          display: block !important;
+          width: 100% !important;
+          box-sizing: border-box;
+        }
+        #attRecordArea thead {
+          display: none !important;
+        }
+        #attRecordArea tr {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 8px 0px !important;
+          border-bottom: 1px solid #F1F5F9 !important;
+          gap: 8px !important;
+        }
+        #attRecordArea td {
+          padding: 0 !important;
+          width: auto !important;
+          text-align: left !important;
+        }
+        #attRecordArea td:first-child {
+          display: none !important;
+        }
+        #attRecordArea td:nth-child(2) {
+          flex: 1 !important;
+          min-width: 0 !important;
+        }
+        #attRecordArea td:nth-child(3) {
+          flex-shrink: 0 !important;
+          text-align: right !important;
+        }
         .att-status-btn {
-          padding: 4px 6px;
-          font-size: 10px;
-          border-radius: 4px;
+          padding: 5px 8px !important;
+          font-size: 11px !important;
+          border-radius: 6px !important;
         }
         .att-status-group {
-          gap: 2px;
+          gap: 3px !important;
         }
       }
     </style>
@@ -1665,7 +1568,6 @@ function renderAttendanceList() {
 
   updateAttendanceSummary();
 }
-
 function attStatusButton(rowIdx, status, currentStatus, color, label) {
   const active = currentStatus === status;
   return `
@@ -1759,10 +1661,10 @@ function renderAttendanceReport() {
       \x3c/select>
       <select id="rptType" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
         <option value="homeroom">หน้าเสาธง / โฮมรูม\x3c/option>
-        <option value="all_subjects">วิชาทั้งหมด (รวมทุกวิชา)\x3c/option>
         <optgroup label="แยกตามรายวิชา" id="rptSubjectGroup">
         \x3c/optgroup>
-      </select><input type="date" id="rptStart" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${monthStart}">
+      \x3c/select>
+      <input type="date" id="rptStart" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${monthStart}">
       <input type="date" id="rptEnd"   class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${todayStr}">
       <button class="btn btn-blue" onclick="loadAttendanceReport()">
         <i class='bx bx-search'>\x3c/i> ดูรายงาน
@@ -1800,39 +1702,10 @@ function updateReportSubjects() {
   if (!grp) return;
   grp.innerHTML = '';
   if (!cls) return;
-
-  const ay = APP.dashboardData?.config?.academic_year || '';
-  const sem = APP.dashboardData?.config?.semester || '';
-
-  grp.innerHTML = '<option value="" disabled>กำลังโหลดรายวิชา...\x3c/option>';
-
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success') {
-        const scheduleEntries = res.data || [];
-        let seenIds = new Set();
-        let html = '';
-
-        scheduleEntries.forEach(e => {
-          if (e.subject_id && !seenIds.has(e.subject_id)) {
-            seenIds.add(e.subject_id);
-            html += `<option value="${escapeHTML(e.subject_id)}">${escapeHTML(e.subject_code||'')} ${escapeHTML(e.subject_name)} - ${escapeHTML(e.teacher_name||'')}\x3c/option>`;
-          }
-        });
-
-        if (html === '') {
-          grp.innerHTML = '<option value="" disabled>ไม่มีวิชาในตารางสอน\x3c/option>';
-        } else {
-          grp.innerHTML = html;
-        }
-      } else {
-        grp.innerHTML = '<option value="" disabled>โหลดวิชาล้มเหลว\x3c/option>';
-      }
-    })
-    .withFailureHandler(() => {
-      grp.innerHTML = '<option value="" disabled>โหลดวิชาล้มเหลว\x3c/option>';
-    })
-    .getSchedule({ classroom: cls, academic_year: ay, semester: sem }, APP.token);
+  const subjects = (AttendanceState.subjects || []).filter(s => String(s.grade_level) === String(cls));
+  subjects.forEach(s => {
+    grp.innerHTML += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)} (${escapeHTML(s.subject_code||'')})\x3c/option>`;
+  });
 }
 
 function loadAttendanceReport() {
