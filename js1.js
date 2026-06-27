@@ -689,11 +689,33 @@ function hideLoading() {
 }
 
 function showToast(icon, title) {
-  Swal.fire({
-    toast: true, position: 'top-end',
-    icon: icon, title: title,
-    showConfirmButton: false, timer: 2500, timerProgressBar: true
+  let container = document.getElementById('custom-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'custom-toast-container';
+    container.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; display:flex; flex-direction:column; gap:10px; pointer-events:none;';
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement('div');
+  const bgColor = icon === 'error' ? '#EF4444' : (icon === 'success' ? '#10B981' : '#3B82F6');
+  toast.style.cssText = `background: ${bgColor}; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: 'Sarabun', sans-serif; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; opacity: 0; transform: translateX(50px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);`;
+  
+  const iconClass = icon === 'error' ? 'bx-error-circle' : (icon === 'success' ? 'bx-check-circle' : 'bx-info-circle');
+  toast.innerHTML = `<i class='bx ${iconClass}' style='font-size:18px;'></i> <span>${escapeHTML(title)}</span>`;
+  container.appendChild(toast);
+  
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(0)';
   });
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(50px)';
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, 3000);
 }
 
 
