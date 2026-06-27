@@ -1231,21 +1231,13 @@ function renderAttendanceRecord() {
       <\/div>
       ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา<\/span>'}
 
-      ${mode === 'subject' ? `
-      <select id="attSubject" onchange="loadAttendanceRecord()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
-        <option value="">เลือกวิชา<\/option>
-        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
-      <\/select>
-      ` : `
-      <select id="attClassroom" onchange="loadAttendanceRecord()"
+      <select id="attClassroom" onchange="onAttClassroomChange()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
         <option value="">เลือกชั้น<\/option>
         ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}<\/option>`).join('')}
       <\/select>
-      `}
 
-      <input type="date" id="attDate" onchange="loadAttendanceRecord()"
+      <input type="date" id="attDate" onchange="onAttDateChange()"
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${AttendanceState.date}">
 
       ${mode === 'subject' ? `
@@ -1254,7 +1246,7 @@ function renderAttendanceRecord() {
         <div class="flex flex-wrap gap-1">
           ${[1,2,3,4,5,6,7,8,9,10].map(p => `
             <label class="cursor-pointer select-none">
-              <input type="checkbox" name="att_period" value="${p}" class="hidden peer" ${p===1?'checked':''}>
+              <input type="checkbox" name="att_period" value="${p}" onchange="syncSubjectFromSchedule()" class="hidden peer" ${p===1?'checked':''}>
               <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
                 ${p}
               <\/div>
@@ -1262,6 +1254,14 @@ function renderAttendanceRecord() {
           `).join('')}
         <\/div>
       <\/div>
+      
+      <select id="attSubject" onchange="loadAttendanceRecord()"
+              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
+        <option value="">เลือกวิชา<\/option>
+        ${subjects
+            .filter(s => !AttendanceState.classroom || s.grade_level === AttendanceState.classroom)
+            .map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
+      <\/select>
       ` : ''}
 
       <button class="btn btn-light" onclick="setAllAttendance('present')">
@@ -1280,12 +1280,104 @@ function renderAttendanceRecord() {
     \x3c/div>
   `;
 
-  // auto-select วิชาแรก แล้ว load รายชื่อทันที
-  if (AttendanceState.mode === 'subject' && subjects.length > 0 && !AttendanceState.subject_id) {
-    AttendanceState.subject_id = subjects[0].id;
-    renderAttendanceRecord();  // re-render with subject pre-selected
-    loadAttendanceRecord();    // load students immediately
+  // auto-select วิชาแรก แล้ว load รายชื่อทันที (ถ้าถูกเลือกแล้ว)
+  if (AttendanceState.mode === 'subject' && AttendanceState.classroom && subjects.length > 0 && !AttendanceState.subject_id) {
+    // let syncSubjectFromSchedule handle the auto-selection, do nothing here.
   }
+}
+
+function onAttClassroomChange() {
+  const c = document.getElementById('attClassroom');
+  if (c) AttendanceState.classroom = c.value;
+  
+  if (AttendanceState.mode === 'subject') {
+    AttendanceState.subject_id = '';
+    renderAttendanceRecord();
+    loadScheduleForSync();
+  } else {
+    loadAttendanceRecord();
+  }
+}
+
+function onAttDateChange() {
+  const d = document.getElementById('attDate');
+  if (d) AttendanceState.date = d.value;
+  
+  if (AttendanceState.mode === 'subject') {
+    syncSubjectFromSchedule();
+  } else {
+    loadAttendanceRecord();
+  }
+}
+
+function loadScheduleForSync() {
+  if (!AttendanceState.classroom) return;
+  const ay = APP.dashboardData?.config?.academic_year || '';
+  // Call getSchedule
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.status === 'success') {
+        AttendanceState.scheduleCache = res.data;
+        syncSubjectFromSchedule();
+      }
+    })
+    .getSchedule({ classroom: AttendanceState.classroom, academic_year: ay }, APP.token);
+}
+
+function syncSubjectFromSchedule() {
+  if (AttendanceState.mode !== 'subject') return;
+  if (!AttendanceState.classroom || !AttendanceState.date || !AttendanceState.scheduleCache) {
+    loadAttendanceRecord();
+    return;
+  }
+  
+  const d = new Date(AttendanceState.date);
+  const dayOfWeek = d.getDay(); // 0 = Sun, 1 = Mon ...
+  
+  // Find the lowest checked period
+  let checkedPeriods = [];
+  document.querySelectorAll('input[name="att_period"]:checked').forEach(el => checkedPeriods.push(parseInt(el.value)));
+  if (checkedPeriods.length === 0) {
+    loadAttendanceRecord();
+    return;
+  }
+  const minPeriod = Math.min(...checkedPeriods);
+  
+  // Find matching entry
+  const entry = AttendanceState.scheduleCache.find(e => 
+    e.day === dayOfWeek && e.period_no === minPeriod && 
+    (e.subject_id || e.activity_label)
+  );
+  
+  if (entry && entry.subject_id) {
+    // Check if the teacher actually teaches this subject (is in the dropdown)
+    const subjectDropdown = document.getElementById('attSubject');
+    if (subjectDropdown) {
+      let found = false;
+      for (let i = 0; i < subjectDropdown.options.length; i++) {
+        if (subjectDropdown.options[i].value === entry.subject_id) {
+          subjectDropdown.value = entry.subject_id;
+          AttendanceState.subject_id = entry.subject_id;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // Teacher might not teach this subject, fallback
+        AttendanceState.subject_id = '';
+        subjectDropdown.value = '';
+      }
+    }
+  } else {
+    // No subject in schedule, clear selection
+    const subjectDropdown = document.getElementById('attSubject');
+    if (subjectDropdown) {
+       subjectDropdown.value = '';
+       AttendanceState.subject_id = '';
+    }
+  }
+  
+  loadAttendanceRecord();
 }
 
 function switchAttMode(mode) {
