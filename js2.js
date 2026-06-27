@@ -1273,11 +1273,10 @@ function renderAttendanceRecord() {
         </div>
       </div>
 
-      <select id="attSubject" onchange="onAttSubjectChange()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
-        <option value="">เลือกวิชา\x3c/option>
-        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})\x3c/option>`).join('')}
-      </select>
+      <div id="attSubjectDisplay" class="w-full mt-2 px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" style="background:#EFF6FF; border:1.5px solid #BFDBFE; color:#1E40AF; min-height:40px;">
+        <i class='bx bx-book-alt' style="font-size:16px;"></i>
+        <span id="attSubjectName" style="flex:1;">${AttendanceState.subject_id && subjects.find(s=>s.id===AttendanceState.subject_id) ? escapeHTML(subjects.find(s=>s.id===AttendanceState.subject_id).subject_name) : 'กรุณาเลือกคาบเรียนด้านบน'}</span>
+      </div>
       ` : ''}
 
       <button id="attSaveBtn" style="display:none;"></button>
@@ -1396,8 +1395,6 @@ function onPeriodCheckboxChange(el) {
     );
 
     if (entry) {
-      const subjectDropdown = document.getElementById('attSubject');
-      
       // If another subject is already selected, reject the click
       if (AttendanceState.subject_id && AttendanceState.subject_id !== entry.subject_id) {
         showToast('error', 'ไม่สามารถเลือกคาบเรียนที่มีรายวิชาแตกต่างกันพร้อมกันได้');
@@ -1405,10 +1402,8 @@ function onPeriodCheckboxChange(el) {
         return;
       }
 
-      if (subjectDropdown) {
-        subjectDropdown.value = entry.subject_id;
-        AttendanceState.subject_id = entry.subject_id;
-      }
+      AttendanceState.subject_id = entry.subject_id;
+      updateSubjectBadge(entry.subject_name || entry.subject_id);
 
       const matchingPeriods = AttendanceState.scheduleCache
         .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
@@ -1425,49 +1420,32 @@ function onPeriodCheckboxChange(el) {
       return;
     }
   } else {
-    // Check if any checkboxes are still checked. If none, clear dropdown
+    // Check if any checkboxes are still checked. If none, clear badge
     let checkedCount = document.querySelectorAll('input[name="att_period"]:checked').length;
     if (checkedCount === 0) {
-      const subjectDropdown = document.getElementById('attSubject');
-      if (subjectDropdown) subjectDropdown.value = '';
       AttendanceState.subject_id = '';
+      updateSubjectBadge('');
     }
   }
   loadAttendanceRecord();
 }
 
 function onAttSubjectChange() {
-  const select = document.getElementById('attSubject');
-  if (!select) return;
-  AttendanceState.subject_id = select.value;
-  
-  if (!AttendanceState.subject_id) {
-    // Clear period checkboxes if subject is cleared
-    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-      cb.checked = false;
-    });
-    loadAttendanceRecord();
-    return;
-  }
-  
-  if (!AttendanceState.date || !AttendanceState.scheduleCache) {
-    loadAttendanceRecord();
-    return;
-  }
+  // No-op: subject is now read-only, driven by period checkboxes only
+}
 
-  const parts = AttendanceState.date.split('-');
-  const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  const dayOfWeek = d.getDay();
-  
-  const matchingPeriods = AttendanceState.scheduleCache
-    .filter(e => Number(e.day) === dayOfWeek && e.subject_id === AttendanceState.subject_id)
-    .map(e => Number(e.period_no));
-    
-  document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-    cb.checked = matchingPeriods.includes(Number(cb.value));
-  });
-  
-  loadAttendanceRecord();
+function updateSubjectBadge(name) {
+  const span = document.getElementById('attSubjectName');
+  if (!span) return;
+  if (name) {
+    span.textContent = name;
+    span.style.color = '#1E40AF';
+    span.style.fontStyle = 'normal';
+  } else {
+    span.textContent = 'กรุณาเลือกคาบเรียนด้านบน';
+    span.style.color = '#94A3B8';
+    span.style.fontStyle = 'italic';
+  }
 }
 
 function syncSubjectFromSchedule() {
@@ -1481,48 +1459,26 @@ function syncSubjectFromSchedule() {
   const d = new Date(parts[0], parts[1] - 1, parts[2]);
   const dayOfWeek = d.getDay();
 
-  const subjectDropdown = document.getElementById('attSubject');
-  if (!subjectDropdown) return;
-
   if (AttendanceState.subject_id) {
-    const targetSubjectId = AttendanceState.subject_id;
+    // Already have a subject — just sync period checkboxes
     const matchingPeriods = AttendanceState.scheduleCache
-      .filter(e => Number(e.day) === dayOfWeek && e.subject_id === targetSubjectId)
+      .filter(e => Number(e.day) === dayOfWeek && e.subject_id === AttendanceState.subject_id)
       .map(e => Number(e.period_no));
 
     document.querySelectorAll('input[name="att_period"]').forEach(cb => {
       cb.checked = matchingPeriods.includes(Number(cb.value));
     });
-  } else {
-    let checkedPeriods = [];
-    document.querySelectorAll('input[name="att_period"]:checked').forEach(el => checkedPeriods.push(parseInt(el.value)));
-    
-    if (checkedPeriods.length > 0) {
-      const targetPeriod = Math.min(...checkedPeriods);
-      const entry = AttendanceState.scheduleCache.find(e => 
-        Number(e.day) === dayOfWeek && Number(e.period_no) === targetPeriod && e.subject_id
-      );
 
-      if (entry) {
-        subjectDropdown.value = entry.subject_id;
-        AttendanceState.subject_id = entry.subject_id;
-        
-        const matchingPeriods = AttendanceState.scheduleCache
-          .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
-          .map(e => Number(e.period_no));
-          
-        document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-          cb.checked = matchingPeriods.includes(Number(cb.value));
-        });
-      }
-    } else {
-      // Initialize with completely empty selections by default (as per user request)
-      subjectDropdown.value = '';
-      AttendanceState.subject_id = '';
-      document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-        cb.checked = false;
-      });
-    }
+    // Update badge from cache
+    const subEntry = AttendanceState.scheduleCache.find(e => e.subject_id === AttendanceState.subject_id);
+    if (subEntry) updateSubjectBadge(subEntry.subject_name);
+  } else {
+    // Reset — clear checkboxes and badge
+    AttendanceState.subject_id = '';
+    updateSubjectBadge('');
+    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+      cb.checked = false;
+    });
   }
 
   loadAttendanceRecord();
@@ -1620,7 +1576,6 @@ function renderAttendanceList() {
                   </div>
                   <div>
                     <div class="font-semibold text-slate-800 text-xs sm:text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
-                    <div class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.student_code||'')}</div>
                   </div>
                 </div>
               </td>
@@ -1656,8 +1611,8 @@ function renderAttendanceList() {
           <span>รวม</span> <b>${AttendanceState.records.length}</b>
         </div>
       </div>
-      <button class="btn btn-blue w-full sm:w-auto" onclick="saveAttendance()" style="box-shadow: 0 4px 14px rgba(128, 0, 32, 0.25);">
-        <i class='bx bx-save'></i> บันทึกข้อมูล
+      <button class="btn btn-blue" onclick="saveAttendance()" style="padding:6px 16px; font-size:13px; box-shadow: 0 2px 8px rgba(128, 0, 32, 0.2);">
+        <i class='bx bx-save'></i> บันทึก
       </button>
     </div>
 
@@ -1689,10 +1644,10 @@ function renderAttendanceList() {
         #attRecordArea tr {
           display: flex !important;
           align-items: center !important;
-          justify-content: flex-start !important; /* name and status sit next to each other */
-          padding: 8px 0px !important;
+          justify-content: space-between !important;
+          padding: 8px 12px !important;
           border-bottom: 1px solid #F1F5F9 !important;
-          gap: 12px !important; /* gap between name and status buttons */
+          gap: 8px !important;
         }
         #attRecordArea td {
           padding: 0 !important;
@@ -1703,12 +1658,13 @@ function renderAttendanceList() {
           display: none !important;
         }
         #attRecordArea td:nth-child(2) {
-          flex: 0 1 auto !important; /* take only needed width so they are close */
+          flex: 1 1 auto !important;
           min-width: 0 !important;
+          overflow: hidden !important;
         }
         #attRecordArea td:nth-child(3) {
           flex: 0 0 auto !important;
-          text-align: left !important;
+          text-align: right !important;
         }
         .att-status-btn {
           padding: 5px 8px !important;
