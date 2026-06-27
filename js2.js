@@ -1152,7 +1152,8 @@ const AttendanceState = {
   records: [],
   reportMode: 'class',
   classrooms: [],
-  subjects: []  // loaded subjects (filtered for teacher role)
+  subjects: [],  // loaded subjects (filtered for teacher role)
+  periods: []    // loaded period config
 };
 
 function renderAttendance(container) {
@@ -1180,7 +1181,7 @@ function renderAttendance(container) {
   AttendanceState.mode = APP.role === 'teacher' ? 'subject' : 'class';
 
   let loaded = 0;
-  const checkReady = () => { if (++loaded >= 2) renderAttendanceRecord(); };
+  const checkReady = () => { if (++loaded >= 3) renderAttendanceRecord(); };
 
   google.script.run
     .withSuccessHandler(res => {
@@ -1197,6 +1198,16 @@ function renderAttendance(container) {
     })
     .withFailureHandler(() => checkReady())
     .getSubjects({}, APP.token);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.status === 'success' && res.data) {
+        AttendanceState.periods = res.data.periods || [];
+      }
+      checkReady();
+    })
+    .withFailureHandler(() => checkReady())
+    .getPeriodConfig(APP.dashboardData?.config?.academic_year || '', APP.dashboardData?.config?.semester || '', APP.token);
 }
 
 function switchAttendanceTab(tab) {
@@ -1244,14 +1255,20 @@ function renderAttendanceRecord() {
       <div class="flex items-center gap-2 w-full mt-2">
         <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:<\/span>
         <div class="flex flex-wrap gap-1">
-          ${[1,2,3,4,5,6,7].map(p => `
-            <label class="cursor-pointer select-none">
-              <input type="checkbox" name="att_period" value="${p}" onchange="onPeriodCheckboxChange(this)" class="hidden peer" ${p===1?'checked':''}>
-              <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
-                ${p}
-              <\/div>
-            <\/label>
-          `).join('')}
+          ${(AttendanceState.periods && AttendanceState.periods.length > 0
+              ? AttendanceState.periods.filter(p => !p.is_break && !p.is_homeroom)
+              : [{ no: 1, label: '1' }, { no: 2, label: '2' }, { no: 3, label: '3' }, { no: 4, label: '4' }, { no: 5, label: '5' }, { no: 6, label: '6' }, { no: 7, label: '7' }]
+            ).map((p, idx) => {
+              const labelText = p.label ? p.label.replace('คาบ', '').trim() : p.no;
+              return `
+                <label class="cursor-pointer select-none">
+                  <input type="checkbox" name="att_period" value="${p.no}" onchange="onPeriodCheckboxChange(this)" class="hidden peer" ${idx===0?'checked':''}>
+                  <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
+                    ${labelText}
+                  <\/div>
+                <\/label>
+              `;
+            }).join('')}
         <\/div>
       <\/div>
 
