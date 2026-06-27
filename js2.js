@@ -1275,7 +1275,7 @@ function renderAttendanceRecord() {
 
       <div id="attSubjectDisplay" class="w-full mt-2 px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2" style="background:#EFF6FF; border:1.5px solid #BFDBFE; color:#1E40AF; min-height:40px;">
         <i class='bx bx-book-alt' style="font-size:16px;"></i>
-        <span id="attSubjectName" style="flex:1;">${AttendanceState.subject_id && subjects.find(s=>s.id===AttendanceState.subject_id) ? escapeHTML(subjects.find(s=>s.id===AttendanceState.subject_id).subject_name) : 'กรุณาเลือกคาบเรียนด้านบน'}</span>
+        <span id="attSubjectName" style="flex:1;">${AttendanceState.subject_id && subjects.find(s=>s.id===AttendanceState.subject_id) ? (() => { const s = subjects.find(x=>x.id===AttendanceState.subject_id); return escapeHTML(s.subject_name) + (s.teacher_name ? ' • ' + escapeHTML(s.teacher_name) : ''); })() : 'กรุณาเลือกคาบเรียนด้านบน'}</span>
       </div>
       ` : ''}
 
@@ -1403,7 +1403,7 @@ function onPeriodCheckboxChange(el) {
       }
 
       AttendanceState.subject_id = entry.subject_id;
-      updateSubjectBadge(entry.subject_name || entry.subject_id);
+      updateSubjectBadge(entry.subject_name || entry.subject_id, entry.teacher_name);
 
       const matchingPeriods = AttendanceState.scheduleCache
         .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
@@ -1434,11 +1434,11 @@ function onAttSubjectChange() {
   // No-op: subject is now read-only, driven by period checkboxes only
 }
 
-function updateSubjectBadge(name) {
+function updateSubjectBadge(name, teacherName) {
   const span = document.getElementById('attSubjectName');
   if (!span) return;
   if (name) {
-    span.textContent = name;
+    span.textContent = name + (teacherName ? ' \u2022 ' + teacherName : '');
     span.style.color = '#1E40AF';
     span.style.fontStyle = 'normal';
   } else {
@@ -1471,7 +1471,7 @@ function syncSubjectFromSchedule() {
 
     // Update badge from cache
     const subEntry = AttendanceState.scheduleCache.find(e => e.subject_id === AttendanceState.subject_id);
-    if (subEntry) updateSubjectBadge(subEntry.subject_name);
+    if (subEntry) updateSubjectBadge(subEntry.subject_name, subEntry.teacher_name);
   } else {
     // Reset — clear checkboxes and badge
     AttendanceState.subject_id = '';
@@ -1556,8 +1556,8 @@ function renderAttendanceList() {
       </div>
     </div>
 
-    <div style="overflow-x:auto;">
-      <table class="min-w-full text-sm">
+    <div class="att-list-wrap">
+      <table class="min-w-full text-sm att-desktop-table">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
             <th class="px-3 py-2.5 text-left rounded-l-lg" style="width:50px;">ลำดับ</th>
@@ -1571,11 +1571,8 @@ function renderAttendanceList() {
               <td class="px-3 py-2 text-center text-slate-500">${i+1}</td>
               <td class="px-3 py-2">
                 <div class="flex items-center gap-2">
-                  <div class="hidden sm:block">
-                    ${avatarHTML(r.photo, r.first_name, 32)}
-                  </div>
                   <div>
-                    <div class="font-semibold text-slate-800 text-xs sm:text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
+                    <div class="font-semibold text-slate-800 text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
                   </div>
                 </div>
               </td>
@@ -1591,6 +1588,20 @@ function renderAttendanceList() {
           `).join('')}
         </tbody>
       </table>
+
+      <div class="att-mobile-list">
+        ${AttendanceState.records.map((r, i) => `
+          <div class="att-mobile-row" data-row="${i}">
+            <div class="att-mobile-name">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
+            <div class="att-status-group">
+              ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
+              ${attStatusButton(i, 'absent',  r.status, '#EF4444', 'ขาด')}
+              ${attStatusButton(i, 'leave',   r.status, '#F59E0B', 'ลา')}
+              ${attStatusButton(i, 'late',    r.status, '#A62639', 'สาย')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
     </div>
 
     <div class="flex justify-between items-center gap-3 mt-4 pt-3 border-t border-slate-100 flex-wrap">
@@ -1617,62 +1628,57 @@ function renderAttendanceList() {
     </div>
 
     <style>
-      .att-status-group { display:inline-flex; gap:4px; }
+      /* ===== Common ===== */
+      .att-status-group { display:inline-flex; gap:4px; flex-shrink:0; }
       .att-status-btn {
-        padding:5px 9px; border-radius:6px; border:1.5px solid #E2E8F0;
-        background:white; font-family:inherit; font-size:11px; font-weight:600;
+        padding:5px 10px; border-radius:6px; border:1.5px solid #E2E8F0;
+        background:white; font-family:inherit; font-size:12px; font-weight:700;
         cursor:pointer; color:#64748B; transition:all .1s;
-        display:inline-flex; align-items:center; gap:2px;
+        white-space:nowrap;
       }
       .att-status-btn.active { color:white; }
       .att-summary-pill {
         display:inline-flex; gap:6px; padding:4px 12px; border-radius:999px;
         font-weight:600; align-items:center;
       }
+
+      /* ===== Desktop: show table, hide mobile cards ===== */
+      .att-desktop-table { display: table; width: 100%; }
+      .att-mobile-list   { display: none; }
+
+      /* ===== Mobile (<= 640px): hide table, show cards ===== */
       @media (max-width: 640px) {
-        #attRecordArea table, 
-        #attRecordArea tbody, 
-        #attRecordArea tr, 
-        #attRecordArea td {
-          display: block !important;
-          width: 100% !important;
+        .att-desktop-table { display: none !important; }
+        .att-mobile-list   { display: block !important; }
+
+        .att-mobile-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 4px;
+          border-bottom: 1px solid #F1F5F9;
+          gap: 8px;
           box-sizing: border-box;
+          width: 100%;
+          overflow: hidden;
         }
-        #attRecordArea thead {
-          display: none !important;
+        .att-mobile-name {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 13px;
+          font-weight: 600;
+          color: #1E293B;
         }
-        #attRecordArea tr {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: space-between !important;
-          padding: 8px 12px !important;
-          border-bottom: 1px solid #F1F5F9 !important;
-          gap: 8px !important;
-        }
-        #attRecordArea td {
-          padding: 0 !important;
-          width: auto !important;
-          text-align: left !important;
-        }
-        #attRecordArea td:first-child {
-          display: none !important;
-        }
-        #attRecordArea td:nth-child(2) {
-          flex: 1 1 auto !important;
-          min-width: 0 !important;
-          overflow: hidden !important;
-        }
-        #attRecordArea td:nth-child(3) {
-          flex: 0 0 auto !important;
-          text-align: right !important;
+        .att-status-group {
+          flex-shrink: 0;
+          gap: 3px !important;
         }
         .att-status-btn {
           padding: 5px 8px !important;
           font-size: 11px !important;
-          border-radius: 6px !important;
-        }
-        .att-status-group {
-          gap: 3px !important;
         }
       }
     </style>
