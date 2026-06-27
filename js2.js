@@ -1759,9 +1759,10 @@ function renderAttendanceReport() {
       \x3c/select>
       <select id="rptType" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
         <option value="homeroom">หน้าเสาธง / โฮมรูม\x3c/option>
+        <option value="all_subjects">วิชาทั้งหมด (รวมทุกวิชา)\x3c/option>
         <optgroup label="แยกตามรายวิชา" id="rptSubjectGroup">
         \x3c/optgroup>
-      \x3c/select>
+      </select>
       <input type="date" id="rptStart" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${monthStart}">
       <input type="date" id="rptEnd"   class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${todayStr}">
       <button class="btn btn-blue" onclick="loadAttendanceReport()">
@@ -1800,10 +1801,39 @@ function updateReportSubjects() {
   if (!grp) return;
   grp.innerHTML = '';
   if (!cls) return;
-  const subjects = (AttendanceState.subjects || []).filter(s => String(s.grade_level) === String(cls));
-  subjects.forEach(s => {
-    grp.innerHTML += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)} (${escapeHTML(s.subject_code||'')})\x3c/option>`;
-  });
+
+  const ay = APP.dashboardData?.config?.academic_year || '';
+  const sem = APP.dashboardData?.config?.semester || '';
+
+  grp.innerHTML = '<option value="" disabled>กำลังโหลดรายวิชา...\x3c/option>';
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.status === 'success') {
+        const scheduleEntries = res.data || [];
+        let seenIds = new Set();
+        let html = '';
+
+        scheduleEntries.forEach(e => {
+          if (e.subject_id && !seenIds.has(e.subject_id)) {
+            seenIds.add(e.subject_id);
+            html += `<option value="${escapeHTML(e.subject_id)}">${escapeHTML(e.subject_code||'')} ${escapeHTML(e.subject_name)} - ${escapeHTML(e.teacher_name||'')}\x3c/option>`;
+          }
+        });
+
+        if (html === '') {
+          grp.innerHTML = '<option value="" disabled>ไม่มีวิชาในตารางสอน\x3c/option>';
+        } else {
+          grp.innerHTML = html;
+        }
+      } else {
+        grp.innerHTML = '<option value="" disabled>โหลดวิชาล้มเหลว\x3c/option>';
+      }
+    })
+    .withFailureHandler(() => {
+      grp.innerHTML = '<option value="" disabled>โหลดวิชาล้มเหลว\x3c/option>';
+    })
+    .getSchedule({ classroom: cls, academic_year: ay, semester: sem }, APP.token);
 }
 
 function loadAttendanceReport() {
