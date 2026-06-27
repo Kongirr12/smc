@@ -1259,7 +1259,7 @@ function renderAttendanceRecord() {
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
         <option value="">เลือกวิชา<\/option>
         ${subjects
-            .map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
+            .map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')}) - ${escapeHTML(s.teacher_name||'')}<\/option>`).join('')}
       <\/select>
       ` : ''}
 
@@ -1303,6 +1303,7 @@ function onAttDateChange() {
   if (d) AttendanceState.date = d.value;
   
   if (AttendanceState.mode === 'subject') {
+    updateSubjectDropdownUI();
     syncSubjectFromSchedule();
   } else {
     loadAttendanceRecord();
@@ -1318,10 +1319,51 @@ function loadScheduleForSync() {
     .withSuccessHandler(res => {
       if (res.status === 'success') {
         AttendanceState.scheduleCache = res.data;
+        updateSubjectDropdownUI();
         syncSubjectFromSchedule();
       }
     })
     .getSchedule({ classroom: AttendanceState.classroom, academic_year: ay, semester: sem }, APP.token);
+}
+
+function updateSubjectDropdownUI() {
+  const select = document.getElementById('attSubject');
+  if (!select) return;
+  
+  const subjects = AttendanceState.subjects || [];
+  if (subjects.length === 0) return;
+  
+  let scheduledSubjIds = new Set();
+  if (AttendanceState.scheduleCache && AttendanceState.date) {
+    const parts = AttendanceState.date.split('-');
+    const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+    const dayOfWeek = dObj.getDay();
+    
+    AttendanceState.scheduleCache.forEach(e => {
+      if (Number(e.day) === dayOfWeek && e.subject_id) {
+        scheduledSubjIds.add(e.subject_id);
+      }
+    });
+  }
+  
+  const todaySubjects = subjects.filter(s => scheduledSubjIds.has(s.id));
+  const otherSubjects = subjects.filter(s => !scheduledSubjIds.has(s.id));
+  
+  let html = `<option value="">เลือกวิชา<\/option>`;
+  
+  if (todaySubjects.length > 0) {
+    html += `<optgroup label="วิชาที่มีสอนในวันนี้">`;
+    html += todaySubjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')}) - ${escapeHTML(s.teacher_name||'')}<\/option>`).join('');
+    html += `<\/optgroup>`;
+  }
+  
+  if (otherSubjects.length > 0) {
+    html += `<optgroup label="${todaySubjects.length > 0 ? 'วิชาทั้งหมดของคุณครู' : 'วิชาทั้งหมดของคุณครู'}">`;
+    html += otherSubjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')}) - ${escapeHTML(s.teacher_name||'')}<\/option>`).join('');
+    html += `<\/optgroup>`;
+  }
+  
+  select.innerHTML = html;
 }
 
 function syncSubjectFromSchedule() {
