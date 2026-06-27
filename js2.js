@@ -1242,41 +1242,37 @@ function renderAttendanceRecord() {
       <\/div>
       ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา<\/span>'}
 
-      <select id="attClassroom" onchange="onAttClassroomChange()"
+      ${mode === 'subject' ? `
+      <select id="attSubject" onchange="loadAttendanceRecord()"
+              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
+        <option value="">เลือกวิชา<\/option>
+        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
+      <\/select>
+      ` : `
+      <select id="attClassroom" onchange="loadAttendanceRecord()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
         <option value="">เลือกชั้น<\/option>
         ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}<\/option>`).join('')}
       <\/select>
+      `}
 
-      <input type="date" id="attDate" onchange="onAttDateChange()"
+      <input type="date" id="attDate" onchange="loadAttendanceRecord()"
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${AttendanceState.date}">
 
       ${mode === 'subject' ? `
       <div class="flex items-center gap-2 w-full mt-2">
         <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:<\/span>
         <div class="flex flex-wrap gap-1">
-          ${(AttendanceState.periods && AttendanceState.periods.length > 0
-              ? AttendanceState.periods.filter(p => !p.is_break && !p.is_homeroom)
-              : [{ no: 1, label: '1' }, { no: 2, label: '2' }, { no: 3, label: '3' }, { no: 4, label: '4' }, { no: 5, label: '5' }, { no: 6, label: '6' }, { no: 7, label: '7' }]
-            ).map((p, idx) => {
-              const labelText = p.label ? p.label.replace('คาบ', '').trim() : p.no;
-              return `
-                <label class="cursor-pointer select-none">
-                  <input type="checkbox" name="att_period" value="${p.no}" onchange="onPeriodCheckboxChange(this)" class="hidden peer">
-                  <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
-                    ${labelText}
-                  <\/div>
-                <\/label>
-              `;
-            }).join('')}
+          ${[1,2,3,4,5,6,7,8,9,10].map(p => `
+            <label class="cursor-pointer select-none">
+              <input type="checkbox" name="att_period" value="${p}" class="hidden peer" ${p===1?'checked':''}>
+              <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
+                ${p}
+              <\/div>
+            <\/label>
+          `).join('')}
         <\/div>
       <\/div>
-
-      <select id="attSubject" onchange="onAttSubjectChange()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
-        <option value="">เลือกวิชา<\/option>
-        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
-      <\/select>
       ` : ''}
 
       <button class="btn btn-light" onclick="setAllAttendance('present')">
@@ -1295,7 +1291,12 @@ function renderAttendanceRecord() {
     \x3c/div>
   `;
 
-  // auto-select handled by syncSubjectFromSchedule
+  // auto-select วิชาแรก แล้ว load รายชื่อทันที
+  if (AttendanceState.mode === 'subject' && subjects.length > 0 && !AttendanceState.subject_id) {
+    AttendanceState.subject_id = subjects[0].id;
+    renderAttendanceRecord();  // re-render with subject pre-selected
+    loadAttendanceRecord();    // load students immediately
+  }
 }
 
 function switchAttMode(mode) {
@@ -1370,14 +1371,14 @@ function updateSubjectDropdownUI() {
     });
   }
   
-  let html = `<option value="">เลือกวิชา<\/option>`;
+  let html = `<option value="">เลือกวิชา\x3c/option>`;
   
   if (todaySubjects.length > 0) {
     html += todaySubjects.map(s => 
-      `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} - ${escapeHTML(s.teacher_name||'')}<\/option>`
+      `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} - ${escapeHTML(s.teacher_name||'')}\x3c/option>`
     ).join('');
   } else {
-    html += `<option value="" disabled>ไม่มีวิชาเรียนในวันนี้<\/option>`;
+    html += `<option value="" disabled>ไม่มีวิชาเรียนในวันนี้\x3c/option>`;
   }
   
   select.innerHTML = html;
@@ -1583,10 +1584,9 @@ function renderAttendanceList() {
       <table class="min-w-full text-sm">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-3 py-2.5 text-left rounded-l-lg" style="width:60px;">ลำดับ\x3c/th>
+            <th class="px-3 py-2.5 text-left rounded-l-lg" style="width:50px;">ลำดับ\x3c/th>
             <th class="px-3 py-2.5 text-left">นักเรียน\x3c/th>
-            <th class="px-3 py-2.5 text-center" style="width:380px;">สถานะ\x3c/th>
-            <th class="px-3 py-2.5 text-left rounded-r-lg" style="width:160px;">หมายเหตุ\x3c/th>
+            <th class="px-3 py-2.5 text-center rounded-r-lg" style="width:280px;">สถานะ\x3c/th>
           \x3c/tr>
         \x3c/thead>
         <tbody>
@@ -1594,28 +1594,25 @@ function renderAttendanceList() {
             <tr class="border-b border-slate-100" data-row="${i}">
               <td class="px-3 py-2 text-center text-slate-500">${i+1}\x3c/td>
               <td class="px-3 py-2">
-                <div class="flex items-center gap-3">
-                  ${avatarHTML(r.photo, r.first_name, 32)}
+                <div class="flex items-center gap-2">
+                  <div class="hidden sm:block">
+                    ${avatarHTML(r.photo, r.first_name, 32)}
+                  </div>
                   <div>
-                    <div class="font-semibold text-slate-800">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
-                    <div class="text-xs text-slate-400 font-mono">${escapeHTML(r.student_code||'')}\x3c/div>
-                  \x3c/div>
-                \x3c/div>
+                    <div class="font-semibold text-slate-800 text-xs sm:text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
+                    <div class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.student_code||'')}</div>
+                  </div>
+                </div>
               \x3c/td>
               <td class="px-3 py-2 text-center">
                 <div class="att-status-group">
                   ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
                   ${attStatusButton(i, 'absent',  r.status, '#EF4444', 'ขาด')}
                   ${attStatusButton(i, 'leave',   r.status, '#F59E0B', 'ลา')}
-                  ${attStatusButton(i, 'late',    r.status, '#A62639', 'มาสาย')}
-                \x3c/div>
+                  ${attStatusButton(i, 'late',    r.status, '#A62639', 'สาย')}
+                </div>
               \x3c/td>
-              <td class="px-3 py-2">
-                <input type="text" class="form-input att-note"
-                       data-row="${i}" placeholder="..." value="${escapeHTML(r.note||'')}"
-                       style="padding:6px 8px;font-size:12px;">
-              \x3c/td>
-            \x3c/tr>
+            </tr>
           `).join('')}
         \x3c/tbody>
       \x3c/table>
@@ -1632,38 +1629,40 @@ function renderAttendanceList() {
         <span>ลา\x3c/span> <b id="cntLeave">0\x3c/b>
       \x3c/div>
       <div class="att-summary-pill" style="background:#F2D5DA;color:#800020;">
-        <span>มาสาย\x3c/span> <b id="cntLate">0\x3c/b>
+        <span>สาย\x3c/span> <b id="cntLate">0\x3c/b>
       \x3c/div>
       <div class="att-summary-pill" style="background:#F1F5F9;color:#334155;">
         <span>รวม\x3c/span> <b>${AttendanceState.records.length}\x3c/b>
       \x3c/div>
-    \x3c/div>
+    </div>
 
     <style>
       .att-status-group { display:inline-flex; gap:4px; }
       .att-status-btn {
-        padding:6px 10px; border-radius:8px; border:1.5px solid #E2E8F0;
-        background:white; font-family:inherit; font-size:12px; font-weight:600;
+        padding:5px 9px; border-radius:6px; border:1.5px solid #E2E8F0;
+        background:white; font-family:inherit; font-size:11px; font-weight:600;
         cursor:pointer; color:#64748B; transition:all .1s;
-        display:inline-flex; align-items:center; gap:4px;
+        display:inline-flex; align-items:center; gap:2px;
       }
       .att-status-btn.active { color:white; }
       .att-summary-pill {
         display:inline-flex; gap:6px; padding:4px 12px; border-radius:999px;
         font-weight:600; align-items:center;
       }
-    \x3c/style>
+      @media (max-width: 640px) {
+        .att-status-btn {
+          padding: 4px 6px;
+          font-size: 10px;
+          border-radius: 4px;
+        }
+        .att-status-group {
+          gap: 2px;
+        }
+      }
+    </style>
   `;
 
   updateAttendanceSummary();
-
-  // bind note inputs
-  document.querySelectorAll('.att-note').forEach(inp => {
-    inp.addEventListener('input', e => {
-      const i = +e.target.dataset.row;
-      AttendanceState.records[i].note = e.target.value;
-    });
-  });
 }
 
 function attStatusButton(rowIdx, status, currentStatus, color, label) {
