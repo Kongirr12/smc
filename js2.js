@@ -1262,7 +1262,7 @@ function renderAttendanceRecord() {
               const labelText = p.label ? p.label.replace('คาบ', '').trim() : p.no;
               return `
                 <label class="cursor-pointer select-none">
-                  <input type="checkbox" name="att_period" value="${p.no}" onchange="onPeriodCheckboxChange(this)" class="hidden peer" ${idx===0?'checked':''}>
+                  <input type="checkbox" name="att_period" value="${p.no}" onchange="onPeriodCheckboxChange(this)" class="hidden peer">
                   <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
                     ${labelText}
                   <\/div>
@@ -1399,6 +1399,14 @@ function onPeriodCheckboxChange(el) {
 
     if (entry) {
       const subjectDropdown = document.getElementById('attSubject');
+      
+      // If another subject is already selected, reject the click
+      if (AttendanceState.subject_id && AttendanceState.subject_id !== entry.subject_id) {
+        showToast('error', 'ไม่สามารถเลือกคาบเรียนที่มีรายวิชาแตกต่างกันพร้อมกันได้');
+        el.checked = false;
+        return;
+      }
+
       if (subjectDropdown) {
         subjectDropdown.value = entry.subject_id;
         AttendanceState.subject_id = entry.subject_id;
@@ -1413,6 +1421,18 @@ function onPeriodCheckboxChange(el) {
           cb.checked = true;
         }
       });
+    } else {
+      showToast('warning', 'คาบเรียนนี้ไม่มีการสอนวิชาใดๆ');
+      el.checked = false;
+      return;
+    }
+  } else {
+    // Check if any checkboxes are still checked. If none, clear dropdown
+    let checkedCount = document.querySelectorAll('input[name="att_period"]:checked').length;
+    if (checkedCount === 0) {
+      const subjectDropdown = document.getElementById('attSubject');
+      if (subjectDropdown) subjectDropdown.value = '';
+      AttendanceState.subject_id = '';
     }
   }
   loadAttendanceRecord();
@@ -1436,6 +1456,11 @@ function onAttSubjectChange() {
       
     document.querySelectorAll('input[name="att_period"]').forEach(cb => {
       cb.checked = matchingPeriods.includes(Number(cb.value));
+    });
+  } else {
+    // If they cleared the subject selection, clear all checkboxes
+    document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+      cb.checked = false;
     });
   }
   
@@ -1469,48 +1494,31 @@ function syncSubjectFromSchedule() {
     let checkedPeriods = [];
     document.querySelectorAll('input[name="att_period"]:checked').forEach(el => checkedPeriods.push(parseInt(el.value)));
     
-    let targetPeriod = null;
     if (checkedPeriods.length > 0) {
-      targetPeriod = Math.min(...checkedPeriods);
-    } else {
-      targetPeriod = 1;
-    }
+      const targetPeriod = Math.min(...checkedPeriods);
+      const entry = AttendanceState.scheduleCache.find(e => 
+        Number(e.day) === dayOfWeek && Number(e.period_no) === targetPeriod && e.subject_id
+      );
 
-    const entry = AttendanceState.scheduleCache.find(e => 
-      Number(e.day) === dayOfWeek && Number(e.period_no) === targetPeriod && e.subject_id
-    );
-
-    if (entry) {
-      subjectDropdown.value = entry.subject_id;
-      AttendanceState.subject_id = entry.subject_id;
-      
-      const matchingPeriods = AttendanceState.scheduleCache
-        .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
-        .map(e => Number(e.period_no));
-        
-      document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-        cb.checked = matchingPeriods.includes(Number(cb.value));
-      });
-    } else {
-      const anyEntry = AttendanceState.scheduleCache.find(e => Number(e.day) === dayOfWeek && e.subject_id);
-      if (anyEntry) {
-        subjectDropdown.value = anyEntry.subject_id;
-        AttendanceState.subject_id = anyEntry.subject_id;
+      if (entry) {
+        subjectDropdown.value = entry.subject_id;
+        AttendanceState.subject_id = entry.subject_id;
         
         const matchingPeriods = AttendanceState.scheduleCache
-          .filter(e => Number(e.day) === dayOfWeek && e.subject_id === anyEntry.subject_id)
+          .filter(e => Number(e.day) === dayOfWeek && e.subject_id === entry.subject_id)
           .map(e => Number(e.period_no));
           
         document.querySelectorAll('input[name="att_period"]').forEach(cb => {
           cb.checked = matchingPeriods.includes(Number(cb.value));
         });
-      } else {
-        subjectDropdown.value = '';
-        AttendanceState.subject_id = '';
-        document.querySelectorAll('input[name="att_period"]').forEach(cb => {
-          cb.checked = false;
-        });
       }
+    } else {
+      // Initialize with completely empty selections by default (as per user request)
+      subjectDropdown.value = '';
+      AttendanceState.subject_id = '';
+      document.querySelectorAll('input[name="att_period"]').forEach(cb => {
+        cb.checked = false;
+      });
     }
   }
 
