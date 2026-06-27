@@ -1224,8 +1224,8 @@ function renderAttendanceRecord() {
   const c = document.getElementById('attRecord');
   if (!c) return;
   const mode = AttendanceState.mode;
-  const subjects = AttendanceState.subjects || [];
   const classrooms = AttendanceState.classrooms || [];
+  const subjects = AttendanceState.subjects || [];
 
   c.innerHTML = `
     <div class="flex gap-2 mb-3 flex-wrap items-center">
@@ -1233,51 +1233,59 @@ function renderAttendanceRecord() {
       <div class="flex rounded-lg overflow-hidden border border-slate-200" style="font-size:13px;">
         <button id="attModeSubject" onclick="switchAttMode('subject')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='subject'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bx-book-open'><\/i> รายวิชา
-        <\/button>
+          <i class='bx bx-book-open'>\x3c/i> รายวิชา
+        \x3c/button>
         <button id="attModeClass" onclick="switchAttMode('class')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='class'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bxs-building'><\/i> หน้าเสาธง / โฮมรูม
-        <\/button>
-      <\/div>
-      ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา<\/span>'}
+          <i class='bx bxs-building'>\x3c/i> หน้าเสาธง / โฮมรูม
+        \x3c/button>
+      \x3c/div>
+      ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา\x3c/span>'}
 
-      ${mode === 'subject' ? `
-      <select id="attSubject" onchange="loadAttendanceRecord()"
+      <select id="attClassroom" onchange="onAttClassroomChange()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
-        <option value="">เลือกวิชา<\/option>
-        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})<\/option>`).join('')}
-      <\/select>
-      ` : `
-      <select id="attClassroom" onchange="loadAttendanceRecord()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
-        <option value="">เลือกชั้น<\/option>
-        ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}<\/option>`).join('')}
-      <\/select>
-      `}
+        <option value="">เลือกชั้น\x3c/option>
+        ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}\x3c/option>`).join('')}
+      \x3c/select>
 
-      <input type="date" id="attDate" onchange="loadAttendanceRecord()"
+      <input type="date" id="attDate" onchange="onAttDateChange()"
              class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${AttendanceState.date}">
 
       ${mode === 'subject' ? `
       <div class="flex items-center gap-2 w-full mt-2">
-        <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:<\/span>
+        <span class="text-sm font-semibold text-slate-600 min-w-max">คาบที่:\x3c/span>
         <div class="flex flex-wrap gap-1">
-          ${[1,2,3,4,5,6,7,8,9,10].map(p => `
-            <label class="cursor-pointer select-none">
-              <input type="checkbox" name="att_period" value="${p}" class="hidden peer" ${p===1?'checked':''}>
-              <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
-                ${p}
-              <\/div>
-            <\/label>
-          `).join('')}
-        <\/div>
-      <\/div>
+          ${(AttendanceState.periods && AttendanceState.periods.length > 0
+              ? AttendanceState.periods.filter(p => !p.is_break && !p.is_homeroom)
+              : [{ no: 1, label: '1' }, { no: 2, label: '2' }, { no: 3, label: '3' }, { no: 4, label: '4' }, { no: 5, label: '5' }, { no: 6, label: '6' }, { no: 7, label: '7' }]
+            ).map((p, idx) => {
+              const labelText = p.label ? p.label.replace('คาบ', '').trim() : p.no;
+              return `
+                <label class="cursor-pointer select-none">
+                  <input type="checkbox" name="att_period" value="${p.no}" onchange="onPeriodCheckboxChange(this)" class="hidden peer">
+                  <div class="px-2.5 py-1 text-xs font-semibold rounded-md border border-slate-200 text-slate-500 peer-checked:bg-blue-500 peer-checked:text-white peer-checked:border-blue-500 transition-colors">
+                    ${labelText}
+                  \x3c/div>
+                \x3c/label>
+              `;
+            }).join('')}
+        \x3c/div>
+      \x3c/div>
+
+      <select id="attSubject" onchange="onAttSubjectChange()"
+              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px] mt-2 w-full">
+        <option value="">เลือกวิชา\x3c/option>
+        ${subjects.map(s => `<option value="${escapeHTML(s.id)}" ${AttendanceState.subject_id===s.id?'selected':''}>${escapeHTML(s.subject_name)} (${escapeHTML(s.grade_level||'')})\x3c/option>`).join('')}
+      \x3c/select>
       ` : ''}
 
-      <button class="btn btn-light" onclick="setAllAttendance('present')">
-        <i class='bx bx-check-circle'>\x3c/i> มาทั้งหมด
-      \x3c/button>
+      <div class="flex flex-wrap gap-1.5 items-center w-full mt-2 sm:mt-0 sm:w-auto">
+        <span class="text-xs font-semibold text-slate-500">เช็คด่วนทั้งหมด:</span>
+        <button class="btn btn-sm btn-light text-emerald-600 border-emerald-200 hover:bg-emerald-50 px-2 py-1 text-xs" onclick="setAllAttendance('present')">มา</button>
+        <button class="btn btn-sm btn-light text-rose-600 border-rose-200 hover:bg-rose-50 px-2 py-1 text-xs" onclick="setAllAttendance('absent')">ขาด</button>
+        <button class="btn btn-sm btn-light text-amber-600 border-amber-200 hover:bg-amber-50 px-2 py-1 text-xs" onclick="setAllAttendance('leave')">ลา</button>
+        <button class="btn btn-sm btn-light text-red-800 border-red-200 hover:bg-red-50 px-2 py-1 text-xs" onclick="setAllAttendance('late')">สาย</button>
+      </div>
       <button class="btn btn-blue" onclick="saveAttendance()" id="attSaveBtn" style="display:none;">
         <i class='bx bx-save'>\x3c/i> บันทึก
       \x3c/button>
@@ -1290,13 +1298,6 @@ function renderAttendanceRecord() {
       \x3c/div>
     \x3c/div>
   `;
-
-  // auto-select วิชาแรก แล้ว load รายชื่อทันที
-  if (AttendanceState.mode === 'subject' && subjects.length > 0 && !AttendanceState.subject_id) {
-    AttendanceState.subject_id = subjects[0].id;
-    renderAttendanceRecord();  // re-render with subject pre-selected
-    loadAttendanceRecord();    // load students immediately
-  }
 }
 
 function switchAttMode(mode) {
@@ -1761,8 +1762,7 @@ function renderAttendanceReport() {
         <option value="all_subjects">วิชาทั้งหมด (รวมทุกวิชา)\x3c/option>
         <optgroup label="แยกตามรายวิชา" id="rptSubjectGroup">
         \x3c/optgroup>
-      </select>
-      <input type="date" id="rptStart" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${monthStart}">
+      </select><input type="date" id="rptStart" class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${monthStart}">
       <input type="date" id="rptEnd"   class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${todayStr}">
       <button class="btn btn-blue" onclick="loadAttendanceReport()">
         <i class='bx bx-search'>\x3c/i> ดูรายงาน
