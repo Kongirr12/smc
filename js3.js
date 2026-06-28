@@ -1282,7 +1282,7 @@ function showTransactionForm(data, students) {
         date          : document.getElementById('tf_date').value,
         payment_method: document.getElementById('tf_payment_method').value,
         category      : document.getElementById('tf_category').value,
-        reference_id  : isIncome ? (document.getElementById('tf_reference_id')||{}).value : '',
+        reference_id  : isIncome && document.getElementById('tf_reference_id') ? document.getElementById('tf_reference_id').value : '',
         description   : document.getElementById('tf_description').value,
         amount        : amt
       };
@@ -1298,7 +1298,6 @@ function showTransactionForm(data, students) {
           loadFinanceSummary();
           loadFinanceTable();
           if (isIncome && res.data && res.data.receipt_number) {
-            // ถาม pop print receipt
             setTimeout(() => {
               Swal.fire({
                 icon:'success', title:'บันทึกแล้ว',
@@ -1311,7 +1310,10 @@ function showTransactionForm(data, students) {
               });
             }, 300);
           }
-        } else Swal.fire({ icon:'error', text:res.message });
+        } else {
+          if (res.message === 'session_invalid') return handleLogout(false);
+          Swal.fire({ icon:'error', text:res.message });
+        }
       })
       .withFailureHandler(err => { hideLoading(); Swal.fire({ icon:'error', text:err.message||err }); })
       .saveTransaction(r.value, APP.token);
