@@ -61,10 +61,18 @@ function showLoginScreen() {
 function switchLoginTab(tab) {
   document.getElementById('tabAdmin').classList.toggle('active', tab === 'admin');
   document.getElementById('tabStaff').classList.toggle('active', tab === 'staff');
+  
+  const heroPanel = document.getElementById('loginHeroPanel');
+  const roleBadge = document.getElementById('loginRoleBadge');
+  
   if (tab === 'admin') {
     document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน Admin';
+    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #9f1239 0%, #0f172a 100%)';
+    if(roleBadge) roleBadge.textContent = 'ระบบผู้ดูแลระบบ (Admin)';
   } else {
-    document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน Staff/ครู';
+    document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน / รหัสประจำตัว';
+    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #0369a1 0%, #0f172a 100%)';
+    if(roleBadge) roleBadge.textContent = 'ระบบบุคลากร (Staff / Teacher)';
   }
   document.getElementById('loginUsername').focus();
 }
@@ -170,14 +178,16 @@ function enterApp() {
     if (config.school_name) {
       const el = document.getElementById('brandSchoolName');
       if (el) el.textContent = config.school_name;
+      localStorage.setItem('cached_school_name', config.school_name);
     }
     if (config.school_logo) {
+      localStorage.setItem('cached_school_logo', config.school_logo);
       const logoBox = document.getElementById('logoBoxSidebar');
       if (logoBox) {
         logoBox.classList.add('has-image');
         logoBox.innerHTML = `<img src="${config.school_logo}" 
              onerror="handleLogoError(this, 'sidebarLogoIcon', 'logoBoxSidebar')"
-             style="max-height:100%; max-width:100%; border-radius:8px;">
+             style="max-height:100%; max-width:100%; border-radius:8px; object-fit:contain;">
         <i class='bx bxs-graduation' id="sidebarLogoIcon" style="display:none;"></i>`;
       }
     }
