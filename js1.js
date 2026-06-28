@@ -228,7 +228,8 @@ function enterApp() {
 
   navigate('dashboard');
   refreshBadges();
-  setInterval(refreshBadges, 60000);
+  if (APP._badgeInterval) clearInterval(APP._badgeInterval);
+  APP._badgeInterval = setInterval(refreshBadges, 120000);
 }
 
 /* ============================================================
@@ -428,7 +429,10 @@ function renderDashboard(container) {
 
   if (APP.dashboardData) {
     renderDashboardData(APP.dashboardData);
-    loadDashboardData(true);
+    // Only re-fetch if cached data is older than 30 seconds
+    if (!APP._dashboardTs || Date.now() - APP._dashboardTs > 30000) {
+      loadDashboardData(true);
+    }
   } else {
     loadDashboardData();
   }
@@ -442,6 +446,7 @@ function loadDashboardData(silent) {
         return;
       }
       APP.dashboardData = res.data;
+      APP._dashboardTs = Date.now();
       renderDashboardData(res.data);
     })
     .withFailureHandler(err => {
