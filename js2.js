@@ -633,8 +633,7 @@ const PersonnelState = {
 
 function renderPersonnel(container) {
   container.innerHTML = `
-    ${pageHeader('ครูและบุคลากร', 'bxs-group', `
-      ${APP.role !== 'teacher' ? `
+    ${pageHeader('ครูและบุคลากร', 'bxs-group', (typeof canEditModule === 'function' ? canEditModule('personnel') : true) ? `
       <button class="btn btn-light" onclick="exportPersonnel()">
         <i class='bx bx-download'>\x3c/i> Export
       <\/button>
@@ -647,8 +646,7 @@ function renderPersonnel(container) {
       <button class="btn btn-blue" onclick="openPersonnelForm()">
         <i class='bx bx-plus'>\x3c/i> เพิ่มบุคลากร
       <\/button>
-      ` : ''}
-    `)}
+    ` : '')}
 
     <div class="page-card">
       <div class="page-card-body">
@@ -784,12 +782,12 @@ function renderPersonnelTable(res) {
                   <button class="btn btn-light btn-icon" onclick="viewPersonnel('${p.id}')" title="ดูข้อมูล">
                     <i class='bx bx-show'>\x3c/i>
                   \x3c/button>
-                  ${(APP.role !== 'teacher' || APP.user.username.toLowerCase() === (p.personnel_id||'').toLowerCase()) ? `
+                  ${((typeof canEditModule === 'function' ? canEditModule('personnel') : true) || APP.user.username.toLowerCase() === (p.personnel_id||'').toLowerCase()) ? `
                   <button class="btn btn-light btn-icon" onclick="openPersonnelForm('${p.id}')" title="แก้ไข" style="color:#A62639;">
                     <i class='bx bx-edit'><\/i>
                   <\/button>
                   ` : ''}
-                  ${APP.role !== 'teacher' ? `
+                  ${(typeof canEditModule === 'function' ? canEditModule('personnel') : true) ? `
                   <button class="btn btn-light btn-icon" onclick="createUserFromPersonnel('${p.id}','${escapeHTML(p.personnel_id||'')}','${escapeHTML((p.prefix||'')+(p.first_name||'')+' '+(p.last_name||''))}')" title="สร้างบัญชีผู้ใช้" style="color:#10B981;">
                     <i class='bx bx-user-plus'><\/i>
                   <\/button>
