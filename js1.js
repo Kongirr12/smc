@@ -182,6 +182,9 @@ function enterApp() {
     }
     if (config.school_logo) {
       localStorage.setItem('cached_school_logo', config.school_logo);
+      const favicon = document.getElementById('favicon');
+      if (favicon) favicon.href = config.school_logo;
+      
       const logoBox = document.getElementById('logoBoxSidebar');
       if (logoBox) {
         logoBox.classList.add('has-image');
