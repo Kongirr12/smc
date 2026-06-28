@@ -67,11 +67,11 @@ function switchLoginTab(tab) {
   
   if (tab === 'admin') {
     document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน Admin';
-    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #9f1239 0%, #0f172a 100%)';
+    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #A62639 0%, #26020A 100%)';
     if(roleBadge) roleBadge.textContent = 'ระบบผู้ดูแลระบบ (Admin)';
   } else {
     document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน / รหัสประจำตัว';
-    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #0369a1 0%, #0f172a 100%)';
+    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #800020 0%, #26020A 100%)';
     if(roleBadge) roleBadge.textContent = 'ระบบบุคลากร (Staff / Teacher)';
   }
   document.getElementById('loginUsername').focus();
