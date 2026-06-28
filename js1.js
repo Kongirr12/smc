@@ -229,6 +229,10 @@ function enterApp() {
  *  Access Control Helper
  * ============================================================ */
 function canEditModule(moduleName) {
+  if (moduleName === 'personnel') {
+    return APP.role === 'admin';
+  }
+  
   if (APP.role === 'admin' || APP.role === 'staff') return true;
   if (APP.role !== 'teacher') return false;
   
@@ -237,7 +241,6 @@ function canEditModule(moduleName) {
     case 'finance': return dept.includes('การเงิน') || dept.includes('งบประมาณ');
     case 'budget':  return dept.includes('การเงิน') || dept.includes('งบประมาณ');
     case 'registration': return dept.includes('ทะเบียน') || dept.includes('วัดผล') || dept.includes('วิชาการ');
-    case 'personnel': return dept.includes('บุคคล') || dept.includes('บุคลากร');
     case 'documents': return dept.includes('ธุรการ') || dept.includes('สารบรรณ') || dept.includes('อำนวยการ') || dept.includes('บริหาร') || dept.includes('ทั่วไป');
   }
   return false;
