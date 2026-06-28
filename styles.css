@@ -966,6 +966,34 @@ html.dark-mode .cal-cell.today {
 html.dark-mode .cal-cell.today .cal-date {
   color: #FAFAFA !important;
 }
+/* Manual Page Specific Overrides */
+html.dark-mode .man-tip {
+  background-color: rgba(166, 38, 57, 0.15) !important;
+  color: #FAFAFA !important;
+  border-left-color: #A62639 !important;
+}
+html.dark-mode .man-warn {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #FAFAFA !important;
+  border-left-color: #F59E0B !important;
+}
+html.dark-mode .man-success {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #FAFAFA !important;
+  border-left-color: #10B981 !important;
+}
+html.dark-mode [style*="background:#F2D5DA"] {
+  background-color: rgba(166, 38, 57, 0.2) !important;
+  color: #FDA4AF !important;
+}
+html.dark-mode [style*="background:#DCFCE7"] {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #6EE7B7 !important;
+}
+html.dark-mode [style*="background:#FEF3C7"] {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #FCD34D !important;
+}
 /* Print overrides */
 @media print {
   html.dark-mode {
