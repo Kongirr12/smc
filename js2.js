@@ -782,7 +782,7 @@ function renderPersonnelTable(res) {
                   <button class="btn btn-light btn-icon" onclick="viewPersonnel('${p.id}')" title="ดูข้อมูล">
                     <i class='bx bx-show'>\x3c/i>
                   \x3c/button>
-                  ${((typeof canEditModule === 'function' ? canEditModule('personnel') : true) || APP.user.username.toLowerCase() === (p.personnel_id||'').toLowerCase()) ? `
+                  ${(typeof canEditModule === 'function' ? canEditModule('personnel') : true) ? `
                   <button class="btn btn-light btn-icon" onclick="openPersonnelForm('${p.id}')" title="แก้ไข" style="color:#A62639;">
                     <i class='bx bx-edit'><\/i>
                   <\/button>
