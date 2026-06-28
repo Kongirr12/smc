@@ -902,7 +902,10 @@ html.dark-mode .announce-item .title,
 html.dark-mode .welcome-row h1,
 html.dark-mode .welcome-row .date-pill,
 html.dark-mode .dash-card h3 a,
-html.dark-mode .brand {
+html.dark-mode .brand,
+html.dark-mode [style*="color:#0F172A"], html.dark-mode [style*="color: #0F172A"],
+html.dark-mode [style*="color:#1E293B"], html.dark-mode [style*="color: #1E293B"],
+html.dark-mode [style*="color:#334155"], html.dark-mode [style*="color: #334155"] {
   color: #FAFAFA !important;
 }
 html.dark-mode .text-slate-400,
@@ -913,8 +916,19 @@ html.dark-mode .stat-card .label,
 html.dark-mode .welcome-row .sub,
 html.dark-mode .announce-item .meta,
 html.dark-mode .app-footer,
-html.dark-mode .brand-sub {
+html.dark-mode .brand-sub,
+html.dark-mode [style*="color:#475569"], html.dark-mode [style*="color: #475569"],
+html.dark-mode [style*="color:#64748B"], html.dark-mode [style*="color: #64748B"],
+html.dark-mode [style*="color:#94A3B8"], html.dark-mode [style*="color: #94A3B8"] {
   color: #A1A1AA !important;
+}
+/* Background Overrides for inline styles */
+html.dark-mode [style*="background:#F1F5F9"], html.dark-mode [style*="background: #F1F5F9"],
+html.dark-mode [style*="background:#F8FAFC"], html.dark-mode [style*="background: #F8FAFC"],
+html.dark-mode [style*="background:#FFFFFF"], html.dark-mode [style*="background: #FFFFFF"],
+html.dark-mode [style*="background:white"], html.dark-mode [style*="background: white"],
+html.dark-mode [style*="background-color:white"], html.dark-mode [style*="background-color: white"] {
+  background-color: #18181B !important;
 }
 /* Borders */
 html.dark-mode .border-slate-200,
