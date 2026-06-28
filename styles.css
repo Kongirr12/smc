@@ -940,7 +940,15 @@ html.dark-mode .scard-preview,
 html.dark-mode .cal-cell,
 html.dark-mode .ev-item,
 html.dark-mode .ev-date,
-html.dark-mode .report-card {
+html.dark-mode .report-card,
+html.dark-mode .folder-card,
+html.dark-mode .file-card,
+html.dark-mode .file-preview,
+html.dark-mode .risk-card,
+html.dark-mode .man-section,
+html.dark-mode .page-card-header,
+html.dark-mode .man-header {
+  background: #18181B !important;
   background-color: #18181B !important;
   border-color: #27272A !important;
 }
