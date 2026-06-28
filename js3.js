@@ -1359,7 +1359,7 @@ const DOC_TYPES = {
   send    : { label:'หนังสือส่ง',     color:'#A62639', icon:'bx-send' },
   order   : { label:'คำสั่ง',         color:'#8B5CF6', icon:'bx-clipboard' },
   memo    : { label:'บันทึกข้อความ',  color:'#F59E0B', icon:'bx-note' },
-  announce: { label:'ประกาศ',         color:'#EF4444', icon:'bx-megaphone' },
+  announce: { label:'ประกาศ',         color:'#EF4444', icon:'bx-volume-full' },
   form    : { label:'แบบฟอร์มเอกสาร', color:'#06B6D4', icon:'bx-file' }
 };
 
