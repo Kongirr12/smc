@@ -48,6 +48,11 @@ function renderSchedule(container) {
   const config = (APP.dashboardData && APP.dashboardData.config) || {};
   SchedState.academic_year = config.academic_year || String(new Date().getFullYear() + 543);
   SchedState.semester = config.semester || '1';
+  
+  if (APP.role === 'teacher' && SchedState.tab === 'class') {
+    // If first load and it's a teacher, default to 'teacher' tab instead of 'class' if desired
+    SchedState.tab = 'teacher';
+  }
 
   container.innerHTML = `
     ${pageHeader('ตารางสอน', 'bxs-calendar-check', '')}
@@ -179,8 +184,7 @@ function loadSchedData() {
   document.getElementById('schedContent').innerHTML =
     '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลดข้อมูล...\x3c/div>';
 
-  // เปลี่ยน tab ไป teacher อัตโนมัติถ้าเป็นครู
-  if (APP.role === 'teacher') SchedState.tab = 'teacher';
+  // Not forcing tab to 'teacher' here so teachers can switch tabs
 
   // โหลดพร้อมกัน 4 ชุด
   let done = 0;
