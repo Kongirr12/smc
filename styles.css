@@ -947,10 +947,17 @@ html.dark-mode .file-preview,
 html.dark-mode .risk-card,
 html.dark-mode .man-section,
 html.dark-mode .page-card-header,
-html.dark-mode .man-header {
+html.dark-mode .man-header,
+html.dark-mode .feature-item,
+html.dark-mode .kbd,
+html.dark-mode .man-table tr:nth-child(even) td {
   background: #18181B !important;
   background-color: #18181B !important;
   border-color: #27272A !important;
+}
+html.dark-mode .feature-item,
+html.dark-mode .kbd {
+  color: #FAFAFA !important;
 }
 html.dark-mode .cal-cell.today {
   background-color: #2E161C !important;
