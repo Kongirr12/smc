@@ -892,11 +892,8 @@ html.dark-mode .tab-pill button.active {
   color: #FAFAFA !important;
 }
 /* Text overrides */
-html.dark-mode .text-slate-600,
-html.dark-mode .text-gray-600,
-html.dark-mode .text-slate-700,
-html.dark-mode .text-gray-900,
-html.dark-mode .text-gray-800,
+html.dark-mode [class*="text-slate-"],
+html.dark-mode [class*="text-gray-"],
 html.dark-mode h1, html.dark-mode h2, html.dark-mode h3, 
 html.dark-mode .page-title,
 html.dark-mode .stat-card .value,
@@ -908,6 +905,10 @@ html.dark-mode .dash-card h3 a,
 html.dark-mode .brand {
   color: #FAFAFA !important;
 }
+html.dark-mode .text-slate-400,
+html.dark-mode .text-slate-500,
+html.dark-mode .text-gray-400,
+html.dark-mode .text-gray-500,
 html.dark-mode .stat-card .label,
 html.dark-mode .welcome-row .sub,
 html.dark-mode .announce-item .meta,
