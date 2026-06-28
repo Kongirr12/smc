@@ -1352,7 +1352,7 @@ function printReceipt(transactionId) {
 /* ============================================================
  *  DOCUMENTS (สารบรรณ)
  * ============================================================ */
-const DocsState = { page:1, search:'', doc_type:'', status:'', data:null };
+const DocsState = { page:1, search:'', doc_type:'', status:'', data:null, teachers:null, users:null };
 
 const DOC_TYPES = {
   receive : { label:'หนังสือรับ',     color:'#10B981', icon:'bx-envelope-open' },
@@ -1448,6 +1448,16 @@ function loadDocuments() {
   const area = document.getElementById('docTable');
   if (area) area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
 
+  if (!DocsState.teachers) {
+    google.script.run.withSuccessHandler(res => {
+      if (res.status === 'success') {
+        DocsState.teachers = res.teachers || [];
+        DocsState.users = res.users || [];
+        if (DocsState.data) renderDocumentsTable(DocsState.data);
+      }
+    }).getUsersAndTeachers(APP.token);
+  }
+
   google.script.run
     .withSuccessHandler(res => {
       if (res.status !== 'success') return showToast('error', res.message);
@@ -1478,6 +1488,7 @@ function renderDocumentsTable(res) {
             <th class="px-3 py-2.5 text-left">ประเภท\x3c/th>
             <th class="px-3 py-2.5 text-left">เรื่อง\x3c/th>
             <th class="px-3 py-2.5 text-left">จาก/ถึง\x3c/th>
+            <th class="px-3 py-2.5 text-left">ผู้รับผิดชอบ\x3c/th>
             <th class="px-3 py-2.5 text-left">วันที่\x3c/th>
             <th class="px-3 py-2.5 text-center">สถานะ\x3c/th>
             <th class="px-3 py-2.5 text-center rounded-r-lg">การจัดการ\x3c/th>
@@ -1498,6 +1509,9 @@ function renderDocumentsTable(res) {
                 <td class="px-3 py-2.5">
                   <div class="text-xs text-slate-600">จาก: ${escapeHTML(d.from || '-')}\x3c/div>
                   <div class="text-xs text-slate-600">ถึง: ${escapeHTML(d.to || '-')}\x3c/div>
+                \x3c/td>
+                <td class="px-3 py-2.5 whitespace-nowrap">
+                  ${d.assigned_to ? `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[11px] font-semibold"><i class='bx bx-user'>\x3c/i> ${escapeHTML(DocsState.teachers ? (DocsState.teachers.find(t=>t.id===d.assigned_to)?.name || d.assigned_to) : 'กำลังโหลด...')}\x3c/span>` : '-'}
                 \x3c/td>
                 <td class="px-3 py-2.5 whitespace-nowrap">${formatThaiDateShort(d.date)}\x3c/td>
                 <td class="px-3 py-2.5 text-center">
@@ -1570,6 +1584,13 @@ function showDocumentForm(data) {
               <option value="draft"   ${(d.status||'draft')==='draft'?'selected':''}>ร่าง\x3c/option>
               <option value="active"  ${d.status==='active'?'selected':''}>ใช้งาน\x3c/option>
               <option value="archived"${d.status==='archived'?'selected':''}>เก็บถาวร\x3c/option>
+            \x3c/select>
+          \x3c/div>
+          <div class="col-span-8">
+            <label class="form-label">มอบหมายให้ (ครูผู้รับผิดชอบ)\x3c/label>
+            <select id="df_assigned_to" class="form-input">
+              <option value="">-- ไม่ระบุ --\x3c/option>
+              ${(DocsState.teachers||[]).map(t => `<option value="${t.id}" ${d.assigned_to===t.id?'selected':''}>${escapeHTML(t.name)}\x3c/option>`).join('')}
             \x3c/select>
           \x3c/div>
 
@@ -1645,6 +1666,7 @@ function showDocumentForm(data) {
         doc_number: document.getElementById('df_doc_number').value,
         date      : document.getElementById('df_date').value,
         status    : document.getElementById('df_status').value,
+        assigned_to: document.getElementById('df_assigned_to').value,
         subject   : subject,
         from      : document.getElementById('df_from').value,
         to        : document.getElementById('df_to').value,
