@@ -1490,7 +1490,9 @@ function switchAttMode(mode) {
 }
 
 function loadAttendanceRecord() {
-  const date = document.getElementById('attDate').value;
+  const dateEl = document.getElementById('attDate');
+  if (!dateEl) return; // User navigated away
+  const date = dateEl.value;
   AttendanceState.date = date;
   const area = document.getElementById('attRecordArea');
   const fail = err => { area.innerHTML = `<div class="empty-state"><i class='bx bx-error'>\x3c/i>${escapeHTML(err.message||err)}\x3c/div>`; };
