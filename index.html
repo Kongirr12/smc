@@ -141,58 +141,69 @@
 
   <!-- ================== Login Screen ================== -->
   <div id="loginScreen">
-    <div class="login-card">
-
-        <div class="login-logo" id="loginLogoBox">
-          <i class='bx bxs-graduation' id="loginLogoIcon"></i>
+    <div class="w-full max-w-4xl overflow-hidden rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col md:flex-row relative z-10 mx-4" style="animation: floatIn .7s cubic-bezier(.16,1,.3,1);">
+      
+      <!-- Left Hero -->
+      <div class="flex flex-1 flex-col items-center justify-center px-8 py-12 text-center text-white md:w-1/2 md:px-10 md:py-14" style="background: linear-gradient(135deg, #9f1239 0%, #0f172a 100%);">
+        <div class="flex w-full max-w-md flex-col items-center">
+          <div class="login-logo mb-6" id="loginLogoBox" style="background: transparent; box-shadow: none; border: none; width: 140px; height: 140px;">
+            <i class='bx bxs-graduation' id="loginLogoIcon" style="font-size: 100px; color: white;"></i>
+          </div>
+          <h1 class="text-2xl font-bold leading-snug tracking-tight" id="loginSchoolName">Smart School Office</h1>
+          <p class="mt-3 text-sm font-medium" style="color: #fecdd3;">ระบบบริหารจัดการโรงเรียน</p>
+          <p class="mt-6 rounded-full px-4 py-1.5 text-sm font-medium" style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25); color: #ffe4e6;">
+            ระบบส่วนกลาง
+          </p>
         </div>
-
-      <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold text-slate-800 mb-1">Smart School Office</h1>
-        <p class="text-sm text-slate-500">ระบบบริหารจัดการโรงเรียน</p>
       </div>
 
-      <div class="tab-pill">
-        <button id="tabAdmin" class="active" onclick="switchLoginTab('admin')">
-          <i class='bx bx-shield-quarter mr-1'></i> ผู้ดูแลระบบ
-        </button>
-        <button id="tabStaff" onclick="switchLoginTab('staff')">
-          <i class='bx bx-user mr-1'></i> Staff / ครู
-        </button>
-      </div>
-
-      <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
-
-        <div class="input-wrap">
-          <i class='bx bx-user'></i>
-          <input type="text" id="loginUsername" placeholder="ชื่อผู้ใช้งาน" autocomplete="username" required>
+      <!-- Right Form -->
+      <div class="flex flex-1 flex-col justify-center bg-white px-8 py-10 md:w-1/2 md:px-10 md:py-12">
+        <div class="mb-8">
+          <h2 class="text-2xl font-bold text-gray-900">เข้าสู่ระบบ</h2>
+          <p class="mt-1 text-sm text-gray-600">กรอกข้อมูลผู้ใช้งานของคุณ</p>
         </div>
 
-        <div class="input-wrap">
-          <i class='bx bx-lock-alt'></i>
-          <input type="password" id="loginPassword" placeholder="รหัสผ่าน" autocomplete="current-password" required>
-          <button type="button" class="toggle-pwd" onclick="togglePassword()">
-            <i class='bx bx-show' id="pwdIcon"></i>
+        <div class="tab-pill mb-6" style="margin-top: 0;">
+          <button id="tabAdmin" class="active" onclick="switchLoginTab('admin')">
+            <i class='bx bx-shield-quarter mr-1'></i> ผู้ดูแลระบบ
+          </button>
+          <button id="tabStaff" onclick="switchLoginTab('staff')">
+            <i class='bx bx-user mr-1'></i> Staff / ครู
           </button>
         </div>
 
-        <div class="flex items-center justify-between text-sm mb-5">
-          <label class="flex items-center gap-2 cursor-pointer text-slate-600">
-            <input type="checkbox" id="rememberMe" class="rounded border-slate-300">
-            จดจำการเข้าสู่ระบบ
-          </label>
-          <a href="#" onclick="event.preventDefault(); forgotPassword();" class="text-blue-600 hover:underline">ลืมรหัสผ่าน?</a>
-        </div>
+        <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
+          <div class="input-wrap mb-4">
+            <i class='bx bx-user'></i>
+            <input type="text" id="loginUsername" placeholder="ชื่อผู้ใช้งาน" autocomplete="username" required>
+          </div>
 
-        <button type="submit" class="btn-primary" id="loginBtn">
-          <i class='bx bx-log-in-circle'></i>
-          เข้าสู่ระบบ
-        </button>
+          <div class="input-wrap mb-4">
+            <i class='bx bx-lock-alt'></i>
+            <input type="password" id="loginPassword" placeholder="รหัสผ่าน" autocomplete="current-password" required>
+            <button type="button" class="toggle-pwd" onclick="togglePassword()">
+              <i class='bx bx-show' id="pwdIcon"></i>
+            </button>
+          </div>
 
-        <div class="text-center text-xs text-slate-400 mt-6">
-          เริ่มต้นใช้งาน: <span class="font-semibold text-slate-600">admin / Admin@2024</span>
-        </div>
-      </form>
+          <div class="flex items-center justify-between text-sm mb-6 mt-2">
+            <label class="flex items-center gap-2 cursor-pointer text-slate-600">
+              <input type="checkbox" id="rememberMe" class="rounded border-slate-300">
+              จดจำการเข้าสู่ระบบ
+            </label>
+            <a href="#" onclick="event.preventDefault(); forgotPassword();" class="text-blue-600 hover:underline">ลืมรหัสผ่าน?</a>
+          </div>
+
+          <button type="submit" class="btn w-full shadow-lg bg-rose-700 hover:bg-rose-600 text-white" id="loginBtn" style="font-size: 16px; padding: 12px; border-radius: 12px; border: none; font-weight: 600; display:flex; justify-content:center; align-items:center; transition: all 0.2s;">
+            <i class='bx bx-log-in-circle mr-2 text-xl'></i> เข้าสู่ระบบ
+          </button>
+
+          <div class="text-center text-xs text-slate-400 mt-6">
+            เริ่มต้นใช้งาน: <span class="font-semibold text-slate-600">admin / Admin@2024</span>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -340,15 +351,4 @@
   <!-- ================== Scripts ================== -->
   <script src="js1.js"></script>
   <script src="js2.js"></script>
-  <script src="js3.js"></script>
-  <script src="js4.js"></script>
-  <script src="js_schedule.js"></script>
-  <script src="js_classroom.js"></script>
-  <script src="js_behavior.js"></script>
-  <script src="js_student_card.js"></script>
-  <script src="js_qr_attendance.js"></script>
-  <script src="js_line_oa.js"></script>
-  <script src="js_manual.js"></script>
-
-</body>
-</html>
+  <scri
