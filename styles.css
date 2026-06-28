@@ -801,3 +801,112 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* ─── Dark Mode Overrides (Safe Mode) ──────────────────────── */
+html.dark-mode, 
+html.dark-mode body,
+html.dark-mode #loginScreen {
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+}
+html.dark-mode .page-card,
+html.dark-mode .stat-card,
+html.dark-mode .dash-card,
+html.dark-mode .login-card,
+html.dark-mode .bg-white,
+html.dark-mode .topbar,
+html.dark-mode .app-footer,
+html.dark-mode #notificationsDropdown,
+html.dark-mode .swal2-popup {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+/* Inputs & Forms */
+html.dark-mode input,
+html.dark-mode select,
+html.dark-mode textarea,
+html.dark-mode .form-input,
+html.dark-mode .input-wrap input {
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+html.dark-mode .input-wrap input:focus,
+html.dark-mode select:focus,
+html.dark-mode .form-input:focus {
+  border-color: var(--primary-light) !important;
+  background-color: #1E293B !important;
+}
+/* Tables */
+html.dark-mode table,
+html.dark-mode th,
+html.dark-mode td {
+  border-color: #334155 !important;
+}
+html.dark-mode th,
+html.dark-mode thead th {
+  background-color: #0F172A !important;
+  color: #CBD5E1 !important;
+}
+html.dark-mode tbody tr:hover td,
+html.dark-mode .hover\:bg-slate-50:hover {
+  background-color: #334155 !important;
+}
+html.dark-mode tbody tr {
+  border-bottom-color: #334155 !important;
+}
+html.dark-mode .empty-state,
+html.dark-mode .coming-soon {
+  background-color: transparent !important;
+  border-color: #334155 !important;
+  color: #94A3B8 !important;
+}
+/* Buttons */
+html.dark-mode .btn-light {
+  background-color: #334155 !important;
+  color: #F8FAFC !important;
+  border-color: #475569 !important;
+}
+html.dark-mode .btn-light:hover {
+  background-color: #475569 !important;
+}
+html.dark-mode .tab-pill {
+  background-color: #0F172A !important;
+}
+html.dark-mode .tab-pill button:not(.active) {
+  color: #94A3B8 !important;
+}
+html.dark-mode .tab-pill button.active {
+  background-color: #1E293B !important;
+  color: #F2D5DA !important;
+}
+/* Text overrides */
+html.dark-mode .text-slate-600,
+html.dark-mode .text-gray-600,
+html.dark-mode .text-slate-700,
+html.dark-mode .text-gray-900,
+html.dark-mode .text-gray-800,
+html.dark-mode h1, html.dark-mode h2, html.dark-mode h3, 
+html.dark-mode .page-title {
+  color: #F8FAFC !important;
+}
+/* Borders */
+html.dark-mode .border-slate-200,
+html.dark-mode .border-slate-100,
+html.dark-mode .ring-slate-200 {
+  border-color: #334155 !important;
+  --tw-ring-color: #334155 !important;
+}
+/* Shadows */
+html.dark-mode .shadow-sm,
+html.dark-mode .shadow-md,
+html.dark-mode .shadow-lg,
+html.dark-mode .shadow-2xl {
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+}
+/* Sched */
+html.dark-mode .sched-cell.empty { background-color: #0F172A !important; }
+html.dark-mode .sched-cell.filled { border-color: #334155 !important; }
+html.dark-mode .entry-subject { color: #F8FAFC !important; }
+html.dark-mode .bg-slate-50 { background-color: #0F172A !important; }
