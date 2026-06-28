@@ -215,9 +215,26 @@ function enterApp() {
   document.getElementById('adminDivider').style.display = isAdmin ? '' : 'none';
   document.getElementById('adminLabel').style.display   = isAdmin ? '' : 'none';
 
-  // ซ่อนเมนู staff-only ถ้าเป็นครู
+  // ซ่อนเมนู staff-only ถ้าเป็นครู (แต่เปิดสิทธิ์เพิ่มเติมตามฝ่ายงาน)
   const isStaffOrAdmin = APP.role === 'admin' || APP.role === 'staff';
-  document.querySelectorAll('.staff-only').forEach(el => el.style.display = isStaffOrAdmin ? '' : 'none');
+  const dept = (APP.user.department || '').toLowerCase();
+  
+  document.querySelectorAll('.staff-only').forEach(el => {
+    let show = isStaffOrAdmin;
+    if (APP.role === 'teacher') {
+      const page = el.getAttribute('data-page');
+      if (page === 'finance' || page === 'budget') {
+        if (dept.includes('การเงิน') || dept.includes('งบประมาณ')) show = true;
+      } else if (page === 'registration') {
+        if (dept.includes('ทะเบียน') || dept.includes('วัดผล') || dept.includes('วิชาการ')) show = true;
+      } else if (page === 'personnel') {
+        if (dept.includes('บุคคล') || dept.includes('บุคลากร')) show = true;
+      } else if (page === 'documents') {
+        if (dept.includes('ธุรการ') || dept.includes('สารบรรณ') || dept.includes('อำนวยการ') || dept.includes('บริหาร')) show = true;
+      }
+    }
+    el.style.display = show ? '' : 'none';
+  });
 
   navigate('dashboard');
   refreshBadges();
