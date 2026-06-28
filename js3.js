@@ -1061,7 +1061,9 @@ function loadFinanceSummary() {
   google.script.run
     .withSuccessHandler(res => {
       if (res.status !== 'success') return;
-      document.getElementById('financeStats').innerHTML = `
+      const fs = document.getElementById('financeStats');
+      if (fs) {
+        fs.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="rpt-card-mini" style="background:#DCFCE7;color:#15803D;">
             <div><i class='bx bx-trending-up' style="font-size:24px;">\x3c/i>\x3c/div>
@@ -1094,6 +1096,7 @@ function loadFinanceSummary() {
           .rpt-card-mini .val { font-size:20px; font-weight:700; line-height:1.1; margin-top:2px; }
         \x3c/style>
       `;
+      }
     })
     .getFinanceSummary(null, null, APP.token);
 }
