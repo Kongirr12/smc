@@ -235,6 +235,7 @@ function navigate(page) {
     academic: 'งานวิชาการ',
     registration: 'งานทะเบียน',
     finance: 'งานการเงิน',
+    budget: 'ระบบงบประมาณ',
     documents: 'สารบรรณโรงเรียน',
     approvals: 'ระบบอนุมัติ',
     calendar: 'ปฏิทินและข่าวสาร',
@@ -269,6 +270,7 @@ function navigate(page) {
     case 'academic':  if (typeof renderAcademic  === 'function') return renderAcademic(content);  break;
     case 'registration': if (typeof renderRegistration === 'function') return renderRegistration(content); break;
     case 'finance':   if (typeof renderFinance   === 'function') return renderFinance(content);   break;
+    case 'budget':    return renderBudget(content);
     case 'documents': if (typeof renderDocuments === 'function') return renderDocuments(content); break;
     case 'approvals': if (typeof renderApprovals === 'function') return renderApprovals(content); break;
     case 'calendar':  if (typeof renderCalendar  === 'function') return renderCalendar(content);  break;
@@ -749,4 +751,14 @@ function formatThaiDateShort(d) {
   const m = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
              'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   return d.getDate() + ' ' + m[d.getMonth()] + ' ' + ((d.getFullYear() + 543) % 100);
+}
+
+function renderBudget(container) {
+  container.innerHTML = `
+    <div style="width: 100%; height: calc(100vh - 60px); display: flex; flex-direction: column;">
+      <iframe src="https://kongirr12.github.io/budgetsystem/" 
+              style="flex: 1; width: 100%; border: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" 
+              title="ระบบบริหารงานงบประมาณ"></iframe>
+    </div>
+  `;
 }
