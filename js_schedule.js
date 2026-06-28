@@ -86,7 +86,7 @@ function renderSchedule(container) {
       <div class="page-card-body">
         <div style="display:flex; gap:2px; flex-wrap:wrap; margin-bottom:18px; background:#F1F5F9; border-radius:12px; padding:4px;">
           ${[
-            { id:'class',   icon:'bxs-building',         label:'รายห้องเรียน',   teacherHide: true },
+            { id:'class',   icon:'bxs-building',         label:'รายห้องเรียน' },
             { id:'teacher', icon:'bxs-user-detail',      label:'ตารางของฉัน' },
             { id:'all',     icon:'bxs-grid-alt',         label:'ภาพรวมทุกห้อง' },
             { id:'rooms',   icon:'bxs-door-open',        label:'ห้องสอน',            teacherHide: true },
@@ -262,6 +262,7 @@ function renderClassView() {
       \x3c/div>
       <div class="flex-1">\x3c/div>
       ${SchedState.classroom ? `
+        ${APP.role === 'admin' ? `
         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; background:#F1F5F9; padding:6px 12px; border-radius:8px; margin-right:8px; border:1px solid #E2E8F0;">
           <input type="checkbox" id="toggleDragDrop" ${SchedState.dragDropMode ? 'checked' : ''} onchange="toggleDragDropMode(this.checked)" style="accent-color:#A62639; width:16px; height:16px; cursor:pointer;">
           <span style="font-size:13px; font-weight:600; color:#475569;">โหมด Drag & Drop</span>
@@ -269,15 +270,18 @@ function renderClassView() {
         <button id="btnSaveSchedule" class="btn btn-primary" onclick="saveClassScheduleBatch()" style="${SchedState.isDirty && SchedState.dragDropMode ? '' : 'display:none;'}">
           <i class='bx bx-save'>\x3c/i> บันทึกตาราง
         \x3c/button>
+        ` : ''}
         <button class="btn btn-light" onclick="printClassSchedule()">
           <i class='bx bx-printer'>\x3c/i> พิมพ์ตารางสอน
         \x3c/button>
         <button class="btn btn-light" onclick="exportClassScheduleXLS()">
           <i class='bx bx-download'>\x3c/i> Excel
         \x3c/button>
+        ${APP.role === 'admin' ? `
         <button class="btn btn-light" style="color:#EF4444;" onclick="clearClassScheduleConfirm()">
           <i class='bx bx-trash'>\x3c/i> ล้างตาราง
         \x3c/button>
+        ` : ''}
       ` : ''}
     \x3c/div>
 
@@ -621,20 +625,20 @@ function buildScheduleGrid(view) {
 
       const e = grid[d.no][p.no];
       const isEmpty = !e;
-      const canEdit = true;
-      const isDragMode = view === 'class' && SchedState.dragDropMode;
+      const canEdit = APP.role === 'admin';
+      const isDragMode = view === 'class' && SchedState.dragDropMode && canEdit;
       
       const dropHandlers = isDragMode 
         ? `ondragover="onDragOverGrid(event)" ondragleave="onDragLeaveGrid(event)" ondrop="onDropGrid(event, ${d.no}, ${p.no})"` 
         : '';
       
-      const clickHandlerEmpty = !isDragMode ? `onclick="openEntryForm(${d.no},${p.no}, '${view}')"` : '';
-      const clickHandlerFilled = !isDragMode ? `onclick="openEntryForm(${d.no},${p.no}, '${view}')"` : '';
+      const clickHandlerEmpty = (!isDragMode && canEdit) ? `onclick="openEntryForm(${d.no},${p.no}, '${view}')"` : '';
+      const clickHandlerFilled = (!isDragMode && canEdit) ? `onclick="openEntryForm(${d.no},${p.no}, '${view}')"` : '';
         
       if (isEmpty) {
         return `
           <td class="sched-cell empty" ${clickHandlerEmpty} ${dropHandlers}>
-            ${!isDragMode ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
+            ${(!isDragMode && canEdit) ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
           \x3c/td>`;
       }
       
