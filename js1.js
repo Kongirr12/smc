@@ -233,6 +233,27 @@ function enterApp() {
 }
 
 /* ============================================================
+ *  Dark Mode Toggle
+ * ============================================================ */
+function toggleDarkMode() {
+  const isDark = document.documentElement.classList.toggle('dark-mode');
+  localStorage.setItem('smart_school_dark_mode', isDark);
+  
+  const icon = document.querySelector('#btnDarkMode i');
+  if (icon) {
+    icon.className = isDark ? 'bx bx-sun' : 'bx bx-moon';
+  }
+}
+
+// Initial icon state
+document.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('smart_school_dark_mode') === 'true') {
+    const icon = document.querySelector('#btnDarkMode i');
+    if (icon) icon.className = 'bx bx-sun';
+  }
+});
+
+/* ============================================================
  *  Access Control Helper
  * ============================================================ */
 function canEditModule(moduleName) {
