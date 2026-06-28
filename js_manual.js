@@ -8,7 +8,10 @@ function renderManual(container) {
     <div class="welcome-row">
       <div>
         <h1><i class='bx bxs-book-reader' style="color:#A62639;">\x3c/i> คู่มือการใช้งาน\x3c/h1>
-        <div class="sub"><i class='bx bx-info-circle'>\x3c/i> Smart School Office v1.2 — อ่านเพื่อทำความเข้าใจระบบ\x3c/div>
+        <div class="sub" style="line-height:1.6;">
+          <i class='bx bx-info-circle'>\x3c/i> Smart School Office - โรงเรียนมหาชัยพิทยาคาร - อ่านเพื่อทำความเข้าใจระบบ<br>
+          <span style="font-size:12px; color:#64748b;">พัฒนาระบบโดย นายก้องนที อุ่นเจริญ</span>
+        \x3c/div>
       \x3c/div>
     \x3c/div>
 
@@ -192,13 +195,13 @@ function manualContent() {
           \x3c/tr>
           <tr>
             <td><span class="man-badge" style="background:#DCFCE7;color:#15803D;">เจ้าหน้าที่ (Staff)\x3c/span>\x3c/td>
-            <td>อ่าน + เขียน\x3c/td>
+            <td>อ่านทุกเมนู + เขียนได้เฉพาะระบบตามฝ่ายงานของตนเอง\x3c/td>
             <td>ทุกเมนูยกเว้น ตั้งค่า + จัดการผู้ใช้\x3c/td>
           \x3c/tr>
           <tr>
             <td><span class="man-badge" style="background:#FEF3C7;color:#B45309;">ครู (Teacher)\x3c/span>\x3c/td>
-            <td>อ่าน + เขียนของตัวเอง\x3c/td>
-            <td>นักเรียน + การเข้าเรียน + วิชาการ + คะแนน\x3c/td>
+            <td>อ่านทุกเมนู + แก้ไขได้เฉพาะตามฝ่ายงาน / วิชาของตนเอง\x3c/td>
+            <td>ทุกเมนู (บางเมนูแก้ไขไม่ได้)\x3c/td>
           \x3c/tr>
         \x3c/tbody>
       \x3c/table>
