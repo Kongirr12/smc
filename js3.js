@@ -1605,13 +1605,13 @@ function showDocumentForm(data) {
             \x3c/select>
           \x3c/div>
           <div class="col-span-12">
-            <label class="form-label">มอบหมายให้ (ครูผู้รับผิดชอบ)\x3c/label>
+            <label class="form-label">มอบหมายให้ (ผู้รับผิดชอบ)\x3c/label>
             <div class="form-input" style="max-height: 150px; overflow-y: auto; padding: 10px;">
-              ${(DocsState.teachers||[]).map(t => {
+              ${(DocsState.users||[]).map(t => {
                 const isChecked = (d.assigned_to || []).includes(t.id);
                 return `<label style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer;">
                   <input type="checkbox" name="df_assigned_to" value="${t.id}" ${isChecked ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px;">
-                  <span style="font-size:13px;">${escapeHTML(t.name)}\x3c/span>
+                  <span style="font-size:13px;">${escapeHTML(t.name)} (${({admin:'แอดมิน',staff:'เจ้าหน้าที่',teacher:'ครู'})[t.role]||t.role})\x3c/span>
                 \x3c/label>`;
               }).join('')}
             \x3c/div>
