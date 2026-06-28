@@ -100,8 +100,10 @@ function loadReportsOverview() {
 
 function renderReportsOverview(d) {
   // counts
-  document.getElementById('repCounts').innerHTML = `
-    <div class="stat-card s1">
+  const c = document.getElementById('repCounts');
+  if (c) {
+    c.innerHTML = `
+      <div class="stat-card s1">
       <div class="icon-wrap"><i class='bx bxs-user-detail'>\x3c/i>\x3c/div>
       <div class="label">นักเรียน\x3c/div>
       <div class="value">${formatNumber(d.counts.students_active)}\x3c/div>
@@ -122,6 +124,7 @@ function renderReportsOverview(d) {
       <div class="value">${formatNumber(d.counts.approvals_pending + d.counts.registrations_pending)}\x3c/div>
     \x3c/div>
   `;
+  }
 
   // Chart: Attendance 30 days
   const ctxA = document.getElementById('repChartAttendance');
