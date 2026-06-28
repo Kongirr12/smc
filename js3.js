@@ -1510,8 +1510,12 @@ function renderDocumentsTable(res) {
                   <div class="text-xs text-slate-600">จาก: ${escapeHTML(d.from || '-')}\x3c/div>
                   <div class="text-xs text-slate-600">ถึง: ${escapeHTML(d.to || '-')}\x3c/div>
                 \x3c/td>
-                <td class="px-3 py-2.5 whitespace-nowrap">
-                  ${d.assigned_to ? `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[11px] font-semibold"><i class='bx bx-user'>\x3c/i> ${escapeHTML(DocsState.teachers ? (DocsState.teachers.find(t=>t.id===d.assigned_to)?.name || d.assigned_to) : 'กำลังโหลด...')}\x3c/span>` : '-'}
+                <td class="px-3 py-2.5">
+                  ${(d.assigned_to && (Array.isArray(d.assigned_to) ? d.assigned_to : [d.assigned_to]).filter(Boolean).length > 0)
+                    ? (Array.isArray(d.assigned_to) ? d.assigned_to : [d.assigned_to]).filter(Boolean).map(tid => 
+                        `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[11px] font-semibold inline-block mr-1 mb-1"><i class='bx bx-user'>\x3c/i> ${escapeHTML(DocsState.teachers ? (DocsState.teachers.find(t=>t.id===tid)?.name || tid) : 'กำลังโหลด...')}\x3c/span>`
+                      ).join('')
+                    : '-'}
                 \x3c/td>
                 <td class="px-3 py-2.5 whitespace-nowrap">${formatThaiDateShort(d.date)}\x3c/td>
                 <td class="px-3 py-2.5 text-center">
@@ -1586,12 +1590,17 @@ function showDocumentForm(data) {
               <option value="archived"${d.status==='archived'?'selected':''}>เก็บถาวร\x3c/option>
             \x3c/select>
           \x3c/div>
-          <div class="col-span-8">
+          <div class="col-span-12">
             <label class="form-label">มอบหมายให้ (ครูผู้รับผิดชอบ)\x3c/label>
-            <select id="df_assigned_to" class="form-input">
-              <option value="">-- ไม่ระบุ --\x3c/option>
-              ${(DocsState.teachers||[]).map(t => `<option value="${t.id}" ${d.assigned_to===t.id?'selected':''}>${escapeHTML(t.name)}\x3c/option>`).join('')}
-            \x3c/select>
+            <div class="form-input" style="max-height: 150px; overflow-y: auto; padding: 10px;">
+              ${(DocsState.teachers||[]).map(t => {
+                const isChecked = (d.assigned_to || []).includes(t.id);
+                return `<label style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer;">
+                  <input type="checkbox" name="df_assigned_to" value="${t.id}" ${isChecked ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px;">
+                  <span style="font-size:13px;">${escapeHTML(t.name)}\x3c/span>
+                \x3c/label>`;
+              }).join('')}
+            \x3c/div>
           \x3c/div>
 
           <div class="col-span-12">
@@ -1666,7 +1675,7 @@ function showDocumentForm(data) {
         doc_number: document.getElementById('df_doc_number').value,
         date      : document.getElementById('df_date').value,
         status    : document.getElementById('df_status').value,
-        assigned_to: document.getElementById('df_assigned_to').value,
+        assigned_to: Array.from(document.querySelectorAll('input[name="df_assigned_to"]:checked')).map(cb => cb.value),
         subject   : subject,
         from      : document.getElementById('df_from').value,
         to        : document.getElementById('df_to').value,
