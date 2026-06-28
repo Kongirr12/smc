@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart School Office</title>
+  <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" id="favicon">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -221,6 +222,8 @@
       const cachedName = localStorage.getItem('cached_school_name');
       if (cachedLogo) {
         document.getElementById('loginLogoImage').src = cachedLogo;
+        const favicon = document.getElementById('favicon');
+        if(favicon) favicon.href = cachedLogo;
       }
       if (cachedName) {
         document.getElementById('loginSchoolName').textContent = cachedName;
