@@ -612,8 +612,8 @@ async function uploadFileToGAS(file, category) {
     if (file.size > 8 * 1024 * 1024) return reject(new Error('ไฟล์ใหญ่เกิน 8MB'));
 
     if (file.type.startsWith('image/')) {
-      compressImage(file, 800, 0.7, (base64) => {
-        sendToGAS(base64, file.name, 'image/jpeg', category || 'general', resolve, reject);
+      compressImage(file, 800, 0.7, (base64, mimeType) => {
+        sendToGAS(base64, file.name, mimeType || 'image/jpeg', category || 'general', resolve, reject);
       });
     } else {
       const reader = new FileReader();
@@ -637,12 +637,16 @@ function compressImage(file, maxWidth, quality, callback) {
       canvas.width  = Math.round(img.width  * ratio);
       canvas.height = Math.round(img.height * ratio);
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const isPng = (file.type === 'image/png');
+      if (!isPng) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
+      const mimeType = isPng ? 'image/png' : 'image/jpeg';
+      callback(canvas.toDataURL(mimeType, quality).split(',')[1], mimeType);
     };
-    img.onerror = () => callback(e.target.result.split(',')[1]);
+    img.onerror = () => callback(e.target.result.split(',')[1], file.type);
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
