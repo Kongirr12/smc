@@ -43,10 +43,8 @@ function showLineOAPanel() {
 }
 
 function _renderLineOAPanel(d) {
-  // ดึงรายชื่อห้องจาก students state ที่โหลดไว้ (หรือ fallback)
-  const classrooms = (window.StudentsState && StudentsState.data && StudentsState.data.distinct)
-    ? StudentsState.data.distinct.classrooms || []
-    : [];
+  // ดึงรายชื่อห้องที่ส่งมาจาก server
+  const classrooms = d.classrooms || [];
 
   const classGroupsRows = classrooms.map(cls => {
     const gid = (d.line_classroom_groups || {})[cls] || '';
