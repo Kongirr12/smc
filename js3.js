@@ -1012,14 +1012,14 @@ const FinanceState = { page:1, search:'', type:'', start:'', end:'', data:null }
 
 function renderFinance(container) {
   container.innerHTML = `
-    ${pageHeader('งานการเงิน', 'bxs-wallet', `
+    ${pageHeader('งานการเงิน', 'bxs-wallet', (typeof canEditModule === 'function' ? canEditModule('finance') : true) ? `
       <button class="btn btn-light" onclick="openTransactionForm('expense')">
         <i class='bx bx-minus-circle' style="color:#EF4444;">\x3c/i> รายจ่าย
       \x3c/button>
       <button class="btn btn-blue" onclick="openTransactionForm('income')">
         <i class='bx bx-plus-circle'>\x3c/i> รายรับ
       \x3c/button>
-    `)}
+    ` : '')}
 
     <div class="page-card mb-3">
       <div class="page-card-body">
@@ -1045,12 +1045,13 @@ function renderFinance(container) {
           <input type="date" id="finStart" onchange="onFinanceFilter()" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
           <input type="date" id="finEnd"   onchange="onFinanceFilter()" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
         \x3c/div>
+        </div>
 
         <div id="finTable">
-          <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
-        \x3c/div>
-      \x3c/div>
-    \x3c/div>
+          <div class="empty-state"><i class='bx bx-loader-alt bx-spin'></i>กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
   `;
 
   loadFinanceSummary();
@@ -1066,27 +1067,27 @@ function loadFinanceSummary() {
         fs.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="rpt-card-mini" style="background:#DCFCE7;color:#15803D;">
-            <div><i class='bx bx-trending-up' style="font-size:24px;">\x3c/i>\x3c/div>
+            <div><i class='bx bx-trending-up' style="font-size:24px;"></i></div>
             <div>
-              <div class="lbl">รายรับรวม\x3c/div>
-              <div class="val">${formatMoney(res.income)}\x3c/div>
-            \x3c/div>
-          \x3c/div>
+              <div class="lbl">รายรับรวม</div>
+              <div class="val">${formatMoney(res.income)}</div>
+            </div>
+          </div>
           <div class="rpt-card-mini" style="background:#FEE2E2;color:#B91C1C;">
-            <div><i class='bx bx-trending-down' style="font-size:24px;">\x3c/i>\x3c/div>
+            <div><i class='bx bx-trending-down' style="font-size:24px;"></i></div>
             <div>
-              <div class="lbl">รายจ่ายรวม\x3c/div>
-              <div class="val">${formatMoney(res.expense)}\x3c/div>
-            \x3c/div>
-          \x3c/div>
+              <div class="lbl">รายจ่ายรวม</div>
+              <div class="val">${formatMoney(res.expense)}</div>
+            </div>
+          </div>
           <div class="rpt-card-mini" style="background:#F2D5DA;color:#800020;">
-            <div><i class='bx bx-wallet' style="font-size:24px;">\x3c/i>\x3c/div>
+            <div><i class='bx bx-wallet' style="font-size:24px;"></i></div>
             <div>
-              <div class="lbl">คงเหลือสุทธิ\x3c/div>
-              <div class="val">${formatMoney(res.balance)}\x3c/div>
-            \x3c/div>
-          \x3c/div>
-        \x3c/div>
+              <div class="lbl">คงเหลือสุทธิ</div>
+              <div class="val">${formatMoney(res.balance)}</div>
+            </div>
+          </div>
+        </div>
         <style>
           .rpt-card-mini {
             padding:14px 18px; border-radius:14px;
@@ -1094,7 +1095,7 @@ function loadFinanceSummary() {
           }
           .rpt-card-mini .lbl { font-size:12px; font-weight:600; opacity:.85; }
           .rpt-card-mini .val { font-size:20px; font-weight:700; line-height:1.1; margin-top:2px; }
-        \x3c/style>
+        </style>
       `;
       }
     })
@@ -1140,6 +1141,7 @@ function renderFinanceTable(res) {
     return;
   }
   const methodLabel = { cash:'เงินสด', transfer:'โอน', cheque:'เช็ค' };
+  const canEdit = typeof canEditModule === 'function' ? canEditModule('finance') : true;
   area.innerHTML = `
     <div style="overflow-x:auto;">
       <table class="min-w-full text-sm">
@@ -1171,12 +1173,14 @@ function renderFinanceTable(res) {
                     <button class="btn btn-light btn-icon" onclick="printReceipt('${t.id}')" title="พิมพ์ใบเสร็จ" style="color:#10B981;">
                       <i class='bx bx-printer'>\x3c/i>
                     \x3c/button>` : ''}
+                  ${canEdit ? `
                   <button class="btn btn-light btn-icon" onclick="openTransactionForm('${t.type}','${t.id}')" title="แก้ไข" style="color:#A62639;">
                     <i class='bx bx-edit'>\x3c/i>
                   \x3c/button>
                   <button class="btn btn-light btn-icon" onclick="deleteTransactionConfirm('${t.id}')" title="ลบ" style="color:#EF4444;">
                     <i class='bx bx-trash'>\x3c/i>
                   \x3c/button>
+                  ` : ''}
                 \x3c/div>
               \x3c/td>
             \x3c/tr>
@@ -1370,11 +1374,11 @@ const DOC_TYPES = {
 
 function renderDocuments(container) {
   container.innerHTML = `
-    ${pageHeader('สารบรรณโรงเรียน', 'bxs-envelope', `
+    ${pageHeader('สารบรรณโรงเรียน', 'bxs-envelope', (typeof canEditModule === 'function' ? canEditModule('documents') : true) ? `
       <button class="btn btn-blue" onclick="openDocumentForm()">
         <i class='bx bx-plus'>\x3c/i> เพิ่มเอกสาร
       \x3c/button>
-    `)}
+    ` : '')}
 
     <div class="page-card mb-3">
       <div class="page-card-body">
@@ -1531,12 +1535,14 @@ function renderDocumentsTable(res) {
                     <button class="btn btn-light btn-icon" onclick="viewDocument('${d.id}')" title="ดู">
                       <i class='bx bx-show'>\x3c/i>
                     \x3c/button>
+                    ${(typeof canEditModule === 'function' ? canEditModule('documents') : true) ? `
                     <button class="btn btn-light btn-icon" onclick="openDocumentForm('${d.id}')" title="แก้ไข" style="color:#A62639;">
                       <i class='bx bx-edit'>\x3c/i>
                     \x3c/button>
                     <button class="btn btn-light btn-icon" onclick="deleteDocumentConfirm('${d.id}')" title="ลบ" style="color:#EF4444;">
                       <i class='bx bx-trash'>\x3c/i>
                     \x3c/button>
+                    ` : ''}
                   \x3c/div>
                 \x3c/td>
               \x3c/tr>`;
@@ -2077,11 +2083,11 @@ const RegState = { page:1, search:'', status:'', data:null };
 
 function renderRegistration(container) {
   container.innerHTML = `
-    ${pageHeader('งานทะเบียน', 'bxs-id-card', `
+    ${pageHeader('งานทะเบียน', 'bxs-id-card', (typeof canEditModule === 'function' ? canEditModule('registration') : true) ? `
       <button class="btn btn-blue" onclick="openRegistrationForm()">
         <i class='bx bx-plus'>\x3c/i> รับสมัครใหม่
       \x3c/button>
-    `)}
+    ` : '')}
 
     <div class="page-card">
       <div class="page-card-body">
