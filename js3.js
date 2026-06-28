@@ -504,7 +504,8 @@ function showSubjectForm(data) {
               <option value="">เลือก\x3c/option>
               ${AcademicState.teachers.map(t => {
                 const isSelected = (s.teacher_id === t.id) || (!s.id && APP.role === 'teacher' && APP.user.username.toLowerCase() === (t.id||'').toLowerCase());
-                return \`<option value="\${t.id}" \${isSelected ? 'selected' : ''}>\${escapeHTML(t.name)} \${t.department?\`(\${escapeHTML(t.department)})\`:''}\x3c/option>\`;
+                var deptStr = t.department ? '(' + escapeHTML(t.department) + ')' : '';
+                return '<option value="' + t.id + '" ' + (isSelected ? 'selected' : '') + '>' + escapeHTML(t.name) + ' ' + deptStr + '\x3c/option>';
               }).join('')}
             \x3c/select>
           \x3c/div>
