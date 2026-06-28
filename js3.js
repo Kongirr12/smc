@@ -94,12 +94,13 @@ function renderAcademicSubjects() {
       <div class="text-base font-semibold text-slate-700">
         <i class='bx bx-book-open mr-1' style="color:#A62639;">\x3c/i> รายวิชาที่เปิดสอน
       \x3c/div>
-      ${APP.role !== 'teacher' ? `
       <div class="flex gap-2">
+        ${APP.role !== 'teacher' ? `
         <button id="btnDeleteSelectedSubjects" class="btn btn-light" style="color:#EF4444; display:none;" onclick="deleteSelectedSubjects()"><i class='bx bx-trash'><\/i> ลบที่เลือก<\/button>
         <button class="btn btn-light" onclick="showImportSubjectsCSV()"><i class='bx bx-import'><\/i> นำเข้า CSV<\/button>
+        ` : ''}
         <button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'><\/i> เพิ่มรายวิชา<\/button>
-      \x3c/div>` : ''}
+      \x3c/div>
     \x3c/div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -206,10 +207,10 @@ function renderSubjectsTable(res) {
               <td class="px-3 py-2.5">${escapeHTML(s.teacher_name || '-')}\x3c/td>
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
-                  ${APP.role !== 'teacher' ? `
+                  ${(APP.role !== 'teacher' || APP.user.username.toLowerCase() === (s.teacher_id||'').toLowerCase()) ? `
                   <button class="btn btn-light btn-icon" onclick="openSubjectForm('${s.id}')" title="แก้ไข" style="color:#A62639;"><i class='bx bx-edit'><\/i><\/button>
                   <button class="btn btn-light btn-icon" onclick="deleteSubjectConfirm('${s.id}')" title="ลบ" style="color:#EF4444;"><i class='bx bx-trash'><\/i><\/button>
-                  ` : '<span class="text-xs text-slate-400">วิชาของคุณ<\/span>'}
+                  ` : '<span class="text-xs text-slate-400">วิชาของผู้อื่น<\/span>'}
                 \x3c/div>
               \x3c/td>
             \x3c/tr>
@@ -499,11 +500,12 @@ function showSubjectForm(data) {
 
           <div class="col-span-12">
             <label class="form-label">ครูผู้สอน\x3c/label>
-            <select id="sf_teacher_id" class="form-input">
+            <select id="sf_teacher_id" class="form-input" ${APP.role === 'teacher' ? 'disabled' : ''}>
               <option value="">เลือก\x3c/option>
-              ${AcademicState.teachers.map(t =>
-                `<option value="${t.id}" ${s.teacher_id===t.id?'selected':''}>${escapeHTML(t.name)} ${t.department?`(${escapeHTML(t.department)})`:''}\x3c/option>`
-              ).join('')}
+              ${AcademicState.teachers.map(t => {
+                const isSelected = (s.teacher_id === t.id) || (!s.id && APP.role === 'teacher' && APP.user.username.toLowerCase() === (t.id||'').toLowerCase());
+                return \`<option value="\${t.id}" \${isSelected ? 'selected' : ''}>\${escapeHTML(t.name)} \${t.department?\`(\${escapeHTML(t.department)})\`:''}\x3c/option>\`;
+              }).join('')}
             \x3c/select>
           \x3c/div>
         \x3c/div>
