@@ -11,6 +11,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    // Load theme immediately to prevent flash
+    if(localStorage.getItem('smart_school_dark_mode') === 'true') {
+      document.documentElement.classList.add('dark-mode');
+    }
+  </script>
 
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -347,6 +354,9 @@
         </button>
         <div class="page-title" id="pageTitle">หน้าหลัก</div>
         <div class="actions">
+          <button class="icon-btn" onclick="toggleDarkMode()" title="โหมดมืด" id="btnDarkMode">
+            <i class='bx bx-moon'></i>
+          </button>
           <button class="icon-btn" onclick="openProfile()" title="โปรไฟล์">
             <i class='bx bx-user-circle'></i>
           </button>
