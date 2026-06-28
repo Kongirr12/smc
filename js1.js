@@ -424,15 +424,21 @@ function loadDashboardData(silent) {
 
 function renderDashboardData(d) {
   // ชื่อโรงเรียน
-  const schoolName = d.config.school_name || 'โรงเรียนมหาชัยพิทยาคาร';
-  document.getElementById('schoolNameDash').textContent = schoolName;
-  document.getElementById('brandSchoolName').textContent = schoolName;
+  const schoolName = (d.config && d.config.school_name) ? d.config.school_name : 'โรงเรียนมหาชัยพิทยาคาร';
+  
+  const setTxt = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
 
+  setTxt('schoolNameDash', schoolName);
+  setTxt('brandSchoolName', schoolName);
+  
   // Stats
-  document.getElementById('statStudents').textContent   = formatNumber(d.stats.students);
-  document.getElementById('statPersonnel').textContent  = formatNumber(d.stats.personnel);
-  document.getElementById('statAttendance').textContent = d.stats.attendance_pct.toFixed(1) + '%';
-  document.getElementById('statBalance').textContent    = formatMoney(d.stats.balance);
+  setTxt('statStudents', formatNumber(d.stats.students));
+  setTxt('statPersonnel', formatNumber(d.stats.personnel));
+  setTxt('statAttendance', (d.stats.attendance_pct ? d.stats.attendance_pct.toFixed(1) : '0') + '%');
+  setTxt('statBalance', formatMoney(d.stats.balance));
 
   // Chart: เข้าเรียน 7 วัน
   const ctxA = document.getElementById('chartAttendance');
@@ -484,7 +490,7 @@ function renderDashboardData(d) {
       }
     });
   }
-  document.getElementById('netBalance').textContent = formatMoney(d.stats.balance);
+  document.getElementById('netBalance')?.textContent = formatMoney(d.stats.balance);
 
   // ประกาศ
   const list = document.getElementById('announceList');
