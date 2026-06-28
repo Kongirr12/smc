@@ -1293,7 +1293,7 @@ function renderSettingsForm(c) {
         <div class="page-card-header"><h2><i class='bx bxs-school' style="color:#A62639;">\x3c/i> ข้อมูลโรงเรียน\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div class="flex items-center gap-4 mb-4 pb-4 border-b border-slate-200">
-            <div id="logoPreview" style="width:80px; height:80px; border-radius:14px; background:#F1F5F9; background-size:cover; background-position:center; ${c.school_logo ? `background-image:url('${escapeHTML(c.school_logo)}');` : ''}">
+            <div id="logoPreview" style="width:80px; height:80px; border-radius:14px; background-position:center; background-repeat:no-repeat; ${c.school_logo ? `background-image:url('${escapeHTML(c.school_logo)}'); background-size:contain; background-color:transparent;` : 'background-color:#F1F5F9;'}">
               ${!c.school_logo ? `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8;"><i class='bx bxs-graduation' style="font-size:36px;">\x3c/i>\x3c/div>` : ''}
             \x3c/div>
             <div>
@@ -1304,6 +1304,8 @@ function renderSettingsForm(c) {
                      onchange="handleImageUpload(this,'logo',(url)=>{
                        document.getElementById('set_school_logo').value=url;
                        document.getElementById('logoPreview').style.backgroundImage='url('+url+')';
+                       document.getElementById('logoPreview').style.backgroundColor='transparent';
+                       document.getElementById('logoPreview').style.backgroundSize='contain';
                        document.getElementById('logoPreview').innerHTML='';
                      })">
               <input type="hidden" id="set_school_logo" value="${escapeHTML(c.school_logo||'')}">
