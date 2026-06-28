@@ -936,8 +936,20 @@ html.dark-mode [style*="background:#F8FAFC"], html.dark-mode [style*="background
 html.dark-mode [style*="background:#FFFFFF"], html.dark-mode [style*="background: #FFFFFF"],
 html.dark-mode [style*="background:white"], html.dark-mode [style*="background: white"],
 html.dark-mode [style*="background-color:white"], html.dark-mode [style*="background-color: white"],
-html.dark-mode .scard-preview {
+html.dark-mode .scard-preview,
+html.dark-mode .cal-cell,
+html.dark-mode .ev-item,
+html.dark-mode .ev-date,
+html.dark-mode .report-card {
   background-color: #18181B !important;
+  border-color: #27272A !important;
+}
+html.dark-mode .cal-cell.today {
+  background-color: #2E161C !important;
+  border-color: var(--primary-light) !important;
+}
+html.dark-mode .cal-cell.today .cal-date {
+  color: #FAFAFA !important;
 }
 /* Print overrides */
 @media print {
