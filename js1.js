@@ -197,23 +197,29 @@ function enterApp() {
   }
 
   // ผู้ใช้
-  document.getElementById('sidebarUserName').textContent = APP.user.name || APP.user.username;
-  document.getElementById('sidebarUserRole').textContent =
-    ({ admin:'ผู้ดูแลระบบ', staff:'เจ้าหน้าที่', teacher:'ครู' })[APP.role] || APP.role;
+  const sidebarName = document.getElementById('sidebarUserName');
+  if (sidebarName) sidebarName.textContent = APP.user.name || APP.user.username;
+  
+  const sidebarRole = document.getElementById('sidebarUserRole');
+  if (sidebarRole) sidebarRole.textContent = ({ admin:'ผู้ดูแลระบบ', staff:'เจ้าหน้าที่', teacher:'ครู' })[APP.role] || APP.role;
 
   const av = document.getElementById('sidebarAvatar');
-  if (APP.user.avatar) {
-    av.style.backgroundImage = 'url(' + APP.user.avatar + ')';
-    av.textContent = '';
-  } else {
-    av.textContent = (APP.user.name || APP.user.username || 'U').charAt(0).toUpperCase();
+  if (av) {
+    if (APP.user.avatar) {
+      av.style.backgroundImage = 'url(' + APP.user.avatar + ')';
+      av.textContent = '';
+    } else {
+      av.textContent = (APP.user.name || APP.user.username || 'U').charAt(0).toUpperCase();
+    }
   }
 
   // ซ่อนเมนู admin ถ้าไม่ใช่ admin
   const isAdmin = APP.role === 'admin';
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
-  document.getElementById('adminDivider').style.display = isAdmin ? '' : 'none';
-  document.getElementById('adminLabel').style.display   = isAdmin ? '' : 'none';
+  const divAdmin = document.getElementById('adminDivider');
+  if (divAdmin) divAdmin.style.display = isAdmin ? '' : 'none';
+  const lblAdmin = document.getElementById('adminLabel');
+  if (lblAdmin) lblAdmin.style.display = isAdmin ? '' : 'none';
 
   // แสดงเมนู staff-only ให้ทุกคน (แต่จะจำกัดสิทธิ์แก้ไขในแต่ละหน้าต่าง)
   document.querySelectorAll('.staff-only').forEach(el => {
