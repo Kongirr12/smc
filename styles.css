@@ -805,7 +805,8 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
 /* ─── Dark Mode Overrides (Premium Warm Theme) ──────────────────────── */
 html.dark-mode, 
 html.dark-mode body,
-html.dark-mode #loginScreen {
+html.dark-mode #loginScreen,
+html.dark-mode #pageContent {
   background-color: #12090B !important;
   color: #FDECEF !important;
 }
@@ -817,10 +818,18 @@ html.dark-mode .bg-white,
 html.dark-mode .topbar,
 html.dark-mode .app-footer,
 html.dark-mode #notificationsDropdown,
-html.dark-mode .swal2-popup {
+html.dark-mode .swal2-popup,
+html.dark-mode .welcome-row .date-pill {
   background-color: #1F1115 !important;
   color: #FDECEF !important;
   border-color: #3D1B24 !important;
+}
+html.dark-mode .topbar .icon-btn {
+  background-color: #12090B !important;
+  color: #FDECEF !important;
+}
+html.dark-mode .topbar .icon-btn:hover {
+  background-color: #2E161C !important;
 }
 /* Inputs & Forms */
 html.dark-mode input,
@@ -889,8 +898,19 @@ html.dark-mode .text-slate-700,
 html.dark-mode .text-gray-900,
 html.dark-mode .text-gray-800,
 html.dark-mode h1, html.dark-mode h2, html.dark-mode h3, 
-html.dark-mode .page-title {
+html.dark-mode .page-title,
+html.dark-mode .stat-card .value,
+html.dark-mode .dash-card h3,
+html.dark-mode .announce-item .title,
+html.dark-mode .welcome-row h1,
+html.dark-mode .welcome-row .date-pill,
+html.dark-mode .dash-card h3 a {
   color: #FDECEF !important;
+}
+html.dark-mode .stat-card .label,
+html.dark-mode .welcome-row .sub,
+html.dark-mode .announce-item .meta {
+  color: #D4AFB6 !important;
 }
 /* Borders */
 html.dark-mode .border-slate-200,
