@@ -490,7 +490,8 @@ function renderDashboardData(d) {
       }
     });
   }
-  document.getElementById('netBalance')?.textContent = formatMoney(d.stats.balance);
+  const netBal = document.getElementById('netBalance');
+  if (netBal) netBal.textContent = formatMoney(d.stats.balance);
 
   // ประกาศ
   const list = document.getElementById('announceList');
