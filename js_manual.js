@@ -580,7 +580,7 @@ function manualContent() {
         <div class="feature-item"><i class='bx bx-send' style="color:#A62639;">\x3c/i> หนังสือส่ง\x3c/div>
         <div class="feature-item"><i class='bx bx-clipboard' style="color:#8B5CF6;">\x3c/i> คำสั่ง\x3c/div>
         <div class="feature-item"><i class='bx bx-note' style="color:#F59E0B;">\x3c/i> บันทึกข้อความ\x3c/div>
-        <div class="feature-item"><i class='bx bx-megaphone' style="color:#EF4444;">\x3c/i> ประกาศ\x3c/div>
+        <div class="feature-item"><i class='bx bx-volume-full' style="color:#EF4444;">\x3c/i> ประกาศ\x3c/div>
         <div class="feature-item"><i class='bx bx-file' style="color:#06B6D4;">\x3c/i> แบบฟอร์มเอกสาร\x3c/div>
       \x3c/div>
 
