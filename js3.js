@@ -1885,6 +1885,10 @@ function renderApprovalsTable(res) {
                       <button class="btn btn-light btn-icon" onclick="reviewApprovalDlg('${a.id}','reject')" title="ปฏิเสธ" style="color:#EF4444;">
                         <i class='bx bx-x'>\x3c/i>
                       \x3c/button>` : ''}
+                    ${(canApprove || (APP.user.permissions || []).includes('delete') || a.requester_id === APP.user.id) ? `
+                    <button class="btn btn-light btn-icon" onclick="deleteApproval('${a.id}')" title="ลบ" style="color:#ef4444;">
+                      <i class='bx bx-trash'>\x3c/i>
+                    \x3c/button>` : ''}
                   \x3c/div>
                 \x3c/td>
               \x3c/tr>`;
@@ -2028,6 +2032,37 @@ function reviewApprovalDlg(id, action) {
         else showToast('error', res.message);
       })
       .reviewApproval(id, action, r.value || '', APP.token);
+  });
+}
+
+function deleteApproval(id) {
+  Swal.fire({
+    title: 'ยืนยันการลบ',
+    text: 'คุณแน่ใจหรือไม่ว่าต้องการลบคำขอนี้? (ไม่สามารถกู้คืนได้)',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ลบข้อมูล',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#ef4444'
+  }).then(r => {
+    if (r.isConfirmed) {
+      showLoading('กำลังลบ...');
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if (res.status === 'success') {
+            Swal.fire('สำเร็จ', res.message, 'success');
+            loadApprovals();
+          } else {
+            Swal.fire('ผิดพลาด', res.message, 'error');
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          Swal.fire('ผิดพลาด', err.message, 'error');
+        })
+        .deleteApproval(id, APP.token);
+    }
   });
 }
 
