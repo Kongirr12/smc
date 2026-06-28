@@ -399,21 +399,21 @@ function renderDashboard(container) {
     <div class="dash-row">
       <div class="dash-card">
         <h3>
-          สถิติการเข้าเรียนรายสัปดาห์
+          <i class='bx bx-bar-chart-alt-2' style="color:#A62639; margin-right:5px;">\x3c/i> สถิติการเข้าเรียนรายสัปดาห์
           <a href="#" onclick="event.preventDefault(); navigate('attendance');">ดูทั้งหมด <i class='bx bx-chevron-right'>\x3c/i>\x3c/a>
         \x3c/h3>
         <div class="chart-box"><canvas id="chartAttendance">\x3c/canvas>\x3c/div>
       \x3c/div>
 
       <div class="dash-card">
-        <h3>ประกาศล่าสุด\x3c/h3>
+        <h3><i class='bx bxs-megaphone' style="color:#A62639; margin-right:5px;">\x3c/i> ประกาศล่าสุด\x3c/h3>
         <div class="announce-list" id="announceList">
           <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
         \x3c/div>
       \x3c/div>
 
       <div class="dash-card">
-        <h3>สรุปรายรับ - รายจ่าย\x3c/h3>
+        <h3><i class='bx bx-wallet' style="color:#A62639; margin-right:5px;">\x3c/i> สรุปรายรับ - รายจ่าย\x3c/h3>
         <div class="chart-box" style="height:170px;"><canvas id="chartFinance">\x3c/canvas>\x3c/div>
         <div class="text-center mt-2">
           <div class="text-xs text-slate-500">คงเหลือสุทธิ\x3c/div>
@@ -544,7 +544,7 @@ function renderDashboardData(d) {
     }
   }
 
-  // Sidebar badge
+  // Sidebar badge & Topbar Dot
   const badge = document.getElementById('badgeApprovals');
   const dot = document.getElementById('topbarDot');
   if (d.pending_approvals > 0) {
@@ -557,6 +557,92 @@ function renderDashboardData(d) {
     if (badge) badge.style.display = 'none';
     if (dot) dot.style.display = 'none';
   }
+  
+  // แจ้งเตือน (Notifications)
+  if (d.unread_notifications !== undefined) {
+    updateNotificationsUI(d.unread_notifications);
+  }
+}
+
+function updateNotificationsUI(notifs) {
+  const dot = document.getElementById('topbarBellDot');
+  const countSpan = document.getElementById('notifCount');
+  const list = document.getElementById('notificationsList');
+  
+  if (notifs.length > 0) {
+    if (dot) dot.style.display = '';
+    if (countSpan) countSpan.textContent = notifs.length;
+    if (list) {
+      list.innerHTML = notifs.map(n => `
+        <div style="padding:12px 16px; border-bottom:1px solid #F1F5F9; cursor:pointer; transition:background .2s;"
+             onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='white'"
+             onclick="readNotification('${n.id}', '${n.link_type}', '${n.link_id}')">
+          <div style="font-size:13px; font-weight:600; color:#0F172A; margin-bottom:2px;">
+            ${escapeHTML(n.title)}
+          </div>
+          <div style="font-size:12px; color:#475569; margin-bottom:4px;">
+            ${escapeHTML(n.message)}
+          </div>
+          <div style="font-size:10px; color:#94A3B8;">
+            ${formatThaiDate(new Date(n.created_at))}
+          </div>
+        </div>
+      `).join('');
+    }
+  } else {
+    if (dot) dot.style.display = 'none';
+    if (countSpan) countSpan.textContent = '0';
+    if (list) {
+      list.innerHTML = `<div style="padding:20px; text-align:center; color:#94A3B8; font-size:13px;">ไม่มีแจ้งเตือนใหม่</div>`;
+    }
+  }
+}
+
+function toggleNotifications() {
+  const dd = document.getElementById('notificationsDropdown');
+  if (dd) {
+    if (dd.style.display === 'none') {
+      dd.style.display = 'block';
+      // ปิด dropdown อื่นๆ ถ้ามี
+      document.addEventListener('click', closeNotificationsOutside);
+    } else {
+      dd.style.display = 'none';
+      document.removeEventListener('click', closeNotificationsOutside);
+    }
+  }
+}
+
+function closeNotificationsOutside(e) {
+  const dd = document.getElementById('notificationsDropdown');
+  const btn = e.target.closest('button[onclick="toggleNotifications()"]');
+  if (!btn && !e.target.closest('#notificationsDropdown')) {
+    if (dd) dd.style.display = 'none';
+    document.removeEventListener('click', closeNotificationsOutside);
+  }
+}
+
+function readNotification(id, link_type, link_id) {
+  toggleNotifications(); // ปิด dropdown
+  showLoading('กำลังเปิด...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status === 'success') {
+        // นำเอาออกจาก APP.dashboardData เพื่อให้อัปเดต UI
+        if (APP.dashboardData && APP.dashboardData.unread_notifications) {
+          APP.dashboardData.unread_notifications = APP.dashboardData.unread_notifications.filter(n => n.id !== id);
+          updateNotificationsUI(APP.dashboardData.unread_notifications);
+        }
+        // นำทางไปหน้าเป้าหมาย
+        if (link_type === 'documents') {
+          navigate('documents');
+          // ถ้าต้องการให้เปิดเอกสารนั้นขึ้นมาเลย สามารถทำได้โดยอัปเดต state
+          // setTimeout(() => openDocumentForm(link_id), 500); 
+        }
+      }
+    })
+    .withFailureHandler(err => { hideLoading(); showToast('error', err.message||err); })
+    .markNotificationRead(id, APP.token);
 }
 
 function refreshBadges() {
@@ -566,15 +652,24 @@ function refreshBadges() {
       if (res.status !== 'success') return;
       const badge = document.getElementById('badgeApprovals');
       const dot   = document.getElementById('topbarDot');
-      if (res.pending_approvals > 0) {
-        if (badge) {
-          badge.textContent = res.pending_approvals;
-          badge.style.display = '';
+      if (res.pending_approvals !== undefined) {
+        if (res.pending_approvals > 0) {
+          if (badge) {
+            badge.textContent = res.pending_approvals;
+            badge.style.display = '';
+          }
+          if (dot) dot.style.display = '';
+        } else {
+          if (badge) badge.style.display = 'none';
+          if (dot) dot.style.display = 'none';
         }
-        if (dot) dot.style.display = '';
-      } else {
-        if (badge) badge.style.display = 'none';
-        if (dot) dot.style.display = 'none';
+      }
+      
+      if (res.data && res.data.unread_notifications !== undefined) {
+        if (APP.dashboardData) {
+          APP.dashboardData.unread_notifications = res.data.unread_notifications;
+        }
+        updateNotificationsUI(res.data.unread_notifications);
       }
     })
     .withFailureHandler(()=>{})
