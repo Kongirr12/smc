@@ -215,30 +215,32 @@ function enterApp() {
   document.getElementById('adminDivider').style.display = isAdmin ? '' : 'none';
   document.getElementById('adminLabel').style.display   = isAdmin ? '' : 'none';
 
-  // ซ่อนเมนู staff-only ถ้าเป็นครู (แต่เปิดสิทธิ์เพิ่มเติมตามฝ่ายงาน)
-  const isStaffOrAdmin = APP.role === 'admin' || APP.role === 'staff';
-  const dept = (APP.user.department || '').toLowerCase();
-  
+  // แสดงเมนู staff-only ให้ทุกคน (แต่จะจำกัดสิทธิ์แก้ไขในแต่ละหน้าต่าง)
   document.querySelectorAll('.staff-only').forEach(el => {
-    let show = isStaffOrAdmin;
-    if (APP.role === 'teacher') {
-      const page = el.getAttribute('data-page');
-      if (page === 'finance' || page === 'budget') {
-        if (dept.includes('การเงิน') || dept.includes('งบประมาณ')) show = true;
-      } else if (page === 'registration') {
-        if (dept.includes('ทะเบียน') || dept.includes('วัดผล') || dept.includes('วิชาการ')) show = true;
-      } else if (page === 'personnel') {
-        if (dept.includes('บุคคล') || dept.includes('บุคลากร')) show = true;
-      } else if (page === 'documents') {
-        if (dept.includes('ธุรการ') || dept.includes('สารบรรณ') || dept.includes('อำนวยการ') || dept.includes('บริหาร')) show = true;
-      }
-    }
-    el.style.display = show ? '' : 'none';
+    el.style.display = '';
   });
 
   navigate('dashboard');
   refreshBadges();
   setInterval(refreshBadges, 60000);
+}
+
+/* ============================================================
+ *  Access Control Helper
+ * ============================================================ */
+function canEditModule(moduleName) {
+  if (APP.role === 'admin' || APP.role === 'staff') return true;
+  if (APP.role !== 'teacher') return false;
+  
+  const dept = (APP.user.department || '').toLowerCase();
+  switch (moduleName) {
+    case 'finance': return dept.includes('การเงิน') || dept.includes('งบประมาณ');
+    case 'budget':  return dept.includes('การเงิน') || dept.includes('งบประมาณ');
+    case 'registration': return dept.includes('ทะเบียน') || dept.includes('วัดผล') || dept.includes('วิชาการ');
+    case 'personnel': return dept.includes('บุคคล') || dept.includes('บุคลากร');
+    case 'documents': return dept.includes('ธุรการ') || dept.includes('สารบรรณ') || dept.includes('อำนวยการ') || dept.includes('บริหาร');
+  }
+  return false;
 }
 
 
