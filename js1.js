@@ -494,30 +494,40 @@ function renderDashboardData(d) {
   if (netBal) netBal.textContent = formatMoney(d.stats.balance);
 
   // ประกาศ
+  // ประกาศ
   const list = document.getElementById('announceList');
-  if (!d.announcements || d.announcements.length === 0) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <i class='bx bx-news'>\x3c/i>
-        ยังไม่มีประกาศ
-      \x3c/div>`;
-  } else {
-    list.innerHTML = d.announcements.slice(0,4).map(a => `
-      <div class="announce-item">
-        <div class="icn"><i class='bx bxs-megaphone'>\x3c/i>\x3c/div>
-        <div style="flex:1; min-width:0;">
-          <div class="title">${escapeHTML(a.title || '(ไม่มีหัวข้อ)')}\x3c/div>
-          <div class="meta">${formatThaiDate(new Date(a.created_at || a.start_date))}\x3c/div>
+  if (list) {
+    if (!d.announcements || d.announcements.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <i class='bx bx-news'>\x3c/i>
+          ยังไม่มีประกาศ
+        \x3c/div>`;
+    } else {
+      list.innerHTML = d.announcements.slice(0,4).map(a => `
+        <div class="announce-item">
+          <div class="icn"><i class='bx bxs-megaphone'>\x3c/i>\x3c/div>
+          <div style="flex:1; min-width:0;">
+            <div class="title">${escapeHTML(a.title || '(ไม่มีหัวข้อ)')}\x3c/div>
+            <div class="meta">${formatThaiDate(new Date(a.created_at || a.start_date))}\x3c/div>
+          \x3c/div>
         \x3c/div>
-      \x3c/div>
-    `).join('');
+      `).join('');
+    }
   }
 
   // Sidebar badge
+  const badge = document.getElementById('badgeApprovals');
+  const dot = document.getElementById('topbarDot');
   if (d.pending_approvals > 0) {
-    document.getElementById('badgeApprovals').textContent = d.pending_approvals;
-    document.getElementById('badgeApprovals').style.display = '';
-    document.getElementById('topbarDot').style.display = '';
+    if (badge) {
+      badge.textContent = d.pending_approvals;
+      badge.style.display = '';
+    }
+    if (dot) dot.style.display = '';
+  } else {
+    if (badge) badge.style.display = 'none';
+    if (dot) dot.style.display = 'none';
   }
 }
 
@@ -529,12 +539,14 @@ function refreshBadges() {
       const badge = document.getElementById('badgeApprovals');
       const dot   = document.getElementById('topbarDot');
       if (res.pending_approvals > 0) {
-        badge.textContent = res.pending_approvals;
-        badge.style.display = '';
-        dot.style.display = '';
+        if (badge) {
+          badge.textContent = res.pending_approvals;
+          badge.style.display = '';
+        }
+        if (dot) dot.style.display = '';
       } else {
-        badge.style.display = 'none';
-        dot.style.display = 'none';
+        if (badge) badge.style.display = 'none';
+        if (dot) dot.style.display = 'none';
       }
     })
     .withFailureHandler(()=>{})
