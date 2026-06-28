@@ -1561,6 +1561,10 @@ function showDocumentForm(data) {
             <input type="date" id="df_date" class="form-input" value="${escapeHTML((d.date||new Date().toISOString().slice(0,10)).slice(0,10))}">
           \x3c/div>
           <div class="col-span-4">
+            <label class="form-label">เลขที่เอกสาร\x3c/label>
+            <input type="text" id="df_doc_number" class="form-input" value="${escapeHTML(d.doc_number||'')}">
+          \x3c/div>
+          <div class="col-span-4">
             <label class="form-label">สถานะ\x3c/label>
             <select id="df_status" class="form-input">
               <option value="draft"   ${(d.status||'draft')==='draft'?'selected':''}>ร่าง\x3c/option>
@@ -1615,12 +1619,30 @@ function showDocumentForm(data) {
         .form-input:focus { outline:none; border-color:#A62639; background:white; }
       \x3c/style>
     `,
+    didOpen: () => {
+      const typeEl = document.getElementById('df_doc_type');
+      const numEl = document.getElementById('df_doc_number');
+      const fetchNextNum = () => {
+        if (!numEl) return;
+        numEl.value = 'กำลังคำนวณ...';
+        google.script.run.withSuccessHandler(res => {
+          if (res.status === 'success') numEl.value = res.data;
+          else numEl.value = '';
+        }).getNextDocNumber(typeEl.value, APP.token);
+      };
+      
+      if (!d.id) {
+        fetchNextNum();
+        typeEl.addEventListener('change', fetchNextNum);
+      }
+    },
     preConfirm: () => {
       const subject = document.getElementById('df_subject').value.trim();
       if (!subject) { Swal.showValidationMessage('กรุณากรอกเรื่อง'); return false; }
       return {
         id        : document.getElementById('df_id').value || null,
         doc_type  : document.getElementById('df_doc_type').value,
+        doc_number: document.getElementById('df_doc_number').value,
         date      : document.getElementById('df_date').value,
         status    : document.getElementById('df_status').value,
         subject   : subject,
