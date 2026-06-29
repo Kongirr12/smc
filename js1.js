@@ -307,7 +307,10 @@ function navigate(page) {
     users: 'จัดการผู้ใช้งาน',
     settings: 'ตั้งค่าระบบ',
     schedule: 'ตารางสอน',
-    manual  : 'คู่มือการใช้งาน'
+    manual  : 'คู่มือการใช้งาน',
+    ext_nited: 'ระบบนิเทศภายใน',
+    ext_homevisit: 'ระบบเยี่ยมบ้าน',
+    ext_training: 'ระบบเก็บข้อมูลการอบรม'
   };
   document.getElementById('pageTitle').textContent = titles[page] || 'หน้าหลัก';
 
@@ -343,6 +346,9 @@ function navigate(page) {
     case 'settings':  if (typeof renderSettings  === 'function') return renderSettings(content);  break;
     case 'schedule':  if (typeof renderSchedule  === 'function') return renderSchedule(content);  break;
     case 'manual':    if (typeof renderManual    === 'function') return renderManual(content);    break;
+    case 'ext_nited': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbwhRcZMFI1aKaOVmlecoujOp_vhRS1RaEIczGefuyDfrgRZyNATB4tfb3oukcJ6InvbwA/exec', 'ระบบนิเทศภายใน');
+    case 'ext_homevisit': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbzPVxRjrQ-693tDZa1XdaGxNkLYH_dlZnxQQ-P_co0lxWlXrTbgvvhGIOgJ0NUMpn4B/exec', 'ระบบเยี่ยมบ้าน');
+    case 'ext_training': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbzKx404GT7nYO8OyLnjUa9h0xdLAHRVW0YlTSjMQIT5Hz1ZOjb6_3J5WNKF0RvyZuKK/exec', 'ระบบเก็บข้อมูลการอบรม');
   }
   // ถ้าไม่มี renderer ใน Part นี้ → แสดง placeholder
   renderComingSoon(content, titles[page] || page);
@@ -939,11 +945,15 @@ function formatThaiDateShort(d) {
 }
 
 function renderBudget(container) {
+  renderIframe(container, 'https://kongirr12.github.io/budgetsystem/', 'ระบบบริหารงานงบประมาณ');
+}
+
+function renderIframe(container, url, title) {
   container.innerHTML = `
     <div style="width: 100%; height: calc(100vh - 60px); display: flex; flex-direction: column;">
-      <iframe src="https://kongirr12.github.io/budgetsystem/" 
+      <iframe src="${url}" 
               style="flex: 1; width: 100%; border: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" 
-              title="ระบบบริหารงานงบประมาณ"></iframe>
+              title="${title}"></iframe>
     </div>
   `;
 }
