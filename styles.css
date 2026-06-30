@@ -72,7 +72,10 @@ html, body {
   background: linear-gradient(145deg, #1A0008 0%, #4A0E17 30%, #800020 65%, #A62639 100%);
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  overflow: hidden;
+  overflow-y: auto;
+}
+@media (max-height: 800px) {
+  #loginScreen { align-items: flex-start; padding-top: 40px; padding-bottom: 40px; }
 }
 #loginScreen::before {
   content: ''; position: absolute;
