@@ -149,33 +149,33 @@
 
   <!-- ================== Login Screen ================== -->
   <div id="loginScreen" style="background: #F1F5F9;">
-    <div class="w-full max-w-4xl overflow-hidden rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col md:flex-row relative z-10 mx-4" style="animation: floatIn .7s cubic-bezier(.16,1,.3,1);">
+    <div class="w-full max-w-4xl max-h-[95vh] overflow-y-auto rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col md:flex-row relative z-10 mx-4" style="animation: floatIn .7s cubic-bezier(.16,1,.3,1);">
       
       <!-- Left Hero -->
-      <div id="loginHeroPanel" class="flex flex-1 flex-col items-center justify-center px-8 py-12 text-center text-white md:w-1/2 md:px-10 md:py-14" style="background: linear-gradient(135deg, #A62639 0%, #26020A 100%); transition: background 0.4s ease;">
+      <div id="loginHeroPanel" class="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center text-white sm:px-8 md:w-1/2 md:px-10 md:py-14" style="background: linear-gradient(135deg, #A62639 0%, #26020A 100%); transition: background 0.4s ease;">
         <div class="flex w-full max-w-md flex-col items-center">
-          <div class="login-logo mb-6" id="loginLogoBox" style="background: transparent; box-shadow: none; border: none; width: 140px; height: 140px;">
+          <div class="login-logo mb-6" id="loginLogoBox" style="background: transparent; box-shadow: none; border: none; width: 120px; height: 120px; md:width: 140px; md:height: 140px;">
             <img id="loginLogoImage" src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:14px;" alt="Logo">
           </div>
-          <h1 class="text-2xl font-bold leading-snug tracking-tight" id="loginSchoolName">Smart School Office</h1>
+          <h1 class="text-xl md:text-2xl font-bold leading-snug tracking-tight" id="loginSchoolName">Smart School Office</h1>
           <div class="mt-4 w-full text-center" id="loginSubTitle">
-            <p class="text-lg md:text-xl font-medium tracking-widest leading-relaxed" style="color: #F2D5DA; word-spacing: 2px;">
+            <p class="text-base md:text-xl font-medium tracking-widest leading-relaxed" style="color: #F2D5DA; word-spacing: 2px;">
               ระบบบริหารจัดการ<br>โรงเรียนมหาชัยพิทยาคาร
             </p>
-            <p class="text-xs font-light mt-3 tracking-wide" style="color: #F2D5DA; opacity: 0.9;">
+            <p class="text-[10px] md:text-xs font-light mt-3 tracking-wide" style="color: #F2D5DA; opacity: 0.9;">
               สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม
             </p>
           </div>
-          <p id="loginRoleBadge" class="mt-6 rounded-full px-4 py-1.5 text-sm font-medium" style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25); color: #F2D5DA;">
+          <p id="loginRoleBadge" class="mt-6 rounded-full px-4 py-1.5 text-xs md:text-sm font-medium" style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25); color: #F2D5DA;">
             ระบบผู้ดูแลระบบ (Admin)
           </p>
         </div>
       </div>
 
       <!-- Right Form -->
-      <div class="flex flex-1 flex-col justify-center bg-white px-8 py-10 md:w-1/2 md:px-10 md:py-12">
-        <div class="mb-8">
-          <h2 class="text-2xl font-bold text-gray-900">เข้าสู่ระบบ</h2>
+      <div class="flex flex-1 flex-col justify-center bg-white px-5 py-8 sm:px-8 md:w-1/2 md:px-10 md:py-12">
+        <div class="mb-6 md:mb-8">
+          <h2 class="text-xl md:text-2xl font-bold text-gray-900">เข้าสู่ระบบ</h2>
           <p class="mt-1 text-sm text-gray-600">กรอกข้อมูลผู้ใช้งานของคุณ</p>
         </div>
 
