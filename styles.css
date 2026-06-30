@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700;800&display=swap');
 
 /* ============================================================
- *  Smart School Office — Premium Stylesheet v3
+ *  Smart School Office â€” Premium Stylesheet v3
  * ============================================================ */
 
 :root {
@@ -45,7 +45,7 @@
   --spring     : 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ─── Base ─────────────────────────────────────────────────── */
+/* â”€â”€â”€ Base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 h1, h2, h3, h4, h5, h6, .page-title, .value, .brand, .btn, .man-toc-item {
   font-family: 'Outfit', 'Sarabun', sans-serif !important;
 }
@@ -66,7 +66,7 @@ html, body {
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
-/* ─── Login ─────────────────────────────────────────────────── */
+/* â”€â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #loginScreen {
   position: fixed; inset: 0; z-index: 100;
   background: linear-gradient(145deg, #1A0008 0%, #4A0E17 30%, #800020 65%, #A62639 100%);
@@ -157,7 +157,7 @@ html, body {
 .login-logo.has-image { background: transparent; box-shadow: none; border-radius: 0; }
 .login-logo.has-image::after { display: none; }
 
-/* ─── Tab Pill ──────────────────────────────────────────────── */
+/* â”€â”€â”€ Tab Pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .tab-pill {
   display: flex;
   background: #F1F5F9;
@@ -180,7 +180,7 @@ html, body {
   box-shadow: 0 3px 12px rgba(15,23,42,.1), 0 1px 4px rgba(15,23,42,.07);
 }
 
-/* ─── Input / Form ──────────────────────────────────────────── */
+/* â”€â”€â”€ Input / Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .input-wrap { position: relative; margin-bottom: 16px; }
 .input-wrap > i {
   position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
@@ -190,27 +190,37 @@ html, body {
 .input-wrap:focus-within > i { color: var(--primary-light); }
 .input-wrap input {
   width: 100%; padding: 14px 46px;
-  border: 2px solid #E2E8F0; border-radius: var(--radius-md);
+  border: 2px solid transparent; border-radius: var(--radius-md);
   font-family: inherit; font-size: 15px;
-  background: #F8FAFC; color: #0F172A;
-  transition: all .22s ease;
+  background: rgba(248, 250, 252, 0.8); color: #0F172A;
+  transition: all .3s ease;
 }
 .input-wrap input::placeholder { color: #CBD5E1; }
+.input-wrap input:hover {
+  background: #F1F5F9;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
 .input-wrap input:focus {
   outline: none; border-color: var(--primary-light); background: white;
-  box-shadow: 0 0 0 4px rgba(166,38,57,.12);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(166,38,57,.2);
 }
 .form-input, select {
-  border-radius: var(--radius-sm) !important;
-  border: 1.5px solid #E2E8F0 !important;
-  transition: all var(--transition) !important;
-  background: white !important;
+  border-radius: var(--radius-md) !important;
+  border: 2px solid transparent !important;
+  transition: all .3s ease !important;
+  background: rgba(248, 250, 252, 0.8) !important;
+}
+.form-input:hover, select:hover {
+  background: #F1F5F9 !important;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1) !important;
 }
 .form-input:focus, select:focus {
   outline: none !important;
   border-color: var(--primary-light) !important;
-  box-shadow: 0 0 0 4px rgba(166,38,57,.12) !important;
+  box-shadow: 0 10px 15px -3px rgba(166,38,57,.2) !important;
   background: white !important;
+  transform: translateY(-2px) !important;
 }
 select {
   padding: 8px 12px !important;
@@ -236,7 +246,7 @@ select {
 .toggle-pwd:hover { background: var(--primary-50); color: var(--primary); }
 .toggle-pwd:active { transform: translateY(-50%) scale(.9); }
 
-/* ─── Primary Button (Login) ────────────────────────────────── */
+/* â”€â”€â”€ Primary Button (Login) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .btn-primary {
   background: var(--gradient-primary);
   background-size: 200% auto;
@@ -265,10 +275,10 @@ select {
 .btn-primary:active { transform: translateY(0); box-shadow: var(--shadow-primary); }
 .btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
-/* ─── Layout ────────────────────────────────────────────────── */
+/* â”€â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .layout { display: flex; min-height: 100vh; }
 
-/* ─── Sidebar ───────────────────────────────────────────────── */
+/* â”€â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sidebar {
   width: 260px; flex-shrink: 0;
   background: var(--gradient-sidebar);
@@ -378,7 +388,7 @@ select {
 }
 .sidebar-footer .logout-btn:hover { background: var(--danger); color: white; border-color: var(--danger); }
 
-/* ─── Main Content ──────────────────────────────────────────── */
+/* â”€â”€â”€ Main Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .main {
   flex: 1; margin-left: 260px; min-width: 0;
   transition: margin-left .28s;
@@ -437,7 +447,7 @@ select {
   background: white;
 }
 
-/* ─── Dashboard ─────────────────────────────────────────────── */
+/* â”€â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .welcome-row {
   display: flex; justify-content: space-between; align-items: flex-end;
   gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
@@ -462,11 +472,14 @@ select {
   margin-bottom: 22px;
 }
 .stat-card {
-  background: white; border-radius: var(--radius-lg); padding: 22px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius-xl); padding: 22px;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(226,232,240,.5);
+  border: 1px solid rgba(255,255,255,0.5);
   position: relative; overflow: hidden;
-  transition: all var(--spring);
+  transition: all 0.3s ease;
   cursor: default;
   transform: translateZ(0);
   will-change: transform, box-shadow;
@@ -501,10 +514,13 @@ select {
 /* Dashboard Row */
 .dash-row { display: grid; grid-template-columns: 2fr 1.2fr 1.2fr; gap: 18px; margin-bottom: 22px; }
 .dash-card {
-  background: white; border-radius: var(--radius-lg); padding: 22px;
-  border: 1px solid rgba(226,232,240,.5);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius-xl); padding: 22px;
+  border: 1px solid rgba(255,255,255,0.5);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--transition);
+  transition: all 0.3s ease;
 }
 .dash-card:hover { box-shadow: var(--shadow-md); }
 .dash-card h3 {
@@ -545,14 +561,17 @@ select {
 }
 .empty-state i { font-size: 40px; opacity: .35; display: block; margin-bottom: 10px; }
 
-/* ─── Page Cards ────────────────────────────────────────────── */
+/* â”€â”€â”€ Page Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .page-card {
-  background: white; border-radius: var(--radius-lg);
-  border: 1px solid rgba(226,232,240,.5);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255,255,255,0.5);
   box-shadow: var(--shadow-sm);
   margin-bottom: 18px;
   overflow: hidden;
-  transition: box-shadow var(--transition);
+  transition: all 0.3s ease;
   transform: translateZ(0);
 }
 .page-card:hover { box-shadow: var(--shadow-md); }
@@ -568,13 +587,13 @@ select {
 }
 .page-card-body { padding: 20px 22px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-/* ─── Buttons ───────────────────────────────────────────────── */
+/* â”€â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .btn {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 10px 20px; border-radius: var(--radius-sm);
+  padding: 10px 20px; border-radius: var(--radius-md);
   border: 1.5px solid transparent;
   font-family: inherit; font-weight: 700; font-size: 13.5px;
-  cursor: pointer; transition: all var(--spring); line-height: 1;
+  cursor: pointer; transition: all 0.3s ease; line-height: 1;
   position: relative; overflow: hidden; white-space: nowrap;
 }
 /* shimmer on hover */
@@ -588,15 +607,15 @@ select {
   pointer-events: none;
 }
 .btn:hover::after { left: 150%; }
-.btn:hover { transform: translateY(-2px); }
-.btn:active { transform: translateY(0) scale(.97); }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+.btn:active { transform: translateY(0) scale(.98); }
 
 .btn-blue {
-  background: var(--gradient-primary); color: white;
-  box-shadow: 0 4px 16px rgba(128,0,32,.3);
+  background: linear-gradient(135deg, var(--primary), #8b1c31); color: white;
+  box-shadow: 0 4px 10px rgba(166,38,57,.3);
   border-color: transparent;
 }
-.btn-blue:hover { box-shadow: 0 8px 24px rgba(128,0,32,.45); filter: brightness(1.08); }
+.btn-blue:hover { box-shadow: 0 8px 24px rgba(166,38,57,.45); filter: brightness(1.08); }
 
 .btn-light {
   background: white; color: #334155;
@@ -630,7 +649,7 @@ select {
   justify-content: center; border-radius: 10px;
 }
 
-/* ─── Tables ────────────────────────────────────────────────── */
+/* â”€â”€â”€ Tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 table {
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -656,7 +675,7 @@ tbody tr:last-child { border-bottom: none; }
 tbody tr:hover td { background-color: #FDF8F9 !important; }
 tbody td { padding: 11px 14px !important; vertical-align: middle; }
 
-/* ─── Status Badges ─────────────────────────────────────────── */
+/* â”€â”€â”€ Status Badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .status-badge {
   display: inline-flex; align-items: center;
   padding: 4px 12px; border-radius: 999px;
@@ -667,7 +686,7 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
 .status-inactive { background: #FEE2E2; color: #B91C1C; }
 .status-pending  { background: #FEF3C7; color: #B45309; }
 
-/* ─── Loading Overlay ───────────────────────────────────────── */
+/* â”€â”€â”€ Loading Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #loadingOverlay {
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(15,23,42,.45); backdrop-filter: blur(6px);
@@ -689,7 +708,7 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ─── Avatar ────────────────────────────────────────────────── */
+/* â”€â”€â”€ Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .avatar-circle {
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--gradient-primary);
@@ -697,7 +716,7 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
   background-size: cover; background-position: center;
 }
 
-/* ─── Coming Soon ───────────────────────────────────────────── */
+/* â”€â”€â”€ Coming Soon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .coming-soon {
   background: white; border-radius: var(--radius-lg);
   padding: 70px 20px; text-align: center;
@@ -707,7 +726,7 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
 .coming-soon h3 { margin: 0 0 6px; color: #0F172A; font-size: 20px; }
 .coming-soon p { margin: 0; color: var(--gray-text); font-size: 14px; }
 
-/* ─── SweetAlert2 Override ──────────────────────────────────── */
+/* â”€â”€â”€ SweetAlert2 Override â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .swal2-popup {
   font-family: 'Sarabun', sans-serif !important;
   border-radius: var(--radius-lg) !important;
@@ -725,7 +744,7 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
 .swal2-styled.swal2-confirm:hover { transform: translateY(-2px) !important; }
 .swal2-styled.swal2-cancel { border-radius: var(--radius-sm) !important; font-weight: 600 !important; }
 
-/* ─── Page Header ───────────────────────────────────────────── */
+/* â”€â”€â”€ Page Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .page-header {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 16px; margin-bottom: 22px; flex-wrap: wrap;
@@ -747,7 +766,7 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
   display: flex; align-items: center; gap: 6px;
 }
 
-/* ─── Responsive ────────────────────────────────────────────── */
+/* â”€â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 1280px) {
   .dash-row { grid-template-columns: 1fr 1fr; }
   .dash-row > :first-child { grid-column: 1 / -1; }
@@ -772,7 +791,7 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
   .btn { font-size: 13px; padding: 9px 14px; }
 }
 
-/* ─── Sidebar Backdrop ──────────────────────────────────────── */
+/* â”€â”€â”€ Sidebar Backdrop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #sidebarBackdrop {
   display: none; position: fixed; inset: 0; z-index: 35;
   background: rgba(15,23,42,.55);
@@ -781,12 +800,12 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
 #sidebarBackdrop.show { display: block; }
 @media (min-width: 769px) { #sidebarBackdrop { display: none !important; } }
 
-/* ─── SweetAlert mobile fix ─────────────────────────────────── */
+/* â”€â”€â”€ SweetAlert mobile fix â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 640px) {
   .swal2-html-container { padding: 0 !important; margin: 10px 0 !important; }
 }
 
-/* ─── Micro animations ──────────────────────────────────────── */
+/* â”€â”€â”€ Micro animations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -795,14 +814,14 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; }
   animation: fadeSlideUp .4s cubic-bezier(.16,1,.3,1) both;
 }
 
-/* ─── Focus ring accessibility ──────────────────────────────── */
+/* â”€â”€â”€ Focus ring accessibility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :focus-visible {
   outline: 2px solid var(--primary-light);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
-/* ─── Dark Mode Overrides (Premium Sleek Zinc Theme) ──────────────────────── */
+/* â”€â”€â”€ Dark Mode Overrides (Premium Sleek Zinc Theme) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 html.dark-mode, 
 html.dark-mode body,
 html.dark-mode #loginScreen,
