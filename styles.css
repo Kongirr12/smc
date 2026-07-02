@@ -680,3 +680,122 @@ table.min-w-full {
     margin: 10px 0 !important;
   }
 }
+
+/* ============================================================
+ *  DARK MODE (Dark Red Corporate)
+ * ============================================================ */
+html.dark-mode {
+  --bg-page: #0F172A;
+  --white: #1E293B;
+  --gray-text: #94A3B8;
+  --gray-light: #334155;
+  --primary-50: rgba(128, 0, 32, 0.15);
+  --primary-100: rgba(128, 0, 32, 0.25);
+}
+
+html.dark-mode body {
+  color: #F8FAFC;
+}
+
+html.dark-mode .page-card,
+html.dark-mode .stat-card,
+html.dark-mode .dash-card,
+html.dark-mode .coming-soon,
+html.dark-mode .spinner-card,
+html.dark-mode .swal2-popup {
+  background-color: var(--white);
+  border-color: var(--gray-light);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+html.dark-mode .stat-card .value,
+html.dark-mode .dash-card h3,
+html.dark-mode .page-card-header h2,
+html.dark-mode .announce-item .title,
+html.dark-mode .swal2-title,
+html.dark-mode .coming-soon h3 {
+  color: #F8FAFC;
+}
+
+html.dark-mode .page-card-header,
+html.dark-mode .announce-item {
+  border-color: var(--gray-light);
+}
+
+html.dark-mode .btn-light {
+  background: var(--bg-page);
+  color: #F8FAFC;
+}
+html.dark-mode .btn-light:hover {
+  background: var(--gray-light);
+}
+
+html.dark-mode .btn-outline {
+  background: transparent;
+  border-color: var(--primary-light);
+  color: var(--primary-light);
+}
+html.dark-mode .btn-outline:hover {
+  background: var(--primary-50);
+}
+
+html.dark-mode table {
+  border-color: var(--gray-light);
+}
+html.dark-mode th {
+  background: var(--bg-page) !important;
+  color: #F8FAFC !important;
+  border-bottom: 1px solid var(--gray-light);
+}
+html.dark-mode td {
+  border-bottom: 1px solid var(--gray-light);
+  color: #F8FAFC;
+}
+html.dark-mode tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.dark-mode .input-wrap input,
+html.dark-mode .form-input,
+html.dark-mode select {
+  background-color: var(--bg-page);
+  color: #F8FAFC;
+  border-color: var(--gray-light);
+}
+html.dark-mode .input-wrap input:focus,
+html.dark-mode .form-input:focus,
+html.dark-mode select:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(166, 38, 57, 0.2);
+}
+
+/* Sidebar fixes for dark mode */
+html.dark-mode .sidebar {
+  border-right: 1px solid var(--gray-light);
+}
+
+/* Hardcoded Tailwind overrides in dark mode */
+html.dark-mode .bg-white { background-color: var(--white) !important; }
+html.dark-mode .bg-slate-50, html.dark-mode .bg-slate-100 { background-color: var(--bg-page) !important; }
+html.dark-mode .text-slate-900, html.dark-mode .text-slate-800 { color: #F8FAFC !important; }
+html.dark-mode .text-slate-600, html.dark-mode .text-slate-500 { color: var(--gray-text) !important; }
+html.dark-mode .border-slate-200 { border-color: var(--gray-light) !important; }
+
+/* Login screen fixes */
+html.dark-mode #loginScreen {
+  background: linear-gradient(145deg, #0F172A 0%, #1E293B 100%);
+}
+html.dark-mode .login-card {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 60px -8px rgba(0, 0, 0, 0.6);
+}
+html.dark-mode .tab-pill {
+  background: rgba(0, 0, 0, 0.3);
+}
+html.dark-mode .tab-pill button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFF;
+}
+html.dark-mode .toggle-pwd { color: var(--gray-text); }
+html.dark-mode .toggle-pwd:hover { color: #FFF; }
