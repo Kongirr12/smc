@@ -7,7 +7,7 @@ function renderManual(container) {
   container.innerHTML = `
     <div class="welcome-row">
       <div>
-        <h1><i class='bx bxs-book-reader' style="color:#A62639;">\x3c/i> คู่มือการใช้งาน\x3c/h1>
+        <h1><i class='bx bxs-book-reader text-primary' >\x3c/i> คู่มือการใช้งาน\x3c/h1>
         <div class="sub" style="line-height:1.6;">
           <i class='bx bx-info-circle'>\x3c/i> Smart School Office - โรงเรียนมหาชัยพิทยาคาร - อ่านเพื่อทำความเข้าใจระบบ<br>
           <span style="font-size:12px; color:#64748b;">พัฒนาระบบโดย นายก้องนที อุ่นเจริญ</span>
@@ -32,7 +32,7 @@ function renderManual(container) {
       <!-- Sidebar TOC -->
       <div class="lg:col-span-1">
         <div class="page-card" style="position:sticky; top:80px;">
-          <div class="page-card-header"><h2><i class='bx bx-list-ul' style="color:#A62639;">\x3c/i> สารบัญ\x3c/h2>\x3c/div>
+          <div class="page-card-header"><h2><i class='bx bx-list-ul text-primary' >\x3c/i> สารบัญ\x3c/h2>\x3c/div>
           <div class="page-card-body" style="padding:10px;">
             ${manualTOC()}
           \x3c/div>
@@ -72,7 +72,7 @@ function renderManual(container) {
       }
       .man-step .num {
         width:28px; height:28px; border-radius:50%; flex-shrink:0;
-        background:linear-gradient(135deg,#800020,#A62639); color:white;
+        background:linear-gradient(135deg,#3730A3,#4F46E5); color:white;
         display:flex; align-items:center; justify-content:center;
         font-weight:700; font-size:13px;
       }
@@ -81,8 +81,8 @@ function renderManual(container) {
       .man-step .text .desc { font-size:13px; color:#475569; line-height:1.6; }
 
       .man-tip {
-        background:#FAF0F2; border-left:3px solid #A62639; padding:10px 14px;
-        border-radius:0 8px 8px 0; margin:12px 0; font-size:13px; color:#800020;
+        background:#FAF0F2; border-left:3px solid #4F46E5; padding:10px 14px;
+        border-radius:0 8px 8px 0; margin:12px 0; font-size:13px; color:#3730A3;
       }
       .man-tip i { margin-right:6px; }
       .man-warn {
@@ -95,7 +95,7 @@ function renderManual(container) {
       }
 
       .man-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
-      .man-table th { background:#800020; color:white; padding:8px 12px; text-align:left; }
+      .man-table th { background:#3730A3; color:white; padding:8px 12px; text-align:left; }
       .man-table td { padding:8px 12px; border-bottom:1px solid #E2E8F0; }
       .man-table tr:nth-child(even) td { background:#F8FAFC; }
 
@@ -108,7 +108,7 @@ function renderManual(container) {
         border-radius:8px; cursor:pointer; font-size:13px; font-weight:500;
         color:#475569; transition:all .12s; margin-bottom:2px;
       }
-      .man-toc-item:hover { background:#FAF0F2; color:#800020; }
+      .man-toc-item:hover { background:#FAF0F2; color:#3730A3; }
       .man-toc-item i { font-size:16px; flex-shrink:0; }
 
       .kbd {
@@ -125,7 +125,7 @@ function renderManual(container) {
         padding:10px 12px; font-size:13px;
         display:flex; align-items:center; gap:8px; color:#334155;
       }
-      .feature-item i { color:#A62639; font-size:18px; flex-shrink:0; }
+      .feature-item i { color:#4F46E5; font-size:18px; flex-shrink:0; }
 
       #manualSearch { font-family: 'Sarabun', sans-serif; }
       .man-hidden { display:none !important; }
@@ -167,7 +167,7 @@ function manualTOC() {
 function manualContent() {
   return `
     <!-- เริ่มต้น -->
-    ${manSection('sec-start','bxs-rocket','#A62639','เริ่มต้นใช้งานระบบ',`
+    ${manSection('sec-start','bxs-rocket','#4F46E5','เริ่มต้นใช้งานระบบ',`
       <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
         Smart School Office พร้อมใช้งานบน Browser ทุกตัว ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม
       \x3c/div>
@@ -189,7 +189,7 @@ function manualContent() {
         <thead><tr><th>บทบาท\x3c/th><th>สิทธิ์\x3c/th><th>เมนูที่เข้าถึงได้\x3c/th>\x3c/tr>\x3c/thead>
         <tbody>
           <tr>
-            <td><span class="man-badge" style="background:#F2D5DA;color:#800020;">ผู้ดูแลระบบ (Admin)\x3c/span>\x3c/td>
+            <td><span class="man-badge" style="background:#F2D5DA;color:#3730A3;">ผู้ดูแลระบบ (Admin)\x3c/span>\x3c/td>
             <td>อ่าน + เขียน + ลบ + อนุมัติ + ตั้งค่า\x3c/td>
             <td>ทุกเมนู\x3c/td>
           \x3c/tr>
@@ -268,7 +268,7 @@ function manualContent() {
     `)}
 
     <!-- Students -->
-    ${manSection('sec-students','bxs-user-detail','#A62639','ข้อมูลนักเรียน',`
+    ${manSection('sec-students','bxs-user-detail','#4F46E5','ข้อมูลนักเรียน',`
       <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">เพิ่มนักเรียนใหม่\x3c/h3>
       <div class="man-step">
         <div class="num">1\x3c/div>
@@ -512,7 +512,7 @@ function manualContent() {
     ${manSection('sec-reg','bxs-id-card','#06B6D4','งานทะเบียน',`
       <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">Workflow รับสมัครนักเรียน\x3c/h3>
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; font-size:13px; font-weight:600;">
-        <span style="background:#F2D5DA;color:#800020;padding:6px 14px;border-radius:999px;">รับสมัคร\x3c/span>
+        <span style="background:#F2D5DA;color:#3730A3;padding:6px 14px;border-radius:999px;">รับสมัคร\x3c/span>
         <i class='bx bx-right-arrow-alt' style="color:#94A3B8; font-size:20px;">\x3c/i>
         <span style="background:#FEF3C7;color:#B45309;padding:6px 14px;border-radius:999px;">รอพิจารณา\x3c/span>
         <i class='bx bx-right-arrow-alt' style="color:#94A3B8; font-size:20px;">\x3c/i>
@@ -530,7 +530,7 @@ function manualContent() {
         <div class="num">2\x3c/div>
         <div class="text">
           <div class="title">อนุมัติใบสมัคร\x3c/div>
-          <div class="desc">Admin กด <i class='bx bx-check' style="color:#10B981;">\x3c/i> อนุมัติ → <b>ระบบสร้างข้อมูลนักเรียนในเมนู "ข้อมูลนักเรียน" อัตโนมัติ\x3c/b>\x3c/div>
+          <div class="desc">Admin กด <i class='bx bx-check text-success' >\x3c/i> อนุมัติ → <b>ระบบสร้างข้อมูลนักเรียนในเมนู "ข้อมูลนักเรียน" อัตโนมัติ\x3c/b>\x3c/div>
         \x3c/div>
       \x3c/div>
 
@@ -573,15 +573,15 @@ function manualContent() {
     `)}
 
     <!-- Documents -->
-    ${manSection('sec-doc','bxs-envelope','#EF4444','สารบรรณโรงเรียน',`
+    ${manSection('sec-doc','bxs-envelope','#DC2626','สารบรรณโรงเรียน',`
       <p style="color:#475569; font-size:14px;">จัดการเอกสารราชการ 6 ประเภท:\x3c/p>
       <div class="feature-grid">
-        <div class="feature-item"><i class='bx bx-envelope-open' style="color:#10B981;">\x3c/i> หนังสือรับ\x3c/div>
-        <div class="feature-item"><i class='bx bx-send' style="color:#A62639;">\x3c/i> หนังสือส่ง\x3c/div>
-        <div class="feature-item"><i class='bx bx-clipboard' style="color:#8B5CF6;">\x3c/i> คำสั่ง\x3c/div>
-        <div class="feature-item"><i class='bx bx-note' style="color:#F59E0B;">\x3c/i> บันทึกข้อความ\x3c/div>
-        <div class="feature-item"><i class='bx bx-volume-full' style="color:#EF4444;">\x3c/i> ประกาศ\x3c/div>
-        <div class="feature-item"><i class='bx bx-file' style="color:#06B6D4;">\x3c/i> แบบฟอร์มเอกสาร\x3c/div>
+        <div class="feature-item"><i class='bx bx-envelope-open text-success' >\x3c/i> หนังสือรับ\x3c/div>
+        <div class="feature-item"><i class='bx bx-send text-primary' >\x3c/i> หนังสือส่ง\x3c/div>
+        <div class="feature-item"><i class='bx bx-clipboard text-accent' >\x3c/i> คำสั่ง\x3c/div>
+        <div class="feature-item"><i class='bx bx-note text-warning' >\x3c/i> บันทึกข้อความ\x3c/div>
+        <div class="feature-item"><i class='bx bx-volume-full text-danger' >\x3c/i> ประกาศ\x3c/div>
+        <div class="feature-item"><i class='bx bx-file text-info' >\x3c/i> แบบฟอร์มเอกสาร\x3c/div>
       \x3c/div>
 
       <div class="man-step">
@@ -634,7 +634,7 @@ function manualContent() {
 
       <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">สำหรับผู้อนุมัติ (Admin)\x3c/h3>
       <div class="man-tip"><i class='bx bx-check-circle'>\x3c/i>
-        กดไอคอน <i class='bx bx-check' style="color:#10B981;">\x3c/i> เพื่ออนุมัติ หรือ <i class='bx bx-x' style="color:#EF4444;">\x3c/i> เพื่อปฏิเสธ → ใส่ความเห็นได้
+        กดไอคอน <i class='bx bx-check text-success' >\x3c/i> เพื่ออนุมัติ หรือ <i class='bx bx-x text-danger' >\x3c/i> เพื่อปฏิเสธ → ใส่ความเห็นได้
       \x3c/div>
       <div class="man-tip"><i class='bx bx-bell'>\x3c/i>
         จำนวนคำขอรออนุมัติแสดงเป็น Badge สีแดงที่เมนู "ระบบอนุมัติ" และไอคอน 🔔 บน Topbar
@@ -672,10 +672,10 @@ function manualContent() {
       <table class="man-table">
         <thead><tr><th>ประเภท\x3c/th><th>สี\x3c/th><th>ใช้สำหรับ\x3c/th>\x3c/tr>\x3c/thead>
         <tbody>
-          <tr><td>วิชาการ\x3c/td><td><span style="color:#A62639;">■\x3c/span> น้ำเงิน\x3c/td><td>สอบ, ส่งงาน, กิจกรรมการเรียน\x3c/td>\x3c/tr>
-          <tr><td>กิจกรรม\x3c/td><td><span style="color:#10B981;">■\x3c/span> เขียว\x3c/td><td>กีฬา, วันสำคัญ, กิจกรรมโรงเรียน\x3c/td>\x3c/tr>
-          <tr><td>ประชุม\x3c/td><td><span style="color:#F59E0B;">■\x3c/span> ส้ม\x3c/td><td>ประชุมครู, ประชุมผู้ปกครอง\x3c/td>\x3c/tr>
-          <tr><td>วันหยุด\x3c/td><td><span style="color:#EF4444;">■\x3c/span> แดง\x3c/td><td>วันหยุดนักขัตฤกษ์, วันหยุดโรงเรียน\x3c/td>\x3c/tr>
+          <tr><td>วิชาการ\x3c/td><td><span class="text-primary">■\x3c/span> น้ำเงิน\x3c/td><td>สอบ, ส่งงาน, กิจกรรมการเรียน\x3c/td>\x3c/tr>
+          <tr><td>กิจกรรม\x3c/td><td><span class="text-success">■\x3c/span> เขียว\x3c/td><td>กีฬา, วันสำคัญ, กิจกรรมโรงเรียน\x3c/td>\x3c/tr>
+          <tr><td>ประชุม\x3c/td><td><span class="text-warning">■\x3c/span> ส้ม\x3c/td><td>ประชุมครู, ประชุมผู้ปกครอง\x3c/td>\x3c/tr>
+          <tr><td>วันหยุด\x3c/td><td><span class="text-danger">■\x3c/span> แดง\x3c/td><td>วันหยุดนักขัตฤกษ์, วันหยุดโรงเรียน\x3c/td>\x3c/tr>
           <tr><td>ทั่วไป\x3c/td><td><span style="color:#64748B;">■\x3c/span> เทา\x3c/td><td>อื่นๆ\x3c/td>\x3c/tr>
         \x3c/tbody>
       \x3c/table>
@@ -702,9 +702,9 @@ function manualContent() {
         <div class="text">
           <div class="title">จัดการไฟล์แต่ละไฟล์\x3c/div>
           <div class="desc">
-            <i class='bx bx-show' style="color:#A62639;">\x3c/i> ดู (เปิดในแท็บใหม่) ·
-            <i class='bx bx-download' style="color:#10B981;">\x3c/i> ดาวน์โหลด ·
-            <i class='bx bx-trash' style="color:#EF4444;">\x3c/i> ลบ (Admin เท่านั้น)
+            <i class='bx bx-show text-primary' >\x3c/i> ดู (เปิดในแท็บใหม่) ·
+            <i class='bx bx-download text-success' >\x3c/i> ดาวน์โหลด ·
+            <i class='bx bx-trash text-danger' >\x3c/i> ลบ (Admin เท่านั้น)
           \x3c/div>
         \x3c/div>
       \x3c/div>
@@ -718,7 +718,7 @@ function manualContent() {
     `)}
 
     <!-- Reports -->
-    ${manSection('sec-reports','bxs-bar-chart-alt-2','#EF4444','รายงาน',`
+    ${manSection('sec-reports','bxs-bar-chart-alt-2','#DC2626','รายงาน',`
       <p style="color:#475569; font-size:14px;">รายงาน 5 ประเภท พร้อมกรองข้อมูลได้:</p>
       <table class="man-table">
         <thead><tr><th>รายงาน</th><th>กรองได้</th><th>เนื้อหา</th></tr></thead>
@@ -763,10 +763,10 @@ function manualContent() {
         <thead><tr><th>การดำเนินการ\x3c/th><th>วิธีทำ\x3c/th>\x3c/tr>\x3c/thead>
         <tbody>
           <tr><td>เพิ่มผู้ใช้ใหม่\x3c/td><td>กดปุ่ม "เพิ่มผู้ใช้" → กำหนด Username + รหัสผ่าน (≥ 6 ตัว) + บทบาท\x3c/td>\x3c/tr>
-          <tr><td>แก้ไขผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-edit' style="color:#A62639;">\x3c/i> → แก้ข้อมูล (เว้นรหัสผ่านว่างถ้าไม่ต้องการเปลี่ยน)\x3c/td>\x3c/tr>
+          <tr><td>แก้ไขผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-edit text-primary' >\x3c/i> → แก้ข้อมูล (เว้นรหัสผ่านว่างถ้าไม่ต้องการเปลี่ยน)\x3c/td>\x3c/tr>
           <tr><td>เปิด/ปิดบัญชี\x3c/td><td>กดที่ Badge สถานะ <b>เปิด/ปิด\x3c/b> ของผู้ใช้นั้นได้เลย\x3c/td>\x3c/tr>
-          <tr><td>รีเซ็ตรหัสผ่าน\x3c/td><td>กดไอคอน <i class='bx bx-key' style="color:#F59E0B;">\x3c/i> → กรอกรหัสผ่านใหม่\x3c/td>\x3c/tr>
-          <tr><td>ลบผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-trash' style="color:#EF4444;">\x3c/i> (ไม่สามารถลบตัวเองหรือ Admin คนสุดท้ายได้)\x3c/td>\x3c/tr>
+          <tr><td>รีเซ็ตรหัสผ่าน\x3c/td><td>กดไอคอน <i class='bx bx-key text-warning' >\x3c/i> → กรอกรหัสผ่านใหม่\x3c/td>\x3c/tr>
+          <tr><td>ลบผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-trash text-danger' >\x3c/i> (ไม่สามารถลบตัวเองหรือ Admin คนสุดท้ายได้)\x3c/td>\x3c/tr>
         \x3c/tbody>
       \x3c/table>
     `)}
@@ -805,7 +805,7 @@ function manualContent() {
     `)}
 
     <!-- FAQ -->
-    ${manSection('sec-faq','bxs-help-circle','#EF4444','คำถามที่พบบ่อย (FAQ)',`
+    ${manSection('sec-faq','bxs-help-circle','#DC2626','คำถามที่พบบ่อย (FAQ)',`
       ${faqItem('ลืมรหัสผ่าน Admin ทำอย่างไร?',
         'ให้ Admin คนอื่นรีเซ็ตผ่านเมนู "จัดการผู้ใช้งาน" → ไอคอนกุญแจ<br>หรือถ้าไม่มี Admin คนอื่น ให้เข้า Google Sheets → Sheet "Users" → แก้ไขฟิลด์ password ด้วย hashPassword() ใน Apps Script')}
       ${faqItem('ข้อมูลหายหลัง Deploy ใหม่ไหม?',
@@ -845,7 +845,7 @@ function faqItem(question, answer) {
   return `
     <div style="border:1px solid #E2E8F0; border-radius:10px; margin-bottom:10px; overflow:hidden;">
       <div style="padding:12px 16px; font-weight:600; color:#0F172A; background:#F8FAFC; font-size:14px;">
-        <i class='bx bx-question-mark' style="color:#A62639; margin-right:6px;">\x3c/i>
+        <i class='bx bx-question-mark' style="color:#4F46E5; margin-right:6px;">\x3c/i>
         ${question}
       \x3c/div>
       <div style="padding:12px 16px; font-size:13px; color:#475569; line-height:1.7;">${answer}\x3c/div>
