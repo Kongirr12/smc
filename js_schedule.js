@@ -19,7 +19,6 @@ const SchedState = {
   isDirty     : false,
   dragDropMode: false
 };
-
 /* ---------- สีตามกลุ่มสาระ ---------- */
 const SUBJECT_COLORS = {
   'ภาษาไทย'           :'#DC2626',
