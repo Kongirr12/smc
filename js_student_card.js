@@ -4,7 +4,6 @@
  *  ใช้ print overlay แทน window.open (ไม่ถูก GAS block)
  * ============================================================ */
 const CARD = { students:[], config:{}, selected:[] };
-
 function renderStudentCard(container) {
   CARD.config = (APP.dashboardData && APP.dashboardData.config) || {};
   container.innerHTML = `
