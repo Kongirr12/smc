@@ -92,11 +92,11 @@ function renderAcademicSubjects() {
   document.getElementById('acSubjects').innerHTML = `
     <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
       <div class="text-base font-semibold text-slate-700">
-        <i class='bx bx-book-open mr-1' style="color:#A62639;">\x3c/i> รายวิชาที่เปิดสอน
+        <i class='bx bx-book-open mr-1 text-primary' >\x3c/i> รายวิชาที่เปิดสอน
       \x3c/div>
       <div class="flex gap-2">
         ${APP.role !== 'teacher' ? `
-        <button id="btnDeleteSelectedSubjects" class="btn btn-light" style="color:#EF4444; display:none;" onclick="deleteSelectedSubjects()"><i class='bx bx-trash'><\/i> ลบที่เลือก<\/button>
+        <button id="btnDeleteSelectedSubjects" class="btn btn-light" style="color:#DC2626; display:none;" onclick="deleteSelectedSubjects()"><i class='bx bx-trash'><\/i> ลบที่เลือก<\/button>
         <button class="btn btn-light" onclick="showImportSubjectsCSV()"><i class='bx bx-import'><\/i> นำเข้า CSV<\/button>
         ` : ''}
         <button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'><\/i> เพิ่มรายวิชา<\/button>
@@ -208,8 +208,8 @@ function renderSubjectsTable(res) {
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
                   ${(APP.role !== 'teacher' || APP.user.username.toLowerCase() === (s.teacher_id||'').toLowerCase()) ? `
-                  <button class="btn btn-light btn-icon" onclick="openSubjectForm('${s.id}')" title="แก้ไข" style="color:#A62639;"><i class='bx bx-edit'><\/i><\/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteSubjectConfirm('${s.id}')" title="ลบ" style="color:#EF4444;"><i class='bx bx-trash'><\/i><\/button>
+                  <button class="btn btn-light btn-icon text-primary" onclick="openSubjectForm('${s.id}')" title="แก้ไข" ><i class='bx bx-edit'><\/i><\/button>
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteSubjectConfirm('${s.id}')" title="ลบ" ><i class='bx bx-trash'><\/i><\/button>
                   ` : '<span class="text-xs text-slate-400">วิชาของผู้อื่น<\/span>'}
                 \x3c/div>
               \x3c/td>
@@ -245,7 +245,7 @@ function deleteSelectedSubjects() {
     text: `ต้องการลบรายวิชาที่เลือก ${ids.length} รายการใช่หรือไม่? (ข้อมูลเกรดที่เกี่ยวข้องจะถูกลบด้วย)`,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonColor: '#EF4444',
+    confirmButtonColor: '#DC2626',
     confirmButtonText: 'ใช่, ลบเลย',
     cancelButtonText: 'ยกเลิก'
   }).then((result) => {
@@ -514,7 +514,7 @@ function showSubjectForm(data) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -555,7 +555,7 @@ function deleteSubjectConfirm(id) {
     title:'ยืนยันการลบ?', text:'รวมถึงคะแนนทั้งหมดของวิชานี้',
     icon:'warning', showCancelButton:true,
     confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -574,7 +574,7 @@ function deleteSubjectConfirm(id) {
 function renderAcademicGrades() {
   document.getElementById('acGrades').innerHTML = `
     <div class="text-base font-semibold text-slate-700 mb-3">
-      <i class='bx bx-edit mr-1' style="color:#A62639;">\x3c/i> บันทึกคะแนน ปพ.5
+      <i class='bx bx-edit mr-1 text-primary' >\x3c/i> บันทึกคะแนน ปพ.5
     \x3c/div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -750,10 +750,10 @@ function renderGradeSheetTable() {
         border-radius:6px; font-family:inherit; font-size:12px;
         background:#F8FAFC; text-align:center; box-sizing:border-box;
       }
-      .grade-input:focus { outline:none; border-color:#A62639; background:white; }
+      .grade-input:focus { outline:none; border-color:#4F46E5; background:white; }
       .grade-output {
         padding:5px; text-align:center; font-size:12px; font-weight:600;
-        background:#F1F5F9; border-radius:6px; color:#800020; min-height:26px;
+        background:#F1F5F9; border-radius:6px; color:#3730A3; min-height:26px;
       }
       .grade-output.grade-fail { background:#FEE2E2; color:#B91C1C; }
       .grade-output.grade-pass { background:#DCFCE7; color:#15803D; }
@@ -851,7 +851,7 @@ function printPP5() {
 function renderAcademicGPA() {
   document.getElementById('acGPA').innerHTML = `
     <div class="text-base font-semibold text-slate-700 mb-3">
-      <i class='bx bx-trophy mr-1' style="color:#A62639;">\x3c/i> ดู GPA และพิมพ์ ปพ.6
+      <i class='bx bx-trophy mr-1 text-primary' >\x3c/i> ดู GPA และพิมพ์ ปพ.6
     \x3c/div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -953,7 +953,7 @@ function viewGPA(studentId) {
         showConfirmButton: false,
         html: `
           <div style="text-align:left;">
-            <div class="text-center mb-4 p-4 rounded-xl" style="background:linear-gradient(135deg,#800020,#A62639); color:white;">
+            <div class="text-center mb-4 p-4 rounded-xl" style="background:linear-gradient(135deg,#3730A3,#4F46E5); color:white;">
               <div class="text-xs opacity-80">เกรดเฉลี่ยสะสม (GPA)\x3c/div>
               <div style="font-size:42px; font-weight:800; line-height:1;">${res.gpa.toFixed(2)}\x3c/div>
               <div class="text-xs opacity-80 mt-2">หน่วยกิตรวม ${res.total_credits} หน่วยกิต\x3c/div>
@@ -1017,7 +1017,7 @@ function renderFinance(container) {
   container.innerHTML = `
     ${pageHeader('งานการเงิน', 'bxs-wallet', (typeof canEditModule === 'function' ? canEditModule('finance') : true) ? `
       <button class="btn btn-light" onclick="openTransactionForm('expense')">
-        <i class='bx bx-minus-circle' style="color:#EF4444;">\x3c/i> รายจ่าย
+        <i class='bx bx-minus-circle text-danger' >\x3c/i> รายจ่าย
       \x3c/button>
       <button class="btn btn-blue" onclick="openTransactionForm('income')">
         <i class='bx bx-plus-circle'>\x3c/i> รายรับ
@@ -1083,7 +1083,7 @@ function loadFinanceSummary() {
               <div class="val">${formatMoney(res.expense)}</div>
             </div>
           </div>
-          <div class="rpt-card-mini" style="background:#F2D5DA;color:#800020;">
+          <div class="rpt-card-mini" style="background:#F2D5DA;color:#3730A3;">
             <div><i class='bx bx-wallet' style="font-size:24px;"></i></div>
             <div>
               <div class="lbl">คงเหลือสุทธิ</div>
@@ -1173,14 +1173,14 @@ function renderFinanceTable(res) {
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
                   ${t.type === 'income' && t.receipt_number ? `
-                    <button class="btn btn-light btn-icon" onclick="printReceipt('${t.id}')" title="พิมพ์ใบเสร็จ" style="color:#10B981;">
+                    <button class="btn btn-light btn-icon text-success" onclick="printReceipt('${t.id}')" title="พิมพ์ใบเสร็จ" >
                       <i class='bx bx-printer'>\x3c/i>
                     \x3c/button>` : ''}
                   ${canEdit ? `
-                  <button class="btn btn-light btn-icon" onclick="openTransactionForm('${t.type}','${t.id}')" title="แก้ไข" style="color:#A62639;">
+                  <button class="btn btn-light btn-icon text-primary" onclick="openTransactionForm('${t.type}','${t.id}')" title="แก้ไข" >
                     <i class='bx bx-edit'>\x3c/i>
                   \x3c/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteTransactionConfirm('${t.id}')" title="ลบ" style="color:#EF4444;">
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteTransactionConfirm('${t.id}')" title="ลบ" >
                     <i class='bx bx-trash'>\x3c/i>
                   \x3c/button>
                   ` : ''}
@@ -1280,7 +1280,7 @@ function showTransactionForm(data, students) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -1334,7 +1334,7 @@ function deleteTransactionConfirm(id) {
   Swal.fire({
     title:'ยืนยันการลบ?', icon:'warning',
     showCancelButton: true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1368,10 +1368,10 @@ const DocsState = { page:1, search:'', doc_type:'', status:'', data:null, teache
 
 const DOC_TYPES = {
   receive : { label:'หนังสือรับ',     color:'#10B981', icon:'bx-envelope-open' },
-  send    : { label:'หนังสือส่ง',     color:'#A62639', icon:'bx-send' },
+  send    : { label:'หนังสือส่ง',     color:'#4F46E5', icon:'bx-send' },
   order   : { label:'คำสั่ง',         color:'#8B5CF6', icon:'bx-clipboard' },
   memo    : { label:'บันทึกข้อความ',  color:'#F59E0B', icon:'bx-note' },
-  announce: { label:'ประกาศ',         color:'#EF4444', icon:'bx-volume-full' },
+  announce: { label:'ประกาศ',         color:'#DC2626', icon:'bx-volume-full' },
   form    : { label:'แบบฟอร์มเอกสาร', color:'#06B6D4', icon:'bx-file' }
 };
 
@@ -1539,10 +1539,10 @@ function renderDocumentsTable(res) {
                       <i class='bx bx-show'>\x3c/i>
                     \x3c/button>
                     ${(typeof canEditModule === 'function' ? canEditModule('documents') : true) ? `
-                    <button class="btn btn-light btn-icon" onclick="openDocumentForm('${d.id}')" title="แก้ไข" style="color:#A62639;">
+                    <button class="btn btn-light btn-icon text-primary" onclick="openDocumentForm('${d.id}')" title="แก้ไข" >
                       <i class='bx bx-edit'>\x3c/i>
                     \x3c/button>
-                    <button class="btn btn-light btn-icon" onclick="deleteDocumentConfirm('${d.id}')" title="ลบ" style="color:#EF4444;">
+                    <button class="btn btn-light btn-icon text-danger" onclick="deleteDocumentConfirm('${d.id}')" title="ลบ" >
                       <i class='bx bx-trash'>\x3c/i>
                     \x3c/button>
                     ` : ''}
@@ -1660,7 +1660,7 @@ function showDocumentForm(data) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     didOpen: () => {
@@ -1744,7 +1744,7 @@ function deleteDocumentConfirm(id) {
   Swal.fire({
     title:'ยืนยันการลบ?', icon:'warning',
     showCancelButton: true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1879,7 +1879,7 @@ function renderApprovalsTable(res) {
             return `
               <tr class="border-b border-slate-100 hover:bg-slate-50">
                 <td class="px-3 py-2.5 font-mono text-xs">${escapeHTML(a.request_id || '-')}\x3c/td>
-                <td class="px-3 py-2.5"><i class='bx ${t.icon} mr-1' style="color:#A62639;">\x3c/i> ${t.label}\x3c/td>
+                <td class="px-3 py-2.5"><i class='bx ${t.icon} mr-1 text-primary' >\x3c/i> ${t.label}\x3c/td>
                 <td class="px-3 py-2.5 font-semibold">${escapeHTML(a.subject || '-')}\x3c/td>
                 <td class="px-3 py-2.5">${escapeHTML(a.requester_name || '-')}\x3c/td>
                 <td class="px-3 py-2.5 whitespace-nowrap text-xs">${formatThaiDateShort(a.requested_at)}\x3c/td>
@@ -1891,14 +1891,14 @@ function renderApprovalsTable(res) {
                       <i class='bx bx-show'>\x3c/i>
                     \x3c/button>
                     ${canApprove && a.status === 'pending' ? `
-                      <button class="btn btn-light btn-icon" onclick="reviewApprovalDlg('${a.id}','approve')" title="อนุมัติ" style="color:#10B981;">
+                      <button class="btn btn-light btn-icon text-success" onclick="reviewApprovalDlg('${a.id}','approve')" title="อนุมัติ" >
                         <i class='bx bx-check'>\x3c/i>
                       \x3c/button>
-                      <button class="btn btn-light btn-icon" onclick="reviewApprovalDlg('${a.id}','reject')" title="ปฏิเสธ" style="color:#EF4444;">
+                      <button class="btn btn-light btn-icon text-danger" onclick="reviewApprovalDlg('${a.id}','reject')" title="ปฏิเสธ" >
                         <i class='bx bx-x'>\x3c/i>
                       \x3c/button>` : ''}
                     ${(canApprove || (APP.user.permissions || []).includes('delete') || a.requester_id === APP.user.id) ? `
-                    <button class="btn btn-light btn-icon" onclick="deleteApproval('${a.id}')" title="ลบ" style="color:#ef4444;">
+                    <button class="btn btn-light btn-icon text-danger" onclick="deleteApproval('${a.id}')" title="ลบ" >
                       <i class='bx bx-trash'>\x3c/i>
                     \x3c/button>` : ''}
                   \x3c/div>
@@ -1962,7 +1962,7 @@ function openApprovalForm() {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -2010,7 +2010,7 @@ function viewApproval(id) {
         <div style="display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:13px; margin-bottom:14px;">
           <span class="text-slate-500">ผู้ขอ:\x3c/span>      <span>${escapeHTML(a.requester_name || '-')}\x3c/span>
           <span class="text-slate-500">วันที่ขอ:\x3c/span>   <span>${formatThaiDate(a.requested_at)}\x3c/span>
-          ${a.amount > 0 ? `<span class="text-slate-500">จำนวนเงิน:\x3c/span> <span style="font-weight:700;color:#800020;">${formatMoney(a.amount)}\x3c/span>` : ''}
+          ${a.amount > 0 ? `<span class="text-slate-500">จำนวนเงิน:\x3c/span> <span style="font-weight:700;color:#3730A3;">${formatMoney(a.amount)}\x3c/span>` : ''}
           <span class="text-slate-500">สถานะ:\x3c/span>      <span>${a.status==='approved'?'<span class="status-badge status-active">อนุมัติแล้ว\x3c/span>':a.status==='rejected'?'<span class="status-badge status-inactive">ปฏิเสธ\x3c/span>':'<span class="status-badge status-pending">รอพิจารณา\x3c/span>'}\x3c/span>
           ${a.reviewer_name ? `<span class="text-slate-500">ผู้พิจารณา:\x3c/span> <span>${escapeHTML(a.reviewer_name)}\x3c/span>` : ''}
           ${a.reviewed_at   ? `<span class="text-slate-500">วันที่:\x3c/span>    <span>${formatThaiDate(a.reviewed_at)}\x3c/span>` : ''}
@@ -2033,7 +2033,7 @@ function reviewApprovalDlg(id, action) {
     showCancelButton: true,
     confirmButtonText: action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: action === 'approve' ? '#10B981' : '#EF4444'
+    confirmButtonColor: action === 'approve' ? '#10B981' : '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังบันทึก...');
@@ -2055,7 +2055,7 @@ function deleteApproval(id) {
     showCancelButton: true,
     confirmButtonText: 'ลบข้อมูล',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#ef4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (r.isConfirmed) {
       showLoading('กำลังลบ...');
@@ -2199,10 +2199,10 @@ function renderRegistrationsTable(res) {
                       <i class='bx bx-show'>\x3c/i>
                     \x3c/button>
                     ${canApprove && r.status === 'pending' ? `
-                      <button class="btn btn-light btn-icon" onclick="approveRegConfirm('${r.id}')" title="อนุมัติ" style="color:#10B981;">
+                      <button class="btn btn-light btn-icon text-success" onclick="approveRegConfirm('${r.id}')" title="อนุมัติ" >
                         <i class='bx bx-check'>\x3c/i>
                       \x3c/button>
-                      <button class="btn btn-light btn-icon" onclick="rejectRegConfirm('${r.id}')" title="ปฏิเสธ" style="color:#EF4444;">
+                      <button class="btn btn-light btn-icon text-danger" onclick="rejectRegConfirm('${r.id}')" title="ปฏิเสธ" >
                         <i class='bx bx-x'>\x3c/i>
                       \x3c/button>` : ''}
                   \x3c/div>
@@ -2329,7 +2329,7 @@ function openRegistrationForm() {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -2438,7 +2438,7 @@ function rejectRegConfirm(id) {
     showCancelButton: true,
     confirmButtonText: 'ปฏิเสธ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังบันทึก...');
