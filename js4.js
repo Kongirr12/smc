@@ -17,26 +17,26 @@ function renderReports(container) {
     <!-- Charts -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bx-line-chart' style="color:#A62639;">\x3c/i> การเข้าเรียน 30 วันย้อนหลัง\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bx-line-chart text-primary' >\x3c/i> การเข้าเรียน 30 วันย้อนหลัง\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div style="height:240px; position:relative;"><canvas id="repChartAttendance">\x3c/canvas>\x3c/div>
         \x3c/div>
       \x3c/div>
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bx-bar-chart' style="color:#10B981;">\x3c/i> การเงินรายเดือน\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bx-bar-chart text-success' >\x3c/i> การเงินรายเดือน\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div style="height:240px; position:relative;"><canvas id="repChartFinance">\x3c/canvas>\x3c/div>
         \x3c/div>
       \x3c/div>
 
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bx-pie-chart-alt-2' style="color:#F59E0B;">\x3c/i> นักเรียนแยกตามชั้น\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bx-pie-chart-alt-2 text-warning' >\x3c/i> นักเรียนแยกตามชั้น\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div style="height:240px; position:relative;"><canvas id="repChartGrade">\x3c/canvas>\x3c/div>
         \x3c/div>
       \x3c/div>
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bx-user-circle' style="color:#8B5CF6;">\x3c/i> บุคลากรแยกตามฝ่าย\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bx-user-circle text-accent' >\x3c/i> บุคลากรแยกตามฝ่าย\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div style="height:240px; position:relative;"><canvas id="repChartDept">\x3c/canvas>\x3c/div>
         \x3c/div>
@@ -45,11 +45,11 @@ function renderReports(container) {
 
     <!-- Export Section -->
     <div class="page-card">
-      <div class="page-card-header"><h2><i class='bx bx-download' style="color:#A62639;">\x3c/i> ดาวน์โหลดรายงาน\x3c/h2>\x3c/div>
+      <div class="page-card-header"><h2><i class='bx bx-download text-primary' >\x3c/i> ดาวน์โหลดรายงาน\x3c/h2>\x3c/div>
       <div class="page-card-body">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           ${[
-            { id:'students_by_grade',   title:'รายชื่อนักเรียนแยกตามชั้น', icon:'bxs-user-detail', color:'#A62639' },
+            { id:'students_by_grade',   title:'รายชื่อนักเรียนแยกตามชั้น', icon:'bxs-user-detail', color:'#4F46E5' },
             { id:'attendance_summary',  title:'สรุปการเข้าเรียน',         icon:'bxs-check-square', color:'#10B981' },
             { id:'finance_summary',     title:'สรุปการเงิน',              icon:'bxs-wallet',      color:'#F59E0B' },
             { id:'gpa_by_grade',        title:'GPA นักเรียน',             icon:'bxs-trophy',      color:'#8B5CF6' },
@@ -76,7 +76,7 @@ function renderReports(container) {
         padding:14px; display:flex; align-items:center; gap:12px;
         cursor:pointer; transition:all .15s;
       }
-      .report-card:hover { border-color:#A62639; transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.06); }
+      .report-card:hover { border-color:#4F46E5; transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.06); }
       .report-card .ic {
         width:46px; height:46px; border-radius:12px;
         display:flex; align-items:center; justify-content:center;
@@ -136,7 +136,7 @@ function renderReportsOverview(d) {
         datasets: [{
           label: '% เข้าเรียน',
           data: d.attendance_30days.map(x => x.pct),
-          borderColor: '#A62639', backgroundColor: 'rgba(59,130,246,.15)',
+          borderColor: '#4F46E5', backgroundColor: 'rgba(59,130,246,.15)',
           fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2
         }]
       },
@@ -160,7 +160,7 @@ function renderReportsOverview(d) {
         labels: d.finance_monthly.map(x => x.ym.slice(2)),
         datasets: [
           { label:'รายรับ', data:d.finance_monthly.map(x => x.income),  backgroundColor:'#10B981', borderRadius:6 },
-          { label:'รายจ่าย',data:d.finance_monthly.map(x => x.expense), backgroundColor:'#EF4444', borderRadius:6 }
+          { label:'รายจ่าย',data:d.finance_monthly.map(x => x.expense), backgroundColor:'#DC2626', borderRadius:6 }
         ]
       },
       options: {
@@ -184,7 +184,7 @@ function renderReportsOverview(d) {
         labels: labels,
         datasets: [{
           data: labels.map(l => d.student_by_grade[l]),
-          backgroundColor: ['#A62639','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#EF4444','#84CC16','#F97316','#6366F1'],
+          backgroundColor: ['#4F46E5','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#DC2626','#84CC16','#F97316','#6366F1'],
           borderWidth: 0
         }]
       },
@@ -302,10 +302,10 @@ const CalendarState = {
 };
 
 const EVENT_TYPES = {
-  academic: { label:'วิชาการ',  color:'#A62639' },
+  academic: { label:'วิชาการ',  color:'#4F46E5' },
   activity: { label:'กิจกรรม',  color:'#10B981' },
   meeting : { label:'ประชุม',   color:'#F59E0B' },
-  holiday : { label:'วันหยุด',  color:'#EF4444' },
+  holiday : { label:'วันหยุด',  color:'#DC2626' },
   general : { label:'ทั่วไป',    color:'#64748B' }
 };
 
@@ -357,7 +357,7 @@ function renderCalendar(container) {
       <div>
         <div class="page-card">
           <div class="page-card-header">
-            <h2><i class='bx bx-list-ul' style="color:#A62639;">\x3c/i> เหตุการณ์ในเดือนนี้\x3c/h2>
+            <h2><i class='bx bx-list-ul text-primary' >\x3c/i> เหตุการณ์ในเดือนนี้\x3c/h2>
           \x3c/div>
           <div class="page-card-body">
             <div id="calEventList"><div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>\x3c/div>
@@ -445,14 +445,14 @@ function renderCalendarGrid() {
         padding:5px; cursor:pointer; transition:all .12s;
         display:flex; flex-direction:column;
       }
-      .cal-cell:hover { background:#FAF0F2; border-color:#A62639; }
+      .cal-cell:hover { background:#FAF0F2; border-color:#4F46E5; }
       .cal-cell.empty { background:transparent; cursor:default; }
       .cal-cell.empty:hover { background:transparent; border-color:transparent; }
-      .cal-cell.today { background:#F2D5DA; border-color:#A62639; }
+      .cal-cell.today { background:#F2D5DA; border-color:#4F46E5; }
       .cal-date { font-size:13px; font-weight:600; color:#0F172A; margin-bottom:2px; }
-      .cal-date.sun { color:#EF4444; }
+      .cal-date.sun { color:#DC2626; }
       .cal-date.sat { color:#F59E0B; }
-      .cal-cell.today .cal-date { color:#800020; }
+      .cal-cell.today .cal-date { color:#3730A3; }
       .cal-events { flex:1; display:flex; flex-direction:column; gap:2px; overflow:hidden; }
       .cal-event-pill {
         font-size:10px; padding:1px 6px; border-radius:4px;
@@ -491,10 +491,10 @@ function renderCalendarEventList() {
               ${e.description ? `<div class="ev-desc">${escapeHTML(e.description).slice(0,80)}${e.description.length > 80 ? '...' : ''}\x3c/div>` : ''}
             \x3c/div>
             <div class="flex flex-col gap-1">
-              <button class="btn btn-light btn-icon" onclick="openCalendarForm('${e.id}')" title="แก้ไข" style="color:#A62639; width:28px; height:28px;">
+              <button class="btn btn-light btn-icon" onclick="openCalendarForm('${e.id}')" title="แก้ไข" style="width:28px; height:28px;" class="text-primary">
                 <i class='bx bx-edit' style="font-size:14px;">\x3c/i>
               \x3c/button>
-              <button class="btn btn-light btn-icon" onclick="deleteCalendarEventConfirm('${e.id}')" title="ลบ" style="color:#EF4444; width:28px; height:28px;">
+              <button class="btn btn-light btn-icon" onclick="deleteCalendarEventConfirm('${e.id}')" title="ลบ" style="width:28px; height:28px;" class="text-danger">
                 <i class='bx bx-trash' style="font-size:14px;">\x3c/i>
               \x3c/button>
             \x3c/div>
@@ -625,7 +625,7 @@ function openCalendarForm(id, defaultDate) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -665,7 +665,7 @@ function deleteCalendarEventConfirm(id) {
   Swal.fire({
     title:'ยืนยันการลบเหตุการณ์?', icon:'warning',
     showCancelButton: true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -746,7 +746,7 @@ function renderFilesView() {
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4">
         ${FilesState.folders.map(f => `
           <div class="folder-card" onclick="loadFilesList('${escapeHTML(f.name)}')">
-            <i class='bx bxs-folder' style="font-size:32px; color:#A62639;">\x3c/i>
+            <i class='bx bxs-folder' style="font-size:32px; color:#4F46E5;">\x3c/i>
             <div class="flex-1 min-w-0">
               <div class="font-semibold text-slate-800 truncate">${escapeHTML(f.name)}\x3c/div>
               <div class="text-xs text-slate-500">${f.file_count} ไฟล์\x3c/div>
@@ -760,7 +760,7 @@ function renderFilesView() {
           padding:12px; display:flex; align-items:center; gap:10px;
           cursor:pointer; transition:all .15s;
         }
-        .folder-card:hover { border-color:#A62639; transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.06); }
+        .folder-card:hover { border-color:#4F46E5; transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.06); }
       \x3c/style>
     `;
   } else {
@@ -801,7 +801,7 @@ function renderFilesView() {
               <a href="${f.download_url}" class="btn btn-light btn-icon" title="ดาวน์โหลด" style="width:28px; height:28px; color:#10B981;">
                 <i class='bx bx-download' style="font-size:14px;">\x3c/i>
               \x3c/a>
-              <button class="btn btn-light btn-icon" onclick="deleteFileConfirm('${f.id}','${escapeHTML(f.name)}')" title="ลบ" style="width:28px; height:28px; color:#EF4444;">
+              <button class="btn btn-light btn-icon" onclick="deleteFileConfirm('${f.id}','${escapeHTML(f.name)}')" title="ลบ" style="width:28px; height:28px; color:#DC2626;">
                 <i class='bx bx-trash' style="font-size:14px;">\x3c/i>
               \x3c/button>
             \x3c/div>
@@ -816,7 +816,7 @@ function renderFilesView() {
         overflow:hidden; transition:all .15s;
         display:flex; flex-direction:column;
       }
-      .file-card:hover { border-color:#A62639; transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.06); }
+      .file-card:hover { border-color:#4F46E5; transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.06); }
       .file-preview {
         height:130px; background:#F1F5F9; cursor:pointer;
         display:flex; align-items:center; justify-content:center;
@@ -897,7 +897,7 @@ function deleteFileConfirm(fileId, fileName) {
     showCancelButton: true,
     confirmButtonText: 'ลบ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1045,13 +1045,13 @@ function renderUsersTable(res) {
               \x3c/td>
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
-                  <button class="btn btn-light btn-icon" onclick="openUserForm('${u.id}')" title="แก้ไข" style="color:#A62639;">
+                  <button class="btn btn-light btn-icon text-primary" onclick="openUserForm('${u.id}')" title="แก้ไข" >
                     <i class='bx bx-edit'>\x3c/i>
                   \x3c/button>
-                  <button class="btn btn-light btn-icon" onclick="resetUserPasswordDlg('${u.id}','${escapeHTML(u.username)}')" title="รีเซ็ตรหัสผ่าน" style="color:#F59E0B;">
+                  <button class="btn btn-light btn-icon text-warning" onclick="resetUserPasswordDlg('${u.id}','${escapeHTML(u.username)}')" title="รีเซ็ตรหัสผ่าน" >
                     <i class='bx bx-key'>\x3c/i>
                   \x3c/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteUserConfirm('${u.id}','${escapeHTML(u.username)}')" title="ลบ" style="color:#EF4444;">
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteUserConfirm('${u.id}','${escapeHTML(u.username)}')" title="ลบ" >
                     <i class='bx bx-trash'>\x3c/i>
                   \x3c/button>
                 \x3c/div>
@@ -1146,7 +1146,7 @@ function openUserForm(id) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -1238,7 +1238,7 @@ function deleteUserConfirm(id, username) {
     showCancelButton: true,
     confirmButtonText: 'ลบ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1293,7 +1293,7 @@ function renderSettingsForm(c) {
 
       <!-- โรงเรียน -->
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bxs-school' style="color:#A62639;">\x3c/i> ข้อมูลโรงเรียน\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bxs-school text-primary' >\x3c/i> ข้อมูลโรงเรียน\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div class="flex items-center gap-4 mb-4 pb-4 border-b border-slate-200">
             <div id="logoPreview" style="width:80px; height:80px; border-radius:14px; background-position:center; background-repeat:no-repeat; ${c.school_logo ? `background-image:url('${escapeHTML(c.school_logo)}'); background-size:contain; background-color:transparent;` : 'background-color:#F1F5F9;'}">
@@ -1347,7 +1347,7 @@ function renderSettingsForm(c) {
 
       <!-- ปีการศึกษา / เกณฑ์ -->
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bxs-calendar' style="color:#10B981;">\x3c/i> ปีการศึกษา / เกณฑ์\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bxs-calendar text-success' >\x3c/i> ปีการศึกษา / เกณฑ์\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div class="grid grid-cols-12 gap-2">
             <div class="col-span-6">
@@ -1380,7 +1380,7 @@ function renderSettingsForm(c) {
 
       <!-- Drive / Folder -->
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bxs-folder' style="color:#F59E0B;">\x3c/i> Google Drive\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bxs-folder text-warning' >\x3c/i> Google Drive\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div>
             <label class="set-label">Folder ID (สำหรับเก็บไฟล์)\x3c/label>
@@ -1394,7 +1394,7 @@ function renderSettingsForm(c) {
 
       <!-- ระบบ -->
       <div class="page-card">
-        <div class="page-card-header"><h2><i class='bx bxs-shield' style="color:#8B5CF6;">\x3c/i> ความปลอดภัย / ระบบ\x3c/h2>\x3c/div>
+        <div class="page-card-header"><h2><i class='bx bxs-shield text-accent' >\x3c/i> ความปลอดภัย / ระบบ\x3c/h2>\x3c/div>
         <div class="page-card-body">
           <div class="grid grid-cols-12 gap-2">
             <div class="col-span-12">
@@ -1431,7 +1431,7 @@ function renderSettingsForm(c) {
         width:100%; padding:8px 12px; border:1.5px solid #E2E8F0; border-radius:8px;
         font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box;
       }
-      .set-input:focus { outline:none; border-color:#A62639; background:white; }
+      .set-input:focus { outline:none; border-color:#4F46E5; background:white; }
       .grade-threshold-row {
         display:grid; grid-template-columns:1fr auto 1fr; gap:6px; align-items:center;
       }
@@ -1573,7 +1573,7 @@ function openCSVImportModal() {
             หัวข้อ,ประเภท,วันเริ่มต้น,วันสิ้นสุด,เวลาเริ่มต้น,เวลาสิ้นสุด,สถานที่,รายละเอียด,ปักหมุด
           </code><br>
           * <strong>หัวข้อ</strong> และ <strong>วันเริ่มต้น</strong> (YYYY-MM-DD) เป็นฟิลด์จำเป็นต้องมี<br>
-          * ประเภทที่รองรับ: <span class="badge" style="background:#F2D5DA;color:#800020;padding:1px 5px;font-size:10px;border-radius:4px;">academic</span>, <span class="badge" style="background:#DCFCE7;color:#15803D;padding:1px 5px;font-size:10px;border-radius:4px;">activity</span>, <span class="badge" style="background:#FEF3C7;color:#B45309;padding:1px 5px;font-size:10px;border-radius:4px;">meeting</span>, <span class="badge" style="background:#FEE2E2;color:#B91C1C;padding:1px 5px;font-size:10px;border-radius:4px;">holiday</span>, <span class="badge" style="background:#F1F5F9;color:#334155;padding:1px 5px;font-size:10px;border-radius:4px;">general</span>
+          * ประเภทที่รองรับ: <span class="badge" style="background:#F2D5DA;color:#3730A3;padding:1px 5px;font-size:10px;border-radius:4px;">academic</span>, <span class="badge" style="background:#DCFCE7;color:#15803D;padding:1px 5px;font-size:10px;border-radius:4px;">activity</span>, <span class="badge" style="background:#FEF3C7;color:#B45309;padding:1px 5px;font-size:10px;border-radius:4px;">meeting</span>, <span class="badge" style="background:#FEE2E2;color:#B91C1C;padding:1px 5px;font-size:10px;border-radius:4px;">holiday</span>, <span class="badge" style="background:#F1F5F9;color:#334155;padding:1px 5px;font-size:10px;border-radius:4px;">general</span>
         </div>
         
         <div class="mb-3">
@@ -1606,7 +1606,7 @@ function openCSVImportModal() {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       </style>
     `,
     preConfirm: () => {
@@ -1666,7 +1666,7 @@ window.processCSVText = function(text) {
   if (!events || events.length === 0) {
     previewArea.style.display = 'none';
     statusMsg.style.display = 'block';
-    statusMsg.style.color = '#EF4444';
+    statusMsg.style.color = '#DC2626';
     statusMsg.textContent = 'ไม่พบข้อมูลที่ถูกต้อง หรือไม่มีหัวข้อและวันที่เริ่มต้น';
     window._parsedCSVEvents = null;
     return;
