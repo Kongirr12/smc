@@ -2,7 +2,6 @@
  *  Smart School Office — js1
  *  Part 1: Auth | Session | Navigation | Dashboard | Upload
  * ============================================================ */
-
 /* ---------- Global State ---------- */
 const APP = {
   token: null,
