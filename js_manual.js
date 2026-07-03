@@ -13,6 +13,7 @@ function renderManual(container) {
         \x3c/div>
       \x3c/div>
     \x3c/div>
+    
 
     <!-- Quick Search -->
     <div class="page-card mb-4">
