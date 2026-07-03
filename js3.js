@@ -19,8 +19,6 @@ function openHTMLDocument(html) {
   w.document.write(html);
   w.document.close();
 }
-
-
 /* ============================================================
  *  ACADEMIC
  * ============================================================ */
