@@ -5,11 +5,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart School Office</title>
+  <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" id="favicon">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script>
+    // Load theme immediately to prevent flash
+    if(localStorage.getItem('smart_school_dark_mode') === 'true') {
+      document.documentElement.classList.add('dark-mode');
+    }
+  </script>
 
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,9 +31,9 @@
               100: '#F2D5DA',
               200: '#E6B0BA',
               300: '#D98B99',
-              400: '#A62639',
-              500: '#800020',
-              600: '#800020',
+              400: '#4F46E5',
+              500: '#3730A3',
+              600: '#3730A3',
               700: '#4A0E17',
               800: '#3A0512',
               900: '#26020A',
@@ -112,16 +120,16 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- QRCode.js — สร้าง QR บัตรนักเรียน -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
   <!-- JsBarcode — สร้าง Barcode บัตรนักเรียน -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
   <!-- Html5-QrCode — สแกน QR เช็คชื่อ -->
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
@@ -140,61 +148,95 @@
 
 
   <!-- ================== Login Screen ================== -->
-  <div id="loginScreen">
-    <div class="login-card">
-
-        <div class="login-logo" id="loginLogoBox">
-          <i class='bx bxs-graduation' id="loginLogoIcon"></i>
+  <div id="loginScreen" style="background: #F1F5F9;">
+    <div class="w-full max-w-4xl max-h-[95vh] overflow-y-auto rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col md:flex-row relative z-10 mx-4" style="animation: floatIn .7s cubic-bezier(.16,1,.3,1);">
+      
+      <!-- Left Hero -->
+      <div id="loginHeroPanel" class="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center text-white sm:px-8 md:w-1/2 md:px-10 md:py-14" style="background: linear-gradient(135deg, #4F46E5 0%, #26020A 100%); transition: background 0.4s ease;">
+        <div class="flex w-full max-w-md flex-col items-center">
+          <div class="login-logo mb-3 md:mb-6" id="loginLogoBox" style="background: transparent; box-shadow: none; border: none; width: 80px; height: 80px; md:width: 140px; md:height: 140px;">
+            <img id="loginLogoImage" src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:14px;" alt="Logo">
+          </div>
+          <h1 class="text-lg md:text-2xl font-bold leading-snug tracking-tight" id="loginSchoolName">Smart School Office</h1>
+          <div class="mt-2 md:mt-4 w-full text-center hidden md:block" id="loginSubTitle">
+            <p class="text-base md:text-xl font-medium tracking-widest leading-relaxed" style="color: #F2D5DA; word-spacing: 2px;">
+              ระบบบริหารจัดการ<br>โรงเรียนมหาชัยพิทยาคาร
+            </p>
+            <p class="text-[10px] md:text-xs font-light mt-3 tracking-wide" style="color: #F2D5DA; opacity: 0.9;">
+              สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม
+            </p>
+          </div>
+          <p id="loginRoleBadge" class="mt-2 md:mt-6 rounded-full px-3 py-1 md:px-4 md:py-1.5 text-[11px] md:text-sm font-medium" style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25); color: #F2D5DA;">
+            ระบบผู้ดูแลระบบ (Admin)
+          </p>
         </div>
-
-      <div class="text-center mb-6">
-        <h1 class="text-2xl font-bold text-slate-800 mb-1">Smart School Office</h1>
-        <p class="text-sm text-slate-500">ระบบบริหารจัดการโรงเรียน</p>
       </div>
 
-      <div class="tab-pill">
-        <button id="tabAdmin" class="active" onclick="switchLoginTab('admin')">
-          <i class='bx bx-shield-quarter mr-1'></i> ผู้ดูแลระบบ
-        </button>
-        <button id="tabStaff" onclick="switchLoginTab('staff')">
-          <i class='bx bx-user mr-1'></i> Staff / ครู
-        </button>
-      </div>
-
-      <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
-
-        <div class="input-wrap">
-          <i class='bx bx-user'></i>
-          <input type="text" id="loginUsername" placeholder="ชื่อผู้ใช้งาน" autocomplete="username" required>
+      <!-- Right Form -->
+      <div class="flex flex-1 flex-col justify-center bg-white px-5 py-6 sm:px-8 md:w-1/2 md:px-10 md:py-12">
+        <div class="mb-4 md:mb-8">
+          <h2 class="text-xl md:text-2xl font-bold text-gray-900">เข้าสู่ระบบ</h2>
+          <p class="mt-1 text-xs md:text-sm text-gray-600">กรอกข้อมูลผู้ใช้งานของคุณ</p>
         </div>
 
-        <div class="input-wrap">
-          <i class='bx bx-lock-alt'></i>
-          <input type="password" id="loginPassword" placeholder="รหัสผ่าน" autocomplete="current-password" required>
-          <button type="button" class="toggle-pwd" onclick="togglePassword()">
-            <i class='bx bx-show' id="pwdIcon"></i>
+        <div class="tab-pill mb-4 md:mb-6" style="margin-top: 0;">
+          <button id="tabAdmin" class="active" onclick="switchLoginTab('admin')">
+            <i class='bx bx-shield-quarter mr-1'></i> ผู้ดูแลระบบ
+          </button>
+          <button id="tabStaff" onclick="switchLoginTab('staff')">
+            <i class='bx bx-user mr-1'></i> Staff / ครู
           </button>
         </div>
 
-        <div class="flex items-center justify-between text-sm mb-5">
-          <label class="flex items-center gap-2 cursor-pointer text-slate-600">
-            <input type="checkbox" id="rememberMe" class="rounded border-slate-300">
-            จดจำการเข้าสู่ระบบ
-          </label>
-          <a href="#" onclick="event.preventDefault(); forgotPassword();" class="text-blue-600 hover:underline">ลืมรหัสผ่าน?</a>
-        </div>
+        <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
+          <div class="input-wrap mb-3 md:mb-4">
+            <i class='bx bx-user'></i>
+            <input type="text" id="loginUsername" placeholder="ชื่อผู้ใช้งาน" autocomplete="username" required>
+          </div>
 
-        <button type="submit" class="btn-primary" id="loginBtn">
-          <i class='bx bx-log-in-circle'></i>
-          เข้าสู่ระบบ
-        </button>
+          <div class="input-wrap mb-3 md:mb-4">
+            <i class='bx bx-lock-alt'></i>
+            <input type="password" id="loginPassword" placeholder="รหัสผ่าน" autocomplete="current-password" required>
+            <button type="button" class="toggle-pwd" onclick="togglePassword()">
+              <i class='bx bx-show' id="pwdIcon"></i>
+            </button>
+          </div>
 
-        <div class="text-center text-xs text-slate-400 mt-6">
-          เริ่มต้นใช้งาน: <span class="font-semibold text-slate-600">admin / Admin@2024</span>
-        </div>
-      </form>
+          <div class="flex items-center justify-between text-[13px] md:text-sm mb-4 mt-1 md:mb-6 md:mt-2">
+            <label class="flex items-center gap-1.5 md:gap-2 cursor-pointer text-slate-600">
+              <input type="checkbox" id="rememberMe" class="rounded border-slate-300">
+              จดจำการเข้าสู่ระบบ
+            </label>
+            <a href="#" onclick="event.preventDefault(); forgotPassword();" class="text-blue-600 hover:underline">ลืมรหัสผ่าน?</a>
+          </div>
+
+          <button type="submit" class="btn w-full shadow-lg text-white" id="loginBtn" style="background-color: #3730A3; font-size: 15px; padding: 10px; md:font-size: 16px; md:padding: 12px; border-radius: 12px; border: none; font-weight: 600; display:flex; justify-content:center; align-items:center; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#4F46E5'" onmouseout="this.style.backgroundColor='#3730A3'">
+            <i class='bx bx-log-in-circle mr-2 text-xl'></i> เข้าสู่ระบบ
+          </button>
+
+          <div class="text-center text-[11px] md:text-xs text-slate-400 mt-4 md:mt-6">
+            <i class='bx bx-code-alt'></i> พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ
+          </div>
+        </form>
+      </div>
     </div>
   </div>
+
+  <script>
+    // โหลด Logo และชื่อโรงเรียนที่เคยดึงไว้มาแสดงก่อน เพื่อความสวยงามระหว่างรอโหลด
+    document.addEventListener('DOMContentLoaded', () => {
+      const cachedLogo = localStorage.getItem('cached_school_logo');
+      const cachedName = localStorage.getItem('cached_school_name');
+      if (cachedLogo) {
+        document.getElementById('loginLogoImage').src = cachedLogo;
+        const favicon = document.getElementById('favicon');
+        if(favicon) favicon.href = cachedLogo;
+      }
+      if (cachedName) {
+        document.getElementById('loginSchoolName').textContent = cachedName;
+      }
+    });
+  </script>
 
 
   <!-- ================== Main App (ซ่อนจนกว่าจะ Login) ================== -->
@@ -253,6 +295,9 @@
         <button class="menu-item staff-only" data-page="finance" onclick="navigate('finance')">
           <i class='bx bxs-wallet'></i> งานการเงิน
         </button>
+        <button class="menu-item staff-only" data-page="budget" onclick="navigate('budget')">
+          <i class='bx bxs-pie-chart-alt-2'></i> ระบบงบประมาณ
+        </button>
         <button class="menu-item staff-only" data-page="documents" onclick="navigate('documents')">
           <i class='bx bxs-envelope'></i> สารบรรณโรงเรียน
         </button>
@@ -268,6 +313,19 @@
         </button>
         <button class="menu-item" data-page="reports" onclick="navigate('reports')">
           <i class='bx bxs-bar-chart-alt-2'></i> รายงาน
+        </button>
+
+        <div class="menu-divider"></div>
+        <div class="menu-section-label">ระบบภายนอก (ส่วนเสริม)</div>
+
+        <button class="menu-item" data-page="ext_nited" onclick="navigate('ext_nited')">
+          <i class='bx bxs-chalkboard'></i> ระบบนิเทศภายใน
+        </button>
+        <button class="menu-item" data-page="ext_homevisit" onclick="navigate('ext_homevisit')">
+          <i class='bx bxs-home-heart'></i> ระบบเยี่ยมบ้าน
+        </button>
+        <button class="menu-item" data-page="ext_training" onclick="navigate('ext_training')">
+          <i class='bx bxs-graduation'></i> ระบบเก็บข้อมูลการอบรม
         </button>
 
         <div class="menu-divider" id="adminDivider"></div>
@@ -309,13 +367,29 @@
         </button>
         <div class="page-title" id="pageTitle">หน้าหลัก</div>
         <div class="actions">
+          <button class="icon-btn" onclick="toggleDarkMode()" title="โหมดมืด" id="btnDarkMode">
+            <i class='bx bx-moon'></i>
+          </button>
           <button class="icon-btn" onclick="openProfile()" title="โปรไฟล์">
             <i class='bx bx-user-circle'></i>
           </button>
-          <button class="icon-btn" onclick="navigate('calendar')" title="แจ้งเตือน">
-            <i class='bx bx-bell'></i>
-            <span class="dot" id="topbarDot" style="display:none;"></span>
-          </button>
+          
+          <div style="position: relative;">
+            <button class="icon-btn" onclick="toggleNotifications()" title="แจ้งเตือน">
+              <i class='bx bx-bell'></i>
+              <span class="dot" id="topbarBellDot" style="display:none; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; background: #DC2626; border-radius: 50%; border: 2px solid white;"></span>
+            </button>
+            <div id="notificationsDropdown" style="display:none; position:absolute; right:0; top:45px; width:300px; background:white; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); border:1px solid #E2E8F0; z-index:100; overflow:hidden;">
+              <div style="padding:12px 16px; border-bottom:1px solid #E2E8F0; font-weight:600; font-size:14px; color:#0F172A; display:flex; justify-content:space-between; align-items:center;">
+                การแจ้งเตือน
+                <span id="notifCount" style="background:#DC2626; color:white; font-size:11px; padding:2px 8px; border-radius:99px;">0</span>
+              </div>
+              <div id="notificationsList" style="max-height:300px; overflow-y:auto; padding:0;">
+                <div style="padding:20px; text-align:center; color:#94A3B8; font-size:13px;">ไม่มีแจ้งเตือนใหม่</div>
+              </div>
+            </div>
+          </div>
+          
         </div>
       </header>
 

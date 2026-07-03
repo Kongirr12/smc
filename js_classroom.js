@@ -44,13 +44,13 @@ function renderClassroomMgmt(container) {
         display: flex; align-items: center; justify-content: center;
         margin-bottom: 12px;
       }
-      .cls-icon i { font-size: 26px; color: #800020; }
+      .cls-icon i { font-size: 26px; color: #3730A3; }
       .cls-name { font-size: 22px; font-weight: 800; color: #0F172A; margin-bottom: 2px; }
       .cls-year { font-size: 12px; color: #94A3B8; margin-bottom: 12px; }
       .cls-meta { font-size: 13px; color: #475569; margin-bottom: 4px; }
-      .cls-meta span { font-weight: 600; color: #800020; }
+      .cls-meta span { font-weight: 600; color: #3730A3; }
       .cls-bar-bg { height: 6px; background:#F1F5F9; border-radius:9px; margin: 8px 0 14px; overflow:hidden; }
-      .cls-bar    { height: 6px; background: linear-gradient(90deg,#A62639,#60A5FA); border-radius:9px; transition:width .5s; }
+      .cls-bar    { height: 6px; background: linear-gradient(90deg,#4F46E5,#60A5FA); border-radius:9px; transition:width .5s; }
       .cls-actions { display: flex; gap: 6px; }
       .cls-badge {
         position: absolute; top: 14px; right: 14px;
@@ -106,7 +106,7 @@ function renderCLS() {
         <button class="btn btn-blue" style="flex:1;" onclick="openClassroomStudents('${escapeHTML(r.id)}','${escapeHTML(r.name)}','${escapeHTML(String(r.academic_year))}')">
           <i class='bx bxs-user-detail'></i> นักเรียน
         </button>
-        ${APP.role !== 'teacher' ? `<button class="btn btn-light" style="color:#EF4444;padding:8px 10px;" onclick="deleteClassroomConfirm('${escapeHTML(r.id)}','${escapeHTML(r.name)}')" ><i class='bx bx-trash'></i></button>` : ''}
+        ${APP.role !== 'teacher' ? `<button class="btn btn-light" style="color:#DC2626;padding:8px 10px;" onclick="deleteClassroomConfirm('${escapeHTML(r.id)}','${escapeHTML(r.name)}')" ><i class='bx bx-trash'></i></button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -137,25 +137,25 @@ function openClassroomForm(id) {
           <div style="text-align:left;font-size:14px;">
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
               <div>
-                <label class="form-label">ระดับชั้น <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ระดับชั้น <span class="text-danger">*</span></label>
                 <select id="cf_grade" class="form-input">
                   <option value="">-- กรุณาเลือก --</option>
                   ${GRADES.map(g => `<option value="${g}" ${(r&&r.grade_level===g)?'selected':''}>${g}</option>`).join('')}
                 </select>
               </div>
               <div>
-                <label class="form-label">ห้อง <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ห้อง <span class="text-danger">*</span></label>
                 <input type="text" id="cf_room" class="form-input" placeholder="1" maxlength="5"
                        value="${escapeHTML(r ? r.room_number : '')}">
               </div>
               <div>
-                <label class="form-label">ปีการศึกษา <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ปีการศึกษา <span class="text-danger">*</span></label>
                 <input type="text" id="cf_year" class="form-input" value="${escapeHTML(r ? String(r.academic_year) : String(currentYear))}">
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
               <div>
-                <label class="form-label">ความจุ <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ความจุ <span class="text-danger">*</span></label>
                 <input type="number" id="cf_cap" class="form-input" value="${r ? r.capacity : 40}" min="1" max="200">
               </div>
               <div>
@@ -167,12 +167,22 @@ function openClassroomForm(id) {
               </div>
             </div>
             <div>
-              <label class="form-label">ครูประจำชั้น</label>
-              <input type="text" id="cf_teacher_search" class="form-input" placeholder="ค้นหาครูประจำชั้น..."
+              <label class="form-label">ครูประจำชั้นคนที่ 1</label>
+              <input type="text" id="cf_teacher_search_1" class="form-input" placeholder="ค้นหาครูประจำชั้น..."
                      value="${escapeHTML(r && r.homeroom_teacher_id ? (teachers.find(t=>t.id===r.homeroom_teacher_id)||{}).name||'' : '')}"
-                     autocomplete="off" oninput="filterTeacherDropdown(this.value)">
-              <input type="hidden" id="cf_teacher_id" value="${escapeHTML(r ? r.homeroom_teacher_id||'' : '')}">
-              <div id="cf_teacher_list" style="display:none;position:absolute;z-index:9999;background:white;
+                     autocomplete="off" oninput="filterTeacherDropdown(this.value, 1)">
+              <input type="hidden" id="cf_teacher_id_1" value="${escapeHTML(r ? r.homeroom_teacher_id||'' : '')}">
+              <div id="cf_teacher_list_1" style="display:none;position:absolute;z-index:9999;background:white;
+                   border:1.5px solid #E2E8F0;border-radius:10px;max-height:160px;overflow-y:auto;
+                   width:calc(100% - 80px);box-shadow:0 8px 24px rgba(0,0,0,.12);"></div>
+            </div>
+            <div style="margin-top:10px;">
+              <label class="form-label">ครูประจำชั้นคนที่ 2 (ถ้ามี)</label>
+              <input type="text" id="cf_teacher_search_2" class="form-input" placeholder="ค้นหาครูประจำชั้นคนที่ 2..."
+                     value="${escapeHTML(r && r.homeroom_teacher_id_2 ? (teachers.find(t=>t.id===r.homeroom_teacher_id_2)||{}).name||'' : '')}"
+                     autocomplete="off" oninput="filterTeacherDropdown(this.value, 2)">
+              <input type="hidden" id="cf_teacher_id_2" value="${escapeHTML(r ? r.homeroom_teacher_id_2||'' : '')}">
+              <div id="cf_teacher_list_2" style="display:none;position:absolute;z-index:9999;background:white;
                    border:1.5px solid #E2E8F0;border-radius:10px;max-height:160px;overflow-y:auto;
                    width:calc(100% - 80px);box-shadow:0 8px 24px rgba(0,0,0,.12);"></div>
             </div>
@@ -181,9 +191,9 @@ function openClassroomForm(id) {
             .form-label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:3px;}
             .form-input{width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;
               font-family:inherit;font-size:13px;background:#F8FAFC;box-sizing:border-box;}
-            .form-input:focus{outline:none;border-color:#A62639;background:white;}
+            .form-input:focus{outline:none;border-color:#4F46E5;background:white;}
             .teacher-opt{padding:8px 12px;cursor:pointer;font-size:13px;}
-            .teacher-opt:hover{background:#FAF0F2;color:#800020;}
+            .teacher-opt:hover{background:#FAF0F2;color:#3730A3;}
           </style>
         `,
         preConfirm: () => {
@@ -200,7 +210,8 @@ function openClassroomForm(id) {
             room_number        : room,
             academic_year      : year,
             capacity           : parseInt(document.getElementById('cf_cap').value) || 40,
-            homeroom_teacher_id: document.getElementById('cf_teacher_id').value,
+            homeroom_teacher_id: document.getElementById('cf_teacher_id_1').value,
+            homeroom_teacher_id_2: document.getElementById('cf_teacher_id_2').value,
             status             : document.getElementById('cf_status').value
           };
         }
@@ -221,8 +232,8 @@ function openClassroomForm(id) {
     .getPersonnel({ type:'teacher', per_page:200 }, APP.token);
 }
 
-function filterTeacherDropdown(q) {
-  const box = document.getElementById('cf_teacher_list');
+function filterTeacherDropdown(q, idx) {
+  const box = document.getElementById('cf_teacher_list_' + idx);
   if (!box) return;
   const filtered = q.length < 1 ? [] : CLS.teachers.filter(t =>
     (t.name||'').includes(q) || (t.first_name||'').includes(q)
@@ -231,15 +242,15 @@ function filterTeacherDropdown(q) {
   if (!filtered.length) { box.style.display = 'none'; return; }
   box.style.display = 'block';
   box.innerHTML = filtered.map(t => `
-    <div class="teacher-opt" onclick="selectTeacher('${escapeHTML(t.id)}','${escapeHTML(t.name||t.first_name||'')}')">
+    <div class="teacher-opt" onclick="selectTeacher('${escapeHTML(t.id)}','${escapeHTML(t.name||t.first_name||'')}', ${idx})">
       ${escapeHTML(t.name||t.first_name||'')}
     </div>`).join('');
 }
 
-function selectTeacher(id, name) {
-  const el = document.getElementById('cf_teacher_id');
-  const search = document.getElementById('cf_teacher_search');
-  const box = document.getElementById('cf_teacher_list');
+function selectTeacher(id, name, idx) {
+  const el = document.getElementById('cf_teacher_id_' + idx);
+  const search = document.getElementById('cf_teacher_search_' + idx);
+  const box = document.getElementById('cf_teacher_list_' + idx);
   if (el) el.value = id;
   if (search) search.value = name;
   if (box) box.style.display = 'none';
@@ -297,7 +308,7 @@ function showClassroomStudentDialog(roomId, roomName, ay, students) {
                       onclick="event.stopPropagation();viewStudent('${escapeHTML(s.id)}')">
                 <i class='bx bx-show'></i>
               </button>
-              <button class="btn btn-light" style="padding:5px 8px;font-size:11px;color:#A62639;"
+              <button class="btn btn-light" style="padding:5px 8px;font-size:11px;color:#4F46E5;"
                       onclick="event.stopPropagation();openStudentForm('${escapeHTML(s.id)}')">
                 <i class='bx bx-edit'></i>
               </button>
@@ -401,7 +412,7 @@ function deleteClassroomConfirm(id, name) {
     showCancelButton: true,
     confirmButtonText: 'ลบ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');

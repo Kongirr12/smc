@@ -15,13 +15,15 @@ const SchedState = {
   entries     : [],
   periods     : [],
   rooms       : [],
-  subjects    : []
+  subjects    : [],
+  isDirty     : false,
+  dragDropMode: false
 };
 
 /* ---------- สีตามกลุ่มสาระ ---------- */
 const SUBJECT_COLORS = {
-  'ภาษาไทย'           :'#EF4444',
-  'คณิตศาสตร์'         :'#A62639',
+  'ภาษาไทย'           :'#DC2626',
+  'คณิตศาสตร์'         :'#4F46E5',
   'วิทยาศาสตร์'        :'#10B981',
   'สังคมศึกษาฯ'        :'#F59E0B',
   'สุขศึกษาและพลศึกษา' :'#EC4899',
@@ -46,6 +48,11 @@ function renderSchedule(container) {
   const config = (APP.dashboardData && APP.dashboardData.config) || {};
   SchedState.academic_year = config.academic_year || String(new Date().getFullYear() + 543);
   SchedState.semester = config.semester || '1';
+  
+  if (APP.role === 'teacher' && SchedState.tab === 'class') {
+    // If first load and it's a teacher, default to 'teacher' tab instead of 'class' if desired
+    SchedState.tab = 'teacher';
+  }
 
   container.innerHTML = `
     ${pageHeader('ตารางสอน', 'bxs-calendar-check', '')}
@@ -73,7 +80,7 @@ function renderSchedule(container) {
           <div class="flex-1">\x3c/div>
           ${APP.role !== 'teacher' ? `
           <button class="btn btn-light" onclick="openCopyScheduleDlg()" title="คัดลอกตารางสอน"><i class='bx bx-copy'><\/i> Copy ตารางสอน<\/button>
-          <button class="btn btn-light" onclick="openConflictReport()" title="ตรวจสอบ Conflict"><i class='bx bx-error-alt' style="color:#F59E0B;"><\/i> ตรวจ Conflict<\/button>
+          <button class="btn btn-light" onclick="openConflictReport()" title="ตรวจสอบ Conflict"><i class='bx bx-error-alt text-warning' ><\/i> ตรวจ Conflict<\/button>
           ` : ''}
         \x3c/div>
       \x3c/div>
@@ -84,7 +91,7 @@ function renderSchedule(container) {
       <div class="page-card-body">
         <div style="display:flex; gap:2px; flex-wrap:wrap; margin-bottom:18px; background:#F1F5F9; border-radius:12px; padding:4px;">
           ${[
-            { id:'class',   icon:'bxs-building',         label:'รายห้องเรียน',   teacherHide: true },
+            { id:'class',   icon:'bxs-building',         label:'รายห้องเรียน' },
             { id:'teacher', icon:'bxs-user-detail',      label:'ตารางของฉัน' },
             { id:'all',     icon:'bxs-grid-alt',         label:'ภาพรวมทุกห้อง' },
             { id:'rooms',   icon:'bxs-door-open',        label:'ห้องสอน',            teacherHide: true },
@@ -108,7 +115,7 @@ function renderSchedule(container) {
         padding:6px 10px; border:1.5px solid #E2E8F0; border-radius:8px;
         font-family:inherit; font-size:13px; background:#F8FAFC; font-weight:600;
       }
-      .sched-select:focus { outline:none; border-color:#A62639; }
+      .sched-select:focus { outline:none; border-color:#4F46E5; }
       .sched-tab {
         flex:1; min-width:130px; padding:9px 14px; border-radius:8px;
         border:none; background:transparent; font-family:inherit;
@@ -116,39 +123,73 @@ function renderSchedule(container) {
         display:inline-flex; align-items:center; justify-content:center; gap:6px;
         transition:all .15s;
       }
-      .sched-tab:hover { background:rgba(255,255,255,.7); color:#800020; }
-      .sched-tab.active { background:white; color:#800020; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+      .sched-tab:hover { background:rgba(255,255,255,.7); color:#3730A3; }
+      .sched-tab.active { background:white; color:#3730A3; box-shadow:0 2px 8px rgba(0,0,0,.08); }
     \x3c/style>
   `;
 
   loadSchedData();
 }
 
+function checkDirtyState(callback) {
+  if (SchedState.isDirty) {
+    Swal.fire({
+      title: 'คุณมีตารางที่ยังไม่ได้บันทึก',
+      text: 'การเปลี่ยนหน้าจะทำให้ข้อมูลที่จัดไว้หายไป ต้องการบันทึกก่อนหรือไม่?',
+      icon: 'warning',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: 'บันทึกตาราง',
+      denyButtonText: 'ทิ้งการเปลี่ยนแปลง',
+      cancelButtonText: 'ยกเลิก'
+    }).then(r => {
+      if (r.isConfirmed) {
+         saveClassScheduleBatch();
+      } else if (r.isDenied) {
+         SchedState.isDirty = false;
+         callback();
+      } else {
+         if (document.getElementById('schedClassroom')) document.getElementById('schedClassroom').value = SchedState.classroom;
+         if (document.getElementById('schedYear')) document.getElementById('schedYear').value = SchedState.academic_year;
+         if (document.getElementById('schedSem')) document.getElementById('schedSem').value = SchedState.semester;
+      }
+    });
+  } else {
+    callback();
+  }
+}
+
 function onSchedYearSemChange() {
-  SchedState.academic_year = document.getElementById('schedYear').value;
-  SchedState.semester      = document.getElementById('schedSem').value;
-  loadSchedData();
+  checkDirtyState(() => {
+    SchedState.academic_year = document.getElementById('schedYear').value;
+    SchedState.semester      = document.getElementById('schedSem').value;
+    loadSchedData();
+  });
 }
 
 function switchSchedTab(tab) {
-  SchedState.tab = tab;
-  document.querySelectorAll('.sched-tab').forEach(el => {
-    el.classList.toggle('active', el.id === 'stab_' + tab);
+  checkDirtyState(() => {
+    SchedState.tab = tab;
+    document.querySelectorAll('.sched-tab').forEach(el => {
+      el.classList.toggle('active', el.id === 'stab_' + tab);
+    });
+    // If switching back to class view and data wasn't reloaded, it might need reload, 
+    // but we can just render the tab, as checkDirtyState handles the "discard" by loading fresh.
+    if(tab !== 'class') loadSchedData(); // ensure fresh data when leaving class view
+    renderSchedTab();
   });
-  renderSchedTab();
 }
 
 function loadSchedData() {
   document.getElementById('schedContent').innerHTML =
     '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลดข้อมูล...\x3c/div>';
 
-  // เปลี่ยน tab ไป teacher อัตโนมัติถ้าเป็นครู
-  if (APP.role === 'teacher') SchedState.tab = 'teacher';
+  // Not forcing tab to 'teacher' here so teachers can switch tabs
 
-  // โหลดพร้อมกัน 3 ชุด
+  // โหลดพร้อมกัน 4 ชุด
   let done = 0;
   const check = () => {
-    if (++done < 3) return;
+    if (++done < 4) return;
     // ถ้าเป็นครู → เลือกตัวเองอัตโนมัติ
     if (APP.role === 'teacher') {
       const own = SchedState.teachers.find(t =>
@@ -189,6 +230,14 @@ function loadSchedData() {
     })
     .withFailureHandler(() => check())
     .getRooms({}, APP.token);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.status === 'success') SchedState.subjects = res.data;
+      check();
+    })
+    .withFailureHandler(() => check())
+    .getSubjects({ per_page: 500, academic_year: SchedState.academic_year, semester: SchedState.semester }, APP.token);
 }
 
 function renderSchedTab() {
@@ -217,21 +266,46 @@ function renderClassView() {
       \x3c/div>
       <div class="flex-1">\x3c/div>
       ${SchedState.classroom ? `
+        ${APP.role === 'admin' ? `
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; background:#F1F5F9; padding:6px 12px; border-radius:8px; margin-right:8px; border:1px solid #E2E8F0;">
+          <input type="checkbox" id="toggleDragDrop" ${SchedState.dragDropMode ? 'checked' : ''} onchange="toggleDragDropMode(this.checked)" style="accent-color:#4F46E5; width:16px; height:16px; cursor:pointer;">
+          <span style="font-size:13px; font-weight:600; color:#475569;">โหมด Drag & Drop</span>
+        \x3c/label>
+        <button id="btnSaveSchedule" class="btn btn-primary" onclick="saveClassScheduleBatch()" style="${SchedState.isDirty && SchedState.dragDropMode ? '' : 'display:none;'}">
+          <i class='bx bx-save'>\x3c/i> บันทึกตาราง
+        \x3c/button>
+        ` : ''}
         <button class="btn btn-light" onclick="printClassSchedule()">
           <i class='bx bx-printer'>\x3c/i> พิมพ์ตารางสอน
         \x3c/button>
         <button class="btn btn-light" onclick="exportClassScheduleXLS()">
           <i class='bx bx-download'>\x3c/i> Excel
         \x3c/button>
-        <button class="btn btn-light" style="color:#EF4444;" onclick="clearClassScheduleConfirm()">
+        ${APP.role === 'admin' ? `
+        <button class="btn btn-light text-danger"  onclick="clearClassScheduleConfirm()">
           <i class='bx bx-trash'>\x3c/i> ล้างตาราง
         \x3c/button>
+        ` : ''}
       ` : ''}
     \x3c/div>
 
     <div id="classGridArea">
-      ${SchedState.classroom ? buildScheduleGrid('class') : `
-        <div class="empty-state">
+      ${SchedState.classroom ? `
+        <div class="flex flex-col md:flex-row gap-4 items-start">
+          ${SchedState.dragDropMode ? `
+          <div class="w-full md:w-1/4 bg-slate-50 border border-slate-200 rounded-xl p-3" style="max-height:600px; overflow-y:auto;">
+            <div class="text-sm font-semibold text-slate-700 mb-2">
+              <i class='bx bx-book-open'>\x3c/i> ลากรายวิชา
+            \x3c/div>
+            ${buildSubjectPalette()}
+          \x3c/div>
+          ` : ''}
+          <div class="${SchedState.dragDropMode ? 'w-full md:w-3/4' : 'w-full'} overflow-x-auto">
+            ${buildScheduleGrid('class')}
+          \x3c/div>
+        \x3c/div>
+      ` : `
+        <div class="empty-state w-full">
           <i class='bx bxs-calendar-check'>\x3c/i>
           เลือกชั้นเรียนเพื่อดูและแก้ไขตารางสอน
         \x3c/div>`}
@@ -240,9 +314,173 @@ function renderClassView() {
   `;
 }
 
-function onClassroomChange() {
-  SchedState.classroom = document.getElementById('schedClassroom').value;
+function toggleDragDropMode(checked) {
+  if (!checked && SchedState.isDirty) {
+    Swal.fire({
+      title: 'คุณมีตารางที่ยังไม่ได้บันทึก',
+      text: 'การปิดโหมด Drag & Drop จะทิ้งข้อมูลที่ยังไม่ได้บันทึก ต้องการบันทึกก่อนหรือไม่?',
+      icon: 'warning',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: 'บันทึกตาราง',
+      denyButtonText: 'ทิ้งการเปลี่ยนแปลง',
+      cancelButtonText: 'ยกเลิก'
+    }).then(r => {
+      if (r.isConfirmed) {
+         document.getElementById('toggleDragDrop').checked = true;
+         saveClassScheduleBatch();
+      } else if (r.isDenied) {
+         SchedState.isDirty = false;
+         SchedState.dragDropMode = false;
+         loadSchedData();
+      } else {
+         document.getElementById('toggleDragDrop').checked = true;
+      }
+    });
+    return;
+  }
+  SchedState.dragDropMode = checked;
   renderClassView();
+}
+
+function buildSubjectPalette() {
+  if (!SchedState.subjects || SchedState.subjects.length === 0) {
+    return '<div class="text-xs text-slate-500">กำลังโหลดรายวิชา... หรือไม่มีรายวิชา\x3c/div>';
+  }
+  const clsMatch = SchedState.classroom; // e.g. ม.1/1
+  const gradeMatch = clsMatch ? clsMatch.split('/')[0] : '';
+  
+  const relevant = SchedState.subjects.filter(s => !s.grade_level || s.grade_level === clsMatch || s.grade_level === gradeMatch);
+  
+  if (relevant.length === 0) {
+    return '<div class="text-xs text-slate-500">ไม่มีวิชาที่เปิดสอนสำหรับชั้นนี้\x3c/div>';
+  }
+  
+  return relevant.map(s => {
+    const color = SUBJECT_COLORS[s.subject_group] || '#64748B';
+    return `
+      <div class="entry-card mb-2" draggable="true" ondragstart="onDragSubjectStart(event, '${s.id}')"
+           style="border-color:${color}; background:white; min-height:50px; cursor:grab;">
+        <div class="entry-bar" style="background:${color};">\x3c/div>
+        <div class="entry-body py-1 px-2">
+          <div class="entry-subject" style="font-size:12px;">${escapeHTML(s.subject_name)}\x3c/div>
+          <div class="entry-teacher" style="font-size:10px;">${escapeHTML(s.teacher_name || 'ไม่ระบุครูผู้สอน')}\x3c/div>
+        \x3c/div>
+      \x3c/div>
+    `;
+  }).join('');
+}
+
+function onDragSubjectStart(event, subjectId) {
+  event.dataTransfer.setData('subjectId', subjectId);
+  event.dataTransfer.effectAllowed = 'copy';
+}
+
+function onDragOverGrid(event) {
+  event.preventDefault(); // อนุญาตให้วางได้
+  event.dataTransfer.dropEffect = 'copy';
+  const cell = event.currentTarget;
+  cell.classList.add('drag-over');
+}
+
+function onDragLeaveGrid(event) {
+  const cell = event.currentTarget;
+  cell.classList.remove('drag-over');
+}
+
+function onDropGrid(event, dayNo, periodNo) {
+  event.preventDefault();
+  const cell = event.currentTarget;
+  cell.classList.remove('drag-over');
+  
+  const subjectId = event.dataTransfer.getData('subjectId');
+  if (!subjectId) return;
+  
+  const subject = SchedState.subjects.find(s => s.id === subjectId);
+  if (!subject) return;
+
+  const tIds = subject.teacher_id ? subject.teacher_id.split(',').map(s=>s.trim()).filter(s=>s) : [];
+  let tNames = [], tShorts = [];
+  tIds.forEach(tid => {
+     const t = SchedState.teachers.find(x=>x.id===tid) || {};
+     if(t.name) {
+        tNames.push(t.name);
+        tShorts.push(t.first_name || t.name);
+     }
+  });
+
+  const data = {
+    id: 'temp_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+    _kind: 'schedule_entry',
+    classroom: SchedState.classroom,
+    day: dayNo,
+    period_no: periodNo,
+    subject_id: subject.id,
+    subject_name: subject.subject_name || '',
+    subject_code: subject.subject_code || '',
+    subject_group: subject.subject_group || '',
+    teacher_id: subject.teacher_id || '',
+    teacher_name: tNames.join(', '),
+    teacher_short: tShorts.join(', '),
+    room_id: '',
+    room_name: '',
+    activity_label: '',
+    color: SUBJECT_COLORS[subject.subject_group || ''] || '#64748B',
+    note: '',
+    academic_year: SchedState.academic_year,
+    semester: SchedState.semester
+  };
+
+  const idx = SchedState.entries.findIndex(e => e.classroom === SchedState.classroom && Number(e.day) === Number(dayNo) && Number(e.period_no) === Number(periodNo));
+  if (idx >= 0) SchedState.entries.splice(idx, 1);
+  SchedState.entries.push(data);
+  
+  SchedState.isDirty = true;
+  renderClassView();
+}
+
+function toggleSaveButton() {
+  const btn = document.getElementById('btnSaveSchedule');
+  if (btn) {
+    btn.style.display = SchedState.isDirty ? '' : 'none';
+  }
+}
+
+function saveClassScheduleBatch() {
+  if (!SchedState.classroom) return;
+  const myEntries = SchedState.entries.filter(e => e.classroom === SchedState.classroom && String(e.academic_year) === String(SchedState.academic_year) && String(e.semester) === String(SchedState.semester));
+  
+  showLoading('กำลังบันทึกตารางเรียนทั้งห้อง...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status === 'success') {
+        SchedState.isDirty = false;
+        toggleSaveButton();
+        if (res.conflict_warnings && res.conflict_warnings.length > 0) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'บันทึกสำเร็จ แต่พบข้อควรระวัง',
+            html: res.conflict_warnings.map(w => `<div style="font-size:13px; margin-bottom:6px;">⚠️ ${escapeHTML(w.message)}\x3c/div>`).join(''),
+            confirmButtonText: 'รับทราบ'
+          });
+        } else {
+          showToast('success', res.message);
+        }
+        loadSchedData(); // Load actual fresh data to sync IDs
+      } else {
+        Swal.fire({ icon:'error', title:'ผิดพลาด', text:res.message });
+      }
+    })
+    .withFailureHandler(err => { hideLoading(); showToast('error', err.message||err); })
+    .saveClassroomScheduleBatch(SchedState.classroom, SchedState.academic_year, SchedState.semester, myEntries, APP.token);
+}
+
+function onClassroomChange() {
+  checkDirtyState(() => {
+    SchedState.classroom = document.getElementById('schedClassroom').value;
+    loadSchedData();
+  });
 }
 
 
@@ -297,7 +535,7 @@ function renderAllView() {
   area.innerHTML = `
     <div class="mb-3 flex items-center gap-3">
       <div class="text-sm font-semibold text-slate-700">
-        <i class='bx bxs-grid-alt' style="color:#A62639;">\x3c/i> ภาพรวมตารางสอนทุกห้อง
+        <i class='bx bxs-grid-alt text-primary' >\x3c/i> ภาพรวมตารางสอนทุกห้อง
       \x3c/div>
       <div class="flex-1">\x3c/div>
       <button class="btn btn-blue" onclick="exportAllWorkload()">
@@ -320,7 +558,7 @@ function buildAllView() {
       const subjects = [...new Set(dayEntries.map(e => e.subject_group).filter(Boolean))];
       return `
         <td style="text-align:center; padding:6px 4px;">
-          <div style="font-size:12px; font-weight:700; color:${count>0?'#800020':'#94A3B8'};">${count > 0 ? count+'คาบ' : '—'}\x3c/div>
+          <div style="font-size:12px; font-weight:700; color:${count>0?'#3730A3':'#94A3B8'};">${count > 0 ? count+'คาบ' : '—'}\x3c/div>
           <div style="font-size:10px; color:#64748B; line-height:1.3;">${subjects.slice(0,2).join(', ')}\x3c/div>
         \x3c/td>`;
     });
@@ -328,12 +566,12 @@ function buildAllView() {
       <tr class="border-b border-slate-100 hover:bg-slate-50">
         <td style="padding:8px 12px; font-weight:700; color:#0F172A; white-space:nowrap; width:80px;">
           <button onclick="SchedState.classroom='${cls}'; SchedState.tab='class'; document.getElementById('stab_class').click();"
-                  style="color:#A62639; background:none; border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:13px; text-decoration:underline;">
+                  style="color:#4F46E5; background:none; border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:13px; text-decoration:underline;">
             ${escapeHTML(cls)}
           \x3c/button>
         \x3c/td>
         ${cells.join('')}
-        <td style="text-align:center; padding:6px; font-weight:700; font-size:12px; color:#800020;">
+        <td style="text-align:center; padding:6px; font-weight:700; font-size:12px; color:#3730A3;">
           ${SchedState.entries.filter(e => e.classroom === cls && !SchedState.periods.find(p=>p.no===e.period_no&&p.is_break)).length}
         \x3c/td>
       \x3c/tr>`;
@@ -343,7 +581,7 @@ function buildAllView() {
     <div style="overflow-x:auto;">
       <table class="min-w-full" style="border-collapse:collapse; font-size:13px;">
         <thead>
-          <tr style="background:#800020; color:white;">
+          <tr style="background:#3730A3; color:white;">
             <th style="padding:10px 12px; text-align:left; border-radius:8px 0 0 0;">ห้องเรียน\x3c/th>
             ${DAYS.map(d => `<th style="padding:10px 12px; text-align:center;">${d.label}\x3c/th>`).join('')}
             <th style="padding:10px 12px; text-align:center; border-radius:0 8px 0 0;">รวม\x3c/th>
@@ -375,48 +613,49 @@ function buildScheduleGrid(view) {
 
   filtered.forEach(e => { if (grid[e.day]) grid[e.day][e.period_no] = e; });
 
-  // Header row
-  const headerCells = DAYS.map(d => `
-    <th style="width:${100/DAYS.length}%;">
-      <div class="font-bold" style="font-size:14px;">วัน${d.label}\x3c/div>
+  // Header row (Periods)
+  const headerCells = periods.map(p => `
+    <th style="min-width:90px; text-align:center;">
+      <div class="font-bold" style="font-size:12px;">${p.label}\x3c/div>
+      <div style="font-size:10px; opacity:0.8; font-weight:normal;">${p.start}-${p.end}\x3c/div>
     \x3c/th>`).join('');
 
-  // Body rows
-  const bodyRows = periods.map(p => {
-    if (p.is_break) {
-      return `
-        <tr class="break-row">
-          <td class="period-label" style="background:#F1F5F9;">
-            <div style="font-size:11px; color:#64748B; font-weight:600;">${p.label}\x3c/div>
-            <div style="font-size:10px; color:#94A3B8;">${p.start}–${p.end}\x3c/div>
-          \x3c/td>
-          <td colspan="${DAYS.length}" style="background:#F8FAFC; text-align:center; color:#94A3B8; font-size:12px; font-style:italic;">
-            ${p.label}
-          \x3c/td>
-        \x3c/tr>`;
-    }
+  // Body rows (Days)
+  const bodyRows = DAYS.map(d => {
+    const cells = periods.map(p => {
+      if (p.is_break) {
+        return `<td style="background:#F8FAFC; border-left:1px dashed #E2E8F0; border-right:1px dashed #E2E8F0; text-align:center; color:#94A3B8; font-size:11px; vertical-align:middle; width:40px;">\x3c/td>`;
+      }
 
-    const cells = DAYS.map(d => {
       const e = grid[d.no][p.no];
       const isEmpty = !e;
+      const canEdit = APP.role === 'admin';
+      const isDragMode = view === 'class' && SchedState.dragDropMode && canEdit;
+      
+      const dropHandlers = isDragMode 
+        ? `ondragover="onDragOverGrid(event)" ondragleave="onDragLeaveGrid(event)" ondrop="onDropGrid(event, ${d.no}, ${p.no})"` 
+        : '';
+      
+      const clickHandlerEmpty = (!isDragMode && canEdit) ? `onclick="openEntryForm(${d.no},${p.no}, '${view}')"` : '';
+      const clickHandlerFilled = (!isDragMode && canEdit) ? `onclick="openEntryForm(${d.no},${p.no}, '${view}')"` : '';
+        
       if (isEmpty) {
-        // ช่องว่าง — คลิกเพื่อเพิ่มในแบบรายห้อง
-        const canEdit = view === 'class';
         return `
-          <td class="sched-cell empty" ${canEdit ? `onclick="openEntryForm(${d.no},${p.no})"` : ''}>
-            ${canEdit ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
+          <td class="sched-cell empty" ${clickHandlerEmpty} ${dropHandlers}>
+            ${(!isDragMode && canEdit) ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
           \x3c/td>`;
       }
+      
       const cellContent = view === 'class'
-        ? `<div class="entry-subject">${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-           <div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>
+        ? `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
+           ${e.activity_label ? '' : `<div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>`}
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`
-        : `<div class="entry-subject">${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-           <div class="entry-teacher">ห้อง ${escapeHTML(e.classroom)}\x3c/div>
+        : `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
+           ${e.classroom !== 'กิจกรรม' ? `<div class="entry-teacher">${escapeHTML(e.classroom)}\x3c/div>` : ''}
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
       return `
-        <td class="sched-cell filled" onclick="${view==='class'?`openEntryForm(${d.no},${p.no})`:`viewEntryDetail('${e.id}')`}">
+        <td class="sched-cell filled" ${clickHandlerFilled} ${dropHandlers}>
           <div class="entry-card" style="border-color:${e.color}; background:${e.color}18;">
             <div class="entry-bar" style="background:${e.color};">\x3c/div>
             <div class="entry-body">
@@ -427,11 +666,9 @@ function buildScheduleGrid(view) {
     }).join('');
 
     return `
-      <tr class="sched-row">
-        <td class="period-label">
-          <div style="font-size:11px; font-weight:700; color:#0F172A;">${p.label}\x3c/div>
-          <div style="font-size:10px; color:#94A3B8;">${p.start}\x3c/div>
-          <div style="font-size:10px; color:#94A3B8;">${p.end}\x3c/div>
+      <tr class="sched-row" style="height:72px;">
+        <td class="period-label" style="text-align:center;">
+          <div style="font-size:13px; font-weight:700;">${d.label}\x3c/div>
         \x3c/td>
         ${cells}
       \x3c/tr>`;
@@ -456,13 +693,13 @@ function buildScheduleGrid(view) {
         table-layout:fixed;
       }
       .sched-header-row th {
-        background:#800020; color:white; padding:10px 8px;
+        background:#3730A3; color:white; padding:10px 8px;
         border-radius:8px; font-size:13px;
       }
       .period-label-header { width:80px; font-size:11px; }
       .period-label {
-        width:80px; background:#F8FAFC; padding:6px 8px;
-        border:1px solid #E2E8F0; border-radius:8px;
+        width:80px; background:#3730A3; color:white; padding:6px 8px;
+        border:1px solid #3730A3; border-radius:8px;
         vertical-align:middle; text-align:center;
       }
       .break-row td { height:36px; }
@@ -473,7 +710,7 @@ function buildScheduleGrid(view) {
         position:relative;
       }
       .sched-cell.empty:hover {
-        border-color:#A62639; background:#FAF0F2;
+        border-color:#4F46E5; background:#FAF0F2;
       }
       .sched-cell.filled { border:none; padding:0; }
       .sched-cell.filled:hover { transform:translateY(-1px); filter:brightness(.96); }
@@ -482,7 +719,7 @@ function buildScheduleGrid(view) {
         position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
         color:#CBD5E1; font-size:22px; transition:color .12s;
       }
-      .sched-cell.empty:hover .add-hint { color:#A62639; }
+      .sched-cell.empty:hover .add-hint { color:#4F46E5; }
 
       .entry-card {
         border:2px solid; border-radius:8px; overflow:hidden;
@@ -496,6 +733,7 @@ function buildScheduleGrid(view) {
       .entry-room    { font-size:9px;  color:#94A3B8;  margin-top:1px; display:flex; align-items:center; gap:2px; }
 
       .sched-row:hover .sched-cell.empty { border-color:#CBD5E1; }
+      .sched-cell.drag-over { background:#FEF2F2 !important; border-color:#DC2626 !important; }
     \x3c/style>
   `;
 }
@@ -517,47 +755,57 @@ function schedLegend() {
 /* ============================================================
  *  ENTRY FORM — เพิ่ม/แก้ไขคาบสอน
  * ============================================================ */
-function openEntryForm(day, periodNo) {
-  if (!SchedState.classroom) return showToast('warning', 'กรุณาเลือกชั้นเรียนก่อน');
+function openEntryForm(day, periodNo, viewType = 'class') {
+  if (viewType === 'class' && !SchedState.classroom) return showToast('warning', 'กรุณาเลือกชั้นเรียนก่อน');
+  if (viewType === 'teacher' && !SchedState.teacher_id) return showToast('warning', 'กรุณาเลือกครูก่อน');
 
   const period = SchedState.periods.find(p => p.no === periodNo);
-  const existing = SchedState.entries.find(e =>
-    e.classroom === SchedState.classroom &&
-    e.day === Number(day) &&
-    e.period_no === Number(periodNo)
-  );
+  
+  let existing;
+  if (viewType === 'class') {
+    existing = SchedState.entries.find(e => e.classroom === SchedState.classroom && e.day === Number(day) && e.period_no === Number(periodNo));
+  } else {
+    // teacher view: หา entry แรกของครูคนนี้ในคาบนี้
+    existing = SchedState.entries.find(e => e.teacher_id && e.teacher_id.split(',').map(s=>s.trim()).includes(SchedState.teacher_id) && e.day === Number(day) && e.period_no === Number(periodNo));
+  }
+  
   const e = existing || {};
   const dayLabel = DAYS.find(d => d.no === Number(day)) || {};
   const isHomeroom = period && period.is_homeroom;
 
-  // Dropdown subjects ที่เหมาะกับชั้น
-  const subjects = SchedState.entries.length >= 0
-    ? []
-    : [];
-
+  const subjects = [];
   google.script.run
     .withSuccessHandler(res => {
       const allSubjects = res.status === 'success' ? res.data : [];
-      const relevantSubjects = allSubjects.filter(s => !s.grade_level || s.grade_level === SchedState.classroom);
-      showEntryForm(day, periodNo, period, dayLabel, e, relevantSubjects, isHomeroom);
+      // filter subjects based on view
+      const relevantSubjects = viewType === 'class' 
+        ? allSubjects.filter(s => !s.grade_level || s.grade_level === SchedState.classroom)
+        : allSubjects;
+      showEntryForm(day, periodNo, period, dayLabel, e, relevantSubjects, isHomeroom, viewType);
     })
-    .withFailureHandler(() => showEntryForm(day, periodNo, period, dayLabel, e, [], isHomeroom))
+    .withFailureHandler(() => showEntryForm(day, periodNo, period, dayLabel, e, [], isHomeroom, viewType))
     .getSubjects({ page:1, per_page:500 }, APP.token);
 }
 
-function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom) {
+function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom, viewType) {
   const isEdit = !!e.id;
   const periodLabel = period ? (period.label + ' (' + period.start + '–' + period.end + ')') : 'คาบ ' + periodNo;
+
+  // ถ้าเพิ่มจาก teacher view ให้เลือกครูตัวเองเป็น default
+  let defaultTeacherIds = e.teacher_id ? e.teacher_id.split(',').map(s=>s.trim()) : [];
+  if (!isEdit && viewType === 'teacher' && SchedState.teacher_id) {
+    defaultTeacherIds = [SchedState.teacher_id];
+  }
 
   Swal.fire({
     title: (isEdit ? 'แก้ไข' : 'เพิ่ม') + ' — วัน' + dayLabel.label + ' ' + periodLabel,
     width: 640,
     showCancelButton: true,
     confirmButtonText: '<i class="bx bx-save">\x3c/i> บันทึก',
-    cancelButtonText : isEdit ? 'ยกเลิก' : 'ยกเลิก',
+    cancelButtonText : 'ยกเลิก',
     showDenyButton   : isEdit,
     denyButtonText   : '<i class="bx bx-trash">\x3c/i> ลบคาบนี้',
-    denyButtonColor  : '#EF4444',
+    denyButtonColor  : '#DC2626',
     html: `
       <div style="text-align:left; font-size:14px;">
 
@@ -569,6 +817,13 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
         ` : ''}
 
         <div class="grid grid-cols-12 gap-2">
+          ${viewType === 'teacher' ? `
+            <div class="col-span-12">
+              <label class="form-label">ผู้เรียน / ชั้นเรียน <span class="text-xs text-slate-400">(เว้นว่างได้ ถ้าเป็นกิจกรรมส่วนตัว)\x3c/span>\x3c/label>
+              <input type="text" id="ef_classroom_custom" class="form-input" placeholder="เช่น ม.1/1 หรือ ชุมนุม" value="${escapeHTML(e.classroom && e.classroom !== 'กิจกรรม' ? e.classroom : '')}">
+            \x3c/div>
+          ` : ''}
+
           <div class="col-span-12">
             <label class="form-label">รายวิชา <span class="text-xs text-slate-400">(เว้นว่างถ้าเป็นกิจกรรม)\x3c/span>\x3c/label>
             <select id="ef_subject_id" class="form-input" onchange="onSubjectSelect()">
@@ -593,11 +848,21 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
           \x3c/div>
 
           <div class="col-span-12">
-            <label class="form-label">ครูผู้สอน\x3c/label>
-            <select id="ef_teacher_id" class="form-input">
-              <option value="">— ไม่ระบุ —\x3c/option>
-              ${SchedState.teachers.map(t => `<option value="${t.id}" ${e.teacher_id===t.id?'selected':''}>${escapeHTML(t.name)}${t.department?` (${escapeHTML(t.department)})`:''}\x3c/option>`).join('')}
-            \x3c/select>
+            <label class="form-label">ครูผู้สอน <span class="text-xs text-slate-400">(เลือกได้หลายคน หรือเว้นว่างได้)\x3c/span>\x3c/label>
+            <input type="text" id="ef_teacher_search" class="form-input" style="margin-bottom:5px; font-size:12px; padding:4px 8px;" placeholder="ค้นหาครู..." onkeyup="
+              const q = this.value.toLowerCase();
+              document.querySelectorAll('.tc-item').forEach(el => {
+                if(el.innerText.toLowerCase().includes(q)) el.style.display='block'; else el.style.display='none';
+              });
+            ">
+            <div style="max-height:120px; overflow-y:auto; border:1.5px solid #E2E8F0; border-radius:8px; padding:5px; background:#F8FAFC;">
+              ${SchedState.teachers.map(t => {
+                const selected = defaultTeacherIds.includes(t.id) ? 'checked' : '';
+                return `<label class="tc-item" style="display:block; font-size:12px; margin-bottom:3px; cursor:pointer; padding:2px;">
+                  <input type="checkbox" name="ef_teacher_ids" value="${t.id}" ${selected}> ${escapeHTML(t.name)}${t.department?` (${escapeHTML(t.department)})`:''}
+                \x3c/label>`;
+              }).join('')}
+            \x3c/div>
           \x3c/div>
 
           <div class="col-span-8">
@@ -616,7 +881,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
                         style="width:28px;height:28px;border-radius:50%;background:${c};border:3px solid ${e.color===c?'#0F172A':'transparent'};"
                         onclick="selectSchedColor('${c}')">\x3c/button>
               `).join('')}
-              <input type="hidden" id="ef_color" value="${e.color||'#A62639'}">
+              <input type="hidden" id="ef_color" value="${e.color||'#4F46E5'}">
             \x3c/div>
           \x3c/div>
 
@@ -629,43 +894,59 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
         .color-dot { cursor:pointer; transition:transform .1s; border-width:3px !important; }
         .color-dot:hover { transform:scale(1.2); }
       \x3c/style>
     `,
-    preConfirm: () => ({
-      classroom     : SchedState.classroom,
-      day           : Number(day),
+    preConfirm: () => {
+      const classInput = document.getElementById('ef_classroom_custom');
+      let finalClassroom = SchedState.classroom;
+      if (viewType === 'teacher') {
+         finalClassroom = classInput && classInput.value.trim() !== '' ? classInput.value.trim() : 'กิจกรรม';
+      }
+      
+      if (viewType === 'class' && !finalClassroom) {
+        Swal.showValidationMessage('กรุณาระบุกลุ่มผู้เรียน / ชั้นเรียน');
+        return false;
+      }
+      
+      return {
+        classroom     : finalClassroom,
+        day           : Number(day),
       period_no     : Number(periodNo),
       academic_year : SchedState.academic_year,
       semester      : SchedState.semester,
       subject_id    : document.getElementById('ef_subject_id').value,
       activity_label: document.getElementById('ef_activity_label').value,
-      teacher_id    : document.getElementById('ef_teacher_id').value,
+      teacher_id    : Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked')).map(el => el.value).join(','),
       room_id       : document.getElementById('ef_room_id').value,
-      color         : document.getElementById('ef_color').value || '#A62639',
+      color         : document.getElementById('ef_color').value || '#4F46E5',
       note          : document.getElementById('ef_note').value
-    })
+      };
+    }
   }).then(r => {
     if (r.isDenied) {
-      // ลบคาบ
       showLoading('กำลังลบ...');
+      
+      const targetClassroom = viewType === 'teacher' ? e.classroom : SchedState.classroom;
+      
       google.script.run
         .withSuccessHandler(res => {
           hideLoading();
           if (res.status === 'success') {
             showToast('success', 'ลบคาบสำเร็จ');
             SchedState.entries = SchedState.entries.filter(x => !(
-              x.classroom === SchedState.classroom &&
+              x.classroom === targetClassroom &&
               x.day === Number(day) &&
               x.period_no === Number(periodNo)
             ));
-            renderClassView();
+            
+            if (viewType === 'class') renderClassView();
+            else renderTeacherView();
           } else showToast('error', res.message);
         })
-        .deleteScheduleEntry(SchedState.classroom, day, periodNo,
-          SchedState.academic_year, SchedState.semester, APP.token);
+        .deleteScheduleEntry(targetClassroom, day, periodNo, SchedState.academic_year, SchedState.semester, APP.token);
       return;
     }
     if (!r.isConfirmed) return;
@@ -685,19 +966,30 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom)
             confirmButtonText: 'รับทราบ'
           });
         } else {
-          showToast('success', 'บันทึกตารางสอนสำเร็จ');
+          showToast('success', res.message || 'บันทึกตารางสอนสำเร็จ');
         }
 
-        // อัพเดต local state
-        const idx = SchedState.entries.findIndex(x =>
-          x.classroom === SchedState.classroom &&
-          x.day === Number(day) &&
-          x.period_no === Number(periodNo)
-        );
-        if (idx >= 0) SchedState.entries[idx] = res.data;
-        else          SchedState.entries.push(res.data);
+        // อัพเดต local state (แทนที่ตัวเก่าถ้าแก้ไข หรือเพิ่มใหม่)
+        const targetClassroom = viewType === 'teacher' ? r.value.classroom : SchedState.classroom;
+        
+        if (res.data) {
+          const idx = SchedState.entries.findIndex(x =>
+            x.classroom === targetClassroom &&
+            x.day === Number(day) &&
+            x.period_no === Number(periodNo)
+          );
+          if (idx >= 0) SchedState.entries[idx] = res.data;
+          else          SchedState.entries.push(res.data);
+        } else if (res.message === 'ลบคาบสำเร็จ') {
+          SchedState.entries = SchedState.entries.filter(x => !(
+            x.classroom === targetClassroom &&
+            x.day === Number(day) &&
+            x.period_no === Number(periodNo)
+          ));
+        }
 
-        renderClassView();
+        if (viewType === 'class') renderClassView();
+        else renderTeacherView();
       })
       .withFailureHandler(err => { hideLoading(); Swal.fire({ icon:'error', text:err.message||err }); })
       .saveScheduleEntry(r.value, APP.token);
@@ -757,7 +1049,7 @@ function renderRoomsTab() {
   area.innerHTML = `
     <div class="flex items-center justify-between mb-3">
       <div class="text-sm font-semibold text-slate-700">
-        <i class='bx bxs-door-open' style="color:#A62639;">\x3c/i> ห้องเรียน / ห้องปฏิบัติการ
+        <i class='bx bxs-door-open text-primary' >\x3c/i> ห้องเรียน / ห้องปฏิบัติการ
       \x3c/div>
       <button class="btn btn-blue" onclick="openRoomForm()">
         <i class='bx bx-plus'>\x3c/i> เพิ่มห้อง
@@ -798,10 +1090,10 @@ function renderRoomsTable() {
               <td class="px-3 py-2.5 text-xs text-slate-500">${Array.isArray(r.facilities)?r.facilities.join(', '):'-'}\x3c/td>
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
-                  <button class="btn btn-light btn-icon" onclick="openRoomForm('${r.id}')" style="color:#A62639;">
+                  <button class="btn btn-light btn-icon text-primary" onclick="openRoomForm('${r.id}')" >
                     <i class='bx bx-edit'>\x3c/i>
                   \x3c/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteRoomConfirm('${r.id}')" style="color:#EF4444;">
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteRoomConfirm('${r.id}')" >
                     <i class='bx bx-trash'>\x3c/i>
                   \x3c/button>
                 \x3c/div>
@@ -869,7 +1161,7 @@ function openRoomForm(id) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -910,7 +1202,7 @@ function openRoomForm(id) {
 function deleteRoomConfirm(id) {
   Swal.fire({
     title:'ยืนยันการลบห้อง?', icon:'warning',
-    showCancelButton:true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#EF4444'
+    showCancelButton:true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -938,7 +1230,7 @@ function renderPeriodsTab() {
   area.innerHTML = `
     <div class="flex items-center justify-between mb-3">
       <div class="text-sm font-semibold text-slate-700">
-        <i class='bx bx-time-five' style="color:#A62639;">\x3c/i> ตั้งค่าคาบเรียน — ปีการศึกษา ${escapeHTML(SchedState.academic_year)} ภาคเรียน ${SchedState.semester}
+        <i class='bx bx-time-five text-primary' >\x3c/i> ตั้งค่าคาบเรียน — ปีการศึกษา ${escapeHTML(SchedState.academic_year)} ภาคเรียน ${SchedState.semester}
       \x3c/div>
       <div class="flex gap-2">
         <button class="btn btn-light" onclick="resetDefaultPeriods()">
@@ -981,7 +1273,7 @@ function renderPeriodsTab() {
 
     <style>
       .prd-input { padding:5px 8px; border:1.5px solid #E2E8F0; border-radius:6px; font-family:inherit; font-size:12px; background:#F8FAFC; box-sizing:border-box; width:100%; }
-      .prd-input:focus { outline:none; border-color:#A62639; }
+      .prd-input:focus { outline:none; border-color:#4F46E5; }
     \x3c/style>
   `;
 }
@@ -1005,7 +1297,7 @@ function buildPeriodRow(p, i) {
         <input type="checkbox" class="prd-break" ${p.is_break?'checked':''}>
       \x3c/td>
       <td class="px-2 py-1.5 text-center">
-        <button class="btn btn-light btn-icon" onclick="removePeriodRow(this)" title="ลบ" style="color:#EF4444; width:28px; height:28px;">
+        <button class="btn btn-light btn-icon" onclick="removePeriodRow(this)" title="ลบ" style="width:28px; height:28px;" class="text-danger">
           <i class='bx bx-minus' style="font-size:14px;">\x3c/i>
         \x3c/button>
       \x3c/td>
@@ -1120,14 +1412,14 @@ function exportClassScheduleXLS() {
   const cls = SchedState.classroom;
   const periods = SchedState.periods.filter(p => !p.is_break);
 
-  const headers = ['คาบ / เวลา', ...DAYS.map(d => 'วัน' + d.label)];
-  const rows = periods.map(p => {
-    const cells = DAYS.map(d => {
+  const headers = ['วัน / เวลา', ...periods.map(p => p.label + '\\n' + p.start + '-' + p.end)];
+  const rows = DAYS.map(d => {
+    const cells = periods.map(p => {
       const e = SchedState.entries.find(x => x.classroom===cls && x.day===d.no && x.period_no===p.no);
       if (!e) return '';
       return (e.subject_name || e.activity_label || '') + (e.teacher_name ? ' (' + e.teacher_name + ')' : '');
     });
-    return [p.label + ' ' + p.start + '–' + p.end, ...cells];
+    return [d.label, ...cells];
   });
   exportToExcel(headers, rows, 'ตารางสอน_' + cls + '_' + SchedState.academic_year + '_' + SchedState.semester + '.xls');
   showToast('success', 'ดาวน์โหลดสำเร็จ');
@@ -1282,19 +1574,11 @@ function clearClassScheduleConfirm() {
     showCancelButton:true,
     confirmButtonText:'ล้างทั้งหมด',
     cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
-    showLoading('กำลังล้าง...');
-    google.script.run
-      .withSuccessHandler(res => {
-        hideLoading();
-        if (res.status === 'success') {
-          showToast('success', res.message);
-          SchedState.entries = SchedState.entries.filter(e => e.classroom !== SchedState.classroom);
-          renderClassView();
-        } else showToast('error', res.message);
-      })
-      .clearClassroomSchedule(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
+    SchedState.entries = SchedState.entries.filter(e => !(e.classroom === SchedState.classroom && String(e.academic_year) === String(SchedState.academic_year) && String(e.semester) === String(SchedState.semester)));
+    SchedState.isDirty = true;
+    renderClassView();
   });
 }

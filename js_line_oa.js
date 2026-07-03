@@ -43,10 +43,8 @@ function showLineOAPanel() {
 }
 
 function _renderLineOAPanel(d) {
-  // ดึงรายชื่อห้องจาก students state ที่โหลดไว้ (หรือ fallback)
-  const classrooms = (window.StudentsState && StudentsState.data && StudentsState.data.distinct)
-    ? StudentsState.data.distinct.classrooms || []
-    : [];
+  // ดึงรายชื่อห้องที่ส่งมาจาก server
+  const classrooms = d.classrooms || [];
 
   const classGroupsRows = classrooms.map(cls => {
     const gid = (d.line_classroom_groups || {})[cls] || '';
@@ -69,7 +67,7 @@ function _renderLineOAPanel(d) {
   }).join('');
 
   Swal.fire({
-    title: '<i class="bx bxl-whatsapp" style="color:#06C755;">\x3c/i> ตั้งค่า LINE OA',
+    title: '<i class="bx bxl-whatsapp text-success" >\x3c/i> ตั้งค่า LINE OA',
     width: 800,
     showCancelButton: true,
     confirmButtonText: '<i class="bx bx-save">\x3c/i> บันทึก',
@@ -90,7 +88,7 @@ function _renderLineOAPanel(d) {
 
         <!-- Token -->
         <div style="margin-bottom:14px;">
-          <label class="line-label">🔑 Channel Access Token <span style="color:#EF4444;">*\x3c/span>\x3c/label>
+          <label class="line-label">🔑 Channel Access Token <span class="text-danger">*\x3c/span>\x3c/label>
           <input type="text" id="la_token" class="line-input"
                  placeholder="ey... (Long-lived token จาก LINE Developers Console)"
                  value="${escapeHTML(d.line_channel_token || '')}">

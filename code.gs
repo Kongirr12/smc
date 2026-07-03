@@ -153,6 +153,7 @@ function routeApi(action, params, token) {
       case 'saveSubject': return saveSubject(params.data ? (typeof params.data === 'string' ? JSON.parse(params.data) : params.data) : params, token);
       case 'importSubjectsBulk': return importSubjectsBulk(params.records, token);
       case 'deleteSubject': return deleteSubject(params.id, token);
+      case 'deleteSubjectsBulk': return deleteSubjectsBulk(params.ids, token);
       case 'getGradeSheet': return getGradeSheet(params.id || params.subject_id, token);
       case 'saveGradeSheet': return saveGradeSheet(params, token);
       case 'saveGradeBulk': return saveGradeBulk(params.subject_id || params.id, JSON.parse(params.records || '[]'), token);
@@ -184,6 +185,8 @@ function routeApi(action, params, token) {
       case 'generateReceiptHTML': return generateReceiptHTML(params.id, token);
 
       // ---------- DOCUMENTS ----------
+      case 'getNextDocNumber': return getNextDocNumber(params.doc_type, token);
+      case 'getUsersAndTeachers': return getUsersAndTeachers(token);
       case 'getDocuments': return getDocuments(params, token);
       case 'saveDocument': return saveDocument(params, token);
       case 'deleteDocument': return deleteDocument(params.id, token);
@@ -201,6 +204,7 @@ function routeApi(action, params, token) {
       // ---------- CALENDAR ----------
       case 'getCalendarEvents': return getCalendarEvents(params, token);
       case 'saveCalendarEvent': return saveCalendarEvent(params, token);
+      case 'importCalendarEvents': return importCalendarEvents(params.events, token);
       case 'deleteCalendarEvent': return deleteCalendarEvent(params.id, token);
 
       // ---------- FILES ----------
@@ -244,6 +248,10 @@ function routeApi(action, params, token) {
       // ---------- QR ATTENDANCE ----------
       case 'recordQRAttendance': return recordQRAttendance(params.studentCode, params.date, token);
       case 'scanAttendance': return scanAttendance(params.code, token);
+      
+      // ---------- NOTIFICATIONS ----------
+      case 'markNotificationRead': return markNotificationRead(params.id, token);
+
 
       // ---------- DEFAULT ----------
       default: return { status:'error', message:'ไม่รู้จัก action: ' + (action||'') };
@@ -383,10 +391,69 @@ function _getSheetByName_(sheetName) {
   return _cachedSheets[sheetName];
 }
 
+function _setCacheChunks_(key, str) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const chunkSize = 30000;
+    const chunks = Math.ceil(str.length / chunkSize);
+    const batch = {};
+    batch[key + '_meta'] = String(chunks);
+    for (let i = 0; i < chunks; i++) {
+      batch[key + '_chunk_' + i] = str.substring(i * chunkSize, (i + 1) * chunkSize);
+    }
+    cache.putAll(batch, 21600);
+  } catch(e) {}
+}
+
+function _getCacheChunks_(key) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const meta = cache.get(key + '_meta');
+    if (!meta) return null;
+    const chunks = parseInt(meta, 10);
+    if (chunks === 1) {
+      const single = cache.get(key + '_chunk_0');
+      return single || null;
+    }
+    const keys = [];
+    for (let i = 0; i < chunks; i++) keys.push(key + '_chunk_' + i);
+    const all = cache.getAll(keys);
+    let str = '';
+    for (let i = 0; i < chunks; i++) {
+      const chunk = all[key + '_chunk_' + i];
+      if (!chunk) return null;
+      str += chunk;
+    }
+    return str;
+  } catch(e) { return null; }
+}
+
+function _clearCacheChunks_(key) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const meta = cache.get(key + '_meta');
+    if (meta) {
+      const chunks = parseInt(meta, 10);
+      for (let i = 0; i < chunks; i++) {
+        cache.remove(key + '_chunk_' + i);
+      }
+      cache.remove(key + '_meta');
+    }
+  } catch(e) {}
+}
+
 function readJsonSheet_(sheetName) {
-  if (_jsonSheetCache_[sheetName]) {
-    return _jsonSheetCache_[sheetName];
+  if (_jsonSheetCache_[sheetName]) return _jsonSheetCache_[sheetName];
+  
+  const cachedStr = _getCacheChunks_(sheetName);
+  if (cachedStr) {
+    try {
+      const data = JSON.parse(cachedStr);
+      _jsonSheetCache_[sheetName] = data;
+      return data;
+    } catch(e) {}
   }
+
   const sheet = _getSheetByName_(sheetName);
   if (!sheet) return [];
   const last = sheet.getLastRow();
@@ -402,6 +469,7 @@ function readJsonSheet_(sheetName) {
     .filter(Boolean);
   
   _jsonSheetCache_[sheetName] = data;
+  _setCacheChunks_(sheetName, JSON.stringify(data));
   return data;
 }
 
@@ -418,14 +486,25 @@ function _ensureSheet_(sheetName) {
 }
 
 function appendJsonRow_(sheetName, obj) {
+  readJsonSheet_(sheetName); // Ensure cache is fully populated first
   const sheet = _ensureSheet_(sheetName);
   const nextRow = sheet.getLastRow() + 1;
   sheet.getRange(nextRow, 1).setValue(JSON.stringify(obj));
-  if (_jsonSheetCache_[sheetName]) {
-    _jsonSheetCache_[sheetName].push(obj);
-  } else {
-    _jsonSheetCache_[sheetName] = [obj];
-  }
+  
+  _jsonSheetCache_[sheetName].push(obj);
+  _setCacheChunks_(sheetName, JSON.stringify(_jsonSheetCache_[sheetName]));
+}
+
+function appendJsonRows_(sheetName, arr) {
+  if (!arr || arr.length === 0) return;
+  readJsonSheet_(sheetName); // Ensure cache is fully populated first
+  const sheet = _ensureSheet_(sheetName);
+  const nextRow = sheet.getLastRow() + 1;
+  const values = arr.map(obj => [JSON.stringify(obj)]);
+  sheet.getRange(nextRow, 1, arr.length, 1).setValues(values);
+  
+  _jsonSheetCache_[sheetName] = _jsonSheetCache_[sheetName].concat(arr);
+  _setCacheChunks_(sheetName, JSON.stringify(_jsonSheetCache_[sheetName]));
 }
 
 function writeJsonSheet_(sheetName, arr) {
@@ -435,6 +514,7 @@ function writeJsonSheet_(sheetName, arr) {
   const maxRows = Math.max(last - 1, newLength);
   if (maxRows === 0) {
     _jsonSheetCache_[sheetName] = [];
+    _clearCacheChunks_(sheetName);
     return;
   }
   const rows = [];
@@ -447,6 +527,7 @@ function writeJsonSheet_(sheetName, arr) {
   }
   sheet.getRange(2, 1, maxRows, 1).setValues(rows);
   _jsonSheetCache_[sheetName] = arr.slice();
+  _setCacheChunks_(sheetName, JSON.stringify(arr));
 }
 
 function updateJsonById_(sheetName, id, updater) {
@@ -491,7 +572,8 @@ function getConfig() {
 
 function saveConfig(configData) {
   try {
-    const current = getConfig();
+    const arr = readJsonSheet_('Config');
+    const current = arr[0] || {};
     const merged = Object.assign({}, current, configData, {
       updated_at: new Date().toISOString()
     });
@@ -603,6 +685,8 @@ function validateSession(sessionToken) {
       const dash = getDashboardDataCore_();
       if (dash.status === 'success') {
         dashboardData = dash.data;
+        const notifs = readJsonSheet_('Notifications');
+        dashboardData.unread_notifications = notifs.filter(n => n.user_id === safe.id && !n.is_read);
       }
     } catch(err) {}
 
@@ -619,6 +703,27 @@ function validateSession(sessionToken) {
   }
 }
 
+function validateSessionLight_(sessionToken) {
+  try {
+    if (!sessionToken) return { valid:false };
+    const sessions = readJsonSheet_('Sessions');
+    const s = sessions.find(x => x.token === sessionToken);
+    if (!s) return { valid:false };
+    if (new Date(s.expires_at).getTime() < Date.now()) {
+      logout(sessionToken);
+      return { valid:false, expired:true };
+    }
+    const users = readJsonSheet_('Users');
+    const user = users.find(u => u.id === s.user_id);
+    if (!user) return { valid:false };
+    const safe = Object.assign({}, user);
+    delete safe.password;
+    return { valid:true, user:safe, role:s.role, role_info:CONFIG.USER_ROLES[s.role] || null };
+  } catch (e) {
+    return { valid:false };
+  }
+}
+
 function cleanExpiredSessions_() {
   const arr = readJsonSheet_('Sessions');
   const now = Date.now();
@@ -628,7 +733,7 @@ function cleanExpiredSessions_() {
 
 function changeOwnPassword(sessionToken, oldPassword, newPassword) {
   try {
-    const v = validateSession(sessionToken);
+    const v = validateSessionLight_(sessionToken);
     if (!v.valid) return { status:'error', message:'หมดอายุการใช้งาน' };
     const users = readJsonSheet_('Users');
     const me = users.find(u => u.id === v.user.id);
@@ -669,9 +774,17 @@ function getDashboardDataCore_() {
 
   // อัตราเข้าเรียนวันนี้
   const today = new Date().toISOString().slice(0,10);
-  const todays = attendance.filter(a => a.date === today);
-  const presentToday = todays.filter(a => a.status === 'present').length;
-  const attendancePct = todays.length > 0 ? Math.round((presentToday / todays.length) * 1000) / 10 : 0;
+
+  // กราฟเข้าเรียนรายสัปดาห์ (7 วันย้อนหลัง) — optimized with date-indexed map
+  const attendByDate = {};
+  attendance.forEach(a => {
+    if (!attendByDate[a.date]) attendByDate[a.date] = { total:0, present:0 };
+    attendByDate[a.date].total++;
+    if (a.status === 'present') attendByDate[a.date].present++;
+  });
+
+  const todayBucket = attendByDate[today];
+  const attendancePct = todayBucket && todayBucket.total > 0 ? Math.round((todayBucket.present / todayBucket.total) * 1000) / 10 : 0;
 
   // การเงิน
   let income = 0, expense = 0;
@@ -682,15 +795,12 @@ function getDashboardDataCore_() {
   });
   const balance = income - expense;
 
-  // กราฟเข้าเรียนรายสัปดาห์ (7 วันย้อนหลัง)
   const weekChart = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
     const ds = d.toISOString().slice(0,10);
-    const list = attendance.filter(a => a.date === ds);
-    const pct = list.length > 0
-      ? Math.round((list.filter(a=>a.status==='present').length / list.length) * 100)
-      : 0;
+    const bucket = attendByDate[ds];
+    const pct = bucket && bucket.total > 0 ? Math.round((bucket.present / bucket.total) * 100) : 0;
     weekChart.push({ date: ds, pct: pct, label: ['อา','จ','อ','พ','พฤ','ศ','ส'][d.getDay()] });
   }
 
@@ -725,7 +835,12 @@ function getDashboardData(sessionToken) {
   try {
     const v = validateSession(sessionToken);
     if (!v.valid) return { status:'error', message:'session_invalid' };
-    return getDashboardDataCore_();
+    const dash = getDashboardDataCore_();
+    if (dash.status === 'success') {
+      const notifs = readJsonSheet_('Notifications');
+      dash.data.unread_notifications = notifs.filter(n => n.user_id === v.user.id && !n.is_read);
+    }
+    return dash;
   } catch (e) {
     logError({ fn:'getDashboardData', error:e.message });
     return { status:'error', message:e.message };
@@ -734,12 +849,16 @@ function getDashboardData(sessionToken) {
 
 function getSidebarBadges(sessionToken) {
   try {
-    const v = validateSession(sessionToken);
+    const v = validateSessionLight_(sessionToken);
     if (!v.valid) return { status:'error' };
     const approvals = readJsonSheet_('Approvals');
+    const notifs = readJsonSheet_('Notifications');
     return {
       status:'success',
-      pending_approvals: approvals.filter(a => a.status === 'pending').length
+      pending_approvals: approvals.filter(a => a.status === 'pending').length,
+      data: {
+        unread_notifications: notifs.filter(n => n.user_id === v.user.id && !n.is_read)
+      }
     };
   } catch (e) {
     return { status:'error' };
@@ -773,7 +892,11 @@ function uploadFile(base64, fileName, mimeType, category) {
 
     const blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType, fileName);
     const file = target.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch(shareErr) {
+      // Ignore sharing error if admin blocked external sharing
+    }
 
     const fileId = file.getId();
     return {
@@ -853,7 +976,7 @@ function sanitize(input) {
  *  Auth Guard (re-usable)
  * ============================================================ */
 function _requireAuth_(token, requireWrite) {
-  const v = validateSession(token);
+  const v = validateSessionLight_(token);
   if (!v.valid) {
     return { ok:false, response:{ status:'error', message:'session_invalid', code:401 } };
   }
@@ -1866,6 +1989,29 @@ function deleteSubject(id, sessionToken) {
   }
 }
 
+function deleteSubjectsBulk(ids, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    const perms = (auth.user && auth.user.permissions) || [];
+    if (!perms.includes('delete')) return { status:'error', message:'no_permission' };
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+       return { status: 'error', message: 'ไม่มีรายวิชาที่เลือก' };
+    }
+
+    const all = readJsonSheet_('Academic');
+    // ลบวิชา และ grade ที่อ้างอิงถึงวิชาเหล่านั้น
+    const next = all.filter(x => !ids.includes(x.id) && !ids.includes(x.subject_id));
+    
+    writeJsonSheet_('Academic', next);
+    return { status:'success', message:'ลบรายวิชาที่เลือกสำเร็จ จำนวน ' + ids.length + ' รายการ' };
+  } catch (e) {
+    logError({ fn:'deleteSubjectsBulk', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
 
 /* ============================================================
  *  ACADEMIC — Grades (ปพ.5 บันทึกคะแนน)
@@ -2787,31 +2933,112 @@ function saveDocument(data, sessionToken) {
       content    : sanitize(data.content),
       attachment : data.attachment || '',
       status     : data.status || 'draft',
-      priority   : data.priority || 'normal'
+      priority   : data.priority || 'normal',
+      assigned_to: Array.isArray(data.assigned_to) ? data.assigned_to : (data.assigned_to ? [data.assigned_to] : [])
     };
 
     if (data.id) {
       let updated = null;
+      let oldAssigned = [];
       const found = updateJsonById_('Documents', data.id, d => {
+        oldAssigned = d.assigned_to || [];
         Object.assign(d, clean);
         d.updated_at = new Date().toISOString();
         updated = d;
         return d;
       });
       if (!found) return { status:'error', message:'ไม่พบเอกสาร' };
+      
+      // แจ้งเตือนผู้ที่ได้รับมอบหมายใหม่
+      const newAssigned = clean.assigned_to.filter(id => !oldAssigned.includes(id));
+      if (newAssigned.length > 0) {
+        const notifs = readJsonSheet_('Notifications');
+        const personnelList = readJsonSheet_('Personnel');
+        const usersList = readJsonSheet_('Users');
+        const now = new Date().toISOString();
+        
+        newAssigned.forEach(pid => {
+          // Map Personnel.id to User.id
+          let targetUserId = pid;
+          const p = personnelList.find(x => x.id === pid);
+          if (p) {
+            const u = usersList.find(x => String(x.username).toLowerCase() === String(p.personnel_id).toLowerCase());
+            if (u) targetUserId = u.id;
+          }
+          
+          notifs.push({
+            id: generateId(),
+            user_id: targetUserId,
+            type: 'document_assigned',
+            title: 'ได้รับมอบหมายงานใหม่ (สารบรรณ)',
+            message: `เรื่อง: ${clean.subject}`,
+            link_type: 'documents',
+            link_id: updated.id,
+            is_read: false,
+            created_at: now
+          });
+        });
+        writeJsonSheet_('Notifications', notifs);
+      }
+      
       return { status:'success', data:updated, message:'แก้ไขเอกสารสำเร็จ' };
     } else {
       const now = new Date().toISOString();
       const obj = Object.assign({
         id        : generateId(),
-        doc_number: generateDocNumber(data.doc_type),
+        doc_number: data.doc_number || generateDocNumber(data.doc_type),
         created_by: auth.user.id
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Documents', obj);
+      
+      if (clean.assigned_to.length > 0) {
+        const notifs = readJsonSheet_('Notifications');
+        const personnelList = readJsonSheet_('Personnel');
+        const usersList = readJsonSheet_('Users');
+        const now = new Date().toISOString();
+        
+        clean.assigned_to.forEach(pid => {
+          // Map Personnel.id to User.id
+          let targetUserId = pid;
+          const p = personnelList.find(x => x.id === pid);
+          if (p) {
+            const u = usersList.find(x => String(x.username).toLowerCase() === String(p.personnel_id).toLowerCase());
+            if (u) targetUserId = u.id;
+          }
+          
+          notifs.push({
+            id: generateId(),
+            user_id: targetUserId,
+            type: 'document_assigned',
+            title: 'ได้รับมอบหมายงานใหม่ (สารบรรณ)',
+            message: `เรื่อง: ${clean.subject}`,
+            link_type: 'documents',
+            link_id: obj.id,
+            is_read: false,
+            created_at: now
+          });
+        });
+        writeJsonSheet_('Notifications', notifs);
+      }
+      
       return { status:'success', data:obj, message:'บันทึกเอกสารสำเร็จ' };
     }
   } catch (e) {
     logError({ fn:'saveDocument', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function markNotificationRead(id, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    updateJsonById_('Notifications', id, n => {
+      n.is_read = true;
+      return n;
+    });
+    return { status:'success' };
+  } catch (e) {
     return { status:'error', message:e.message };
   }
 }
@@ -2831,17 +3058,48 @@ function deleteDocument(id, sessionToken) {
 
 function generateDocNumber(docType) {
   const all = readJsonSheet_('Documents').filter(d => d.doc_type === docType);
-  const next = all.length + 1;
-  const year = (new Date().getFullYear() + 543);
-  const prefix = ({
-    receive : 'รับ',
-    send    : 'ส่ง',
-    order   : 'คำสั่ง',
-    memo    : 'บันทึก',
-    announce: 'ประกาศ',
-    form    : 'แบบฟอร์ม'
-  })[docType] || 'เอกสาร';
-  return prefix + ' ' + String(next).padStart(3, '0') + '/' + year;
+  const currentYear = new Date().getFullYear() + 543;
+  const shortYear = String(currentYear).slice(-2);
+  const prefixMap = { receive: 'รับ', send: 'ส่ง', order: 'คำสั่ง', memo: 'บันทึก', announce: 'ประกาศ', form: 'แบบฟอร์ม' };
+  const prefix = prefixMap[docType] || 'เอกสาร';
+
+  if (all.length === 0) return `${prefix} 1/${currentYear}`;
+
+  all.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  const lastDoc = all[0];
+  const lastNum = lastDoc.doc_number || '';
+
+  const match = lastNum.trim().match(/^(.*?\/?)(\d+)(\/(25\d{2}|\d{2}))?$/);
+  if (match) {
+    const matchedPrefix = match[1] || `${prefix} `;
+    const numStr = match[2];
+    const docYear = match[4] || '';
+    
+    let isNewYear = false;
+    if (docYear && docYear !== String(currentYear) && docYear !== shortYear) {
+      isNewYear = true;
+    }
+    
+    let nextNum = isNewYear ? 1 : parseInt(numStr, 10) + 1;
+    let newYearSuffix = isNewYear ? `/${currentYear}` : (match[3] || '');
+    
+    let nextNumStr = String(nextNum);
+    if (numStr.startsWith('0') && !isNewYear) {
+      nextNumStr = nextNumStr.padStart(numStr.length, '0');
+    }
+    return matchedPrefix + nextNumStr + newYearSuffix;
+  }
+  return `${prefix} ${all.length + 1}/${currentYear}`;
+}
+
+function getNextDocNumber(docType, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    return { status: 'success', data: generateDocNumber(docType) };
+  } catch(e) {
+    return { status: 'error', message: e.message };
+  }
 }
 
 
@@ -2970,6 +3228,30 @@ function reviewApproval(id, action, comment, sessionToken) {
 
   } catch (e) {
     logError({ fn:'reviewApproval', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function deleteApproval(id, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    
+    const perms = (auth.user && auth.user.permissions) || [];
+    const canDelete = perms.includes('approve') || perms.includes('delete');
+    
+    const all = readJsonSheet_('Approvals');
+    const target = all.find(x => x.id === id);
+    if (!target) return { status:'error', message:'ไม่พบรายการ' };
+
+    if (!canDelete && target.requester_id !== auth.user.id) {
+       return { status:'error', message:'ไม่มีสิทธิ์ลบรายการนี้' };
+    }
+
+    const ok = deleteJsonById_('Approvals', id);
+    return ok ? { status:'success', message:'ลบรายการอนุมัติสำเร็จ' } : { status:'error', message:'ไม่พบรายการ' };
+  } catch (e) {
+    logError({ fn:'deleteApproval', error:e.message });
     return { status:'error', message:e.message };
   }
 }
@@ -3231,15 +3513,20 @@ function getReportsOverview(sessionToken) {
       personnelByDept[d] = (personnelByDept[d] || 0) + 1;
     });
 
-    // อัตราการเข้าเรียน 30 วันย้อนหลัง
+    // อัตราการเข้าเรียน 30 วันย้อนหลัง — optimized with date-indexed map
+    const attendByDate = {};
+    attendance.forEach(a => {
+      if (!attendByDate[a.date]) attendByDate[a.date] = { total:0, presentOrLate:0 };
+      attendByDate[a.date].total++;
+      if (a.status === 'present' || a.status === 'late') attendByDate[a.date].presentOrLate++;
+    });
+    
     const last30 = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const ds = d.toISOString().slice(0,10);
-      const list = attendance.filter(a => a.date === ds);
-      const pct = list.length > 0
-        ? Math.round((list.filter(a => a.status === 'present' || a.status === 'late').length / list.length) * 100)
-        : null;
+      const bucket = attendByDate[ds];
+      const pct = bucket && bucket.total > 0 ? Math.round((bucket.presentOrLate / bucket.total) * 100) : null;
       last30.push({ date: ds, pct: pct });
     }
 
@@ -3296,32 +3583,34 @@ function generateReport(reportType, params, sessionToken) {
     let headers = [], rows = [], title = '';
 
     if (reportType === 'students_by_grade') {
-      title = 'นักเรียนแยกตามชั้น';
-      const students = readJsonSheet_('Students').filter(s => s.status === 'active');
+      title = 'รายชื่อนักเรียน' + (params.classroom ? ' ชั้น ' + params.classroom : 'ทั้งหมด');
+      let students = readJsonSheet_('Students').filter(s => s.status === 'active');
+      
       if (params.classroom) {
-        const filtered = students.filter(s => s.classroom === params.classroom);
-        headers = ['รหัสนักเรียน','คำนำหน้า','ชื่อ','นามสกุล','เพศ','วันเกิด','ผู้ปกครอง','โทรศัพท์'];
-        rows = filtered
-          .sort((a,b) => String(a.first_name||'').localeCompare(String(b.first_name||''),'th'))
-          .map(s => [s.student_id, s.prefix, s.first_name, s.last_name, s.gender==='male'?'ชาย':s.gender==='female'?'หญิง':'-',
-                     s.birth_date ? formatThaiDateServer_(s.birth_date) : '', s.parent_name, s.parent_phone]);
-      } else {
-        // สรุปจำนวนแต่ละชั้น
-        const byGrade = {};
-        students.forEach(s => {
-          const c = s.classroom || 'ไม่ระบุ';
-          if (!byGrade[c]) byGrade[c] = { total: 0, male: 0, female: 0 };
-          byGrade[c].total++;
-          if (s.gender === 'male')   byGrade[c].male++;
-          if (s.gender === 'female') byGrade[c].female++;
-        });
-        headers = ['ชั้น','ชาย','หญิง','รวม'];
-        rows = Object.keys(byGrade).sort().map(c => [c, byGrade[c].male, byGrade[c].female, byGrade[c].total]);
-        rows.push(['รวมทั้งสิ้น',
-          rows.reduce((s,r) => s+r[1], 0),
-          rows.reduce((s,r) => s+r[2], 0),
-          rows.reduce((s,r) => s+r[3], 0)]);
+        students = students.filter(s => s.classroom === params.classroom);
       }
+      
+      headers = ['ชั้น', 'รหัสนักเรียน', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'เพศ', 'วันเกิด', 'ชื่อผู้ปกครอง', 'เบอร์โทรผู้ปกครอง'];
+      
+      students.sort((a,b) => {
+         let cmp = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', {numeric: true});
+         if (cmp === 0) {
+            cmp = String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+         }
+         return cmp;
+      });
+
+      rows = students.map(s => [
+        s.classroom || '-',
+        s.student_id,
+        s.prefix,
+        s.first_name,
+        s.last_name,
+        s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : '-'),
+        s.birth_date ? formatThaiDateServer_(s.birth_date) : '',
+        s.parent_name || '-',
+        s.parent_phone || '-'
+      ]);
 
     } else if (reportType === 'attendance_summary') {
       title = 'สรุปการเข้าเรียน';
@@ -3521,6 +3810,49 @@ function saveCalendarEvent(data, sessionToken) {
   }
 }
 
+function importCalendarEvents(eventsArray, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    if (!eventsArray || !Array.isArray(eventsArray) || eventsArray.length === 0) {
+      return { status:'error', message:'ไม่มีข้อมูลเหตุการณ์ที่จะนำเข้า' };
+    }
+
+    const now = new Date().toISOString();
+    const preparedEvents = eventsArray.map(data => {
+      const clean = {
+        id          : generateId(),
+        title       : sanitize(data.title),
+        description : sanitize(data.description || ''),
+        type        : data.type || 'general',
+        start_date  : data.start_date,
+        end_date    : data.end_date || data.start_date,
+        start_time  : data.start_time || '',
+        end_time    : data.end_time || '',
+        location    : sanitize(data.location || ''),
+        is_holiday  : !!data.is_holiday,
+        is_pinned   : !!data.is_pinned,
+        attachment  : data.attachment || '',
+        created_by  : auth.user.id,
+        created_at  : now,
+        updated_at  : now
+      };
+      
+      // LINE OA notify if pinned
+      if (clean.is_pinned) {
+        try { notifyAnnouncement_(clean); } catch(_) {}
+      }
+      return clean;
+    });
+
+    appendJsonRows_('Calendar', preparedEvents);
+    return { status:'success', message: 'นำเข้าสำเร็จ ' + preparedEvents.length + ' เหตุการณ์' };
+  } catch(e) {
+    logError({ fn:'importCalendarEvents', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
 function deleteCalendarEvent(id, sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken, true);
@@ -3625,7 +3957,7 @@ function deleteFileById(fileId, sessionToken) {
  *  USERS — จัดการผู้ใช้งาน (Admin Only)
  * ============================================================ */
 function _requireAdmin_(token) {
-  const v = validateSession(token);
+  const v = validateSessionLight_(token);
   if (!v.valid) return { ok:false, response:{ status:'error', message:'session_invalid' } };
   if (v.role !== 'admin') return { ok:false, response:{ status:'error', message:'admin_only', code:403 } };
   return { ok:true, user:v.user };
@@ -4143,7 +4475,9 @@ function getSchedule(params, sessionToken) {
     );
 
     if (params.classroom  && params.view !== 'all') entries = entries.filter(e => e.classroom === params.classroom);
-    if (params.teacher_id && params.view !== 'all') entries = entries.filter(e => e.teacher_id === params.teacher_id);
+    if (params.teacher_id && params.view !== 'all') {
+      entries = entries.filter(e => e.teacher_id && e.teacher_id.split(',').map(s=>s.trim()).includes(params.teacher_id));
+    }
 
     // เสริมข้อมูล subject + teacher + room
     const subjects   = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
@@ -4156,15 +4490,23 @@ function getSchedule(params, sessionToken) {
 
     const enriched = entries.map(e => {
       const sub  = subMap[e.subject_id]  || {};
-      const per  = perMap[e.teacher_id]  || {};
+      const tIds = e.teacher_id ? e.teacher_id.split(',').map(s=>s.trim()).filter(s=>s) : [];
+      let tNames = [], tShorts = [];
+      tIds.forEach(tid => {
+        const per = perMap[tid] || {};
+        if (per.id) {
+          tNames.push((per.prefix||'')+(per.first_name||'')+' '+(per.last_name||''));
+          tShorts.push((per.prefix||'')+(per.first_name||''));
+        }
+      });
       const room = roomMap[e.room_id]    || {};
       const group = sub.subject_group || '';
       return Object.assign({}, e, {
         subject_name  : sub.subject_name  || '',
         subject_code  : sub.subject_code  || '',
         subject_group : group,
-        teacher_name  : per.id ? ((per.prefix||'')+(per.first_name||'')+' '+(per.last_name||'')) : '',
-        teacher_short : per.id ? ((per.prefix||'')+(per.first_name||'')) : '',
+        teacher_name  : tNames.join(', '),
+        teacher_short : tShorts.join(', '),
         room_name     : room.name || '',
         color         : e.color || SUBJECT_GROUP_COLORS[group] || '#64748B'
       });
@@ -4228,8 +4570,8 @@ function saveScheduleEntry(data, sessionToken) {
 
     const now = new Date().toISOString();
 
-    // ถ้าเป็น "ลบ" (subject_id ว่าง) → ลบ entry นั้น
-    if (!data.subject_id && !data.is_homeroom_activity) {
+    // ถ้าเป็น "ลบ" (subject_id ว่าง และไม่มี activity_label) → ลบ entry นั้น
+    if (!data.subject_id && !data.is_homeroom_activity && !data.activity_label) {
       if (existIdx >= 0) {
         all.splice(existIdx, 1);
         writeJsonSheet_('Schedule', all);
@@ -4275,6 +4617,69 @@ function saveScheduleEntry(data, sessionToken) {
 
   } catch(e) {
     logError({ fn:'saveScheduleEntry', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+/**
+ * บันทึกตารางสอนทั้งห้องเรียน (Batch Save)
+ */
+function saveClassroomScheduleBatch(classroom, academicYear, semester, entries, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    const ay  = String(academicYear || getConfig().academic_year);
+    const sem = String(semester || '1');
+
+    const all = readJsonSheet_('Schedule');
+    
+    // ลบรายการเดิมของห้องนี้ในเทอมนี้
+    const next = all.filter(x => !(
+      x._kind === 'schedule_entry' &&
+      x.classroom === classroom &&
+      String(x.academic_year) === ay &&
+      String(x.semester) === sem
+    ));
+
+    const now = new Date().toISOString();
+    const conflict_warnings = [];
+
+    // เพิ่มรายการใหม่
+    entries.forEach(data => {
+      // ตรวจสอบ Conflict (ส่ง all ไปเช็คด้วย ถ้ามีเขียน logic เช็คแบบ batch)
+      // เพื่อความเรียบง่าย จะใช้ checkScheduleConflict_ ตัวเดิม แต่ให้ระวังว่ามันดึงข้อมูลจาก all ปกติ
+      // ถ้าให้แม่นยำจริงๆ ต้องให้ checkScheduleConflict_ รับ all ไปด้วย แต่ตอนนี้ใช้ตัวเดิมไปก่อนได้
+      const entry = {
+        id           : data.id || generateId(),
+        _kind        : 'schedule_entry',
+        academic_year: ay,
+        semester     : sem,
+        classroom    : classroom,
+        day          : Number(data.day),
+        period_no    : Number(data.period_no),
+        subject_id   : data.subject_id   || '',
+        teacher_id   : data.teacher_id   || '',
+        room_id      : data.room_id      || '',
+        activity_label: sanitize(data.activity_label || ''),
+        note         : sanitize(data.note || ''),
+        color        : data.color || SUBJECT_GROUP_COLORS[''] || '#64748B',
+        created_by   : auth.user.id,
+        created_at   : data.id ? (data.created_at || now) : now,
+        updated_at   : now
+      };
+      
+      const warns = checkScheduleConflict_(entry);
+      if (warns.length > 0) conflict_warnings.push(...warns);
+
+      next.push(entry);
+    });
+
+    writeJsonSheet_('Schedule', next);
+    return { status:'success', message:'บันทึกตารางเรียนสำเร็จ!', conflict_warnings };
+
+  } catch(e) {
+    logError({ fn:'saveClassroomScheduleBatch', error:e.message });
     return { status:'error', message:e.message };
   }
 }
@@ -4395,18 +4800,22 @@ function checkScheduleConflict_(newEntry) {
       Number(x.period_no) === Number(newEntry.period_no)
     );
 
-    // ครูติดตารางห้องอื่น
-    const teacherConflict = all.filter(x =>
-      x.teacher_id === newEntry.teacher_id &&
-      x.classroom  !== newEntry.classroom
-    );
-    teacherConflict.forEach(x => {
-      const per = (readJsonSheet_('Personnel').find(p => p.id === newEntry.teacher_id)) || {};
-      warnings.push({
-        type   : 'teacher',
-        message: 'ครู ' + (per.first_name || newEntry.teacher_id) + ' มีตารางสอนห้อง ' + x.classroom + ' ในคาบเดียวกันอยู่แล้ว'
+    const tIds = newEntry.teacher_id.split(',').map(s=>s.trim()).filter(s=>s);
+    if (tIds.length > 0) {
+      tIds.forEach(tId => {
+        const teacherConflict = all.filter(x =>
+          x.teacher_id && x.teacher_id.split(',').map(s=>s.trim()).includes(tId) &&
+          x.classroom  !== newEntry.classroom
+        );
+        teacherConflict.forEach(x => {
+          const per = (readJsonSheet_('Personnel').find(p => p.id === tId)) || {};
+          warnings.push({
+            type   : 'teacher',
+            message: 'ครู ' + (per.first_name || tId) + ' มีตารางสอนห้อง ' + x.classroom + ' ในคาบเดียวกันอยู่แล้ว'
+          });
+        });
       });
-    });
+    }
 
     // ห้องสอนถูกใช้
     if (newEntry.room_id) {
@@ -4464,8 +4873,11 @@ function getAllConflicts(academicYear, semester, sessionToken) {
       const teacherCount = {};
       group.forEach(e => {
         if (!e.teacher_id) return;
-        if (!teacherCount[e.teacher_id]) teacherCount[e.teacher_id] = [];
-        teacherCount[e.teacher_id].push(e.classroom);
+        const tIds = e.teacher_id.split(',').map(s=>s.trim()).filter(s=>s);
+        tIds.forEach(tid => {
+          if (!teacherCount[tid]) teacherCount[tid] = [];
+          teacherCount[tid].push(e.classroom);
+        });
       });
       Object.keys(teacherCount).forEach(tid => {
         if (teacherCount[tid].length > 1) {
@@ -4567,44 +4979,44 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     // Build table rows
     const dayLabels = ['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์'];
 
-    const rows = periods.map(p => {
-      const rowCells = [1,2,3,4,5].map(d => {
+    // Header row: คาบ / วัน, ... periods
+    const headerCells = periods.map(p => `
+      <th style="padding:6px; border:1px solid #000;">
+        <div style="font-size:11px; font-weight:700; white-space:nowrap;">${escapeHTMLServer_(p.label)}\x3c/div>
+        <div style="font-size:9px; font-weight:normal; white-space:nowrap;">${escapeHTMLServer_(p.start)}–${escapeHTMLServer_(p.end)}\x3c/div>
+      \x3c/th>
+    `).join('');
+
+    const rows = [1,2,3,4,5].map((d, index) => {
+      const rowCells = periods.map(p => {
         if (p.is_break) {
-          return d === 1
-            ? `<td colspan="5" style="background:#F1F5F9;text-align:center;font-weight:600;color:#64748B;padding:6px;">
-                ${p.label} (${p.start} – ${p.end})
-               </td>`
-            : '';
+          const text = (p.label && p.label.includes('เสาธง')) ? '' : 'พัก';
+          return `<td style="border:1px solid #000; background:#F1F5F9; text-align:center; font-size:11px; color:#64748B; width:30px; vertical-align:middle;">${text}\x3c/td>`;
         }
         const e = grid[d][p.no];
-        if (!e) return '<td style="min-height:60px;"></td>';
+        if (!e) return '<td style="border:1px solid #000; min-height:60px;">\x3c/td>';
         return `
-          <td style="padding:0;">
-            <div style="margin:3px; padding:5px 6px; border-radius:6px;
-                        background:${e.color}22; border-left:3px solid ${e.color};
-                        min-height:52px;">
-              <div style="font-weight:700; font-size:11px; color:${e.color}; line-height:1.3;">
+          <td style="border:1px solid #000; padding:0; vertical-align:middle; text-align:center;">
+            <div style="margin:3px; padding:5px 6px; min-height:52px;">
+              <div style="font-weight:700; font-size:11px; color:#000; line-height:1.3;">
+                ${e.subject_code ? `<span style="font-size:9px; color:#475569; display:block;">${escapeHTMLServer_(e.subject_code)}</span>` : ''}
                 ${escapeHTMLServer_(e.subject_name || e.activity_label || '')}
-              </div>
-              <div style="font-size:10px; color:#475569; margin-top:2px; line-height:1.3;">
+              \x3c/div>
+              ${e.activity_label ? '' : `<div style="font-size:10px; color:#000; margin-top:2px; line-height:1.3;">
                 ${escapeHTMLServer_(e.teacher_short || e.teacher_name || '')}
-              </div>
-              ${e.room_name ? `<div style="font-size:9px; color:#94A3B8;">${escapeHTMLServer_(e.room_name)}</div>` : ''}
-            </div>
-          </td>`;
+              \x3c/div>`}
+              ${e.room_name ? `<div style="font-size:9px; color:#000;">${escapeHTMLServer_(e.room_name)}\x3c/div>` : ''}
+            \x3c/div>
+          \x3c/td>`;
       });
-      if (p.is_break) {
-        return '<tr>' + rowCells[0] + '</tr>';
-      }
       return `
         <tr>
-          <td style="background:#F8FAFC; padding:4px 8px; border-right:1px solid #E2E8F0;
-                     white-space:nowrap; font-size:10px; line-height:1.3;">
-            <div style="font-weight:700; color:#0F172A;">${p.label}</div>
-            <div style="color:#64748B;">${p.start}–${p.end}</div>
-          </td>
+          <td style="background:#FFF; color:#000; padding:4px 8px; border:1px solid #000;
+                     white-space:nowrap; font-size:12px; font-weight:bold; text-align:center; width:60px; vertical-align:middle;">
+            วัน${dayLabels[index]}
+          \x3c/td>
           ${rowCells.join('')}
-        </tr>`;
+        \x3c/tr>`;
     });
 
     const html = `<!DOCTYPE html><html lang="th"><head>
@@ -4616,25 +5028,24 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   body {
     font-family: 'Sarabun', sans-serif;
     font-size: 12px; color: #0F172A; margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .header {
-    text-align: center; margin-bottom: 10px;
-    padding-bottom: 8px; border-bottom: 2px solid #800020;
+    text-align: center; margin-bottom: 20px;
   }
-  .header .school { font-size: 14px; font-weight: 700; color: #800020; }
-  .header .title  { font-size: 18px; font-weight: 800; margin: 4px 0; }
-  .header .sub    { font-size: 12px; color: #64748B; }
   table {
     width: 100%; border-collapse: collapse;
-    border: 1px solid #CBD5E1;
+    border: 2px solid #000;
+    table-layout: fixed;
   }
   th, td {
-    border: 1px solid #E2E8F0;
+    border: 1px solid #000;
     vertical-align: top;
   }
   th {
-    background: #800020; color: white; text-align: center;
-    padding: 6px 8px; font-size: 12px;
+    background: #FFF !important; color: #000 !important; text-align: center;
+    padding: 10px 8px; font-size: 13px; font-weight: 700; border-bottom: 2px solid #000;
   }
   td { vertical-align: middle; min-height: 60px; }
   .signature-row {
@@ -4654,16 +5065,17 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   }
 </style></head><body>
 <button class="no-print" onclick="window.print()">🖨 พิมพ์</button>
-<div class="header">
-  <div class="school">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-  <div class="title">ตารางเรียน ชั้น ${escapeHTMLServer_(classroom)}</div>
-  <div class="sub">ภาคเรียนที่ ${escapeHTMLServer_(sem)} ปีการศึกษา ${escapeHTMLServer_(ay)}</div>
+<div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+  <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:75px; height:75px; object-fit:contain; margin-bottom:8px;">
+  <div style="font-size:22px; font-weight:800; color:#0F172A; margin-bottom:4px;">ตารางเรียน ชั้น ${escapeHTMLServer_(classroom)}</div>
+  <div style="font-size:16px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
+  <div style="font-size:14px; color:#64748B; margin-top:2px;">ภาคเรียนที่ ${escapeHTMLServer_(sem)} ปีการศึกษา ${escapeHTMLServer_(ay)}</div>
 </div>
 <table>
   <thead>
     <tr>
-      <th style="width:90px;">คาบ / เวลา</th>
-      <th>วันจันทร์</th><th>วันอังคาร</th><th>วันพุธ</th><th>วันพฤหัสบดี</th><th>วันศุกร์</th>
+      <th style="width:90px;">วัน / คาบ</th>
+      ${headerCells}
     </tr>
   </thead>
   <tbody>${rows.join('')}</tbody>
@@ -4721,30 +5133,46 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
     // นับภาระงาน
     const totalPeriods = schedRes.data.filter(e => !e.is_homeroom_activity).length;
 
-    const rows = periods.map(p => {
-      if (p.is_break) {
-        return `<tr><td colspan="6" style="background:#F1F5F9;text-align:center;font-weight:600;color:#64748B;padding:5px;">${p.label} (${p.start}–${p.end})</td></tr>`;
-      }
-      const cells = [1,2,3,4,5].map(d => {
+    const dayLabels = ['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์'];
+
+    // Header row: คาบ / วัน, ... periods
+    const headerCells = periods.map(p => `
+      <th style="padding:6px; border:1px solid #000;">
+        <div style="font-size:11px; font-weight:700; white-space:nowrap;">${escapeHTMLServer_(p.label)}\x3c/div>
+        <div style="font-size:9px; font-weight:normal; white-space:nowrap;">${escapeHTMLServer_(p.start)}–${escapeHTMLServer_(p.end)}\x3c/div>
+      \x3c/th>
+    `).join('');
+
+    const rows = [1,2,3,4,5].map((d, index) => {
+      const rowCells = periods.map(p => {
+        if (p.is_break) {
+          const text = (p.label && p.label.includes('เสาธง')) ? '' : 'พัก';
+          return `<td style="border:1px solid #000; background:#F1F5F9; text-align:center; font-size:11px; color:#64748B; width:30px; vertical-align:middle;">${text}\x3c/td>`;
+        }
         const e = grid[d][p.no];
-        if (!e) return '<td></td>';
+        if (!e) return '<td style="border:1px solid #000; min-height:60px;">\x3c/td>';
         return `
-          <td style="padding:0;">
-            <div style="margin:3px;padding:5px 6px;border-radius:6px;
-                        background:${e.color}22;border-left:3px solid ${e.color};min-height:52px;">
-              <div style="font-weight:700;font-size:11px;color:${e.color};">${escapeHTMLServer_(e.subject_name||e.activity_label||'')}</div>
-              <div style="font-size:10px;color:#475569;margin-top:2px;">ห้อง ${escapeHTMLServer_(e.classroom)}</div>
-              ${e.room_name ? `<div style="font-size:9px;color:#94A3B8;">${escapeHTMLServer_(e.room_name)}</div>` : ''}
+          <td style="border:1px solid #000; padding:0; vertical-align:middle; text-align:center;">
+            <div style="margin:3px;padding:5px 6px;min-height:52px;">
+              <div style="font-weight:700;font-size:11px;color:#000;">
+                ${e.subject_code ? `<span style="font-size:9px; color:#475569; display:block;">${escapeHTMLServer_(e.subject_code)}</span>` : ''}
+                ${escapeHTMLServer_(e.subject_name||e.activity_label||'')}
+              </div>
+              <div style="font-size:10px;color:#000;margin-top:2px;">
+                ${e.classroom !== 'กิจกรรม' ? escapeHTMLServer_(e.classroom) : ''}
+              </div>
+              ${e.room_name ? `<div style="font-size:9px;color:#000;">${escapeHTMLServer_(e.room_name)}</div>` : ''}
             </div>
           </td>`;
       });
-      return `<tr>
-        <td style="background:#F8FAFC;padding:4px 8px;border-right:1px solid #E2E8F0;white-space:nowrap;font-size:10px;">
-          <div style="font-weight:700;">${p.label}</div>
-          <div style="color:#64748B;">${p.start}–${p.end}</div>
-        </td>
-        ${cells.join('')}
-      </tr>`;
+      return `
+        <tr>
+          <td style="background:#FFF; color:#000; padding:4px 8px; border:1px solid #000;
+                     white-space:nowrap; font-size:12px; font-weight:bold; text-align:center; width:60px; vertical-align:middle;">
+            วัน${dayLabels[index]}
+          \x3c/td>
+          ${rowCells.join('')}
+        \x3c/tr>`;
     });
 
     const html = `<!DOCTYPE html><html lang="th"><head>
@@ -4752,32 +5180,30 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   @page { size: A4 landscape; margin: 1cm; }
-  body { font-family:'Sarabun',sans-serif; font-size:12px; color:#0F172A; margin:0; }
-  .header { text-align:center; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid #800020; }
-  .header .school { font-size:14px; font-weight:700; color:#800020; }
-  .header .title  { font-size:18px; font-weight:800; margin:4px 0; }
-  .header .sub    { font-size:12px; color:#64748B; }
+  body { font-family:'Sarabun',sans-serif; font-size:12px; color:#0F172A; margin:0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .header { text-align:center; margin-bottom:20px; }
   .workload { text-align:right; font-size:11px; color:#64748B; margin-bottom:6px; }
-  table { width:100%; border-collapse:collapse; border:1px solid #CBD5E1; }
-  th,td { border:1px solid #E2E8F0; vertical-align:middle; }
-  th { background:#800020; color:white; text-align:center; padding:6px 8px; font-size:12px; }
+  table { width:100%; border-collapse:collapse; border:2px solid #000; table-layout:fixed; }
+  th,td { border:1px solid #000; vertical-align:top; }
+  th { background:#FFF !important; color:#000 !important; text-align:center; padding:10px 8px; font-size:13px; font-weight:700; border-bottom:2px solid #000; }
   .sig-row { display:flex; justify-content:space-around; margin-top:30px; text-align:center; font-size:11px; }
   .sig-line { border-bottom:1px dotted #000; width:180px; margin:0 auto 4px; padding-bottom:24px; }
   @media print { .no-print { display:none; } }
   .no-print { position:fixed; top:10px; right:10px; background:#800020; color:white; padding:8px 16px; border-radius:8px; cursor:pointer; border:none; font-family:inherit; font-weight:700; }
 </style></head><body>
 <button class="no-print" onclick="window.print()">🖨 พิมพ์</button>
-<div class="header">
-  <div class="school">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-  <div class="title">ตารางสอน ${escapeHTMLServer_(teacherName)}</div>
-  <div class="sub">${escapeHTMLServer_(teacherPos)} | ภาคเรียนที่ ${sem} ปีการศึกษา ${ay}</div>
+<div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+  <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:75px; height:75px; object-fit:contain; margin-bottom:8px;">
+  <div style="font-size:22px; font-weight:800; color:#0F172A; margin-bottom:4px;">ตารางสอน ${escapeHTMLServer_(teacherName)}</div>
+  <div style="font-size:16px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
+  <div style="font-size:14px; color:#64748B; margin-top:2px;">${escapeHTMLServer_(teacherPos)} | ภาคเรียนที่ ${sem} ปีการศึกษา ${ay}</div>
 </div>
 <div class="workload">ภาระงานสอน: <b>${totalPeriods}</b> คาบ/สัปดาห์</div>
 <table>
   <thead>
     <tr>
-      <th style="width:90px;">คาบ / เวลา</th>
-      <th>วันจันทร์</th><th>วันอังคาร</th><th>วันพุธ</th><th>วันพฤหัสบดี</th><th>วันศุกร์</th>
+      <th style="width:90px;">วัน / คาบ</th>
+      ${headerCells}
     </tr>
   </thead>
   <tbody>${rows.join('')}</tbody>
@@ -5165,6 +5591,9 @@ function getLineSettings(sessionToken) {
     if (!auth.ok) return auth.response;
 
     const cfg = getConfig();
+    const students = readJsonSheet_('Students').filter(s => s.status === 'active');
+    const classrooms = Array.from(new Set(students.map(s => s.classroom).filter(Boolean))).sort();
+
     return {
       status: 'success',
       data: {
@@ -5176,7 +5605,8 @@ function getLineSettings(sessionToken) {
         line_notify_late      : cfg.line_notify_late      !== false,
         line_notify_approval  : cfg.line_notify_approval  !== false,
         line_notify_announce  : cfg.line_notify_announce  !== false,
-        line_notify_finance   : cfg.line_notify_finance   !== false
+        line_notify_finance   : cfg.line_notify_finance   !== false,
+        classrooms            : classrooms
       }
     };
   } catch (e) {
@@ -5260,11 +5690,21 @@ function getClassroomList(params, sessionToken) {
     personnel.forEach(p => perMap[p.id] = p);
     const enriched = rooms.map(r => {
       const per   = perMap[r.homeroom_teacher_id] || {};
+      const per2  = perMap[r.homeroom_teacher_id_2] || {};
       const count = students.filter(s =>
         s.classroom === r.name && String(s.academic_year) === String(r.academic_year) && s.status === 'active'
       ).length;
+      
+      let tName1 = per.id ? (per.prefix||'')+(per.first_name||'')+' '+(per.last_name||'') : '';
+      let tName2 = per2.id ? (per2.prefix||'')+(per2.first_name||'')+' '+(per2.last_name||'') : '';
+      let tNames = [];
+      if (tName1) tNames.push(tName1);
+      if (tName2) tNames.push(tName2);
+
       return Object.assign({}, r, {
-        teacher_name : per.id ? (per.prefix||'')+(per.first_name||'')+' '+(per.last_name||'') : '-',
+        teacher_name : tNames.length > 0 ? tNames.join(', ') : '-',
+        teacher_name_1: tName1,
+        teacher_name_2: tName2,
         student_count: count
       });
     });
@@ -5286,7 +5726,9 @@ function saveClassroom(data, sessionToken) {
     const clean = {
       name, grade_level: sanitize(data.grade_level), room_number: sanitize(data.room_number),
       academic_year: sanitize(data.academic_year), capacity: Number(data.capacity) || 40,
-      homeroom_teacher_id: data.homeroom_teacher_id || '', status: data.status || 'active'
+      homeroom_teacher_id: data.homeroom_teacher_id || '',
+      homeroom_teacher_id_2: data.homeroom_teacher_id_2 || '',
+      status: data.status || 'active'
     };
     if (data.id) {
       let updated = null;
@@ -5519,7 +5961,7 @@ function getUsersAndTeachers(sessionToken) {
     const users = readJsonSheet_('Users').filter(u => u.active !== false)
       .map(u => ({ id:u.id, name:u.name||u.username, username:u.username, role:u.role }));
     const teachers = readJsonSheet_('Personnel').filter(p => p.status === 'active' && p.type === 'teacher')
-      .map(p => ({ id:p.id, prefix:p.prefix, first_name:p.first_name, last_name:p.last_name }));
+      .map(p => ({ id:p.id, name: (p.prefix||'')+(p.first_name||'')+' '+(p.last_name||'') }));
     return { status:'success', users:users, teachers:teachers };
   } catch(e) { return { status:'error', message:e.message }; }
 }

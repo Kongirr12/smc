@@ -37,7 +37,7 @@ function renderBehavior(container) {
       .risk-card { background:white;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px 16px;
                    display:flex;align-items:center;gap:12px;transition:box-shadow .2s; }
       .risk-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
-      .risk-high   { border-left:4px solid #EF4444; }
+      .risk-high   { border-left:4px solid #DC2626; }
       .risk-medium { border-left:4px solid #F59E0B; }
       .risk-low    { border-left:4px solid #10B981; }
       .score-pill  { padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700; }
@@ -91,14 +91,14 @@ function renderBhvSummary() {
   el.innerHTML = `
     <!-- Stats row -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
-      ${bhvStat('bxs-group','#A62639',data.length,'นักเรียนทั้งหมด')}
-      ${bhvStat('bx-shield-x','#EF4444',high,'เสี่ยงสูง')}
+      ${bhvStat('bxs-group','#4F46E5',data.length,'นักเรียนทั้งหมด')}
+      ${bhvStat('bx-shield-x','#DC2626',high,'เสี่ยงสูง')}
       ${bhvStat('bx-error','#F59E0B',med,'เสี่ยงปานกลาง')}
       ${bhvStat('bx-shield','#10B981',data.length-high-med,'พฤติกรรมดี')}
     </div>
 
     ${atRisk.length ? `
-      <div style="font-size:13px;font-weight:700;color:#EF4444;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:700;color:#DC2626;margin-bottom:10px;">
         <i class='bx bxs-error'></i> นักเรียนกลุ่มเสี่ยง (${atRisk.length} คน)
       </div>
       <div style="display:grid;gap:8px;margin-bottom:20px;">
@@ -117,7 +117,7 @@ function renderBhvSummary() {
                 +${s.positive_count} / -${s.negative_count}
               </div>
             </div>
-            <i class='bx bx-chevron-right' style="color:#CBD5E1;"></i>
+            <i class='bx bx-chevron-right text-muted' ></i>
           </div>`).join('')}
       </div>` : ''}
 
@@ -206,7 +206,7 @@ function renderBhvHistory() {
     <div id="bhvHistoryList"><div class="empty-state"><i class="bx bx-loader-alt bx-spin"></i></div></div>
     <style>
       .form-input{padding:7px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;background:#F8FAFC;}
-      .form-input:focus{outline:none;border-color:#A62639;background:white;}
+      .form-input:focus{outline:none;border-color:#4F46E5;background:white;}
     </style>
   `;
   loadBhvHistory();
@@ -248,8 +248,8 @@ function loadBhvHistory() {
             <span class="${b.type==='positive'?'bhv-badge-pos':'bhv-badge-neg'}">
               ${b.score > 0 ? '+' : ''}${b.score}
             </span>
-            <button class="btn btn-light btn-icon" onclick="deleteBhvRecord('${escapeHTML(b.id)}')"
-                    style="color:#EF4444;" title="ลบ">
+            <button class="btn btn-light btn-icon text-danger" onclick="deleteBhvRecord('${escapeHTML(b.id)}')"
+                     title="ลบ">
               <i class='bx bx-trash'></i>
             </button>
           </div>`;
@@ -339,10 +339,10 @@ function openBehaviorForm(preStudentId) {
                 <div onclick="selectBhvPreset('${escapeHTML(p.code)}','${escapeHTML(p.label)}',${p.score})"
                      style="padding:6px 10px;margin-bottom:4px;border-radius:8px;cursor:pointer;
                             border:1.5px solid #E2E8F0;font-size:12px;transition:all .15s;"
-                     onmouseover="this.style.background='#FEE2E2';this.style.borderColor='#EF4444'"
+                     onmouseover="this.style.background='#FEE2E2';this.style.borderColor='#DC2626'"
                      onmouseout="if(this.dataset.sel!='1'){this.style.background='';this.style.borderColor='#E2E8F0'}"
                      id="preset_${escapeHTML(p.code)}" data-sel="0">
-                  ${escapeHTML(p.label)} <span style="float:right;color:#EF4444;font-weight:700;">${p.score}</span>
+                  ${escapeHTML(p.label)} <span style="float:right;color:#DC2626;font-weight:700;">${p.score}</span>
                 </div>`).join('')}
             </div>
           </div>
@@ -367,7 +367,7 @@ function openBehaviorForm(preStudentId) {
         .bl{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:3px;}
         .bi{width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;
             font-family:inherit;font-size:13px;background:#F8FAFC;box-sizing:border-box;}
-        .bi:focus{outline:none;border-color:#A62639;background:white;}
+        .bi:focus{outline:none;border-color:#4F46E5;background:white;}
       </style>
     `,
     preConfirm: () => {
@@ -410,7 +410,7 @@ function selectBhvPreset(code, label, score) {
   if (el) {
     const isPos = score >= 0;
     el.style.background    = isPos ? '#DCFCE7' : '#FEE2E2';
-    el.style.borderColor   = isPos ? '#10B981' : '#EF4444';
+    el.style.borderColor   = isPos ? '#10B981' : '#DC2626';
     el.dataset.sel = '1';
   }
   document.getElementById('bf_label').value = label;
@@ -428,7 +428,7 @@ function openBehaviorHistory(studentId, name) {
 
 function deleteBhvRecord(id) {
   Swal.fire({ title:'ลบรายการนี้?', icon:'warning', showCancelButton:true,
-    confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#EF4444'
+    confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     google.script.run

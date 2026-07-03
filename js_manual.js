@@ -7,8 +7,11 @@ function renderManual(container) {
   container.innerHTML = `
     <div class="welcome-row">
       <div>
-        <h1><i class='bx bxs-book-reader' style="color:#A62639;">\x3c/i> คู่มือการใช้งาน\x3c/h1>
-        <div class="sub"><i class='bx bx-info-circle'>\x3c/i> Smart School Office v1.2 — อ่านเพื่อทำความเข้าใจระบบ\x3c/div>
+        <h1><i class='bx bxs-book-reader text-primary' >\x3c/i> คู่มือการใช้งาน\x3c/h1>
+        <div class="sub" style="line-height:1.6;">
+          <i class='bx bx-info-circle'>\x3c/i> Smart School Office - โรงเรียนมหาชัยพิทยาคาร - อ่านเพื่อทำความเข้าใจระบบ<br>
+          <span style="font-size:12px; color:#64748b;">พัฒนาระบบโดย นายก้องนที อุ่นเจริญ</span>
+        \x3c/div>
       \x3c/div>
     \x3c/div>
 
@@ -29,7 +32,7 @@ function renderManual(container) {
       <!-- Sidebar TOC -->
       <div class="lg:col-span-1">
         <div class="page-card" style="position:sticky; top:80px;">
-          <div class="page-card-header"><h2><i class='bx bx-list-ul' style="color:#A62639;">\x3c/i> สารบัญ\x3c/h2>\x3c/div>
+          <div class="page-card-header"><h2><i class='bx bx-list-ul text-primary' >\x3c/i> สารบัญ\x3c/h2>\x3c/div>
           <div class="page-card-body" style="padding:10px;">
             ${manualTOC()}
           \x3c/div>
@@ -69,7 +72,7 @@ function renderManual(container) {
       }
       .man-step .num {
         width:28px; height:28px; border-radius:50%; flex-shrink:0;
-        background:linear-gradient(135deg,#800020,#A62639); color:white;
+        background:linear-gradient(135deg,#3730A3,#4F46E5); color:white;
         display:flex; align-items:center; justify-content:center;
         font-weight:700; font-size:13px;
       }
@@ -78,8 +81,8 @@ function renderManual(container) {
       .man-step .text .desc { font-size:13px; color:#475569; line-height:1.6; }
 
       .man-tip {
-        background:#FAF0F2; border-left:3px solid #A62639; padding:10px 14px;
-        border-radius:0 8px 8px 0; margin:12px 0; font-size:13px; color:#800020;
+        background:#FAF0F2; border-left:3px solid #4F46E5; padding:10px 14px;
+        border-radius:0 8px 8px 0; margin:12px 0; font-size:13px; color:#3730A3;
       }
       .man-tip i { margin-right:6px; }
       .man-warn {
@@ -92,7 +95,7 @@ function renderManual(container) {
       }
 
       .man-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
-      .man-table th { background:#800020; color:white; padding:8px 12px; text-align:left; }
+      .man-table th { background:#3730A3; color:white; padding:8px 12px; text-align:left; }
       .man-table td { padding:8px 12px; border-bottom:1px solid #E2E8F0; }
       .man-table tr:nth-child(even) td { background:#F8FAFC; }
 
@@ -105,7 +108,7 @@ function renderManual(container) {
         border-radius:8px; cursor:pointer; font-size:13px; font-weight:500;
         color:#475569; transition:all .12s; margin-bottom:2px;
       }
-      .man-toc-item:hover { background:#FAF0F2; color:#800020; }
+      .man-toc-item:hover { background:#FAF0F2; color:#3730A3; }
       .man-toc-item i { font-size:16px; flex-shrink:0; }
 
       .kbd {
@@ -122,7 +125,7 @@ function renderManual(container) {
         padding:10px 12px; font-size:13px;
         display:flex; align-items:center; gap:8px; color:#334155;
       }
-      .feature-item i { color:#A62639; font-size:18px; flex-shrink:0; }
+      .feature-item i { color:#4F46E5; font-size:18px; flex-shrink:0; }
 
       #manualSearch { font-family: 'Sarabun', sans-serif; }
       .man-hidden { display:none !important; }
@@ -141,6 +144,7 @@ function manualTOC() {
     { id:'sec-students', icon:'bxs-user-detail',      label:'ข้อมูลนักเรียน' },
     { id:'sec-personnel',icon:'bxs-group',            label:'ครูและบุคลากร' },
     { id:'sec-attend',   icon:'bxs-check-square',     label:'การเข้าเรียน' },
+    { id:'sec-schedule', icon:'bxs-calendar-check',   label:'ตารางสอน' },
     { id:'sec-academic', icon:'bxs-book-content',     label:'งานวิชาการ' },
     { id:'sec-reg',      icon:'bxs-id-card',          label:'งานทะเบียน' },
     { id:'sec-finance',  icon:'bxs-wallet',           label:'งานการเงิน' },
@@ -163,7 +167,7 @@ function manualTOC() {
 function manualContent() {
   return `
     <!-- เริ่มต้น -->
-    ${manSection('sec-start','bxs-rocket','#A62639','เริ่มต้นใช้งานระบบ',`
+    ${manSection('sec-start','bxs-rocket','#4F46E5','เริ่มต้นใช้งานระบบ',`
       <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
         Smart School Office พร้อมใช้งานบน Browser ทุกตัว ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม
       \x3c/div>
@@ -185,19 +189,19 @@ function manualContent() {
         <thead><tr><th>บทบาท\x3c/th><th>สิทธิ์\x3c/th><th>เมนูที่เข้าถึงได้\x3c/th>\x3c/tr>\x3c/thead>
         <tbody>
           <tr>
-            <td><span class="man-badge" style="background:#F2D5DA;color:#800020;">ผู้ดูแลระบบ (Admin)\x3c/span>\x3c/td>
+            <td><span class="man-badge" style="background:#F2D5DA;color:#3730A3;">ผู้ดูแลระบบ (Admin)\x3c/span>\x3c/td>
             <td>อ่าน + เขียน + ลบ + อนุมัติ + ตั้งค่า\x3c/td>
             <td>ทุกเมนู\x3c/td>
           \x3c/tr>
           <tr>
             <td><span class="man-badge" style="background:#DCFCE7;color:#15803D;">เจ้าหน้าที่ (Staff)\x3c/span>\x3c/td>
-            <td>อ่าน + เขียน\x3c/td>
+            <td>อ่านทุกเมนู + เขียนได้เฉพาะระบบตามฝ่ายงานของตนเอง\x3c/td>
             <td>ทุกเมนูยกเว้น ตั้งค่า + จัดการผู้ใช้\x3c/td>
           \x3c/tr>
           <tr>
             <td><span class="man-badge" style="background:#FEF3C7;color:#B45309;">ครู (Teacher)\x3c/span>\x3c/td>
-            <td>อ่าน + เขียนของตัวเอง\x3c/td>
-            <td>นักเรียน + การเข้าเรียน + วิชาการ + คะแนน\x3c/td>
+            <td>อ่านทุกเมนู + แก้ไขได้เฉพาะตามฝ่ายงาน / วิชาของตนเอง\x3c/td>
+            <td>ทุกเมนู (บางเมนูแก้ไขไม่ได้)\x3c/td>
           \x3c/tr>
         \x3c/tbody>
       \x3c/table>
@@ -264,7 +268,7 @@ function manualContent() {
     `)}
 
     <!-- Students -->
-    ${manSection('sec-students','bxs-user-detail','#A62639','ข้อมูลนักเรียน',`
+    ${manSection('sec-students','bxs-user-detail','#4F46E5','ข้อมูลนักเรียน',`
       <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">เพิ่มนักเรียนใหม่\x3c/h3>
       <div class="man-step">
         <div class="num">1\x3c/div>
@@ -343,54 +347,113 @@ function manualContent() {
 
     <!-- Attendance -->
     ${manSection('sec-attend','bxs-check-square','#F59E0B','การเข้าเรียน',`
-      <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">Tab บันทึกรายวัน\x3c/h3>
-      <div class="man-step">
-        <div class="num">1\x3c/div>
-        <div class="text">
-          <div class="title">เลือกชั้นเรียน\x3c/div>
-          <div class="desc">Dropdown จะแสดงเฉพาะชั้นที่มีนักเรียนในระบบ\x3c/div>
-        \x3c/div>
-      \x3c/div>
-      <div class="man-step">
-        <div class="num">2\x3c/div>
-        <div class="text">
-          <div class="title">เลือกวันที่\x3c/div>
-          <div class="desc">ค่าเริ่มต้นเป็นวันนี้ สามารถย้อนหลังบันทึกได้\x3c/div>
-        \x3c/div>
-      \x3c/div>
-      <div class="man-step">
-        <div class="num">3\x3c/div>
-        <div class="text">
-          <div class="title">กดปุ่มสถานะรายคน\x3c/div>
-          <div class="desc">
-            <span style="background:#DCFCE7;color:#15803D;padding:2px 8px;border-radius:5px;font-weight:600;">มา\x3c/span>
-            <span style="background:#FEE2E2;color:#B91C1C;padding:2px 8px;border-radius:5px;font-weight:600;">ขาด\x3c/span>
-            <span style="background:#FEF3C7;color:#B45309;padding:2px 8px;border-radius:5px;font-weight:600;">ลา\x3c/span>
-            <span style="background:#F2D5DA;color:#800020;padding:2px 8px;border-radius:5px;font-weight:600;">มาสาย\x3c/span>
-            <br>ค่าเริ่มต้นทุกคน = <b>มา\x3c/b>
-          \x3c/div>
-        \x3c/div>
-      \x3c/div>
-      <div class="man-step">
-        <div class="num">4\x3c/div>
-        <div class="text">
-          <div class="title">กด "บันทึก" (มุมขวาบน)\x3c/div>
-          <div class="desc">บันทึกพร้อมกันทุกคนในห้องครั้งเดียว\x3c/div>
-        \x3c/div>
+      <div class="man-tip"><i class='bx bx-mobile-alt'>\x3c/i>
+        <b>รองรับมือถืออย่างเต็มรูปแบบ:</b> ระบบปรับการแสดงผลหน้าตารางเช็คชื่อให้เหมาะกับจอมือถือโดยอัตโนมัติ โดยซ่อนรูปประจำตัวและเอาช่องหมายเหตุออกเพื่อให้เหลือพื้นที่ใช้งานสะดวก
       \x3c/div>
 
-      <div class="man-tip"><i class='bx bx-check-double'>\x3c/i>
-        ปุ่ม <b>"มาทั้งหมด"\x3c/b> ตั้งค่าทุกคนเป็น "มา" ด้วยคลิกเดียว — ประหยัดเวลาในวันที่ไม่มีขาด
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดหน้าเสาธง / โฮมรูม (Class Mode)</h3>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">เลือกชั้นเรียนและวันที่</div>
+          <div class="desc">เลือกห้องเรียนที่ต้องการเช็คชื่อโฮมรูมตอนเช้า และเลือกวันที่บันทึก (ค่าเริ่มต้นเป็นวันนี้)</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">บันทึกสถานะการเช็คชื่อ</div>
+          <div class="desc">กดเลือกสถานะของนักเรียนรายบุคคล (มา / ขาด / ลา / สาย) หรือใช้แถบ <b>"เช็คด่วนทั้งหมด"</b> ด้านบนเพื่อระบุสถานะเดียวกันรวดเดียวทั้งห้อง</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดเช็คชื่อรายวิชา (Subject Mode)</h3>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">เลือกระดับชั้นและวันที่</div>
+          <div class="desc">เมื่อเลือกระดับชั้นเรียนและวันที่เรียนแล้ว ระบบจะโหลดตารางเรียนขึ้นมาเตรียมพร้อมสอดประสานข้อมูลอัตโนมัติ</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">เลือกคาบเรียน (Period)</div>
+          <div class="desc">ติ๊กเลือกคาบเรียนที่ต้องการบันทึก (ข้ามคาบพักกลางวันและคาบกิจกรรมให้โดยอัตโนมัติ)
+            <br>• <b>ระบบเช็คชื่อควบคู่คาบต่อเนื่อง:</b> หากวิชานั้นเรียนต่อเนื่อง 2 คาบติด เมื่อครูติ๊กเลือกคาบใดคาบหนึ่ง ระบบจะเลือกอีกคาบเรียนควบคู่กันให้อัตโนมัติและบันทึกชื่อรอบเดียวขึ้นทั้ง 2 คาบ
+          </div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">3</div>
+        <div class="text">
+          <div class="title">ตรวจสอบรายวิชา (Smart Sync)</div>
+          <div class="desc">เมื่อติ๊กเลือกคาบ ระบบจะทำการเลือกรายวิชาใน Dropdown ให้สอดคล้องกันโดยอ้างอิงจากตารางเรียนจริงของห้องเรียนและวันนั้นๆ ทันที
+            <br>• <b>การกรองอัจฉริยะ:</b> ตัวเลือกรายวิชาจะแสดงผลเฉพาะวิชาที่มีเรียนในห้องนั้นๆ ในวันของสัปดาห์ที่เลือกเท่านั้น
+            <br>• <b>ข้อจำกัดความปลอดภัย:</b> ไม่สามารถติ๊กเลือกคาบเรียนที่มีรายวิชาแตกต่างกันพร้อมกันได้ เพื่อป้องกันข้อมูลการเช็คชื่อสับสน
+          </div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">4</div>
+        <div class="text">
+          <div class="title">กดปุ่ม "บันทึก" เพื่อเซฟข้อมูลขึ้นเซิร์ฟเวอร์</div>
+        </div>
+      </div>
+    `)}
+
+    <!-- Schedule -->
+    ${manSection('sec-schedule','bxs-calendar-check','#0EA5E9','ตารางสอน',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        ระบบจัดการตารางสอนรองรับทั้งการแก้ไขรายคาบ และการลากวาง (Drag & Drop) เพื่อความสะดวกรวดเร็วในการจัดตารางเรียน
       \x3c/div>
 
-      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">Tab รายงาน\x3c/h3>
-      <p style="font-size:14px; color:#475569;">เลือกชั้น + ช่วงวันที่ → แสดงสถิติรายนักเรียน\x3c/p>
-      <div class="man-warn"><i class='bx bx-error'>\x3c/i>
-        นักเรียนที่ % เข้าเรียน &lt; 80% จะขึ้น <span style="background:#FEE2E2;color:#B91C1C;padding:2px 8px;border-radius:5px;">สีแดง\x3c/span> เกณฑ์ปรับได้ในหน้าตั้งค่า
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดปกติ (ปิด Drag & Drop)</h3>
+      <p style="font-size:13px; color:#475569; margin-bottom:12px;">เหมาะสำหรับการแก้ไขรายละเอียดเล็กๆ น้อยๆ เช่น การเปลี่ยนตัวผู้สอน หรือลบเพียงบางคาบเรียน</p>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">คลิกที่ช่องคาบเรียนว่าง</div>
+          <div class="desc">กดไอคอน <b>+</b> ในช่องคาบที่ต้องการ เพื่อเปิดฟอร์มกรอกข้อมูลการสอน (วิชา, ครูผู้สอน, ห้องเรียน)</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">บันทึกข้อมูล</div>
+          <div class="desc">กรอกข้อมูลให้ครบถ้วนแล้วกดบันทึก ข้อมูลตารางจะอัปเดตและเซฟขึ้นคลาวด์ทันที</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โหมดจัดตารางด่วน (เปิด Drag & Drop)</h3>
+      <p style="font-size:13px; color:#475569; margin-bottom:12px;">เหมาะสำหรับการจัดตารางสอนใหม่พร้อมกันทั้งหมดหรือการปรับโครงสร้างตารางเรียนอย่างรวดเร็ว</p>
+      <div class="man-step">
+        <div class="num">1</div>
+        <div class="text">
+          <div class="title">สับสวิตช์เปิด "โหมด Drag & Drop" ที่มุมขวาบน</div>
+          <div class="desc">แถบกล่องรายวิชาจะปรากฏขึ้นมาด้านซ้ายของจอ และระบบจะทำการล็อกการคลิกธรรมดาเอาไว้เพื่อป้องกันการกดพลาด</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">2</div>
+        <div class="text">
+          <div class="title">ลากวิชาไปวางในคาบเรียน</div>
+          <div class="desc">คลิกซ้ายค้างที่วิชาด้านซ้าย แล้วลากไปปล่อย (Drop) ลงในช่องตารางวันและคาบที่ต้องการ ระบบจะวาดคาบเรียนให้อย่างรวดเร็วแบบออฟไลน์</div>
+        </div>
+      </div>
+      <div class="man-step">
+        <div class="num">3</div>
+        <div class="text">
+          <div class="title">กดปุ่ม "💾 บันทึกตาราง"</div>
+          <div class="desc">เมื่อจัดตารางเรียนเสร็จสิ้นแล้ว ให้กดปุ่มบันทึกเพื่อส่งข้อมูลไปเขียนลง Google Sheets รวดเดียวทั้งหมด</div>
+        </div>
+      </div>
+      <div class="man-warn"><i class='bx bx-time-five'>\x3c/i>
+        หากมีการลากวางตารางเรียนค้างไว้แล้วกดยกเลิกโหมดลากวางโดยไม่ได้กดเซฟ ระบบจะเด้งกล่องข้อความแจ้งเตือนความปลอดภัยเพื่อป้องกันข้อมูลหาย
       \x3c/div>
     `)}
 
-    <!-- Academic -->
+<!-- Academic -->
     ${manSection('sec-academic','bxs-book-content','#8B5CF6','งานวิชาการ',`
       <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">ขั้นตอนการใช้งาน (ตามลำดับ)\x3c/h3>
       <div class="man-step">
@@ -449,7 +512,7 @@ function manualContent() {
     ${manSection('sec-reg','bxs-id-card','#06B6D4','งานทะเบียน',`
       <h3 style="font-size:15px; margin:0 0 10px; color:#0F172A;">Workflow รับสมัครนักเรียน\x3c/h3>
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; font-size:13px; font-weight:600;">
-        <span style="background:#F2D5DA;color:#800020;padding:6px 14px;border-radius:999px;">รับสมัคร\x3c/span>
+        <span style="background:#F2D5DA;color:#3730A3;padding:6px 14px;border-radius:999px;">รับสมัคร\x3c/span>
         <i class='bx bx-right-arrow-alt' style="color:#94A3B8; font-size:20px;">\x3c/i>
         <span style="background:#FEF3C7;color:#B45309;padding:6px 14px;border-radius:999px;">รอพิจารณา\x3c/span>
         <i class='bx bx-right-arrow-alt' style="color:#94A3B8; font-size:20px;">\x3c/i>
@@ -467,7 +530,7 @@ function manualContent() {
         <div class="num">2\x3c/div>
         <div class="text">
           <div class="title">อนุมัติใบสมัคร\x3c/div>
-          <div class="desc">Admin กด <i class='bx bx-check' style="color:#10B981;">\x3c/i> อนุมัติ → <b>ระบบสร้างข้อมูลนักเรียนในเมนู "ข้อมูลนักเรียน" อัตโนมัติ\x3c/b>\x3c/div>
+          <div class="desc">Admin กด <i class='bx bx-check text-success' >\x3c/i> อนุมัติ → <b>ระบบสร้างข้อมูลนักเรียนในเมนู "ข้อมูลนักเรียน" อัตโนมัติ\x3c/b>\x3c/div>
         \x3c/div>
       \x3c/div>
 
@@ -510,15 +573,15 @@ function manualContent() {
     `)}
 
     <!-- Documents -->
-    ${manSection('sec-doc','bxs-envelope','#EF4444','สารบรรณโรงเรียน',`
+    ${manSection('sec-doc','bxs-envelope','#DC2626','สารบรรณโรงเรียน',`
       <p style="color:#475569; font-size:14px;">จัดการเอกสารราชการ 6 ประเภท:\x3c/p>
       <div class="feature-grid">
-        <div class="feature-item"><i class='bx bx-envelope-open' style="color:#10B981;">\x3c/i> หนังสือรับ\x3c/div>
-        <div class="feature-item"><i class='bx bx-send' style="color:#A62639;">\x3c/i> หนังสือส่ง\x3c/div>
-        <div class="feature-item"><i class='bx bx-clipboard' style="color:#8B5CF6;">\x3c/i> คำสั่ง\x3c/div>
-        <div class="feature-item"><i class='bx bx-note' style="color:#F59E0B;">\x3c/i> บันทึกข้อความ\x3c/div>
-        <div class="feature-item"><i class='bx bx-megaphone' style="color:#EF4444;">\x3c/i> ประกาศ\x3c/div>
-        <div class="feature-item"><i class='bx bx-file' style="color:#06B6D4;">\x3c/i> แบบฟอร์มเอกสาร\x3c/div>
+        <div class="feature-item"><i class='bx bx-envelope-open text-success' >\x3c/i> หนังสือรับ\x3c/div>
+        <div class="feature-item"><i class='bx bx-send text-primary' >\x3c/i> หนังสือส่ง\x3c/div>
+        <div class="feature-item"><i class='bx bx-clipboard text-accent' >\x3c/i> คำสั่ง\x3c/div>
+        <div class="feature-item"><i class='bx bx-note text-warning' >\x3c/i> บันทึกข้อความ\x3c/div>
+        <div class="feature-item"><i class='bx bx-volume-full text-danger' >\x3c/i> ประกาศ\x3c/div>
+        <div class="feature-item"><i class='bx bx-file text-info' >\x3c/i> แบบฟอร์มเอกสาร\x3c/div>
       \x3c/div>
 
       <div class="man-step">
@@ -571,7 +634,7 @@ function manualContent() {
 
       <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">สำหรับผู้อนุมัติ (Admin)\x3c/h3>
       <div class="man-tip"><i class='bx bx-check-circle'>\x3c/i>
-        กดไอคอน <i class='bx bx-check' style="color:#10B981;">\x3c/i> เพื่ออนุมัติ หรือ <i class='bx bx-x' style="color:#EF4444;">\x3c/i> เพื่อปฏิเสธ → ใส่ความเห็นได้
+        กดไอคอน <i class='bx bx-check text-success' >\x3c/i> เพื่ออนุมัติ หรือ <i class='bx bx-x text-danger' >\x3c/i> เพื่อปฏิเสธ → ใส่ความเห็นได้
       \x3c/div>
       <div class="man-tip"><i class='bx bx-bell'>\x3c/i>
         จำนวนคำขอรออนุมัติแสดงเป็น Badge สีแดงที่เมนู "ระบบอนุมัติ" และไอคอน 🔔 บน Topbar
@@ -609,10 +672,10 @@ function manualContent() {
       <table class="man-table">
         <thead><tr><th>ประเภท\x3c/th><th>สี\x3c/th><th>ใช้สำหรับ\x3c/th>\x3c/tr>\x3c/thead>
         <tbody>
-          <tr><td>วิชาการ\x3c/td><td><span style="color:#A62639;">■\x3c/span> น้ำเงิน\x3c/td><td>สอบ, ส่งงาน, กิจกรรมการเรียน\x3c/td>\x3c/tr>
-          <tr><td>กิจกรรม\x3c/td><td><span style="color:#10B981;">■\x3c/span> เขียว\x3c/td><td>กีฬา, วันสำคัญ, กิจกรรมโรงเรียน\x3c/td>\x3c/tr>
-          <tr><td>ประชุม\x3c/td><td><span style="color:#F59E0B;">■\x3c/span> ส้ม\x3c/td><td>ประชุมครู, ประชุมผู้ปกครอง\x3c/td>\x3c/tr>
-          <tr><td>วันหยุด\x3c/td><td><span style="color:#EF4444;">■\x3c/span> แดง\x3c/td><td>วันหยุดนักขัตฤกษ์, วันหยุดโรงเรียน\x3c/td>\x3c/tr>
+          <tr><td>วิชาการ\x3c/td><td><span class="text-primary">■\x3c/span> น้ำเงิน\x3c/td><td>สอบ, ส่งงาน, กิจกรรมการเรียน\x3c/td>\x3c/tr>
+          <tr><td>กิจกรรม\x3c/td><td><span class="text-success">■\x3c/span> เขียว\x3c/td><td>กีฬา, วันสำคัญ, กิจกรรมโรงเรียน\x3c/td>\x3c/tr>
+          <tr><td>ประชุม\x3c/td><td><span class="text-warning">■\x3c/span> ส้ม\x3c/td><td>ประชุมครู, ประชุมผู้ปกครอง\x3c/td>\x3c/tr>
+          <tr><td>วันหยุด\x3c/td><td><span class="text-danger">■\x3c/span> แดง\x3c/td><td>วันหยุดนักขัตฤกษ์, วันหยุดโรงเรียน\x3c/td>\x3c/tr>
           <tr><td>ทั่วไป\x3c/td><td><span style="color:#64748B;">■\x3c/span> เทา\x3c/td><td>อื่นๆ\x3c/td>\x3c/tr>
         \x3c/tbody>
       \x3c/table>
@@ -639,9 +702,9 @@ function manualContent() {
         <div class="text">
           <div class="title">จัดการไฟล์แต่ละไฟล์\x3c/div>
           <div class="desc">
-            <i class='bx bx-show' style="color:#A62639;">\x3c/i> ดู (เปิดในแท็บใหม่) ·
-            <i class='bx bx-download' style="color:#10B981;">\x3c/i> ดาวน์โหลด ·
-            <i class='bx bx-trash' style="color:#EF4444;">\x3c/i> ลบ (Admin เท่านั้น)
+            <i class='bx bx-show text-primary' >\x3c/i> ดู (เปิดในแท็บใหม่) ·
+            <i class='bx bx-download text-success' >\x3c/i> ดาวน์โหลด ·
+            <i class='bx bx-trash text-danger' >\x3c/i> ลบ (Admin เท่านั้น)
           \x3c/div>
         \x3c/div>
       \x3c/div>
@@ -655,44 +718,42 @@ function manualContent() {
     `)}
 
     <!-- Reports -->
-    ${manSection('sec-reports','bxs-bar-chart-alt-2','#EF4444','รายงาน',`
-      <p style="color:#475569; font-size:14px;">รายงาน 5 ประเภท พร้อมกรองข้อมูลได้:\x3c/p>
+    ${manSection('sec-reports','bxs-bar-chart-alt-2','#DC2626','รายงาน',`
+      <p style="color:#475569; font-size:14px;">รายงาน 5 ประเภท พร้อมกรองข้อมูลได้:</p>
       <table class="man-table">
-        <thead><tr><th>รายงาน\x3c/th><th>กรองได้\x3c/th><th>เนื้อหา\x3c/th>\x3c/tr>\x3c/thead>
+        <thead><tr><th>รายงาน</th><th>กรองได้</th><th>เนื้อหา</th></tr></thead>
         <tbody>
           <tr>
-            <td>นักเรียนแยกตามชั้น\x3c/td>
-            <td>ชั้นเรียน\x3c/td>
-            <td>สรุปจำนวนชาย/หญิง หรือรายชื่อเต็ม\x3c/td>
-          \x3c/tr>
+            <td>นักเรียนแยกตามชั้น</td>
+            <td>ชั้นเรียน</td>
+            <td>สรุปจำนวนชาย/หญิง หรือรายชื่อเต็ม</td>
+          </tr>
           <tr>
-            <td>สรุปการเข้าเรียน\x3c/td>
-            <td>ชั้น + ช่วงวันที่\x3c/td>
-            <td>มา/ขาด/ลา/มาสาย/% แต่ละคน\x3c/td>
-          \x3c/tr>
+            <td>สรุปการเข้าเรียน</td>
+            <td>ชั้น + ประเภทรายงาน + ช่วงวันที่</td>
+            <td>สถิติการเข้าเรียน (มา/ขาด/ลา/สาย/%) แยกตามรายวิชาเดี่ยว, รวมทุกวิชา (วิชาทั้งหมด) หรือหน้าเสาธง/โฮมรูม</td>
+          </tr>
           <tr>
-            <td>สรุปการเงิน\x3c/td>
-            <td>ช่วงวันที่\x3c/td>
-            <td>รายการ + รายรับ/รายจ่าย/คงเหลือสุทธิ\x3c/td>
-          \x3c/tr>
+            <td>สรุปการเงิน</td>
+            <td>ช่วงวันที่</td>
+            <td>รายการ + รายรับ/รายจ่าย/คงเหลือสุทธิ</td>
+          </tr>
           <tr>
-            <td>GPA นักเรียน\x3c/td>
-            <td>ชั้น + ปีการศึกษา\x3c/td>
-            <td>GPA ของนักเรียนแต่ละคน\x3c/td>
-          \x3c/tr>
+            <td>GPA นักเรียน</td>
+            <td>ชั้น + ปีการศึกษา</td>
+            <td>GPA ของนักเรียนแต่ละคน</td>
+          </tr>
           <tr>
-            <td>รายชื่อบุคลากร\x3c/td>
-            <td>—\x3c/td>
-            <td>ข้อมูลบุคลากรทั้งหมด\x3c/td>
-          \x3c/tr>
-        \x3c/tbody>
-      \x3c/table>
+            <td>รายชื่อบุคลากร</td>
+            <td>—</td>
+            <td>ข้อมูลบุคลากรทั้งหมด</td>
+          </tr>
+        </tbody>
+      </table>
       <div class="man-tip"><i class='bx bx-spreadsheet'>\x3c/i>
-        ไฟล์ที่ดาวน์โหลดเป็น <b>.xls\x3c/b> (Excel) เปิดได้ด้วย Microsoft Excel, Google Sheets, LibreOffice
-      \x3c/div>
-    `)}
-
-    <!-- Users -->
+        ไฟล์ที่ดาวน์โหลดเป็น <b>.xls</b> (Excel) เปิดได้ด้วย Microsoft Excel, Google Sheets, LibreOffice
+      </div>
+    `)}<!-- Users -->
     ${manSection('sec-users','bxs-user-account','#8B5CF6','จัดการผู้ใช้งาน (Admin)',`
       <div class="man-warn"><i class='bx bx-lock'>\x3c/i>
         เมนูนี้มองเห็นเฉพาะ <b>Admin\x3c/b> เท่านั้น
@@ -702,10 +763,10 @@ function manualContent() {
         <thead><tr><th>การดำเนินการ\x3c/th><th>วิธีทำ\x3c/th>\x3c/tr>\x3c/thead>
         <tbody>
           <tr><td>เพิ่มผู้ใช้ใหม่\x3c/td><td>กดปุ่ม "เพิ่มผู้ใช้" → กำหนด Username + รหัสผ่าน (≥ 6 ตัว) + บทบาท\x3c/td>\x3c/tr>
-          <tr><td>แก้ไขผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-edit' style="color:#A62639;">\x3c/i> → แก้ข้อมูล (เว้นรหัสผ่านว่างถ้าไม่ต้องการเปลี่ยน)\x3c/td>\x3c/tr>
+          <tr><td>แก้ไขผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-edit text-primary' >\x3c/i> → แก้ข้อมูล (เว้นรหัสผ่านว่างถ้าไม่ต้องการเปลี่ยน)\x3c/td>\x3c/tr>
           <tr><td>เปิด/ปิดบัญชี\x3c/td><td>กดที่ Badge สถานะ <b>เปิด/ปิด\x3c/b> ของผู้ใช้นั้นได้เลย\x3c/td>\x3c/tr>
-          <tr><td>รีเซ็ตรหัสผ่าน\x3c/td><td>กดไอคอน <i class='bx bx-key' style="color:#F59E0B;">\x3c/i> → กรอกรหัสผ่านใหม่\x3c/td>\x3c/tr>
-          <tr><td>ลบผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-trash' style="color:#EF4444;">\x3c/i> (ไม่สามารถลบตัวเองหรือ Admin คนสุดท้ายได้)\x3c/td>\x3c/tr>
+          <tr><td>รีเซ็ตรหัสผ่าน\x3c/td><td>กดไอคอน <i class='bx bx-key text-warning' >\x3c/i> → กรอกรหัสผ่านใหม่\x3c/td>\x3c/tr>
+          <tr><td>ลบผู้ใช้\x3c/td><td>กดไอคอน <i class='bx bx-trash text-danger' >\x3c/i> (ไม่สามารถลบตัวเองหรือ Admin คนสุดท้ายได้)\x3c/td>\x3c/tr>
         \x3c/tbody>
       \x3c/table>
     `)}
@@ -744,7 +805,7 @@ function manualContent() {
     `)}
 
     <!-- FAQ -->
-    ${manSection('sec-faq','bxs-help-circle','#EF4444','คำถามที่พบบ่อย (FAQ)',`
+    ${manSection('sec-faq','bxs-help-circle','#DC2626','คำถามที่พบบ่อย (FAQ)',`
       ${faqItem('ลืมรหัสผ่าน Admin ทำอย่างไร?',
         'ให้ Admin คนอื่นรีเซ็ตผ่านเมนู "จัดการผู้ใช้งาน" → ไอคอนกุญแจ<br>หรือถ้าไม่มี Admin คนอื่น ให้เข้า Google Sheets → Sheet "Users" → แก้ไขฟิลด์ password ด้วย hashPassword() ใน Apps Script')}
       ${faqItem('ข้อมูลหายหลัง Deploy ใหม่ไหม?',
@@ -784,7 +845,7 @@ function faqItem(question, answer) {
   return `
     <div style="border:1px solid #E2E8F0; border-radius:10px; margin-bottom:10px; overflow:hidden;">
       <div style="padding:12px 16px; font-weight:600; color:#0F172A; background:#F8FAFC; font-size:14px;">
-        <i class='bx bx-question-mark' style="color:#A62639; margin-right:6px;">\x3c/i>
+        <i class='bx bx-question-mark' style="color:#4F46E5; margin-right:6px;">\x3c/i>
         ${question}
       \x3c/div>
       <div style="padding:12px 16px; font-size:13px; color:#475569; line-height:1.7;">${answer}\x3c/div>

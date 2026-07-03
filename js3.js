@@ -92,13 +92,15 @@ function renderAcademicSubjects() {
   document.getElementById('acSubjects').innerHTML = `
     <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
       <div class="text-base font-semibold text-slate-700">
-        <i class='bx bx-book-open mr-1' style="color:#A62639;">\x3c/i> รายวิชาที่เปิดสอน
+        <i class='bx bx-book-open mr-1 text-primary' >\x3c/i> รายวิชาที่เปิดสอน
       \x3c/div>
-      ${APP.role !== 'teacher' ? `
       <div class="flex gap-2">
+        ${APP.role !== 'teacher' ? `
+        <button id="btnDeleteSelectedSubjects" class="btn btn-light" style="color:#DC2626; display:none;" onclick="deleteSelectedSubjects()"><i class='bx bx-trash'><\/i> ลบที่เลือก<\/button>
         <button class="btn btn-light" onclick="showImportSubjectsCSV()"><i class='bx bx-import'><\/i> นำเข้า CSV<\/button>
+        ` : ''}
         <button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'><\/i> เพิ่มรายวิชา<\/button>
-      \x3c/div>` : ''}
+      \x3c/div>
     \x3c/div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -183,7 +185,8 @@ function renderSubjectsTable(res) {
       <table class="min-w-full text-sm">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-3 py-2.5 text-left rounded-l-lg">รหัส\x3c/th>
+            ${APP.role !== 'teacher' ? `<th class="px-3 py-2.5 rounded-l-lg w-10 text-center"><input type="checkbox" id="selectAllSubjects" onclick="toggleSelectAllSubjects(this)" style="cursor:pointer;"><\/th>` : ''}
+            <th class="px-3 py-2.5 text-left ${APP.role === 'teacher' ? 'rounded-l-lg' : ''}">รหัส\x3c/th>
             <th class="px-3 py-2.5 text-left">ชื่อวิชา\x3c/th>
             <th class="px-3 py-2.5 text-left">กลุ่มสาระ\x3c/th>
             <th class="px-3 py-2.5 text-left">ชั้น\x3c/th>
@@ -195,6 +198,7 @@ function renderSubjectsTable(res) {
         <tbody>
           ${res.data.map(s => `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
+              ${APP.role !== 'teacher' ? `<td class="px-3 py-2.5 text-center"><input type="checkbox" class="subject-checkbox" value="${s.id}" onclick="updateDeleteSelectedBtn()" style="cursor:pointer;"><\/td>` : ''}
               <td class="px-3 py-2.5 font-mono text-xs">${escapeHTML(s.subject_code || '-')}\x3c/td>
               <td class="px-3 py-2.5 font-semibold text-slate-800">${escapeHTML(s.subject_name || '-')}\x3c/td>
               <td class="px-3 py-2.5">${escapeHTML(s.subject_group || '-')}\x3c/td>
@@ -203,10 +207,10 @@ function renderSubjectsTable(res) {
               <td class="px-3 py-2.5">${escapeHTML(s.teacher_name || '-')}\x3c/td>
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
-                  ${APP.role !== 'teacher' ? `
-                  <button class="btn btn-light btn-icon" onclick="openSubjectForm('${s.id}')" title="แก้ไข" style="color:#A62639;"><i class='bx bx-edit'><\/i><\/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteSubjectConfirm('${s.id}')" title="ลบ" style="color:#EF4444;"><i class='bx bx-trash'><\/i><\/button>
-                  ` : '<span class="text-xs text-slate-400">วิชาของคุณ<\/span>'}
+                  ${(APP.role !== 'teacher' || APP.user.username.toLowerCase() === (s.teacher_id||'').toLowerCase()) ? `
+                  <button class="btn btn-light btn-icon text-primary" onclick="openSubjectForm('${s.id}')" title="แก้ไข" ><i class='bx bx-edit'><\/i><\/button>
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteSubjectConfirm('${s.id}')" title="ลบ" ><i class='bx bx-trash'><\/i><\/button>
+                  ` : '<span class="text-xs text-slate-400">วิชาของผู้อื่น<\/span>'}
                 \x3c/div>
               \x3c/td>
             \x3c/tr>
@@ -217,6 +221,48 @@ function renderSubjectsTable(res) {
     ${paginationHTML(res.page, res.total_pages, 'subjectsGoToPage')}
     <div class="text-xs text-slate-400 text-right mt-1">รวม ${res.total} รายวิชา\x3c/div>
   `;
+  updateDeleteSelectedBtn(); // reset button state on render
+}
+
+function toggleSelectAllSubjects(el) {
+  const checkboxes = document.querySelectorAll('.subject-checkbox');
+  checkboxes.forEach(cb => cb.checked = el.checked);
+  updateDeleteSelectedBtn();
+}
+
+function updateDeleteSelectedBtn() {
+  const checked = document.querySelectorAll('.subject-checkbox:checked').length;
+  const btn = document.getElementById('btnDeleteSelectedSubjects');
+  if (btn) btn.style.display = checked > 0 ? '' : 'none';
+}
+
+function deleteSelectedSubjects() {
+  const checked = document.querySelectorAll('.subject-checkbox:checked');
+  if (checked.length === 0) return;
+  const ids = Array.from(checked).map(cb => cb.value);
+  Swal.fire({
+    title: 'ยืนยันการลบ',
+    text: `ต้องการลบรายวิชาที่เลือก ${ids.length} รายการใช่หรือไม่? (ข้อมูลเกรดที่เกี่ยวข้องจะถูกลบด้วย)`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#DC2626',
+    confirmButtonText: 'ใช่, ลบเลย',
+    cancelButtonText: 'ยกเลิก'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      showLoading('กำลังลบ...');
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if (res.status === 'success') {
+            showToast('success', res.message);
+            loadSubjects();
+          } else showToast('error', res.message);
+        })
+        .withFailureHandler(err => { hideLoading(); showToast('error', err.message||err); })
+        .deleteSubjectsBulk(ids, APP.token);
+    }
+  });
 }
 
 let _csvImportSubjectRecords = [];
@@ -236,7 +282,7 @@ function showImportSubjectsCSV() {
           ไฟล์ CSV ต้องมีหัวคอลัมน์ตามนี้ (UTF-8):
         \x3c/p>
         <code style="display:block; background:#F1F5F9; padding:8px 10px; border-radius:6px; font-size:11px; word-break:break-all;">
-          subject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year
+          subject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_name
         \x3c/code>
         <div class="flex gap-2 mt-2">
           <button type="button" class="btn btn-outline" style="flex:1;" onclick="downloadSampleCSV('subjects')">
@@ -302,6 +348,20 @@ function previewSubjectsCSV(input) {
     const records = dataRows.map((row, idx) => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+      
+      let tId = '';
+      const tNameStr = (obj.teacher_name || '').trim();
+      if (tNameStr && AcademicState.teachers) {
+        // ลองหาชื่อครูจาก AcademicState.teachers (สมมติว่ามี .first_name หรือ .name ให้แมตช์)
+        // หรือดึงครูทั้งหมดมารอไว้ก่อน
+        const found = AcademicState.teachers.find(t => 
+          (t.name && t.name.includes(tNameStr)) || 
+          (t.first_name && (t.first_name + ' ' + t.last_name).includes(tNameStr)) ||
+          (t.first_name && t.first_name.includes(tNameStr))
+        );
+        if (found) tId = found.id;
+      }
+
       return {
         subject_code: obj.subject_code || '',
         subject_name: obj.subject_name || '',
@@ -311,7 +371,8 @@ function previewSubjectsCSV(input) {
         hours_per_week: obj.hours_per_week || '0',
         grade_level: obj.grade_level || '',
         semester: obj.semester || '1',
-        academic_year: obj.academic_year || ''
+        academic_year: obj.academic_year || '',
+        teacher_id: tId
       };
     }).filter(r => r.subject_name);
     _csvImportSubjectRecords = records;
@@ -439,11 +500,13 @@ function showSubjectForm(data) {
 
           <div class="col-span-12">
             <label class="form-label">ครูผู้สอน\x3c/label>
-            <select id="sf_teacher_id" class="form-input">
+            <select id="sf_teacher_id" class="form-input" ${APP.role === 'teacher' ? 'disabled' : ''}>
               <option value="">เลือก\x3c/option>
-              ${AcademicState.teachers.map(t =>
-                `<option value="${t.id}" ${s.teacher_id===t.id?'selected':''}>${escapeHTML(t.name)} ${t.department?`(${escapeHTML(t.department)})`:''}\x3c/option>`
-              ).join('')}
+              ${AcademicState.teachers.map(t => {
+                const isSelected = (s.teacher_id === t.id) || (!s.id && APP.role === 'teacher' && APP.user.username.toLowerCase() === (t.id||'').toLowerCase());
+                var deptStr = t.department ? '(' + escapeHTML(t.department) + ')' : '';
+                return '<option value="' + t.id + '" ' + (isSelected ? 'selected' : '') + '>' + escapeHTML(t.name) + ' ' + deptStr + '\x3c/option>';
+              }).join('')}
             \x3c/select>
           \x3c/div>
         \x3c/div>
@@ -451,7 +514,7 @@ function showSubjectForm(data) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -492,7 +555,7 @@ function deleteSubjectConfirm(id) {
     title:'ยืนยันการลบ?', text:'รวมถึงคะแนนทั้งหมดของวิชานี้',
     icon:'warning', showCancelButton:true,
     confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -511,7 +574,7 @@ function deleteSubjectConfirm(id) {
 function renderAcademicGrades() {
   document.getElementById('acGrades').innerHTML = `
     <div class="text-base font-semibold text-slate-700 mb-3">
-      <i class='bx bx-edit mr-1' style="color:#A62639;">\x3c/i> บันทึกคะแนน ปพ.5
+      <i class='bx bx-edit mr-1 text-primary' >\x3c/i> บันทึกคะแนน ปพ.5
     \x3c/div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -687,10 +750,10 @@ function renderGradeSheetTable() {
         border-radius:6px; font-family:inherit; font-size:12px;
         background:#F8FAFC; text-align:center; box-sizing:border-box;
       }
-      .grade-input:focus { outline:none; border-color:#A62639; background:white; }
+      .grade-input:focus { outline:none; border-color:#4F46E5; background:white; }
       .grade-output {
         padding:5px; text-align:center; font-size:12px; font-weight:600;
-        background:#F1F5F9; border-radius:6px; color:#800020; min-height:26px;
+        background:#F1F5F9; border-radius:6px; color:#3730A3; min-height:26px;
       }
       .grade-output.grade-fail { background:#FEE2E2; color:#B91C1C; }
       .grade-output.grade-pass { background:#DCFCE7; color:#15803D; }
@@ -788,7 +851,7 @@ function printPP5() {
 function renderAcademicGPA() {
   document.getElementById('acGPA').innerHTML = `
     <div class="text-base font-semibold text-slate-700 mb-3">
-      <i class='bx bx-trophy mr-1' style="color:#A62639;">\x3c/i> ดู GPA และพิมพ์ ปพ.6
+      <i class='bx bx-trophy mr-1 text-primary' >\x3c/i> ดู GPA และพิมพ์ ปพ.6
     \x3c/div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
@@ -890,7 +953,7 @@ function viewGPA(studentId) {
         showConfirmButton: false,
         html: `
           <div style="text-align:left;">
-            <div class="text-center mb-4 p-4 rounded-xl" style="background:linear-gradient(135deg,#800020,#A62639); color:white;">
+            <div class="text-center mb-4 p-4 rounded-xl" style="background:linear-gradient(135deg,#3730A3,#4F46E5); color:white;">
               <div class="text-xs opacity-80">เกรดเฉลี่ยสะสม (GPA)\x3c/div>
               <div style="font-size:42px; font-weight:800; line-height:1;">${res.gpa.toFixed(2)}\x3c/div>
               <div class="text-xs opacity-80 mt-2">หน่วยกิตรวม ${res.total_credits} หน่วยกิต\x3c/div>
@@ -952,14 +1015,14 @@ const FinanceState = { page:1, search:'', type:'', start:'', end:'', data:null }
 
 function renderFinance(container) {
   container.innerHTML = `
-    ${pageHeader('งานการเงิน', 'bxs-wallet', `
+    ${pageHeader('งานการเงิน', 'bxs-wallet', (typeof canEditModule === 'function' ? canEditModule('finance') : true) ? `
       <button class="btn btn-light" onclick="openTransactionForm('expense')">
-        <i class='bx bx-minus-circle' style="color:#EF4444;">\x3c/i> รายจ่าย
+        <i class='bx bx-minus-circle text-danger' >\x3c/i> รายจ่าย
       \x3c/button>
       <button class="btn btn-blue" onclick="openTransactionForm('income')">
         <i class='bx bx-plus-circle'>\x3c/i> รายรับ
       \x3c/button>
-    `)}
+    ` : '')}
 
     <div class="page-card mb-3">
       <div class="page-card-body">
@@ -985,12 +1048,13 @@ function renderFinance(container) {
           <input type="date" id="finStart" onchange="onFinanceFilter()" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
           <input type="date" id="finEnd"   onchange="onFinanceFilter()" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
         \x3c/div>
+        </div>
 
         <div id="finTable">
-          <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
-        \x3c/div>
-      \x3c/div>
-    \x3c/div>
+          <div class="empty-state"><i class='bx bx-loader-alt bx-spin'></i>กำลังโหลด...</div>
+        </div>
+      </div>
+    </div>
   `;
 
   loadFinanceSummary();
@@ -1001,30 +1065,32 @@ function loadFinanceSummary() {
   google.script.run
     .withSuccessHandler(res => {
       if (res.status !== 'success') return;
-      document.getElementById('financeStats').innerHTML = `
+      const fs = document.getElementById('financeStats');
+      if (fs) {
+        fs.innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="rpt-card-mini" style="background:#DCFCE7;color:#15803D;">
-            <div><i class='bx bx-trending-up' style="font-size:24px;">\x3c/i>\x3c/div>
+            <div><i class='bx bx-trending-up' style="font-size:24px;"></i></div>
             <div>
-              <div class="lbl">รายรับรวม\x3c/div>
-              <div class="val">${formatMoney(res.income)}\x3c/div>
-            \x3c/div>
-          \x3c/div>
+              <div class="lbl">รายรับรวม</div>
+              <div class="val">${formatMoney(res.income)}</div>
+            </div>
+          </div>
           <div class="rpt-card-mini" style="background:#FEE2E2;color:#B91C1C;">
-            <div><i class='bx bx-trending-down' style="font-size:24px;">\x3c/i>\x3c/div>
+            <div><i class='bx bx-trending-down' style="font-size:24px;"></i></div>
             <div>
-              <div class="lbl">รายจ่ายรวม\x3c/div>
-              <div class="val">${formatMoney(res.expense)}\x3c/div>
-            \x3c/div>
-          \x3c/div>
-          <div class="rpt-card-mini" style="background:#F2D5DA;color:#800020;">
-            <div><i class='bx bx-wallet' style="font-size:24px;">\x3c/i>\x3c/div>
+              <div class="lbl">รายจ่ายรวม</div>
+              <div class="val">${formatMoney(res.expense)}</div>
+            </div>
+          </div>
+          <div class="rpt-card-mini" style="background:#F2D5DA;color:#3730A3;">
+            <div><i class='bx bx-wallet' style="font-size:24px;"></i></div>
             <div>
-              <div class="lbl">คงเหลือสุทธิ\x3c/div>
-              <div class="val">${formatMoney(res.balance)}\x3c/div>
-            \x3c/div>
-          \x3c/div>
-        \x3c/div>
+              <div class="lbl">คงเหลือสุทธิ</div>
+              <div class="val">${formatMoney(res.balance)}</div>
+            </div>
+          </div>
+        </div>
         <style>
           .rpt-card-mini {
             padding:14px 18px; border-radius:14px;
@@ -1032,8 +1098,9 @@ function loadFinanceSummary() {
           }
           .rpt-card-mini .lbl { font-size:12px; font-weight:600; opacity:.85; }
           .rpt-card-mini .val { font-size:20px; font-weight:700; line-height:1.1; margin-top:2px; }
-        \x3c/style>
+        </style>
       `;
+      }
     })
     .getFinanceSummary(null, null, APP.token);
 }
@@ -1077,6 +1144,7 @@ function renderFinanceTable(res) {
     return;
   }
   const methodLabel = { cash:'เงินสด', transfer:'โอน', cheque:'เช็ค' };
+  const canEdit = typeof canEditModule === 'function' ? canEditModule('finance') : true;
   area.innerHTML = `
     <div style="overflow-x:auto;">
       <table class="min-w-full text-sm">
@@ -1105,15 +1173,17 @@ function renderFinanceTable(res) {
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
                   ${t.type === 'income' && t.receipt_number ? `
-                    <button class="btn btn-light btn-icon" onclick="printReceipt('${t.id}')" title="พิมพ์ใบเสร็จ" style="color:#10B981;">
+                    <button class="btn btn-light btn-icon text-success" onclick="printReceipt('${t.id}')" title="พิมพ์ใบเสร็จ" >
                       <i class='bx bx-printer'>\x3c/i>
                     \x3c/button>` : ''}
-                  <button class="btn btn-light btn-icon" onclick="openTransactionForm('${t.type}','${t.id}')" title="แก้ไข" style="color:#A62639;">
+                  ${canEdit ? `
+                  <button class="btn btn-light btn-icon text-primary" onclick="openTransactionForm('${t.type}','${t.id}')" title="แก้ไข" >
                     <i class='bx bx-edit'>\x3c/i>
                   \x3c/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteTransactionConfirm('${t.id}')" title="ลบ" style="color:#EF4444;">
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteTransactionConfirm('${t.id}')" title="ลบ" >
                     <i class='bx bx-trash'>\x3c/i>
                   \x3c/button>
+                  ` : ''}
                 \x3c/div>
               \x3c/td>
             \x3c/tr>
@@ -1210,7 +1280,7 @@ function showTransactionForm(data, students) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -1222,7 +1292,7 @@ function showTransactionForm(data, students) {
         date          : document.getElementById('tf_date').value,
         payment_method: document.getElementById('tf_payment_method').value,
         category      : document.getElementById('tf_category').value,
-        reference_id  : isIncome ? (document.getElementById('tf_reference_id')||{}).value : '',
+        reference_id  : isIncome && document.getElementById('tf_reference_id') ? document.getElementById('tf_reference_id').value : '',
         description   : document.getElementById('tf_description').value,
         amount        : amt
       };
@@ -1238,7 +1308,6 @@ function showTransactionForm(data, students) {
           loadFinanceSummary();
           loadFinanceTable();
           if (isIncome && res.data && res.data.receipt_number) {
-            // ถาม pop print receipt
             setTimeout(() => {
               Swal.fire({
                 icon:'success', title:'บันทึกแล้ว',
@@ -1251,7 +1320,10 @@ function showTransactionForm(data, students) {
               });
             }, 300);
           }
-        } else Swal.fire({ icon:'error', text:res.message });
+        } else {
+          if (res.message === 'session_invalid') return handleLogout(false);
+          Swal.fire({ icon:'error', text:res.message });
+        }
       })
       .withFailureHandler(err => { hideLoading(); Swal.fire({ icon:'error', text:err.message||err }); })
       .saveTransaction(r.value, APP.token);
@@ -1262,7 +1334,7 @@ function deleteTransactionConfirm(id) {
   Swal.fire({
     title:'ยืนยันการลบ?', icon:'warning',
     showCancelButton: true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1292,24 +1364,24 @@ function printReceipt(transactionId) {
 /* ============================================================
  *  DOCUMENTS (สารบรรณ)
  * ============================================================ */
-const DocsState = { page:1, search:'', doc_type:'', status:'', data:null };
+const DocsState = { page:1, search:'', doc_type:'', status:'', data:null, teachers:null, users:null };
 
 const DOC_TYPES = {
   receive : { label:'หนังสือรับ',     color:'#10B981', icon:'bx-envelope-open' },
-  send    : { label:'หนังสือส่ง',     color:'#A62639', icon:'bx-send' },
+  send    : { label:'หนังสือส่ง',     color:'#4F46E5', icon:'bx-send' },
   order   : { label:'คำสั่ง',         color:'#8B5CF6', icon:'bx-clipboard' },
   memo    : { label:'บันทึกข้อความ',  color:'#F59E0B', icon:'bx-note' },
-  announce: { label:'ประกาศ',         color:'#EF4444', icon:'bx-megaphone' },
+  announce: { label:'ประกาศ',         color:'#DC2626', icon:'bx-volume-full' },
   form    : { label:'แบบฟอร์มเอกสาร', color:'#06B6D4', icon:'bx-file' }
 };
 
 function renderDocuments(container) {
   container.innerHTML = `
-    ${pageHeader('สารบรรณโรงเรียน', 'bxs-envelope', `
+    ${pageHeader('สารบรรณโรงเรียน', 'bxs-envelope', (typeof canEditModule === 'function' ? canEditModule('documents') : true) ? `
       <button class="btn btn-blue" onclick="openDocumentForm()">
         <i class='bx bx-plus'>\x3c/i> เพิ่มเอกสาร
       \x3c/button>
-    `)}
+    ` : '')}
 
     <div class="page-card mb-3">
       <div class="page-card-body">
@@ -1388,6 +1460,16 @@ function loadDocuments() {
   const area = document.getElementById('docTable');
   if (area) area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
 
+  if (!DocsState.teachers) {
+    google.script.run.withSuccessHandler(res => {
+      if (res.status === 'success') {
+        DocsState.teachers = res.teachers || [];
+        DocsState.users = res.users || [];
+        if (DocsState.data) renderDocumentsTable(DocsState.data);
+      }
+    }).getUsersAndTeachers(APP.token);
+  }
+
   google.script.run
     .withSuccessHandler(res => {
       if (res.status !== 'success') return showToast('error', res.message);
@@ -1418,6 +1500,7 @@ function renderDocumentsTable(res) {
             <th class="px-3 py-2.5 text-left">ประเภท\x3c/th>
             <th class="px-3 py-2.5 text-left">เรื่อง\x3c/th>
             <th class="px-3 py-2.5 text-left">จาก/ถึง\x3c/th>
+            <th class="px-3 py-2.5 text-left">ผู้รับผิดชอบ\x3c/th>
             <th class="px-3 py-2.5 text-left">วันที่\x3c/th>
             <th class="px-3 py-2.5 text-center">สถานะ\x3c/th>
             <th class="px-3 py-2.5 text-center rounded-r-lg">การจัดการ\x3c/th>
@@ -1439,6 +1522,13 @@ function renderDocumentsTable(res) {
                   <div class="text-xs text-slate-600">จาก: ${escapeHTML(d.from || '-')}\x3c/div>
                   <div class="text-xs text-slate-600">ถึง: ${escapeHTML(d.to || '-')}\x3c/div>
                 \x3c/td>
+                <td class="px-3 py-2.5">
+                  ${(d.assigned_to && (Array.isArray(d.assigned_to) ? d.assigned_to : [d.assigned_to]).filter(Boolean).length > 0)
+                    ? (Array.isArray(d.assigned_to) ? d.assigned_to : [d.assigned_to]).filter(Boolean).map(tid => 
+                        `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[11px] font-semibold inline-block mr-1 mb-1"><i class='bx bx-user'>\x3c/i> ${escapeHTML(DocsState.teachers ? (DocsState.teachers.find(t=>t.id===tid)?.name || tid) : 'กำลังโหลด...')}\x3c/span>`
+                      ).join('')
+                    : '-'}
+                \x3c/td>
                 <td class="px-3 py-2.5 whitespace-nowrap">${formatThaiDateShort(d.date)}\x3c/td>
                 <td class="px-3 py-2.5 text-center">
                   <span class="status-badge ${statusClass[d.status]||'status-pending'}">${statusLabel[d.status]||d.status}\x3c/span>
@@ -1448,12 +1538,14 @@ function renderDocumentsTable(res) {
                     <button class="btn btn-light btn-icon" onclick="viewDocument('${d.id}')" title="ดู">
                       <i class='bx bx-show'>\x3c/i>
                     \x3c/button>
-                    <button class="btn btn-light btn-icon" onclick="openDocumentForm('${d.id}')" title="แก้ไข" style="color:#A62639;">
+                    ${(typeof canEditModule === 'function' ? canEditModule('documents') : true) ? `
+                    <button class="btn btn-light btn-icon text-primary" onclick="openDocumentForm('${d.id}')" title="แก้ไข" >
                       <i class='bx bx-edit'>\x3c/i>
                     \x3c/button>
-                    <button class="btn btn-light btn-icon" onclick="deleteDocumentConfirm('${d.id}')" title="ลบ" style="color:#EF4444;">
+                    <button class="btn btn-light btn-icon text-danger" onclick="deleteDocumentConfirm('${d.id}')" title="ลบ" >
                       <i class='bx bx-trash'>\x3c/i>
                     \x3c/button>
+                    ` : ''}
                   \x3c/div>
                 \x3c/td>
               \x3c/tr>`;
@@ -1501,12 +1593,28 @@ function showDocumentForm(data) {
             <input type="date" id="df_date" class="form-input" value="${escapeHTML((d.date||new Date().toISOString().slice(0,10)).slice(0,10))}">
           \x3c/div>
           <div class="col-span-4">
+            <label class="form-label">เลขที่เอกสาร\x3c/label>
+            <input type="text" id="df_doc_number" class="form-input" value="${escapeHTML(d.doc_number||'')}">
+          \x3c/div>
+          <div class="col-span-4">
             <label class="form-label">สถานะ\x3c/label>
             <select id="df_status" class="form-input">
               <option value="draft"   ${(d.status||'draft')==='draft'?'selected':''}>ร่าง\x3c/option>
               <option value="active"  ${d.status==='active'?'selected':''}>ใช้งาน\x3c/option>
               <option value="archived"${d.status==='archived'?'selected':''}>เก็บถาวร\x3c/option>
             \x3c/select>
+          \x3c/div>
+          <div class="col-span-12">
+            <label class="form-label">มอบหมายให้ (ครูผู้รับผิดชอบ)\x3c/label>
+            <div class="form-input" style="max-height: 150px; overflow-y: auto; padding: 10px;">
+              ${(DocsState.teachers||[]).map(t => {
+                const isChecked = (d.assigned_to || []).includes(t.id);
+                return `<label style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer;">
+                  <input type="checkbox" name="df_assigned_to" value="${t.id}" ${isChecked ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px;">
+                  <span style="font-size:13px;">${escapeHTML(t.name)}\x3c/span>
+                \x3c/label>`;
+              }).join('')}
+            \x3c/div>
           \x3c/div>
 
           <div class="col-span-12">
@@ -1552,17 +1660,36 @@ function showDocumentForm(data) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
+    didOpen: () => {
+      const typeEl = document.getElementById('df_doc_type');
+      const numEl = document.getElementById('df_doc_number');
+      const fetchNextNum = () => {
+        if (!numEl) return;
+        numEl.value = 'กำลังคำนวณ...';
+        google.script.run.withSuccessHandler(res => {
+          if (res.status === 'success') numEl.value = res.data;
+          else numEl.value = '';
+        }).getNextDocNumber(typeEl.value, APP.token);
+      };
+      
+      if (!d.id) {
+        fetchNextNum();
+        typeEl.addEventListener('change', fetchNextNum);
+      }
+    },
     preConfirm: () => {
       const subject = document.getElementById('df_subject').value.trim();
       if (!subject) { Swal.showValidationMessage('กรุณากรอกเรื่อง'); return false; }
       return {
         id        : document.getElementById('df_id').value || null,
         doc_type  : document.getElementById('df_doc_type').value,
+        doc_number: document.getElementById('df_doc_number').value,
         date      : document.getElementById('df_date').value,
         status    : document.getElementById('df_status').value,
+        assigned_to: Array.from(document.querySelectorAll('input[name="df_assigned_to"]:checked')).map(cb => cb.value),
         subject   : subject,
         from      : document.getElementById('df_from').value,
         to        : document.getElementById('df_to').value,
@@ -1617,7 +1744,7 @@ function deleteDocumentConfirm(id) {
   Swal.fire({
     title:'ยืนยันการลบ?', icon:'warning',
     showCancelButton: true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1752,7 +1879,7 @@ function renderApprovalsTable(res) {
             return `
               <tr class="border-b border-slate-100 hover:bg-slate-50">
                 <td class="px-3 py-2.5 font-mono text-xs">${escapeHTML(a.request_id || '-')}\x3c/td>
-                <td class="px-3 py-2.5"><i class='bx ${t.icon} mr-1' style="color:#A62639;">\x3c/i> ${t.label}\x3c/td>
+                <td class="px-3 py-2.5"><i class='bx ${t.icon} mr-1 text-primary' >\x3c/i> ${t.label}\x3c/td>
                 <td class="px-3 py-2.5 font-semibold">${escapeHTML(a.subject || '-')}\x3c/td>
                 <td class="px-3 py-2.5">${escapeHTML(a.requester_name || '-')}\x3c/td>
                 <td class="px-3 py-2.5 whitespace-nowrap text-xs">${formatThaiDateShort(a.requested_at)}\x3c/td>
@@ -1764,12 +1891,16 @@ function renderApprovalsTable(res) {
                       <i class='bx bx-show'>\x3c/i>
                     \x3c/button>
                     ${canApprove && a.status === 'pending' ? `
-                      <button class="btn btn-light btn-icon" onclick="reviewApprovalDlg('${a.id}','approve')" title="อนุมัติ" style="color:#10B981;">
+                      <button class="btn btn-light btn-icon text-success" onclick="reviewApprovalDlg('${a.id}','approve')" title="อนุมัติ" >
                         <i class='bx bx-check'>\x3c/i>
                       \x3c/button>
-                      <button class="btn btn-light btn-icon" onclick="reviewApprovalDlg('${a.id}','reject')" title="ปฏิเสธ" style="color:#EF4444;">
+                      <button class="btn btn-light btn-icon text-danger" onclick="reviewApprovalDlg('${a.id}','reject')" title="ปฏิเสธ" >
                         <i class='bx bx-x'>\x3c/i>
                       \x3c/button>` : ''}
+                    ${(canApprove || (APP.user.permissions || []).includes('delete') || a.requester_id === APP.user.id) ? `
+                    <button class="btn btn-light btn-icon text-danger" onclick="deleteApproval('${a.id}')" title="ลบ" >
+                      <i class='bx bx-trash'>\x3c/i>
+                    \x3c/button>` : ''}
                   \x3c/div>
                 \x3c/td>
               \x3c/tr>`;
@@ -1831,7 +1962,7 @@ function openApprovalForm() {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -1879,7 +2010,7 @@ function viewApproval(id) {
         <div style="display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:13px; margin-bottom:14px;">
           <span class="text-slate-500">ผู้ขอ:\x3c/span>      <span>${escapeHTML(a.requester_name || '-')}\x3c/span>
           <span class="text-slate-500">วันที่ขอ:\x3c/span>   <span>${formatThaiDate(a.requested_at)}\x3c/span>
-          ${a.amount > 0 ? `<span class="text-slate-500">จำนวนเงิน:\x3c/span> <span style="font-weight:700;color:#800020;">${formatMoney(a.amount)}\x3c/span>` : ''}
+          ${a.amount > 0 ? `<span class="text-slate-500">จำนวนเงิน:\x3c/span> <span style="font-weight:700;color:#3730A3;">${formatMoney(a.amount)}\x3c/span>` : ''}
           <span class="text-slate-500">สถานะ:\x3c/span>      <span>${a.status==='approved'?'<span class="status-badge status-active">อนุมัติแล้ว\x3c/span>':a.status==='rejected'?'<span class="status-badge status-inactive">ปฏิเสธ\x3c/span>':'<span class="status-badge status-pending">รอพิจารณา\x3c/span>'}\x3c/span>
           ${a.reviewer_name ? `<span class="text-slate-500">ผู้พิจารณา:\x3c/span> <span>${escapeHTML(a.reviewer_name)}\x3c/span>` : ''}
           ${a.reviewed_at   ? `<span class="text-slate-500">วันที่:\x3c/span>    <span>${formatThaiDate(a.reviewed_at)}\x3c/span>` : ''}
@@ -1902,7 +2033,7 @@ function reviewApprovalDlg(id, action) {
     showCancelButton: true,
     confirmButtonText: action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: action === 'approve' ? '#10B981' : '#EF4444'
+    confirmButtonColor: action === 'approve' ? '#10B981' : '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังบันทึก...');
@@ -1916,6 +2047,37 @@ function reviewApprovalDlg(id, action) {
   });
 }
 
+function deleteApproval(id) {
+  Swal.fire({
+    title: 'ยืนยันการลบ',
+    text: 'คุณแน่ใจหรือไม่ว่าต้องการลบคำขอนี้? (ไม่สามารถกู้คืนได้)',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ลบข้อมูล',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#DC2626'
+  }).then(r => {
+    if (r.isConfirmed) {
+      showLoading('กำลังลบ...');
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          if (res.status === 'success') {
+            Swal.fire('สำเร็จ', res.message, 'success');
+            loadApprovals();
+          } else {
+            Swal.fire('ผิดพลาด', res.message, 'error');
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          Swal.fire('ผิดพลาด', err.message, 'error');
+        })
+        .deleteApproval(id, APP.token);
+    }
+  });
+}
+
 
 /* ============================================================
  *  REGISTRATION
@@ -1924,11 +2086,11 @@ const RegState = { page:1, search:'', status:'', data:null };
 
 function renderRegistration(container) {
   container.innerHTML = `
-    ${pageHeader('งานทะเบียน', 'bxs-id-card', `
+    ${pageHeader('งานทะเบียน', 'bxs-id-card', (typeof canEditModule === 'function' ? canEditModule('registration') : true) ? `
       <button class="btn btn-blue" onclick="openRegistrationForm()">
         <i class='bx bx-plus'>\x3c/i> รับสมัครใหม่
       \x3c/button>
-    `)}
+    ` : '')}
 
     <div class="page-card">
       <div class="page-card-body">
@@ -2037,10 +2199,10 @@ function renderRegistrationsTable(res) {
                       <i class='bx bx-show'>\x3c/i>
                     \x3c/button>
                     ${canApprove && r.status === 'pending' ? `
-                      <button class="btn btn-light btn-icon" onclick="approveRegConfirm('${r.id}')" title="อนุมัติ" style="color:#10B981;">
+                      <button class="btn btn-light btn-icon text-success" onclick="approveRegConfirm('${r.id}')" title="อนุมัติ" >
                         <i class='bx bx-check'>\x3c/i>
                       \x3c/button>
-                      <button class="btn btn-light btn-icon" onclick="rejectRegConfirm('${r.id}')" title="ปฏิเสธ" style="color:#EF4444;">
+                      <button class="btn btn-light btn-icon text-danger" onclick="rejectRegConfirm('${r.id}')" title="ปฏิเสธ" >
                         <i class='bx bx-x'>\x3c/i>
                       \x3c/button>` : ''}
                   \x3c/div>
@@ -2167,7 +2329,7 @@ function openRegistrationForm() {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -2276,7 +2438,7 @@ function rejectRegConfirm(id) {
     showCancelButton: true,
     confirmButtonText: 'ปฏิเสธ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังบันทึก...');
