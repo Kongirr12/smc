@@ -31,9 +31,9 @@
               100: '#F2D5DA',
               200: '#E6B0BA',
               300: '#D98B99',
-              400: '#A62639',
-              500: '#800020',
-              600: '#800020',
+              400: '#4F46E5',
+              500: '#3730A3',
+              600: '#3730A3',
               700: '#4A0E17',
               800: '#3A0512',
               900: '#26020A',
@@ -152,7 +152,7 @@
     <div class="w-full max-w-4xl max-h-[95vh] overflow-y-auto rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col md:flex-row relative z-10 mx-4" style="animation: floatIn .7s cubic-bezier(.16,1,.3,1);">
       
       <!-- Left Hero -->
-      <div id="loginHeroPanel" class="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center text-white sm:px-8 md:w-1/2 md:px-10 md:py-14" style="background: linear-gradient(135deg, #A62639 0%, #26020A 100%); transition: background 0.4s ease;">
+      <div id="loginHeroPanel" class="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center text-white sm:px-8 md:w-1/2 md:px-10 md:py-14" style="background: linear-gradient(135deg, #4F46E5 0%, #26020A 100%); transition: background 0.4s ease;">
         <div class="flex w-full max-w-md flex-col items-center">
           <div class="login-logo mb-3 md:mb-6" id="loginLogoBox" style="background: transparent; box-shadow: none; border: none; width: 80px; height: 80px; md:width: 140px; md:height: 140px;">
             <img id="loginLogoImage" src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:14px;" alt="Logo">
@@ -210,7 +210,7 @@
             <a href="#" onclick="event.preventDefault(); forgotPassword();" class="text-blue-600 hover:underline">ลืมรหัสผ่าน?</a>
           </div>
 
-          <button type="submit" class="btn w-full shadow-lg text-white" id="loginBtn" style="background-color: #800020; font-size: 15px; padding: 10px; md:font-size: 16px; md:padding: 12px; border-radius: 12px; border: none; font-weight: 600; display:flex; justify-content:center; align-items:center; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#A62639'" onmouseout="this.style.backgroundColor='#800020'">
+          <button type="submit" class="btn w-full shadow-lg text-white" id="loginBtn" style="background-color: #3730A3; font-size: 15px; padding: 10px; md:font-size: 16px; md:padding: 12px; border-radius: 12px; border: none; font-weight: 600; display:flex; justify-content:center; align-items:center; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#4F46E5'" onmouseout="this.style.backgroundColor='#3730A3'">
             <i class='bx bx-log-in-circle mr-2 text-xl'></i> เข้าสู่ระบบ
           </button>
 
@@ -377,12 +377,12 @@
           <div style="position: relative;">
             <button class="icon-btn" onclick="toggleNotifications()" title="แจ้งเตือน">
               <i class='bx bx-bell'></i>
-              <span class="dot" id="topbarBellDot" style="display:none; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; background: #EF4444; border-radius: 50%; border: 2px solid white;"></span>
+              <span class="dot" id="topbarBellDot" style="display:none; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; background: #DC2626; border-radius: 50%; border: 2px solid white;"></span>
             </button>
             <div id="notificationsDropdown" style="display:none; position:absolute; right:0; top:45px; width:300px; background:white; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); border:1px solid #E2E8F0; z-index:100; overflow:hidden;">
               <div style="padding:12px 16px; border-bottom:1px solid #E2E8F0; font-weight:600; font-size:14px; color:#0F172A; display:flex; justify-content:space-between; align-items:center;">
                 การแจ้งเตือน
-                <span id="notifCount" style="background:#EF4444; color:white; font-size:11px; padding:2px 8px; border-radius:99px;">0</span>
+                <span id="notifCount" style="background:#DC2626; color:white; font-size:11px; padding:2px 8px; border-radius:99px;">0</span>
               </div>
               <div id="notificationsList" style="max-height:300px; overflow-y:auto; padding:0;">
                 <div style="padding:20px; text-align:center; color:#94A3B8; font-size:13px;">ไม่มีแจ้งเตือนใหม่</div>

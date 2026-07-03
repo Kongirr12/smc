@@ -67,7 +67,7 @@ function _renderLineOAPanel(d) {
   }).join('');
 
   Swal.fire({
-    title: '<i class="bx bxl-whatsapp" style="color:#06C755;">\x3c/i> ตั้งค่า LINE OA',
+    title: '<i class="bx bxl-whatsapp text-success" >\x3c/i> ตั้งค่า LINE OA',
     width: 800,
     showCancelButton: true,
     confirmButtonText: '<i class="bx bx-save">\x3c/i> บันทึก',
@@ -88,7 +88,7 @@ function _renderLineOAPanel(d) {
 
         <!-- Token -->
         <div style="margin-bottom:14px;">
-          <label class="line-label">🔑 Channel Access Token <span style="color:#EF4444;">*\x3c/span>\x3c/label>
+          <label class="line-label">🔑 Channel Access Token <span class="text-danger">*\x3c/span>\x3c/label>
           <input type="text" id="la_token" class="line-input"
                  placeholder="ey... (Long-lived token จาก LINE Developers Console)"
                  value="${escapeHTML(d.line_channel_token || '')}">

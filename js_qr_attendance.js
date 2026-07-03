@@ -13,7 +13,7 @@ function renderQRAttendance(container) {
   /* scanner panel */
   html += '<div class="page-card"><div class="page-card-body">';
   html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">';
-  html += '<i class="bx bx-calendar" style="color:#A62639;"></i>';
+  html += '<i class="bx bx-calendar text-primary" ></i>';
   html += '<span style="font-size:13px;font-weight:600;">วันที่</span>';
   html += '<input type="date" id="qraDate" value="' + QRA.date + '"';
   html += ' style="margin-left:auto;padding:6px 10px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;"';
@@ -44,9 +44,9 @@ function renderQRAttendance(container) {
   /* result panel */
   html += '<div class="page-card"><div class="page-card-body">';
   html += '<div id="qraFeedback" style="min-height:120px;border-radius:12px;background:#F8FAFC;border:1.5px dashed #E2E8F0;display:flex;align-items:center;justify-content:center;margin-bottom:14px;text-align:center;padding:16px;">';
-  html += '<div style="color:#CBD5E1;"><i class="bx bx-scan" style="font-size:36px;display:block;margin-bottom:8px;"></i><div style="font-size:13px;">ผลจะแสดงที่นี่</div></div>';
+  html += '<div class="text-muted"><i class="bx bx-scan" style="font-size:36px;display:block;margin-bottom:8px;"></i><div style="font-size:13px;">ผลจะแสดงที่นี่</div></div>';
   html += '</div>';
-  html += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;"><i class="bx bx-list-check" style="color:#A62639;"></i> บันทึกวันนี้ (<span id="qraCount">0</span> คน)</div>';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:8px;"><i class="bx bx-list-check text-primary" ></i> บันทึกวันนี้ (<span id="qraCount">0</span> คน)</div>';
   html += '<div id="qraLog" style="max-height:300px;overflow-y:auto;"><div style="color:#CBD5E1;font-size:13px;text-align:center;padding:20px;">ยังไม่มี</div></div>';
   html += '</div></div>';
 
@@ -140,6 +140,6 @@ function qraResult(res, code) {
   setTimeout(function() {
     var f = document.getElementById('qraFeedback');
     if (f) { f.style.background = '#F8FAFC'; f.style.borderColor = '#E2E8F0';
-      f.innerHTML = '<div style="color:#CBD5E1;"><i class="bx bx-scan" style="font-size:36px;display:block;margin-bottom:8px;"></i><div style="font-size:13px;">ผลจะแสดงที่นี่</div></div>'; }
+      f.innerHTML = '<div class="text-muted"><i class="bx bx-scan" style="font-size:36px;display:block;margin-bottom:8px;"></i><div style="font-size:13px;">ผลจะแสดงที่นี่</div></div>'; }
   }, 4000);
 }

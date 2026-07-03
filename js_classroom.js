@@ -44,13 +44,13 @@ function renderClassroomMgmt(container) {
         display: flex; align-items: center; justify-content: center;
         margin-bottom: 12px;
       }
-      .cls-icon i { font-size: 26px; color: #800020; }
+      .cls-icon i { font-size: 26px; color: #3730A3; }
       .cls-name { font-size: 22px; font-weight: 800; color: #0F172A; margin-bottom: 2px; }
       .cls-year { font-size: 12px; color: #94A3B8; margin-bottom: 12px; }
       .cls-meta { font-size: 13px; color: #475569; margin-bottom: 4px; }
-      .cls-meta span { font-weight: 600; color: #800020; }
+      .cls-meta span { font-weight: 600; color: #3730A3; }
       .cls-bar-bg { height: 6px; background:#F1F5F9; border-radius:9px; margin: 8px 0 14px; overflow:hidden; }
-      .cls-bar    { height: 6px; background: linear-gradient(90deg,#A62639,#60A5FA); border-radius:9px; transition:width .5s; }
+      .cls-bar    { height: 6px; background: linear-gradient(90deg,#4F46E5,#60A5FA); border-radius:9px; transition:width .5s; }
       .cls-actions { display: flex; gap: 6px; }
       .cls-badge {
         position: absolute; top: 14px; right: 14px;
@@ -106,7 +106,7 @@ function renderCLS() {
         <button class="btn btn-blue" style="flex:1;" onclick="openClassroomStudents('${escapeHTML(r.id)}','${escapeHTML(r.name)}','${escapeHTML(String(r.academic_year))}')">
           <i class='bx bxs-user-detail'></i> นักเรียน
         </button>
-        ${APP.role !== 'teacher' ? `<button class="btn btn-light" style="color:#EF4444;padding:8px 10px;" onclick="deleteClassroomConfirm('${escapeHTML(r.id)}','${escapeHTML(r.name)}')" ><i class='bx bx-trash'></i></button>` : ''}
+        ${APP.role !== 'teacher' ? `<button class="btn btn-light" style="color:#DC2626;padding:8px 10px;" onclick="deleteClassroomConfirm('${escapeHTML(r.id)}','${escapeHTML(r.name)}')" ><i class='bx bx-trash'></i></button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -137,25 +137,25 @@ function openClassroomForm(id) {
           <div style="text-align:left;font-size:14px;">
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
               <div>
-                <label class="form-label">ระดับชั้น <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ระดับชั้น <span class="text-danger">*</span></label>
                 <select id="cf_grade" class="form-input">
                   <option value="">-- กรุณาเลือก --</option>
                   ${GRADES.map(g => `<option value="${g}" ${(r&&r.grade_level===g)?'selected':''}>${g}</option>`).join('')}
                 </select>
               </div>
               <div>
-                <label class="form-label">ห้อง <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ห้อง <span class="text-danger">*</span></label>
                 <input type="text" id="cf_room" class="form-input" placeholder="1" maxlength="5"
                        value="${escapeHTML(r ? r.room_number : '')}">
               </div>
               <div>
-                <label class="form-label">ปีการศึกษา <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ปีการศึกษา <span class="text-danger">*</span></label>
                 <input type="text" id="cf_year" class="form-input" value="${escapeHTML(r ? String(r.academic_year) : String(currentYear))}">
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
               <div>
-                <label class="form-label">ความจุ <span style="color:#EF4444">*</span></label>
+                <label class="form-label">ความจุ <span class="text-danger">*</span></label>
                 <input type="number" id="cf_cap" class="form-input" value="${r ? r.capacity : 40}" min="1" max="200">
               </div>
               <div>
@@ -191,9 +191,9 @@ function openClassroomForm(id) {
             .form-label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:3px;}
             .form-input{width:100%;padding:8px 10px;border:1.5px solid #E2E8F0;border-radius:8px;
               font-family:inherit;font-size:13px;background:#F8FAFC;box-sizing:border-box;}
-            .form-input:focus{outline:none;border-color:#A62639;background:white;}
+            .form-input:focus{outline:none;border-color:#4F46E5;background:white;}
             .teacher-opt{padding:8px 12px;cursor:pointer;font-size:13px;}
-            .teacher-opt:hover{background:#FAF0F2;color:#800020;}
+            .teacher-opt:hover{background:#FAF0F2;color:#3730A3;}
           </style>
         `,
         preConfirm: () => {
@@ -308,7 +308,7 @@ function showClassroomStudentDialog(roomId, roomName, ay, students) {
                       onclick="event.stopPropagation();viewStudent('${escapeHTML(s.id)}')">
                 <i class='bx bx-show'></i>
               </button>
-              <button class="btn btn-light" style="padding:5px 8px;font-size:11px;color:#A62639;"
+              <button class="btn btn-light" style="padding:5px 8px;font-size:11px;color:#4F46E5;"
                       onclick="event.stopPropagation();openStudentForm('${escapeHTML(s.id)}')">
                 <i class='bx bx-edit'></i>
               </button>
@@ -412,7 +412,7 @@ function deleteClassroomConfirm(id, name) {
     showCancelButton: true,
     confirmButtonText: 'ลบ',
     cancelButtonText: 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
