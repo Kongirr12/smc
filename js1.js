@@ -2,6 +2,7 @@
  *  Smart School Office — js1
  *  Part 1: Auth | Session | Navigation | Dashboard | Upload
  * ============================================================ */
+
 /* ---------- Global State ---------- */
 const APP = {
   token: null,
@@ -944,14 +945,14 @@ function formatThaiDateShort(d) {
 }
 
 function renderBudget(container) {
-  renderIframe(container, 'https://kongirr12.github.io/budgetsystem/', 'ระบบบริหารงานงบประมาณ');
+  renderIframe(container, 'https://kongirr12.github.io/bug/', 'ระบบบริหารงานงบประมาณ');
 }
 
 function renderIframe(container, url, title) {
   container.innerHTML = `
-    <div style="width: 100%; height: calc(100vh - 60px); display: flex; flex-direction: column;">
+    <div style="width: 100%; height: calc(100vh - 140px); display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); background: var(--bg-surface);">
       <iframe src="${url}" 
-              style="flex: 1; width: 100%; border: none; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" 
+              style="flex: 1; width: 100%; height: 100%; border: none; zoom: 0.95;" 
               title="${title}"></iframe>
     </div>
   `;
