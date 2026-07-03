@@ -2,6 +2,7 @@
  *  Smart School Office — js_manual
  *  หน้าคู่มือการใช้งานระบบ
  * ============================================================ */
+
 function renderManual(container) {
   container.innerHTML = `
     <div class="welcome-row">
