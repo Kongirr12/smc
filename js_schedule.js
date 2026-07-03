@@ -22,8 +22,8 @@ const SchedState = {
 
 /* ---------- สีตามกลุ่มสาระ ---------- */
 const SUBJECT_COLORS = {
-  'ภาษาไทย'           :'#EF4444',
-  'คณิตศาสตร์'         :'#A62639',
+  'ภาษาไทย'           :'#DC2626',
+  'คณิตศาสตร์'         :'#4F46E5',
   'วิทยาศาสตร์'        :'#10B981',
   'สังคมศึกษาฯ'        :'#F59E0B',
   'สุขศึกษาและพลศึกษา' :'#EC4899',
@@ -80,7 +80,7 @@ function renderSchedule(container) {
           <div class="flex-1">\x3c/div>
           ${APP.role !== 'teacher' ? `
           <button class="btn btn-light" onclick="openCopyScheduleDlg()" title="คัดลอกตารางสอน"><i class='bx bx-copy'><\/i> Copy ตารางสอน<\/button>
-          <button class="btn btn-light" onclick="openConflictReport()" title="ตรวจสอบ Conflict"><i class='bx bx-error-alt' style="color:#F59E0B;"><\/i> ตรวจ Conflict<\/button>
+          <button class="btn btn-light" onclick="openConflictReport()" title="ตรวจสอบ Conflict"><i class='bx bx-error-alt text-warning' ><\/i> ตรวจ Conflict<\/button>
           ` : ''}
         \x3c/div>
       \x3c/div>
@@ -115,7 +115,7 @@ function renderSchedule(container) {
         padding:6px 10px; border:1.5px solid #E2E8F0; border-radius:8px;
         font-family:inherit; font-size:13px; background:#F8FAFC; font-weight:600;
       }
-      .sched-select:focus { outline:none; border-color:#A62639; }
+      .sched-select:focus { outline:none; border-color:#4F46E5; }
       .sched-tab {
         flex:1; min-width:130px; padding:9px 14px; border-radius:8px;
         border:none; background:transparent; font-family:inherit;
@@ -123,8 +123,8 @@ function renderSchedule(container) {
         display:inline-flex; align-items:center; justify-content:center; gap:6px;
         transition:all .15s;
       }
-      .sched-tab:hover { background:rgba(255,255,255,.7); color:#800020; }
-      .sched-tab.active { background:white; color:#800020; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+      .sched-tab:hover { background:rgba(255,255,255,.7); color:#3730A3; }
+      .sched-tab.active { background:white; color:#3730A3; box-shadow:0 2px 8px rgba(0,0,0,.08); }
     \x3c/style>
   `;
 
@@ -268,7 +268,7 @@ function renderClassView() {
       ${SchedState.classroom ? `
         ${APP.role === 'admin' ? `
         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; background:#F1F5F9; padding:6px 12px; border-radius:8px; margin-right:8px; border:1px solid #E2E8F0;">
-          <input type="checkbox" id="toggleDragDrop" ${SchedState.dragDropMode ? 'checked' : ''} onchange="toggleDragDropMode(this.checked)" style="accent-color:#A62639; width:16px; height:16px; cursor:pointer;">
+          <input type="checkbox" id="toggleDragDrop" ${SchedState.dragDropMode ? 'checked' : ''} onchange="toggleDragDropMode(this.checked)" style="accent-color:#4F46E5; width:16px; height:16px; cursor:pointer;">
           <span style="font-size:13px; font-weight:600; color:#475569;">โหมด Drag & Drop</span>
         \x3c/label>
         <button id="btnSaveSchedule" class="btn btn-primary" onclick="saveClassScheduleBatch()" style="${SchedState.isDirty && SchedState.dragDropMode ? '' : 'display:none;'}">
@@ -282,7 +282,7 @@ function renderClassView() {
           <i class='bx bx-download'>\x3c/i> Excel
         \x3c/button>
         ${APP.role === 'admin' ? `
-        <button class="btn btn-light" style="color:#EF4444;" onclick="clearClassScheduleConfirm()">
+        <button class="btn btn-light text-danger"  onclick="clearClassScheduleConfirm()">
           <i class='bx bx-trash'>\x3c/i> ล้างตาราง
         \x3c/button>
         ` : ''}
@@ -535,7 +535,7 @@ function renderAllView() {
   area.innerHTML = `
     <div class="mb-3 flex items-center gap-3">
       <div class="text-sm font-semibold text-slate-700">
-        <i class='bx bxs-grid-alt' style="color:#A62639;">\x3c/i> ภาพรวมตารางสอนทุกห้อง
+        <i class='bx bxs-grid-alt text-primary' >\x3c/i> ภาพรวมตารางสอนทุกห้อง
       \x3c/div>
       <div class="flex-1">\x3c/div>
       <button class="btn btn-blue" onclick="exportAllWorkload()">
@@ -558,7 +558,7 @@ function buildAllView() {
       const subjects = [...new Set(dayEntries.map(e => e.subject_group).filter(Boolean))];
       return `
         <td style="text-align:center; padding:6px 4px;">
-          <div style="font-size:12px; font-weight:700; color:${count>0?'#800020':'#94A3B8'};">${count > 0 ? count+'คาบ' : '—'}\x3c/div>
+          <div style="font-size:12px; font-weight:700; color:${count>0?'#3730A3':'#94A3B8'};">${count > 0 ? count+'คาบ' : '—'}\x3c/div>
           <div style="font-size:10px; color:#64748B; line-height:1.3;">${subjects.slice(0,2).join(', ')}\x3c/div>
         \x3c/td>`;
     });
@@ -566,12 +566,12 @@ function buildAllView() {
       <tr class="border-b border-slate-100 hover:bg-slate-50">
         <td style="padding:8px 12px; font-weight:700; color:#0F172A; white-space:nowrap; width:80px;">
           <button onclick="SchedState.classroom='${cls}'; SchedState.tab='class'; document.getElementById('stab_class').click();"
-                  style="color:#A62639; background:none; border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:13px; text-decoration:underline;">
+                  style="color:#4F46E5; background:none; border:none; cursor:pointer; font-family:inherit; font-weight:700; font-size:13px; text-decoration:underline;">
             ${escapeHTML(cls)}
           \x3c/button>
         \x3c/td>
         ${cells.join('')}
-        <td style="text-align:center; padding:6px; font-weight:700; font-size:12px; color:#800020;">
+        <td style="text-align:center; padding:6px; font-weight:700; font-size:12px; color:#3730A3;">
           ${SchedState.entries.filter(e => e.classroom === cls && !SchedState.periods.find(p=>p.no===e.period_no&&p.is_break)).length}
         \x3c/td>
       \x3c/tr>`;
@@ -581,7 +581,7 @@ function buildAllView() {
     <div style="overflow-x:auto;">
       <table class="min-w-full" style="border-collapse:collapse; font-size:13px;">
         <thead>
-          <tr style="background:#800020; color:white;">
+          <tr style="background:#3730A3; color:white;">
             <th style="padding:10px 12px; text-align:left; border-radius:8px 0 0 0;">ห้องเรียน\x3c/th>
             ${DAYS.map(d => `<th style="padding:10px 12px; text-align:center;">${d.label}\x3c/th>`).join('')}
             <th style="padding:10px 12px; text-align:center; border-radius:0 8px 0 0;">รวม\x3c/th>
@@ -693,13 +693,13 @@ function buildScheduleGrid(view) {
         table-layout:fixed;
       }
       .sched-header-row th {
-        background:#800020; color:white; padding:10px 8px;
+        background:#3730A3; color:white; padding:10px 8px;
         border-radius:8px; font-size:13px;
       }
       .period-label-header { width:80px; font-size:11px; }
       .period-label {
-        width:80px; background:#800020; color:white; padding:6px 8px;
-        border:1px solid #800020; border-radius:8px;
+        width:80px; background:#3730A3; color:white; padding:6px 8px;
+        border:1px solid #3730A3; border-radius:8px;
         vertical-align:middle; text-align:center;
       }
       .break-row td { height:36px; }
@@ -710,7 +710,7 @@ function buildScheduleGrid(view) {
         position:relative;
       }
       .sched-cell.empty:hover {
-        border-color:#A62639; background:#FAF0F2;
+        border-color:#4F46E5; background:#FAF0F2;
       }
       .sched-cell.filled { border:none; padding:0; }
       .sched-cell.filled:hover { transform:translateY(-1px); filter:brightness(.96); }
@@ -719,7 +719,7 @@ function buildScheduleGrid(view) {
         position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
         color:#CBD5E1; font-size:22px; transition:color .12s;
       }
-      .sched-cell.empty:hover .add-hint { color:#A62639; }
+      .sched-cell.empty:hover .add-hint { color:#4F46E5; }
 
       .entry-card {
         border:2px solid; border-radius:8px; overflow:hidden;
@@ -733,7 +733,7 @@ function buildScheduleGrid(view) {
       .entry-room    { font-size:9px;  color:#94A3B8;  margin-top:1px; display:flex; align-items:center; gap:2px; }
 
       .sched-row:hover .sched-cell.empty { border-color:#CBD5E1; }
-      .sched-cell.drag-over { background:#FEF2F2 !important; border-color:#EF4444 !important; }
+      .sched-cell.drag-over { background:#FEF2F2 !important; border-color:#DC2626 !important; }
     \x3c/style>
   `;
 }
@@ -805,7 +805,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
     cancelButtonText : 'ยกเลิก',
     showDenyButton   : isEdit,
     denyButtonText   : '<i class="bx bx-trash">\x3c/i> ลบคาบนี้',
-    denyButtonColor  : '#EF4444',
+    denyButtonColor  : '#DC2626',
     html: `
       <div style="text-align:left; font-size:14px;">
 
@@ -881,7 +881,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
                         style="width:28px;height:28px;border-radius:50%;background:${c};border:3px solid ${e.color===c?'#0F172A':'transparent'};"
                         onclick="selectSchedColor('${c}')">\x3c/button>
               `).join('')}
-              <input type="hidden" id="ef_color" value="${e.color||'#A62639'}">
+              <input type="hidden" id="ef_color" value="${e.color||'#4F46E5'}">
             \x3c/div>
           \x3c/div>
 
@@ -894,7 +894,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
         .color-dot { cursor:pointer; transition:transform .1s; border-width:3px !important; }
         .color-dot:hover { transform:scale(1.2); }
       \x3c/style>
@@ -921,7 +921,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
       activity_label: document.getElementById('ef_activity_label').value,
       teacher_id    : Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked')).map(el => el.value).join(','),
       room_id       : document.getElementById('ef_room_id').value,
-      color         : document.getElementById('ef_color').value || '#A62639',
+      color         : document.getElementById('ef_color').value || '#4F46E5',
       note          : document.getElementById('ef_note').value
       };
     }
@@ -1049,7 +1049,7 @@ function renderRoomsTab() {
   area.innerHTML = `
     <div class="flex items-center justify-between mb-3">
       <div class="text-sm font-semibold text-slate-700">
-        <i class='bx bxs-door-open' style="color:#A62639;">\x3c/i> ห้องเรียน / ห้องปฏิบัติการ
+        <i class='bx bxs-door-open text-primary' >\x3c/i> ห้องเรียน / ห้องปฏิบัติการ
       \x3c/div>
       <button class="btn btn-blue" onclick="openRoomForm()">
         <i class='bx bx-plus'>\x3c/i> เพิ่มห้อง
@@ -1090,10 +1090,10 @@ function renderRoomsTable() {
               <td class="px-3 py-2.5 text-xs text-slate-500">${Array.isArray(r.facilities)?r.facilities.join(', '):'-'}\x3c/td>
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
-                  <button class="btn btn-light btn-icon" onclick="openRoomForm('${r.id}')" style="color:#A62639;">
+                  <button class="btn btn-light btn-icon text-primary" onclick="openRoomForm('${r.id}')" >
                     <i class='bx bx-edit'>\x3c/i>
                   \x3c/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteRoomConfirm('${r.id}')" style="color:#EF4444;">
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteRoomConfirm('${r.id}')" >
                     <i class='bx bx-trash'>\x3c/i>
                   \x3c/button>
                 \x3c/div>
@@ -1161,7 +1161,7 @@ function openRoomForm(id) {
       <style>
         .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
         .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
       \x3c/style>
     `,
     preConfirm: () => {
@@ -1202,7 +1202,7 @@ function openRoomForm(id) {
 function deleteRoomConfirm(id) {
   Swal.fire({
     title:'ยืนยันการลบห้อง?', icon:'warning',
-    showCancelButton:true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#EF4444'
+    showCancelButton:true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1230,7 +1230,7 @@ function renderPeriodsTab() {
   area.innerHTML = `
     <div class="flex items-center justify-between mb-3">
       <div class="text-sm font-semibold text-slate-700">
-        <i class='bx bx-time-five' style="color:#A62639;">\x3c/i> ตั้งค่าคาบเรียน — ปีการศึกษา ${escapeHTML(SchedState.academic_year)} ภาคเรียน ${SchedState.semester}
+        <i class='bx bx-time-five text-primary' >\x3c/i> ตั้งค่าคาบเรียน — ปีการศึกษา ${escapeHTML(SchedState.academic_year)} ภาคเรียน ${SchedState.semester}
       \x3c/div>
       <div class="flex gap-2">
         <button class="btn btn-light" onclick="resetDefaultPeriods()">
@@ -1273,7 +1273,7 @@ function renderPeriodsTab() {
 
     <style>
       .prd-input { padding:5px 8px; border:1.5px solid #E2E8F0; border-radius:6px; font-family:inherit; font-size:12px; background:#F8FAFC; box-sizing:border-box; width:100%; }
-      .prd-input:focus { outline:none; border-color:#A62639; }
+      .prd-input:focus { outline:none; border-color:#4F46E5; }
     \x3c/style>
   `;
 }
@@ -1297,7 +1297,7 @@ function buildPeriodRow(p, i) {
         <input type="checkbox" class="prd-break" ${p.is_break?'checked':''}>
       \x3c/td>
       <td class="px-2 py-1.5 text-center">
-        <button class="btn btn-light btn-icon" onclick="removePeriodRow(this)" title="ลบ" style="color:#EF4444; width:28px; height:28px;">
+        <button class="btn btn-light btn-icon" onclick="removePeriodRow(this)" title="ลบ" style="width:28px; height:28px;" class="text-danger">
           <i class='bx bx-minus' style="font-size:14px;">\x3c/i>
         \x3c/button>
       \x3c/td>
@@ -1574,7 +1574,7 @@ function clearClassScheduleConfirm() {
     showCancelButton:true,
     confirmButtonText:'ล้างทั้งหมด',
     cancelButtonText:'ยกเลิก',
-    confirmButtonColor:'#EF4444'
+    confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     SchedState.entries = SchedState.entries.filter(e => !(e.classroom === SchedState.classroom && String(e.academic_year) === String(SchedState.academic_year) && String(e.semester) === String(SchedState.semester)));
