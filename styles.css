@@ -4,6 +4,7 @@
  *  Smart School Office — AURORA LIGHT v4
  *  Premium light theme: Indigo + Cyan on soft canvas
  * ============================================================ */
+
 :root {
   /* ── Primary: Indigo ────────────────────── */
   --primary       : #4F46E5;
@@ -979,3 +980,40 @@ html.dark-mode #notificationsDropdown {
   background: #111318 !important; border: 1px solid rgba(99,102,241,.15) !important;
   border-radius: var(--radius-lg) !important; box-shadow: 0 24px 56px rgba(0,0,0,.5) !important;
 }
+
+/* ─── Table Action Button Utility Classes ─── */
+.btn-action-edit { color: var(--primary-light) !important; }
+.btn-action-delete { color: var(--danger) !important; }
+.btn-action-view { color: var(--text-secondary) !important; }
+.btn-action-add { color: var(--success) !important; }
+
+/* Dark mode adjustments for Action Buttons */
+html.dark-mode .btn-action-edit { color: #818CF8 !important; }
+html.dark-mode .btn-action-delete { color: #F87171 !important; }
+html.dark-mode .btn-action-view { color: #94A3B8 !important; }
+html.dark-mode .btn-action-add { color: #34D399 !important; }
+
+/* Further Dark Mode contrast improvements for Tables */
+html.dark-mode tbody tr { background-color: transparent !important; }
+html.dark-mode tbody tr:hover td { background-color: rgba(255,255,255, 0.05) !important; }
+html.dark-mode th, html.dark-mode thead th { background-color: #1F2937 !important; color: #E2E8F0 !important; }
+html.dark-mode .btn-light { background-color: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.1) !important; }
+html.dark-mode .btn-light:hover { background-color: rgba(255,255,255,0.15) !important; }
+
+/* ─── Generic Text Color Utilities ─── */
+.text-primary { color: var(--primary) !important; }
+.text-danger { color: var(--danger) !important; }
+.text-success { color: var(--success) !important; }
+.text-warning { color: var(--warning) !important; }
+.text-accent { color: var(--accent) !important; }
+.text-info { color: var(--info) !important; }
+.text-muted { color: var(--text-muted) !important; }
+
+/* Dark mode generic text colors (lighter variants for contrast) */
+html.dark-mode .text-primary { color: #818CF8 !important; }
+html.dark-mode .text-danger { color: #F87171 !important; }
+html.dark-mode .text-success { color: #34D399 !important; }
+html.dark-mode .text-warning { color: #FBBF24 !important; }
+html.dark-mode .text-accent { color: #A78BFA !important; }
+html.dark-mode .text-info { color: #38BDF8 !important; }
+html.dark-mode .text-muted { color: #94A3B8 !important; }
