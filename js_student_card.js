@@ -41,7 +41,7 @@ function renderStudentCard(container) {
     <div id="cardPrintOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:white;overflow:auto;padding:20px;">
       <div style="max-width:900px;margin:0 auto;">
         <div style="display:flex;gap:10px;margin-bottom:16px;">
-          <button onclick="window.print()" style="padding:10px 20px;background:#800020;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;">
+          <button onclick="window.print()" style="padding:10px 20px;background:#3730A3;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;">
             <i class='bx bx-printer'></i> พิมพ์
           </button>
           <button onclick="closePrintOverlay()" style="padding:10px 20px;background:#F1F5F9;border:none;border-radius:8px;cursor:pointer;font-size:14px;">
@@ -57,11 +57,11 @@ function renderStudentCard(container) {
         background:white;border:2px solid #E2E8F0;border-radius:12px;
         padding:12px;text-align:center;cursor:pointer;position:relative;transition:all .2s;
       }
-      .scard-preview:hover { border-color:#A62639;box-shadow:0 4px 14px rgba(59,130,246,.15); }
-      .scard-preview.selected { border-color:#A62639;background:#FAF0F2; }
+      .scard-preview:hover { border-color:#4F46E5;box-shadow:0 4px 14px rgba(59,130,246,.15); }
+      .scard-preview.selected { border-color:#4F46E5;background:#FAF0F2; }
       .scard-chk { position:absolute;top:8px;left:8px; }
       .scard-print-btn { position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:#94A3B8;font-size:18px; }
-      .scard-print-btn:hover { color:#A62639; }
+      .scard-print-btn:hover { color:#4F46E5; }
       .barcode-svg { display:block; }
       @media print {
         body > *:not(#cardPrintOverlay) { display:none !important; }
@@ -134,7 +134,7 @@ function filterCards() {
           <i class='bx bx-printer'></i>
         </button>
         <div style="width:56px;height:56px;border-radius:50%;margin:0 auto 8px;overflow:hidden;
-                    background:linear-gradient(135deg,#800020,#A62639);display:flex;align-items:center;justify-content:center;">
+                    background:linear-gradient(135deg,#3730A3,#4F46E5);display:flex;align-items:center;justify-content:center;">
           ${s.photo
             ? `<img src="${escapeHTML(s.photo)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
             : `<span style="color:white;font-size:20px;font-weight:800;">${escapeHTML((s.first_name||'N').charAt(0))}</span>`}
@@ -198,7 +198,7 @@ function printCards(students) {
                   flex-shrink:0;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,.2);
                   font-family:'Sarabun',sans-serif;-webkit-print-color-adjust:exact;
                   print-color-adjust:exact;display:flex;flex-direction:column;">
-        <div style="background:linear-gradient(90deg,#4A0E17,#800020);flex:0 0 11mm;
+        <div style="background:linear-gradient(90deg,#4A0E17,#3730A3);flex:0 0 11mm;
                     box-sizing:border-box;padding:2px 8px;overflow:hidden;
                     display:flex;flex-direction:column;justify-content:center;text-align:center;">
           <div style="color:white;font-size:9px;font-weight:800;line-height:1.3;">${school}</div>
