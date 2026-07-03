@@ -11,7 +11,7 @@ function pageHeader(title, icon, actions) {
   return `
     <div class="welcome-row">
       <div>
-        <h1><i class='bx ${icon}' style="color:#A62639;">\x3c/i> ${escapeHTML(title)}\x3c/h1>
+        <h1><i class='bx ${icon} text-primary' >\x3c/i> ${escapeHTML(title)}\x3c/h1>
         <div class="sub"><i class='bx bx-chevron-right'>\x3c/i> ${escapeHTML(title)}\x3c/div>
       \x3c/div>
       <div class="flex gap-2 flex-wrap">${actions || ''}\x3c/div>
@@ -272,8 +272,8 @@ function renderStudentsTable(res) {
                     <i class='bx bx-show'>\x3c/i>
                   \x3c/button>
                   ${APP.role !== 'teacher' ? `
-                  <button class="btn btn-light btn-icon" onclick="openStudentForm('${s.id}')" title="แก้ไข" style="color:#A62639;"><i class='bx bx-edit'><\/i><\/button>
-                  <button class="btn btn-light btn-icon" onclick="deleteStudent('${s.id}')" title="ลบ" style="color:#EF4444;"><i class='bx bx-trash'><\/i><\/button>
+                  <button class="btn btn-light btn-icon text-primary" onclick="openStudentForm('${s.id}')" title="แก้ไข" ><i class='bx bx-edit'><\/i><\/button>
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteStudent('${s.id}')" title="ลบ" ><i class='bx bx-trash'><\/i><\/button>
                   ` : ''}
                 \x3c/div>
               \x3c/td>
@@ -493,7 +493,7 @@ function showStudentForm(data) {
           font-family:inherit; font-size:13px; background:#F8FAFC;
           font-weight:400; box-sizing:border-box;
         }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
         textarea.form-input { resize:vertical; }
       \x3c/style>
     `,
@@ -591,7 +591,7 @@ function deleteStudent(id) {
     showCancelButton: true,
     confirmButtonText: 'ลบ',
     cancelButtonText : 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -640,7 +640,7 @@ function renderPersonnel(container) {
       <button class="btn btn-light" onclick="showImportPersonnelCSV()">
         <i class='bx bx-upload'>\x3c/i> นำเข้า CSV
       <\/button>
-      <button class="btn btn-light" style="color:#10B981;border-color:#10B981;" onclick="bulkCreateUsersFromPersonnel()">
+      <button class="btn btn-light" class="text-success border-success" onclick="bulkCreateUsersFromPersonnel()">
         <i class='bx bx-user-check'>\x3c/i> สร้างบัญชีทั้งหมด
       <\/button>
       <button class="btn btn-blue" onclick="openPersonnelForm()">
@@ -783,15 +783,15 @@ function renderPersonnelTable(res) {
                     <i class='bx bx-show'>\x3c/i>
                   \x3c/button>
                   ${(typeof canEditModule === 'function' ? canEditModule('personnel') : true) ? `
-                  <button class="btn btn-light btn-icon" onclick="openPersonnelForm('${p.id}')" title="แก้ไข" style="color:#A62639;">
+                  <button class="btn btn-light btn-icon text-primary" onclick="openPersonnelForm('${p.id}')" title="แก้ไข" >
                     <i class='bx bx-edit'><\/i>
                   <\/button>
                   ` : ''}
                   ${(typeof canEditModule === 'function' ? canEditModule('personnel') : true) ? `
-                  <button class="btn btn-light btn-icon" onclick="createUserFromPersonnel('${p.id}','${escapeHTML(p.personnel_id||'')}','${escapeHTML((p.prefix||'')+(p.first_name||'')+' '+(p.last_name||''))}')" title="สร้างบัญชีผู้ใช้" style="color:#10B981;">
+                  <button class="btn btn-light btn-icon text-success" onclick="createUserFromPersonnel('${p.id}','${escapeHTML(p.personnel_id||'')}','${escapeHTML((p.prefix||'')+(p.first_name||'')+' '+(p.last_name||''))}')" title="สร้างบัญชีผู้ใช้" >
                     <i class='bx bx-user-plus'><\/i>
                   <\/button>
-                  <button class="btn btn-light btn-icon" onclick="deletePersonnelConfirm('${p.id}')" title="ลบ" style="color:#EF4444;">
+                  <button class="btn btn-light btn-icon text-danger" onclick="deletePersonnelConfirm('${p.id}')" title="ลบ" >
                     <i class='bx bx-trash'><\/i>
                   <\/button>
                   ` : ''}
@@ -977,7 +977,7 @@ function showPersonnelForm(data) {
           width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px;
           font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box;
         }
-        .form-input:focus { outline:none; border-color:#A62639; background:white; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
         textarea.form-input { resize:vertical; }
       \x3c/style>
     `,
@@ -1105,7 +1105,7 @@ function deletePersonnelConfirm(id) {
     showCancelButton: true,
     confirmButtonText: 'ลบ',
     cancelButtonText : 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังลบ...');
@@ -1578,9 +1578,9 @@ function renderAttendanceList() {
               <td class="px-3 py-2 text-center">
                 <div class="att-status-group">
                   ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
-                  ${attStatusButton(i, 'absent',  r.status, '#EF4444', 'ขาด')}
+                  ${attStatusButton(i, 'absent',  r.status, '#DC2626', 'ขาด')}
                   ${attStatusButton(i, 'leave',   r.status, '#F59E0B', 'ลา')}
-                  ${attStatusButton(i, 'late',    r.status, '#A62639', 'สาย')}
+                  ${attStatusButton(i, 'late',    r.status, '#4F46E5', 'สาย')}
                 </div>
               </td>
             </tr>
@@ -1594,9 +1594,9 @@ function renderAttendanceList() {
             <div class="att-mobile-name">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
             <div class="att-status-group">
               ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
-              ${attStatusButton(i, 'absent',  r.status, '#EF4444', 'ขาด')}
+              ${attStatusButton(i, 'absent',  r.status, '#DC2626', 'ขาด')}
               ${attStatusButton(i, 'leave',   r.status, '#F59E0B', 'ลา')}
-              ${attStatusButton(i, 'late',    r.status, '#A62639', 'สาย')}
+              ${attStatusButton(i, 'late',    r.status, '#4F46E5', 'สาย')}
             </div>
           </div>
         `).join('')}
@@ -1614,7 +1614,7 @@ function renderAttendanceList() {
         <div class="att-summary-pill" style="background:#FEF3C7;color:#B45309;">
           <span>ลา</span> <b id="cntLeave">0</b>
         </div>
-        <div class="att-summary-pill" style="background:#F2D5DA;color:#800020;">
+        <div class="att-summary-pill" style="background:#F2D5DA;color:#3730A3;">
           <span>สาย</span> <b id="cntLate">0</b>
         </div>
         <div class="att-summary-pill" style="background:#F1F5F9;color:#334155;">
@@ -1940,7 +1940,7 @@ function renderAttendanceReportData(res, start, end, rptType) {
         <div class="lbl">ลา\x3c/div>
         <div class="val">${formatNumber(res.summary.leave)}\x3c/div>
       \x3c/div>
-      <div class="rpt-card" style="background:#F2D5DA;color:#800020;">
+      <div class="rpt-card" style="background:#F2D5DA;color:#3730A3;">
         <div class="lbl">มาสาย\x3c/div>
         <div class="val">${formatNumber(res.summary.late)}\x3c/div>
       \x3c/div>
@@ -2349,7 +2349,7 @@ function bulkCreateUsersFromPersonnel() {
         hideLoading();
         if (res.status === 'success') {
           Swal.fire({ icon:'success', title:'สร้างบัญชีสำเร็จ',
-            html: `<div style="font-size:15px;">สร้างใหม่: <strong style="color:#10B981;">${res.created} คน</strong><br>ข้าม (มีบัญชีแล้ว): <strong>${res.skipped} คน</strong></div>` });
+            html: `<div style="font-size:15px;">สร้างใหม่: <strong class="text-success">${res.created} คน</strong><br>ข้าม (มีบัญชีแล้ว): <strong>${res.skipped} คน</strong></div>` });
         } else {
           Swal.fire({ icon:'error', text: res.message });
         }
