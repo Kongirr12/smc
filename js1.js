@@ -67,11 +67,11 @@ function switchLoginTab(tab) {
   
   if (tab === 'admin') {
     document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน Admin';
-    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #A62639 0%, #26020A 100%)';
+    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #4F46E5 0%, #26020A 100%)';
     if(roleBadge) roleBadge.textContent = 'ระบบผู้ดูแลระบบ (Admin)';
   } else {
     document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน / รหัสประจำตัว';
-    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #800020 0%, #26020A 100%)';
+    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #3730A3 0%, #26020A 100%)';
     if(roleBadge) roleBadge.textContent = 'ระบบบุคลากร (Staff / Teacher)';
   }
   document.getElementById('loginUsername').focus();
@@ -147,7 +147,7 @@ function doLogout() {
     showCancelButton: true,
     confirmButtonText: 'ออกจากระบบ',
     cancelButtonText : 'ยกเลิก',
-    confirmButtonColor: '#EF4444'
+    confirmButtonColor: '#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังออกจากระบบ...');
@@ -427,21 +427,21 @@ function renderDashboard(container) {
     <div class="dash-row">
       <div class="dash-card">
         <h3>
-          <i class='bx bx-bar-chart-alt-2' style="color:#A62639; margin-right:5px;">\x3c/i> สถิติการเข้าเรียนรายสัปดาห์
+          <i class='bx bx-bar-chart-alt-2 text-primary mr-1' >\x3c/i> สถิติการเข้าเรียนรายสัปดาห์
           <a href="#" onclick="event.preventDefault(); navigate('attendance');">ดูทั้งหมด <i class='bx bx-chevron-right'>\x3c/i>\x3c/a>
         \x3c/h3>
         <div class="chart-box"><canvas id="chartAttendance">\x3c/canvas>\x3c/div>
       \x3c/div>
 
       <div class="dash-card">
-        <h3><i class='bx bxs-megaphone' style="color:#A62639; margin-right:5px;">\x3c/i> ประกาศล่าสุด\x3c/h3>
+        <h3><i class='bx bxs-megaphone text-primary mr-1' >\x3c/i> ประกาศล่าสุด\x3c/h3>
         <div class="announce-list" id="announceList">
           <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
         \x3c/div>
       \x3c/div>
 
       <div class="dash-card">
-        <h3><i class='bx bx-wallet' style="color:#A62639; margin-right:5px;">\x3c/i> สรุปรายรับ - รายจ่าย\x3c/h3>
+        <h3><i class='bx bx-wallet text-primary mr-1' >\x3c/i> สรุปรายรับ - รายจ่าย\x3c/h3>
         <div class="chart-box" style="height:170px;"><canvas id="chartFinance">\x3c/canvas>\x3c/div>
         <div class="text-center mt-2">
           <div class="text-xs text-slate-500">คงเหลือสุทธิ\x3c/div>
@@ -510,10 +510,10 @@ function renderDashboardData(d) {
         datasets: [{
           label: 'อัตราการเข้าเรียน (%)',
           data: d.week_chart.map(x => x.pct),
-          borderColor: '#A62639',
+          borderColor: '#4F46E5',
           backgroundColor: 'rgba(59,130,246,.15)',
           fill: true, tension: 0.4,
-          pointBackgroundColor: '#800020', pointRadius: 4,
+          pointBackgroundColor: '#3730A3', pointRadius: 4,
           borderWidth: 3
         }]
       },
@@ -537,7 +537,7 @@ function renderDashboardData(d) {
         labels: ['รายรับ', 'รายจ่าย'],
         datasets: [{
           data: [d.finance.income || 0, d.finance.expense || 0],
-          backgroundColor: ['#10B981', '#EF4444'],
+          backgroundColor: ['#10B981', '#DC2626'],
           borderWidth: 0, hoverOffset: 8
         }]
       },
@@ -890,7 +890,7 @@ function showToast(icon, title) {
     document.body.appendChild(container);
   }
   const toast = document.createElement('div');
-  const bgColor = icon === 'error' ? '#EF4444' : (icon === 'success' ? '#10B981' : '#3B82F6');
+  const bgColor = icon === 'error' ? '#DC2626' : (icon === 'success' ? '#10B981' : '#3B82F6');
   toast.style.cssText = `background: ${bgColor}; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: 'Sarabun', sans-serif; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; opacity: 0; transform: translateX(50px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);`;
   
   const iconClass = icon === 'error' ? 'bx-error-circle' : (icon === 'success' ? 'bx-check-circle' : 'bx-info-circle');
