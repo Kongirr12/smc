@@ -7,6 +7,7 @@
  *  REPORTS
  
  * ============================================================ */
+
 function renderReports(container) {
   container.innerHTML = `
     ${pageHeader('รายงาน', 'bxs-bar-chart-alt-2', '')}
