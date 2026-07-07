@@ -136,7 +136,7 @@ function filterCards() {
         <div style="width:56px;height:56px;border-radius:50%;margin:0 auto 8px;overflow:hidden;
                     background:linear-gradient(135deg,#3730A3,#4F46E5);display:flex;align-items:center;justify-content:center;">
           ${s.photo
-            ? `<img src="${escapeHTML(s.photo)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+            ? `<img src="${escapeHTML(s.photo)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
             : `<span style="color:white;font-size:20px;font-weight:800;">${escapeHTML((s.first_name||'N').charAt(0))}</span>`}
         </div>
         <div style="font-weight:700;font-size:12px;">${name}</div>
@@ -190,7 +190,7 @@ function printCards(students) {
     const sid   = s.student_id || '';
     const cls   = escapeHTML(s.classroom || '');
     const photoHtml = s.photo
-      ? `<img src="${escapeHTML(s.photo)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+      ? `<img src="${escapeHTML(s.photo)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
       : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#312E81;background:#EEF2FF;">${escapeHTML((s.first_name||'N').charAt(0))}</div>`;
 
     return `

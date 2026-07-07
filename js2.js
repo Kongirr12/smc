@@ -60,6 +60,7 @@ function avatarHTML(url, name, size) {
       <div class="avatar-circle" style="${baseStyle}overflow:hidden;padding:0;position:relative;">
         <img src="${escapeHTML(url)}"
              alt="${initial}"
+             loading="lazy"
              style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;"
              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
         <div style="display:none;width:100%;height:100%;position:absolute;top:0;left:0;
@@ -1084,7 +1085,7 @@ function viewPersonnel(id) {
             ${p.signature ? `
               <div class="mt-4 pt-4 border-t border-slate-200">
                 <div class="text-xs text-slate-500 mb-2">ลายเซ็น:\x3c/div>
-                <img src="${escapeHTML(p.signature)}" alt="signature" style="max-height:80px;background:white;padding:8px;border:1px solid #E2E8F0;border-radius:8px;">
+                <img src="${escapeHTML(p.signature)}" alt="signature" loading="lazy" style="max-height:80px;background:white;padding:8px;border:1px solid #E2E8F0;border-radius:8px;">
               \x3c/div>
             ` : ''}
           \x3c/div>
