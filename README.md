@@ -79,6 +79,4 @@
 ## 👨‍💻 ผู้พัฒนา
 พัฒนาเพื่อโรงเรียนมหาชัยพิทยาคาร โดย **ครูก้องนที อุ่นเจริญ**
 
-## 📄 License
-This project is licensed under the MIT License.
 
