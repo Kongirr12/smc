@@ -9,7 +9,7 @@ function renderManual(container) {
       <div>
         <h1><i class='bx bxs-book-reader text-primary' >\x3c/i> คู่มือการใช้งาน\x3c/h1>
         <div class="sub" style="line-height:1.6;">
-          <i class='bx bx-info-circle'>\x3c/i> Smart School Office - โรงเรียนมหาชัยพิทยาคาร - อ่านเพื่อทำความเข้าใจระบบ<br>
+          <i class='bx bx-info-circle'>\x3c/i> MHC Smart School - โรงเรียนมหาชัยพิทยาคาร - อ่านเพื่อทำความเข้าใจระบบ<br>
           <span style="font-size:12px; color:#64748b;">พัฒนาระบบโดย นายก้องนที อุ่นเจริญ</span>
         \x3c/div>
       \x3c/div>
@@ -169,7 +169,7 @@ function manualContent() {
     <!-- เริ่มต้น -->
     ${manSection('sec-start','bxs-rocket','#4F46E5','เริ่มต้นใช้งานระบบ',`
       <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
-        Smart School Office พร้อมใช้งานบน Browser ทุกตัว ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม
+        MHC Smart School พร้อมใช้งานบน Browser ทุกตัว ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม
       \x3c/div>
       <div class="man-tip"><i class='bx bx-bulb'>\x3c/i>
         แนะนำให้ใช้ <b>Google Chrome\x3c/b> หรือ <b>Microsoft Edge\x3c/b> เวอร์ชั่นล่าสุด เพื่อประสิทธิภาพสูงสุด

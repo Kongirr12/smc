@@ -1921,7 +1921,7 @@ function renderAttendanceReportData(res, start, end, rptType) {
 
   const printFooter = `
     <div class="hidden print:block text-center mt-10 text-xs text-slate-500">
-      ระบบ Smart School Office | พัฒนาโดยครูก้องนที อุ่นเจริญ
+      ระบบ MHC Smart School | พัฒนาโดยครูก้องนที อุ่นเจริญ
     \x3c/div>
   `;
 

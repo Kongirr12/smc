@@ -191,14 +191,14 @@ function printCards(students) {
     const cls   = escapeHTML(s.classroom || '');
     const photoHtml = s.photo
       ? `<img src="${escapeHTML(s.photo)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#4A0E17;background:#FAF0F2;">${escapeHTML((s.first_name||'N').charAt(0))}</div>`;
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#312E81;background:#EEF2FF;">${escapeHTML((s.first_name||'N').charAt(0))}</div>`;
 
     return `
       <div style="width:85.6mm;height:54mm;background:white;border-radius:6px;overflow:hidden;
                   flex-shrink:0;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,.2);
                   font-family:'Sarabun',sans-serif;-webkit-print-color-adjust:exact;
                   print-color-adjust:exact;display:flex;flex-direction:column;">
-        <div style="background:linear-gradient(90deg,#4A0E17,#3730A3);flex:0 0 11mm;
+        <div style="background:linear-gradient(90deg,#4F46E5,#312E81);flex:0 0 11mm;
                     box-sizing:border-box;padding:2px 8px;overflow:hidden;
                     display:flex;flex-direction:column;justify-content:center;text-align:center;">
           <div style="color:white;font-size:9px;font-weight:800;line-height:1.3;">${school}</div>
@@ -209,7 +209,7 @@ function printCards(students) {
                       overflow:hidden;background:#F8FAFC;align-self:stretch;">${photoHtml}</div>
           <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding-top:1px;">
             <div style="font-size:5.5px;color:#94A3B8;line-height:1.2;">ชื่อ-สกุล / Name</div>
-            <div style="font-weight:800;font-size:9.5px;line-height:1.2;color:#4A0E17;margin-bottom:2px;">${name}</div>
+            <div style="font-weight:800;font-size:9.5px;line-height:1.2;color:#1E1B4B;margin-bottom:2px;">${name}</div>
             <div style="font-size:5.5px;color:#94A3B8;line-height:1.2;">รหัสนักเรียน / Student ID</div>
             <div style="font-size:8px;font-weight:700;margin-bottom:2px;">${escapeHTML(sid)}</div>
             <div style="font-size:5.5px;color:#94A3B8;line-height:1.2;">ระดับชั้น / Class Level</div>
