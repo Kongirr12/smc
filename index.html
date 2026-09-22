@@ -228,8 +228,8 @@
     <div class="w-full max-w-4xl max-h-[95vh] overflow-y-auto rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-200 flex flex-col md:flex-row relative z-10 mx-4" style="animation: floatIn .7s cubic-bezier(.16,1,.3,1);">
       
       <!-- Left Hero -->
-      <div id="loginHeroPanel" class="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center text-white sm:px-8 md:w-1/2 md:px-10 md:py-14 relative overflow-hidden" style="background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #312E81 100%); transition: background 0.4s ease;">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_50%)]"></div>
+      <div id="loginHeroPanel" class="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center text-white sm:px-8 md:w-1/2 md:px-10 md:py-14 relative overflow-hidden" style="background: linear-gradient(135deg, #4338CA 0%, #312E81 50%, #1E1B4B 100%);">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_50%)]"></div>
         <div class="flex w-full max-w-md flex-col items-center relative z-10">
           <div class="login-logo mb-3 md:mb-6" id="loginLogoBox" style="background: transparent; box-shadow: none; border: none; width: 80px; height: 80px; md:width: 140px; md:height: 140px;">
             <img id="loginLogoImage" src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:14px;" alt="Logo">
@@ -243,32 +243,23 @@
               สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม
             </p>
           </div>
-          <p id="loginRoleBadge" class="mt-2 md:mt-6 rounded-full px-3 py-1 md:px-4 md:py-1.5 text-[11px] md:text-sm font-medium" style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25); color: #E0E7FF;">
-            ระบบผู้ดูแลระบบ (Admin)
+          <p id="loginRoleBadge" class="mt-3 md:mt-6 rounded-full px-3 py-1 md:px-4 md:py-1.5 text-[11px] md:text-sm font-medium inline-flex items-center gap-1.5" style="background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); color: #FFFFFF;">
+            <i class='bx bx-check-shield text-amber-300'></i> ระบบบริหารจัดการสถานศึกษา
           </p>
         </div>
       </div>
 
       <!-- Right Form -->
       <div class="flex flex-1 flex-col justify-center bg-white px-5 py-6 sm:px-8 md:w-1/2 md:px-10 md:py-12">
-        <div class="mb-4 md:mb-8">
+        <div class="mb-5 md:mb-8">
           <h2 class="text-xl md:text-2xl font-bold text-gray-900">เข้าสู่ระบบ</h2>
-          <p class="mt-1 text-xs md:text-sm text-gray-600">กรอกข้อมูลผู้ใช้งานของคุณ</p>
-        </div>
-
-        <div class="tab-pill mb-4 md:mb-6" style="margin-top: 0;">
-          <button id="tabAdmin" class="active" onclick="switchLoginTab('admin')">
-            <i class='bx bx-shield-quarter mr-1'></i> ผู้ดูแลระบบ
-          </button>
-          <button id="tabStaff" onclick="switchLoginTab('staff')">
-            <i class='bx bx-user mr-1'></i> Staff / ครู
-          </button>
+          <p class="mt-1 text-xs md:text-sm text-gray-500">กรอกชื่อผู้ใช้งาน หรือรหัสประจำตัว เพื่อเข้าใช้งานระบบ</p>
         </div>
 
         <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
           <div class="input-wrap mb-3 md:mb-4">
             <i class='bx bx-user'></i>
-            <input type="text" id="loginUsername" placeholder="ชื่อผู้ใช้งาน" autocomplete="username" required>
+            <input type="text" id="loginUsername" placeholder="ชื่อผู้ใช้งาน หรือ รหัสประจำตัว" autocomplete="username" required>
           </div>
 
           <div class="input-wrap mb-3 md:mb-4">

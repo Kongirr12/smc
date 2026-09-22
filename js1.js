@@ -59,22 +59,9 @@ function showLoginScreen() {
 }
 
 function switchLoginTab(tab) {
-  document.getElementById('tabAdmin').classList.toggle('active', tab === 'admin');
-  document.getElementById('tabStaff').classList.toggle('active', tab === 'staff');
-  
-  const heroPanel = document.getElementById('loginHeroPanel');
-  const roleBadge = document.getElementById('loginRoleBadge');
-  
-  if (tab === 'admin') {
-    document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน Admin';
-    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #4F46E5 0%, #26020A 100%)';
-    if(roleBadge) roleBadge.textContent = 'ระบบผู้ดูแลระบบ (Admin)';
-  } else {
-    document.getElementById('loginUsername').placeholder = 'ชื่อผู้ใช้งาน / รหัสประจำตัว';
-    if(heroPanel) heroPanel.style.background = 'linear-gradient(135deg, #3730A3 0%, #26020A 100%)';
-    if(roleBadge) roleBadge.textContent = 'ระบบบุคลากร (Staff / Teacher)';
-  }
-  document.getElementById('loginUsername').focus();
+  // Tabs unified into a single login portal
+  const inp = document.getElementById('loginUsername');
+  if (inp) inp.focus();
 }
 
 function togglePassword() {
