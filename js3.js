@@ -88,38 +88,78 @@ function switchAcademicTab(tab) {
 
 
 /* ----- Subjects ----- */
+let _selectedSubjectIds = new Set();
+
 function renderAcademicSubjects() {
   const el = document.getElementById('acSubjects');
   if (!el) return;
   el.innerHTML = `
     <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
-      <div class="text-base font-semibold text-slate-700">
-        <i class='bx bx-book-open mr-1 text-primary' >\x3c/i> รายวิชาที่เปิดสอน
+      <div class="text-base font-semibold text-slate-700 flex items-center gap-1.5">
+        <i class='bx bx-book-open text-primary text-xl'>\x3c/i> รายวิชาที่เปิดสอน
       \x3c/div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         ${APP.role !== 'teacher' ? `
-        <button id="btnDeleteSelectedSubjects" class="btn btn-light" style="color:#DC2626; display:none;" onclick="deleteSelectedSubjects()"><i class='bx bx-trash'><\/i> ลบที่เลือก<\/button>
-        <button class="btn btn-light" onclick="showImportSubjectsCSV()"><i class='bx bx-import'><\/i> นำเข้า CSV<\/button>
+        <button id="btnDeleteSelectedSubjects" class="btn" style="background:#dc2626; color:#ffffff; font-weight:600; display:none;" onclick="deleteSelectedSubjects()">
+          <i class='bx bx-trash'>\x3c/i> ลบที่เลือก (<span id="selectedSubjectsCount">0</span>)
+        \x3c/button>
+        <button id="btnDeleteSemesterSubjects" class="btn btn-light" style="color:#b91c1c; border-color:#fca5a5; background:#fef2f2; display:none;" onclick="confirmDeleteCurrentSemesterSubjects()">
+          <i class='bx bx-trash-alt'>\x3c/i> ลบทั้งหมดในเทอมนี้
+        \x3c/button>
+        <button class="btn btn-light" onclick="showImportSubjectsCSV()"><i class='bx bx-import'>\x3c/i> นำเข้า CSV\x3c/button>
         ` : ''}
-        <button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'><\/i> เพิ่มรายวิชา<\/button>
+        <button class="btn btn-blue" onclick="openSubjectForm()"><i class='bx bx-plus'>\x3c/i> เพิ่มรายวิชา\x3c/button>
       \x3c/div>
     \x3c/div>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-      <div class="md:col-span-2 relative">
+    <!-- Filters row -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 mb-3">
+      <div class="sm:col-span-2 lg:col-span-4 relative">
         <i class='bx bx-search absolute' style="left:12px; top:50%; transform:translateY(-50%); color:#94A3B8;">\x3c/i>
-        <input type="text" id="subSearch" placeholder="ค้นหา รหัสวิชา / ชื่อวิชา"
+        <input type="text" id="subSearch" placeholder="ค้นหา รหัสวิชา / ชื่อวิชา / ครูผู้สอน"
                class="w-full rounded-lg border border-slate-200 px-9 py-2 text-sm focus:outline-none focus:border-blue-400"
                oninput="onSubjectSearch()" value="${escapeHTML(AcademicState.search)}">
       \x3c/div>
-      <select id="subGroup" onchange="onSubjectFilter()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-        <option value="">ทุกกลุ่มสาระ\x3c/option>
-      \x3c/select>
-      <select id="subGrade" onchange="onSubjectFilter()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-        <option value="">ทุกชั้น\x3c/option>
-      \x3c/select>
+      <div class="lg:col-span-2">
+        <select id="subYear" onchange="onSubjectFilter()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <option value="">ทุกปีการศึกษา\x3c/option>
+        \x3c/select>
+      \x3c/div>
+      <div class="lg:col-span-2">
+        <select id="subSemester" onchange="onSubjectFilter()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium">
+          <option value="">ทุกภาคเรียน (เทอม)\x3c/option>
+          <option value="1" ${String(AcademicState.semester)==='1'?'selected':''}>ภาคเรียนที่ 1 (เทอม 1)\x3c/option>
+          <option value="2" ${String(AcademicState.semester)==='2'?'selected':''}>ภาคเรียนที่ 2 (เทอม 2)\x3c/option>
+          <option value="3" ${String(AcademicState.semester)==='3'?'selected':''}>ภาคฤดูร้อน\x3c/option>
+        \x3c/select>
+      \x3c/div>
+      <div class="lg:col-span-2">
+        <select id="subGroup" onchange="onSubjectFilter()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <option value="">ทุกกลุ่มสาระ\x3c/option>
+        \x3c/select>
+      \x3c/div>
+      <div class="lg:col-span-2">
+        <select id="subGrade" onchange="onSubjectFilter()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <option value="">ทุกชั้น\x3c/option>
+        \x3c/select>
+      \x3c/div>
+    \x3c/div>
+
+    <!-- Selection Banner -->
+    <div id="subjectSelectionBanner" class="p-2.5 mb-2 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between flex-wrap gap-2 text-sm text-rose-800" style="display:none;">
+      <div class="flex items-center gap-2 font-medium">
+        <i class='bx bx-check-square text-lg text-rose-600'>\x3c/i>
+        <span>เลือกอยู่ <strong id="selectionBannerCount">0</strong> รายการ\x3c/span>
+      \x3c/div>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn btn-sm btn-light border border-slate-300 text-slate-700" onclick="toggleSelectAllPage(true)">เลือกทั้งหมดในหน้านี้\x3c/button>
+        <button type="button" class="btn btn-sm btn-light border border-slate-300 text-slate-700" onclick="clearSubjectSelection()">ยกเลิกการเลือก\x3c/button>
+        <button type="button" class="btn btn-sm text-white" style="background:#dc2626;" onclick="deleteSelectedSubjects()"><i class='bx bx-trash'>\x3c/i> ลบที่เลือก\x3c/button>
+      \x3c/div>
     \x3c/div>
 
     <div id="subjectsTable">
@@ -136,18 +176,26 @@ function renderAcademicSubjects() {
 
 let _subSearchTimer = null;
 function onSubjectSearch() {
-  AcademicState.search = document.getElementById('subSearch').value;
+  AcademicState.search = document.getElementById('subSearch') ? document.getElementById('subSearch').value : '';
   AcademicState.page = 1;
   clearTimeout(_subSearchTimer);
   _subSearchTimer = setTimeout(loadSubjects, 300);
 }
+
 function onSubjectFilter() {
-  AcademicState.subject_group = document.getElementById('subGroup').value;
-  AcademicState.grade_level   = document.getElementById('subGrade').value;
+  AcademicState.search        = document.getElementById('subSearch') ? document.getElementById('subSearch').value : '';
+  AcademicState.subject_group = document.getElementById('subGroup') ? document.getElementById('subGroup').value : '';
+  AcademicState.grade_level   = document.getElementById('subGrade') ? document.getElementById('subGrade').value : '';
+  AcademicState.semester      = document.getElementById('subSemester') ? document.getElementById('subSemester').value : '';
+  AcademicState.academic_year = document.getElementById('subYear') ? document.getElementById('subYear').value : '';
   AcademicState.page = 1;
   loadSubjects();
 }
-function subjectsGoToPage(p) { AcademicState.page = p; loadSubjects(); }
+
+function subjectsGoToPage(p) { 
+  AcademicState.page = p; 
+  loadSubjects(); 
+}
 
 function loadSubjects(silent) {
   const area = document.getElementById('subjectsTable');
@@ -171,36 +219,66 @@ function loadSubjects(silent) {
       page: AcademicState.page,
       search: AcademicState.search,
       subject_group: AcademicState.subject_group,
-      grade_level: AcademicState.grade_level
+      grade_level: AcademicState.grade_level,
+      semester: AcademicState.semester,
+      academic_year: AcademicState.academic_year
     }, APP.token);
 }
 
 function renderSubjectsTable(res) {
   const gp = document.getElementById('subGroup');
-  if (gp && res.distinct) {
+  if (gp && res.distinct && res.distinct.groups) {
     const cur = AcademicState.subject_group;
     gp.innerHTML = '<option value="">ทุกกลุ่มสาระ\x3c/option>' +
       res.distinct.groups.map(g => `<option value="${escapeHTML(g)}" ${cur===g?'selected':''}>${escapeHTML(g)}\x3c/option>`).join('');
   }
   const gr = document.getElementById('subGrade');
-  if (gr && res.distinct) {
+  if (gr && res.distinct && res.distinct.grades) {
     const cur = AcademicState.grade_level;
     gr.innerHTML = '<option value="">ทุกชั้น\x3c/option>' +
       res.distinct.grades.map(g => `<option value="${escapeHTML(g)}" ${cur===g?'selected':''}>${escapeHTML(g)}\x3c/option>`).join('');
   }
+  const yr = document.getElementById('subYear');
+  if (yr && res.distinct && res.distinct.years) {
+    const cur = AcademicState.academic_year;
+    yr.innerHTML = '<option value="">ทุกปีการศึกษา\x3c/option>' +
+      res.distinct.years.map(y => `<option value="${escapeHTML(y)}" ${cur===String(y)?'selected':''}>${escapeHTML(y)}\x3c/option>`).join('');
+  }
+  const semSel = document.getElementById('subSemester');
+  if (semSel && AcademicState.semester) {
+    semSel.value = AcademicState.semester;
+  }
+
+  const semBtn = document.getElementById('btnDeleteSemesterSubjects');
+  if (semBtn) {
+    const hasSem = Boolean(AcademicState.semester && String(AcademicState.semester).trim() !== '');
+    semBtn.style.display = (APP.role !== 'teacher' && hasSem) ? 'inline-flex' : 'none';
+    if (hasSem) {
+      const yrLabel = AcademicState.academic_year ? ` ปี ${escapeHTML(AcademicState.academic_year)}` : '';
+      semBtn.innerHTML = `<i class='bx bx-trash-alt'>\x3c/i> ลบทั้งหมดในเทอม ${escapeHTML(AcademicState.semester)}${yrLabel}`;
+    }
+  }
 
   const area = document.getElementById('subjectsTable');
   if (!area) return;
-  if (res.data.length === 0) {
-    area.innerHTML = `<div class="empty-state"><i class='bx bx-folder-open'>\x3c/i>ยังไม่มีรายวิชา\x3c/div>`;
+  if (!res.data || res.data.length === 0) {
+    const filterDesc = [
+      AcademicState.academic_year ? `ปีการศึกษา ${AcademicState.academic_year}` : '',
+      AcademicState.semester ? `เทอม ${AcademicState.semester}` : '',
+      AcademicState.grade_level ? `ชั้น ${AcademicState.grade_level}` : '',
+      AcademicState.subject_group ? `กลุ่มสาระ ${AcademicState.subject_group}` : ''
+    ].filter(Boolean).join(' · ');
+    area.innerHTML = `<div class="empty-state"><i class='bx bx-folder-open'>\x3c/i>ไม่พบรายวิชา ${filterDesc ? `(${escapeHTML(filterDesc)})` : ''}\x3c/div>`;
+    updateDeleteSelectedBtn();
     return;
   }
+
   area.innerHTML = `
     <div style="overflow-x:auto;">
       <table class="min-w-full text-sm">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            ${APP.role !== 'teacher' ? `<th class="px-3 py-2.5 rounded-l-lg w-10 text-center"><input type="checkbox" id="selectAllSubjects" onclick="toggleSelectAllSubjects(this)" style="cursor:pointer;"><\/th>` : ''}
+            ${APP.role !== 'teacher' ? `<th class="px-3 py-2.5 rounded-l-lg w-10 text-center"><input type="checkbox" id="selectAllSubjects" onclick="toggleSelectAllSubjects(this)" style="cursor:pointer;" title="เลือกทั้งหมดในหน้านี้">\x3c/th>` : ''}
             <th class="px-3 py-2.5 text-left ${APP.role === 'teacher' ? 'rounded-l-lg' : ''}">รหัส\x3c/th>
             <th class="px-3 py-2.5 text-left">ชื่อวิชา\x3c/th>
             <th class="px-3 py-2.5 text-left">กลุ่มสาระ\x3c/th>
@@ -211,10 +289,12 @@ function renderSubjectsTable(res) {
           \x3c/tr>
         \x3c/thead>
         <tbody>
-          ${res.data.map(s => `
-            <tr class="border-b border-slate-100 hover:bg-slate-50">
-              ${APP.role !== 'teacher' ? `<td class="px-3 py-2.5 text-center"><input type="checkbox" class="subject-checkbox" value="${s.id}" onclick="updateDeleteSelectedBtn()" style="cursor:pointer;"><\/td>` : ''}
-              <td class="px-3 py-2.5 font-mono text-xs">${escapeHTML(s.subject_code || '-')}\x3c/td>
+          ${res.data.map(s => {
+            const isChecked = _selectedSubjectIds.has(s.id);
+            return `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 ${isChecked ? 'bg-rose-50/40' : ''}">
+              ${APP.role !== 'teacher' ? `<td class="px-3 py-2.5 text-center"><input type="checkbox" class="subject-checkbox" value="${s.id}" ${isChecked ? 'checked' : ''} onchange="onSubjectCheckboxChange(this)" style="cursor:pointer;">\x3c/td>` : ''}
+              <td class="px-3 py-2.5 font-mono text-xs font-semibold text-slate-700">${escapeHTML(s.subject_code || '-')}\x3c/td>
               <td class="px-3 py-2.5 font-semibold text-slate-800">${escapeHTML(s.subject_name || '-')}\x3c/td>
               <td class="px-3 py-2.5">${escapeHTML(s.subject_group || '-')}\x3c/td>
               <td class="px-3 py-2.5">${escapeHTML(s.grade_level || '-')} · เทอม ${escapeHTML(s.semester || '-')}\x3c/td>
@@ -223,59 +303,154 @@ function renderSubjectsTable(res) {
               <td class="px-3 py-2.5 text-center">
                 <div class="flex justify-center gap-1">
                   ${(APP.role !== 'teacher' || APP.user.username.toLowerCase() === (s.teacher_id||'').toLowerCase()) ? `
-                  <button class="btn btn-light btn-icon text-primary" onclick="openSubjectForm('${s.id}')" title="แก้ไข" ><i class='bx bx-edit'><\/i><\/button>
-                  <button class="btn btn-light btn-icon text-danger" onclick="deleteSubjectConfirm('${s.id}')" title="ลบ" ><i class='bx bx-trash'><\/i><\/button>
-                  ` : '<span class="text-xs text-slate-400">วิชาของผู้อื่น<\/span>'}
+                  <button class="btn btn-light btn-icon text-primary" onclick="openSubjectForm('${s.id}')" title="แก้ไข"><i class='bx bx-edit'>\x3c/i>\x3c/button>
+                  <button class="btn btn-light btn-icon text-danger" onclick="deleteSubjectConfirm('${s.id}')" title="ลบ"><i class='bx bx-trash'>\x3c/i>\x3c/button>
+                  ` : '<span class="text-xs text-slate-400">วิชาของผู้อื่น\x3c/span>'}
                 \x3c/div>
               \x3c/td>
             \x3c/tr>
-          `).join('')}
+          `;}).join('')}
         \x3c/tbody>
       \x3c/table>
     \x3c/div>
     ${paginationHTML(res.page, res.total_pages, 'subjectsGoToPage')}
     <div class="text-xs text-slate-400 text-right mt-1">รวม ${res.total} รายวิชา\x3c/div>
   `;
-  updateDeleteSelectedBtn(); // reset button state on render
+  updateDeleteSelectedBtn();
 }
 
 function toggleSelectAllSubjects(el) {
   const checkboxes = document.querySelectorAll('.subject-checkbox');
-  checkboxes.forEach(cb => cb.checked = el.checked);
+  checkboxes.forEach(cb => {
+    cb.checked = el.checked;
+    if (el.checked) {
+      _selectedSubjectIds.add(cb.value);
+    } else {
+      _selectedSubjectIds.delete(cb.value);
+    }
+  });
+  updateDeleteSelectedBtn();
+}
+
+function toggleSelectAllPage(select) {
+  const checkboxes = document.querySelectorAll('.subject-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = select;
+    if (select) _selectedSubjectIds.add(cb.value);
+    else _selectedSubjectIds.delete(cb.value);
+  });
+  const selectAll = document.getElementById('selectAllSubjects');
+  if (selectAll) selectAll.checked = select;
+  updateDeleteSelectedBtn();
+}
+
+function onSubjectCheckboxChange(cb) {
+  if (cb.checked) {
+    _selectedSubjectIds.add(cb.value);
+  } else {
+    _selectedSubjectIds.delete(cb.value);
+  }
+  updateDeleteSelectedBtn();
+}
+
+function clearSubjectSelection() {
+  _selectedSubjectIds.clear();
+  const checkboxes = document.querySelectorAll('.subject-checkbox');
+  checkboxes.forEach(cb => cb.checked = false);
+  const selectAll = document.getElementById('selectAllSubjects');
+  if (selectAll) selectAll.checked = false;
   updateDeleteSelectedBtn();
 }
 
 function updateDeleteSelectedBtn() {
-  const checked = document.querySelectorAll('.subject-checkbox:checked').length;
+  const count = _selectedSubjectIds.size;
   const btn = document.getElementById('btnDeleteSelectedSubjects');
-  if (btn) btn.style.display = checked > 0 ? '' : 'none';
+  const countEl = document.getElementById('selectedSubjectsCount');
+  const banner = document.getElementById('subjectSelectionBanner');
+  const bannerCount = document.getElementById('selectionBannerCount');
+  const selectAll = document.getElementById('selectAllSubjects');
+
+  if (countEl) countEl.textContent = count;
+  if (bannerCount) bannerCount.textContent = count;
+
+  if (btn) btn.style.display = count > 0 ? 'inline-flex' : 'none';
+  if (banner) banner.style.display = count > 0 ? 'flex' : 'none';
+
+  const pageCheckboxes = document.querySelectorAll('.subject-checkbox');
+  if (pageCheckboxes.length > 0) {
+    const allChecked = Array.from(pageCheckboxes).every(cb => _selectedSubjectIds.has(cb.value));
+    if (selectAll) selectAll.checked = allChecked && count > 0;
+  }
 }
 
 function deleteSelectedSubjects() {
-  const checked = document.querySelectorAll('.subject-checkbox:checked');
-  if (checked.length === 0) return;
-  const ids = Array.from(checked).map(cb => cb.value);
+  const ids = Array.from(_selectedSubjectIds);
+  if (ids.length === 0) return showToast('warning', 'กรุณาเลือกรายวิชาที่ต้องการลบ');
+
   Swal.fire({
-    title: 'ยืนยันการลบ',
-    text: `ต้องการลบรายวิชาที่เลือก ${ids.length} รายการใช่หรือไม่? (ข้อมูลเกรดที่เกี่ยวข้องจะถูกลบด้วย)`,
+    title: 'ยืนยันการลบรายวิชา?',
+    html: `ต้องการลบรายวิชาที่เลือก <b>${ids.length} รายการ</b> ใช่หรือไม่?<br><span style="color:#dc2626; font-size:13px;">ข้อมูลเกรดและคะแนน ปพ.5 ที่เกี่ยวข้องจะถูกลบไปด้วย</span>`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#DC2626',
-    confirmButtonText: 'ใช่, ลบเลย',
+    confirmButtonText: `<i class='bx bx-trash'>\x3c/i> ใช่, ลบ ${ids.length} รายการ`,
     cancelButtonText: 'ยกเลิก'
   }).then((result) => {
     if (result.isConfirmed) {
-      showLoading('กำลังลบ...');
+      showLoading(`กำลังลบ ${ids.length} รายการ...`);
       google.script.run
         .withSuccessHandler(res => {
           hideLoading();
           if (res.status === 'success') {
             showToast('success', res.message);
+            clearSubjectSelection();
             loadSubjects();
-          } else showToast('error', res.message);
+          } else {
+            showToast('error', res.message);
+          }
         })
-        .withFailureHandler(err => { hideLoading(); showToast('error', err.message||err); })
+        .withFailureHandler(err => { 
+          hideLoading(); 
+          showToast('error', err.message || err); 
+        })
         .deleteSubjectsBulk(ids, APP.token);
+    }
+  });
+}
+
+function confirmDeleteCurrentSemesterSubjects() {
+  const sem = AcademicState.semester;
+  const year = AcademicState.academic_year;
+  if (!sem) return showToast('warning', 'กรุณาเลือกภาคเรียน/เทอมที่ต้องการลบก่อน');
+
+  const yearText = year ? ` ปีการศึกษา ${year}` : '';
+  Swal.fire({
+    title: `ลบรายวิชาทั้งหมดในเทอม ${sem}?`,
+    html: `ต้องการลบ <b>รายวิชาทั้งหมดในภาคเรียนที่ ${escapeHTML(sem)}${escapeHTML(yearText)}</b> ใช่หรือไม่?<br><span style="color:#dc2626; font-size:13px;">คำเตือน: คะแนน ปพ.5 และข้อมูลวิชาในเทอมนี้ทั้งหมดจะถูกลบถาวร</span>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626',
+    confirmButtonText: '<i class="bx bx-trash">\x3c/i> ยืนยันลบทั้งหมดในเทอมนี้',
+    cancelButtonText: 'ยกเลิก'
+  }).then(res => {
+    if (res.isConfirmed) {
+      showLoading(`กำลังลบรายวิชาทั้งหมดในเทอม ${sem}...`);
+      google.script.run
+        .withSuccessHandler(r => {
+          hideLoading();
+          if (r.status === 'success') {
+            showToast('success', r.message);
+            clearSubjectSelection();
+            loadSubjects();
+          } else {
+            showToast('error', r.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          showToast('error', err.message || err);
+        })
+        .deleteSubjectsBySemester({ semester: sem, academic_year: year }, APP.token);
     }
   });
 }

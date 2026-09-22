@@ -152,7 +152,8 @@ function routeApi(action, params, token) {
       case 'saveSubject': return saveSubject(params.data ? (typeof params.data === 'string' ? JSON.parse(params.data) : params.data) : params, token);
       case 'importSubjectsBulk': return importSubjectsBulk(params.records, token);
       case 'deleteSubject': return deleteSubject(params.id, token);
-      case 'deleteSubjectsBulk': return deleteSubjectsBulk(params.ids, token);
+      case 'deleteSubjectsBulk': return deleteSubjectsBulk(params.ids || params, token);
+      case 'deleteSubjectsBySemester': return deleteSubjectsBySemester(params, token);
       case 'getGradeSheet': return getGradeSheet(params.id || params.subject_id, token);
       case 'saveGradeSheet': return saveGradeSheet(params, token);
       case 'saveGradeBulk': return saveGradeBulk(params.subject_id || params.id, JSON.parse(params.records || '[]'), token);
@@ -729,6 +730,9 @@ function validateSessionLight_(sessionToken) {
     if (!user) return { valid:false };
     const safe = Object.assign({}, user);
     delete safe.password;
+    if (!safe.permissions && CONFIG.USER_ROLES[s.role]) {
+      safe.permissions = CONFIG.USER_ROLES[s.role].permissions;
+    }
     const res = { valid:true, user:safe, role:s.role, role_info:CONFIG.USER_ROLES[s.role] || null };
 
     // 2. Cache valid session for 20 minutes (1200s)
@@ -998,13 +1002,15 @@ function _requireAuth_(token, requireWrite) {
   if (!v.valid) {
     return { ok:false, response:{ status:'error', message:'session_invalid', code:401 } };
   }
+  const rolePerms = (CONFIG.USER_ROLES[v.role] && CONFIG.USER_ROLES[v.role].permissions) || [];
+  const userPerms = Array.isArray(v.user && v.user.permissions) ? v.user.permissions : [];
+  const perms = Array.from(new Set([...userPerms, ...rolePerms]));
   if (requireWrite) {
-    const perms = (v.user && v.user.permissions) || [];
-    if (!perms.includes('write') && !perms.includes('write_own')) {
+    if (v.role !== 'admin' && !perms.includes('write') && !perms.includes('write_own')) {
       return { ok:false, response:{ status:'error', message:'no_permission', code:403 } };
     }
   }
-  return { ok:true, user:v.user, role:v.role };
+  return { ok:true, user:v.user, role:v.role, permissions:perms };
 }
 
 function _paginate_(arr, page, perPage) {
@@ -1846,15 +1852,15 @@ function getSubjects(params, sessionToken) {
     if (params.search) {
       const q = String(params.search).toLowerCase();
       filtered = filtered.filter(s => {
-        const blob = [s.subject_code, s.subject_name, s.subject_group, s.grade_level]
+        const blob = [s.subject_code, s.subject_name, s.subject_group, s.grade_level, s.teacher_name, s.semester, s.academic_year]
           .filter(Boolean).join(' ').toLowerCase();
         return blob.indexOf(q) !== -1;
       });
     }
     if (params.subject_group) filtered = filtered.filter(s => s.subject_group === params.subject_group);
     if (params.grade_level)   filtered = filtered.filter(s => s.grade_level === params.grade_level);
-    if (params.academic_year) filtered = filtered.filter(s => String(s.academic_year) === String(params.academic_year));
-    if (params.semester)      filtered = filtered.filter(s => String(s.semester) === String(params.semester));
+    if (params.academic_year) filtered = filtered.filter(s => String(s.academic_year || '').trim() === String(params.academic_year).trim());
+    if (params.semester)      filtered = filtered.filter(s => String(s.semester || '').trim() === String(params.semester).trim());
 
     filtered.sort((a, b) => String(a.subject_code || '').localeCompare(String(b.subject_code || '')));
 
@@ -1881,7 +1887,9 @@ function getSubjects(params, sessionToken) {
 
     const distinct = {
       groups: ['ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษาฯ','สุขศึกษาและพลศึกษา','ศิลปะ','การงานอาชีพ','ภาษาต่างประเทศ'],
-      grades: Array.from(new Set(all.map(s => s.grade_level).filter(Boolean))).sort()
+      grades: Array.from(new Set(all.map(s => s.grade_level).filter(Boolean))).sort(),
+      semesters: Array.from(new Set(all.map(s => String(s.semester || '')).filter(Boolean))).sort(),
+      years: Array.from(new Set(all.map(s => String(s.academic_year || '')).filter(Boolean))).sort().reverse()
     };
 
     const paged = _paginate_(filtered, params.page, params.per_page);
@@ -2073,8 +2081,8 @@ function deleteSubject(id, sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
-    const perms = (auth.user && auth.user.permissions) || [];
-    if (!perms.includes('delete')) return { status:'error', message:'no_permission' };
+    const perms = auth.permissions || (auth.user && auth.user.permissions) || (CONFIG.USER_ROLES[auth.role] && CONFIG.USER_ROLES[auth.role].permissions) || [];
+    if (auth.role !== 'admin' && !perms.includes('delete')) return { status:'error', message:'ไม่มีสิทธิ์ในการลบรายวิชา' };
 
     // ลบ grade ที่อ้างถึงด้วย
     const all = readJsonSheet_('Academic');
@@ -2091,9 +2099,12 @@ function deleteSubjectsBulk(ids, sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
-    const perms = (auth.user && auth.user.permissions) || [];
-    if (!perms.includes('delete')) return { status:'error', message:'no_permission' };
+    const perms = auth.permissions || (auth.user && auth.user.permissions) || (CONFIG.USER_ROLES[auth.role] && CONFIG.USER_ROLES[auth.role].permissions) || [];
+    if (auth.role !== 'admin' && !perms.includes('delete')) return { status:'error', message:'ไม่มีสิทธิ์ในการลบรายวิชา' };
 
+    if (typeof ids === 'string') {
+      try { ids = JSON.parse(ids); } catch(_) { ids = ids.split(',').map(s => s.trim()).filter(Boolean); }
+    }
     if (!Array.isArray(ids) || ids.length === 0) {
        return { status: 'error', message: 'ไม่มีรายวิชาที่เลือก' };
     }
@@ -2107,6 +2118,50 @@ function deleteSubjectsBulk(ids, sessionToken) {
   } catch (e) {
     logError({ fn:'deleteSubjectsBulk', error:e.message });
     return { status:'error', message:e.message };
+  }
+}
+
+function deleteSubjectsBySemester(params, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    const perms = auth.permissions || (auth.user && auth.user.permissions) || (CONFIG.USER_ROLES[auth.role] && CONFIG.USER_ROLES[auth.role].permissions) || [];
+    if (auth.role !== 'admin' && !perms.includes('delete')) return { status:'error', message:'ไม่มีสิทธิ์ในการลบรายวิชา' };
+
+    params = params || {};
+    const semester = params.semester;
+    const academicYear = params.academic_year || params.year;
+
+    if (!semester) {
+      return { status: 'error', message: 'กรุณาระบุภาคเรียน/เทอมที่ต้องการลบ' };
+    }
+
+    const all = readJsonSheet_('Academic');
+    const toDeleteIds = [];
+
+    all.forEach(x => {
+      if (x._kind === 'subject' && String(x.semester || '').trim() === String(semester).trim()) {
+        if (!academicYear || String(x.academic_year || '').trim() === String(academicYear).trim()) {
+          toDeleteIds.push(x.id);
+        }
+      }
+    });
+
+    if (toDeleteIds.length === 0) {
+      return { status: 'error', message: 'ไม่พบรายวิชาในภาคเรียนที่ระบุ' };
+    }
+
+    const next = all.filter(x => !toDeleteIds.includes(x.id) && !toDeleteIds.includes(x.subject_id));
+    writeJsonSheet_('Academic', next);
+
+    const yearText = academicYear ? ` ปีการศึกษา ${academicYear}` : '';
+    return { 
+      status: 'success', 
+      message: `ลบรายวิชาทั้งหมดในภาคเรียนที่ ${semester}${yearText} สำเร็จ จำนวน ${toDeleteIds.length} รายการ` 
+    };
+  } catch (e) {
+    logError({ fn: 'deleteSubjectsBySemester', error: e.message });
+    return { status: 'error', message: e.message };
   }
 }
 
