@@ -713,16 +713,17 @@ function showSubjectForm(data) {
             <label class="form-label">ชั้น\x3c/label>
             <input type="text" id="sf_grade_level" class="form-input" placeholder="ม.1/1" value="${escapeHTML(s.grade_level||'')}">
           \x3c/div>
-          <div class="col-span-3">
-            <label class="form-label">เทอม\x3c/label>
-            <select id="sf_semester" class="form-input">
-              <option value="1" ${String(s.semester||'1')==='1'?'selected':''}>1\x3c/option>
-              <option value="2" ${String(s.semester)==='2'?'selected':''}>2\x3c/option>
+          <div class="col-span-4">
+            <label class="form-label">เทอม (ภาคเรียน)\x3c/label>
+            <select id="sf_semester" class="form-input font-medium">
+              <option value="1" ${String(s.semester||'1')==='1'?'selected':''}>ภาคเรียนที่ 1 (เทอม 1)\x3c/option>
+              <option value="2" ${String(s.semester)==='2'?'selected':''}>ภาคเรียนที่ 2 (เทอม 2)\x3c/option>
+              <option value="3" ${String(s.semester)==='3'?'selected':''}>ภาคฤดูร้อน\x3c/option>
             \x3c/select>
           \x3c/div>
-          <div class="col-span-5">
-            <label class="form-label">ปีการศึกษา\x3c/label>
-            <input type="text" id="sf_academic_year" class="form-input" value="${escapeHTML(s.academic_year||'')}">
+          <div class="col-span-4">
+            <label class="form-label">ปีการศึกษา <span class="text-xs text-slate-400 font-normal">(ไม่ระบุ = ใช้ทุกปี)</span>\x3c/label>
+            <input type="text" id="sf_academic_year" class="form-input" placeholder="ใช้ได้ทุกปีการศึกษา" value="${escapeHTML(s.academic_year||'')}">
           \x3c/div>
 
           <div class="col-span-3">
@@ -879,19 +880,24 @@ function onGradesFilterChange() {
   const sem  = document.getElementById('grSem').value;
   const sel  = document.getElementById('grSubject');
   const subjects = (AcademicState.allSubjects || []).filter(s => {
-    const yMatch = !year || String(s.academic_year) === String(year);
-    const sMatch = !sem  || String(s.semester) === String(sem);
+    const yMatch = !year || !s.academic_year || String(s.academic_year).trim() === String(year).trim();
+    const sMatch = !sem  || String(s.semester || '1').trim() === String(sem).trim();
     return yMatch && sMatch;
   });
   sel.innerHTML = '<option value="">เลือกรายวิชา\x3c/option>' +
     subjects.map(s =>
-      `<option value="${s.id}">${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name||'')} · ${escapeHTML(s.grade_level||'')} เทอม${escapeHTML(s.semester||'')}\x3c/option>`
+      `<option value="${s.id}">${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name||'')} · ${escapeHTML(s.grade_level||'')} (เทอม ${escapeHTML(s.semester||'1')})\x3c/option>`
     ).join('');
 }
 
 function loadGradeSheet() {
   const subjectId = document.getElementById('grSubject').value;
   if (!subjectId) return showToast('warning', 'กรุณาเลือกวิชา');
+  const year = document.getElementById('grYear').value || (APP.dashboardData?.config?.academic_year || '');
+  const sem  = document.getElementById('grSem').value || '1';
+
+  AcademicState.currentSubjectYear = year;
+  AcademicState.currentSubjectSem = sem;
 
   const area = document.getElementById('gradesArea');
   area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
@@ -907,7 +913,7 @@ function loadGradeSheet() {
       renderGradeSheetTable();
     })
     .withFailureHandler(err => { area.innerHTML = `<div class="empty-state"><i class='bx bx-error'>\x3c/i>${escapeHTML(err.message||err)}\x3c/div>`; })
-    .getGradeSheet(subjectId, APP.token);
+    .getGradeSheet(subjectId, APP.token, year, sem);
 }
 
 function renderGradeSheetTable() {
@@ -1069,6 +1075,9 @@ function recalcGradeRow(i) {
 
 function saveGradeSheet() {
   if (!AcademicState.currentSubject || !AcademicState.gradeRows) return;
+  const year = AcademicState.currentSubjectYear || document.getElementById('grYear')?.value || (APP.dashboardData?.config?.academic_year || '');
+  const sem  = AcademicState.currentSubjectSem || document.getElementById('grSem')?.value || '1';
+
   showLoading('กำลังบันทึก...');
   google.script.run
     .withSuccessHandler(res => {
@@ -1077,7 +1086,7 @@ function saveGradeSheet() {
       else showToast('error', res.message);
     })
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
-    .saveGradeBulk(AcademicState.currentSubject.id, AcademicState.gradeRows, APP.token);
+    .saveGradeBulk(AcademicState.currentSubject.id, AcademicState.gradeRows, APP.token, year, sem);
 }
 
 function printPP5() {

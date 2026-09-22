@@ -154,9 +154,9 @@ function routeApi(action, params, token) {
       case 'deleteSubject': return deleteSubject(params.id, token);
       case 'deleteSubjectsBulk': return deleteSubjectsBulk(params.ids || params, token);
       case 'deleteSubjectsBySemester': return deleteSubjectsBySemester(params, token);
-      case 'getGradeSheet': return getGradeSheet(params.id || params.subject_id, token);
+      case 'getGradeSheet': return getGradeSheet(params.id || params.subject_id, token, params.academic_year || params.year, params.semester || params.sem);
       case 'saveGradeSheet': return saveGradeSheet(params, token);
-      case 'saveGradeBulk': return saveGradeBulk(params.subject_id || params.id, JSON.parse(params.records || '[]'), token);
+      case 'saveGradeBulk': return saveGradeBulk(params.subject_id || params.id, (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records), token, params.academic_year || params.year, params.semester || params.sem);
       case 'getGradeReport': return getGradeReport(params.student_id || params.id, token);
       case 'calculateGPA': return calculateGPA(params.studentId || params.id, params.year, token);
       case 'generatePP5HTML': return generatePP5HTML(params.id || params.subject_id, token);
@@ -512,22 +512,17 @@ function appendJsonRows_(sheetName, arr) {
 function writeJsonSheet_(sheetName, arr) {
   const sheet = _ensureSheet_(sheetName);
   const last = sheet.getLastRow();
-  const newLength = arr.length;
-  const maxRows = Math.max(last - 1, newLength);
-  if (maxRows === 0) {
-    _jsonSheetCache_[sheetName] = [];
-    _clearCacheChunks_(sheetName);
-    return;
+  if (last > 1) {
+    sheet.getRange(2, 1, last - 1, 1).clearContent();
   }
-  const rows = [];
-  for (let i = 0; i < maxRows; i++) {
-    if (i < newLength) {
-      rows.push([JSON.stringify(arr[i])]);
-    } else {
-      rows.push(['']);
+  if (arr.length > 0) {
+    const rows = arr.map(x => [JSON.stringify(x)]);
+    const currentMax = sheet.getMaxRows();
+    if (currentMax < rows.length + 1) {
+      sheet.insertRowsAfter(currentMax, (rows.length + 1) - currentMax);
     }
+    sheet.getRange(2, 1, rows.length, 1).setValues(rows);
   }
-  sheet.getRange(2, 1, maxRows, 1).setValues(rows);
   _jsonSheetCache_[sheetName] = arr.slice();
   _setCacheChunks_(sheetName, JSON.stringify(arr));
 }
@@ -1931,7 +1926,7 @@ function saveSubject(data, sessionToken) {
       hours_per_week: Number(data.hours_per_week) || 0,
       grade_level   : sanitize(data.grade_level),
       semester      : String(data.semester || '1'),
-      academic_year : sanitize(data.academic_year) || getConfig().academic_year,
+      academic_year : sanitize(data.academic_year || ''),
       teacher_id    : data.teacher_id || '',
       teacher_name  : sanitize(data.teacher_name || ''),
       midterm_weight: Number(data.midterm_weight) || 70,
@@ -1966,9 +1961,15 @@ function importSubjectsBulk(recordsJson, sessionToken) {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
 
-    const records = typeof recordsJson === 'string' ? JSON.parse(recordsJson) : recordsJson;
-    if (!Array.isArray(records) || records.length === 0) {
-      return { status: 'error', message: 'ไม่มีข้อมูล หรือข้อมูลไม่ถูกต้อง' };
+    let records = [];
+    if (typeof recordsJson === 'string') {
+      try { records = JSON.parse(recordsJson); } catch(e) { records = []; }
+    } else if (Array.isArray(recordsJson)) {
+      records = recordsJson;
+    }
+
+    if (records.length === 0) {
+      return { status: 'error', message: 'ไม่พบข้อมูลที่ต้องการนำเข้า' };
     }
 
     const arr = readJsonSheet_('Academic');
@@ -2041,7 +2042,7 @@ function importSubjectsBulk(recordsJson, sessionToken) {
         hours_per_week: Number(r.hours_per_week) || 0,
         grade_level   : sanitize(r.grade_level),
         semester      : String(r.semester || '1'),
-        academic_year : sanitize(r.academic_year) || getConfig().academic_year,
+        academic_year : sanitize(r.academic_year || ''),
         teacher_id    : matchedTeacherId,
         teacher_name  : matchedTeacherName,
         midterm_weight: Number(r.midterm_weight) || 70,
@@ -2054,8 +2055,7 @@ function importSubjectsBulk(recordsJson, sessionToken) {
         x._kind === 'subject' &&
         String(x.subject_code || '').trim().toLowerCase() === String(obj.subject_code || '').trim().toLowerCase() &&
         String(x.grade_level || '').trim() === String(obj.grade_level || '').trim() &&
-        String(x.semester || '').trim() === String(obj.semester || '').trim() &&
-        String(x.academic_year || '').trim() === String(obj.academic_year || '').trim()
+        String(x.semester || '').trim() === String(obj.semester || '').trim()
       );
 
       if (existingIdx >= 0) {
@@ -2110,8 +2110,8 @@ function deleteSubjectsBulk(ids, sessionToken) {
     }
 
     const all = readJsonSheet_('Academic');
-    // ลบวิชา และ grade ที่อ้างอิงถึงวิชาเหล่านั้น
-    const next = all.filter(x => !ids.includes(x.id) && !ids.includes(x.subject_id));
+    const deleteSet = new Set(ids);
+    const next = all.filter(x => !deleteSet.has(x.id) && !deleteSet.has(x.subject_id));
     
     writeJsonSheet_('Academic', next);
     return { status:'success', message:'ลบรายวิชาที่เลือกสำเร็จ จำนวน ' + ids.length + ' รายการ' };
@@ -2151,7 +2151,8 @@ function deleteSubjectsBySemester(params, sessionToken) {
       return { status: 'error', message: 'ไม่พบรายวิชาในภาคเรียนที่ระบุ' };
     }
 
-    const next = all.filter(x => !toDeleteIds.includes(x.id) && !toDeleteIds.includes(x.subject_id));
+    const deleteSet = new Set(toDeleteIds);
+    const next = all.filter(x => !deleteSet.has(x.id) && !deleteSet.has(x.subject_id));
     writeJsonSheet_('Academic', next);
 
     const yearText = academicYear ? ` ปีการศึกษา ${academicYear}` : '';
@@ -2173,7 +2174,7 @@ function deleteSubjectsBySemester(params, sessionToken) {
 /**
  * ดึงตาราง ปพ.5 ของรายวิชา → คืน students ในห้องที่เปิดวิชานี้ + คะแนนเดิม
  */
-function getGradeSheet(subjectId, sessionToken) {
+function getGradeSheet(subjectId, sessionToken, academicYear, semester) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
@@ -2182,14 +2183,17 @@ function getGradeSheet(subjectId, sessionToken) {
       .filter(x => x._kind === 'subject').find(x => x.id === subjectId);
     if (!subject) return { status:'error', message:'ไม่พบรายวิชา' };
 
+    const targetYear = academicYear || subject.academic_year || getConfig().academic_year;
+    const targetSem  = semester || subject.semester || '1';
+
     const students = readJsonSheet_('Students')
       .filter(s => s.classroom === subject.grade_level && s.status === 'active')
       .sort((a, b) => String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th'));
 
     const grades = readJsonSheet_('Academic').filter(x =>
       x._kind === 'grade' && x.subject_id === subjectId &&
-      String(x.academic_year) === String(subject.academic_year) &&
-      String(x.semester) === String(subject.semester)
+      String(x.academic_year || '') === String(targetYear || '') &&
+      String(x.semester || '') === String(targetSem || '')
     );
 
     const rows = students.map(s => {
@@ -2213,7 +2217,7 @@ function getGradeSheet(subjectId, sessionToken) {
       };
     });
 
-    return { status:'success', subject:subject, data:rows };
+    return { status:'success', subject:subject, data:rows, academic_year:targetYear, semester:targetSem };
 
   } catch (e) {
     logError({ fn:'getGradeSheet', error:e.message });
@@ -2224,7 +2228,7 @@ function getGradeSheet(subjectId, sessionToken) {
 /**
  * บันทึกคะแนน ปพ.5 แบบ Bulk
  */
-function saveGradeBulk(subjectId, records, sessionToken) {
+function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester) {
   try {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
@@ -2232,6 +2236,9 @@ function saveGradeBulk(subjectId, records, sessionToken) {
     const subject = readJsonSheet_('Academic')
       .filter(x => x._kind === 'subject').find(x => x.id === subjectId);
     if (!subject) return { status:'error', message:'ไม่พบรายวิชา' };
+
+    const targetYear = academicYear || subject.academic_year || getConfig().academic_year;
+    const targetSem  = semester || subject.semester || '1';
 
     const config = getConfig();
     const thresholds = config.grade_thresholds;
@@ -2242,8 +2249,8 @@ function saveGradeBulk(subjectId, records, sessionToken) {
     const others = all.filter(x => !(
       x._kind === 'grade' &&
       x.subject_id === subjectId &&
-      String(x.academic_year) === String(subject.academic_year) &&
-      String(x.semester) === String(subject.semester)
+      String(x.academic_year || '') === String(targetYear || '') &&
+      String(x.semester || '') === String(targetSem || '')
     ));
 
     const now = new Date().toISOString();
@@ -2280,8 +2287,8 @@ function saveGradeBulk(subjectId, records, sessionToken) {
           _kind         : 'grade',
           student_id    : r.student_id,
           subject_id    : subjectId,
-          academic_year : subject.academic_year,
-          semester      : subject.semester,
+          academic_year : String(targetYear),
+          semester      : String(targetSem),
           score_midterm : sm,
           score_final   : sf,
           score_total   : total,
