@@ -154,17 +154,17 @@ function routeApi(action, params, token) {
       case 'deleteSubject': return deleteSubject(params.id, token);
       case 'deleteSubjectsBulk': return deleteSubjectsBulk(params.ids || params, token);
       case 'deleteSubjectsBySemester': return deleteSubjectsBySemester(params, token);
-      case 'getGradeSheet': return getGradeSheet(params.id || params.subject_id, token, params.academic_year || params.year, params.semester || params.sem);
+      case 'getGradeSheet': return getGradeSheet(params.id || params.subject_id, token, params.academic_year || params.year, params.semester || params.sem, params.classroom);
       case 'saveGradeSheet': return saveGradeSheet(params, token);
       case 'saveGradeBulk': return saveGradeBulk(params.subject_id || params.id, (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records), token, params.academic_year || params.year, params.semester || params.sem);
       case 'getGradeReport': return getGradeReport(params.student_id || params.id, token);
       case 'calculateGPA': return calculateGPA(params.studentId || params.id, params.year, token);
-      case 'generatePP5HTML': return generatePP5HTML(params.id || params.subject_id, token);
+      case 'generatePP5HTML': return generatePP5HTML(params.id || params.subject_id, token, params.academic_year || params.year, params.semester || params.sem, params.classroom);
       case 'generatePP6HTML': return generatePP6HTML(params.studentId || params.id, params.sem, params.year, token);
 
       // ---------- ATTENDANCE ----------
       case 'getAttendanceByClassDate': return getAttendanceByClassDate(params.classroom, params.date, token);
-      case 'getAttendanceBySubjectDate': return getAttendanceBySubjectDate(params.subject_id, params.date, token);
+      case 'getAttendanceBySubjectDate': return getAttendanceBySubjectDate(params.subject_id, params.date, token, params.classroom);
       case 'saveAttendanceBulk': return saveAttendanceBulk(params, token);
       case 'getAttendanceReport': return getAttendanceReport(params, token);
       case 'getAttendanceByStudent': return getAttendanceByStudent(params.student_id, token);
@@ -1533,7 +1533,7 @@ function getAttendanceByClassDate(classroom, date, sessionToken) {
 /**
  * ดึงรายชื่อนักเรียนตามวิชา พร้อมสถานะการเข้าเรียนของวันที่ระบุ
  */
-function getAttendanceBySubjectDate(subject_id, date, sessionToken) {
+function getAttendanceBySubjectDate(subject_id, date, sessionToken, classroom) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
@@ -1542,9 +1542,26 @@ function getAttendanceBySubjectDate(subject_id, date, sessionToken) {
     const subj = readJsonSheet_('Academic').find(x => x.id === subject_id && x._kind === 'subject');
     if (!subj) return { status:'error', message:'ไม่พบรายวิชา' };
 
-    const students = readJsonSheet_('Students')
-      .filter(s => String(s.classroom) === String(subj.grade_level) && s.status === 'active')
-      .sort((a, b) => String(a.first_name||'').localeCompare(String(b.first_name||''), 'th'));
+    const subjGrade = normalizeGradeLevel_(subj.grade_level);
+    const allStudents = readJsonSheet_('Students').filter(s => s.status === 'active');
+
+    const availableClassrooms = Array.from(new Set(
+      allStudents
+        .filter(s => normalizeGradeLevel_(s.classroom) === subjGrade || String(s.classroom).trim() === String(subj.grade_level).trim())
+        .map(s => s.classroom)
+        .filter(Boolean)
+    )).sort((a, b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+
+    const students = allStudents
+      .filter(s => {
+        if (classroom && String(s.classroom).trim() !== String(classroom).trim()) return false;
+        return normalizeGradeLevel_(s.classroom) === subjGrade || String(s.classroom).trim() === String(subj.grade_level).trim();
+      })
+      .sort((a, b) => {
+        const c1 = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
+        if (c1 !== 0) return c1;
+        return String(a.first_name||'').localeCompare(String(b.first_name||''), 'th');
+      });
 
     const att = readJsonSheet_('Attendance').filter(a => a.date === date && a.subject_id === subject_id);
 
@@ -1553,6 +1570,7 @@ function getAttendanceBySubjectDate(subject_id, date, sessionToken) {
       return {
         student_id   : s.id,
         student_code : s.student_id,
+        classroom    : s.classroom,
         prefix       : s.prefix,
         first_name   : s.first_name,
         last_name    : s.last_name,
@@ -1564,8 +1582,15 @@ function getAttendanceBySubjectDate(subject_id, date, sessionToken) {
       };
     });
 
-    return { status:'success', data:rows, date:date, subject_id:subject_id,
-             subject_name: subj.subject_name, classroom: subj.grade_level };
+    return { 
+      status:'success', 
+      data:rows, 
+      date:date, 
+      subject_id:subject_id,
+      subject_name: subj.subject_name, 
+      classroom: subj.grade_level,
+      classrooms: availableClassrooms
+    };
 
   } catch (e) {
     logError({ fn:'getAttendanceBySubjectDate', error:e.message });
@@ -1826,6 +1851,11 @@ function exportData(sheetType, sessionToken) {
 /* ============================================================
  *  ACADEMIC — Subjects
  * ============================================================ */
+function normalizeGradeLevel_(str) {
+  if (!str) return '';
+  return String(str).trim().split('/')[0].trim();
+}
+
 function getSubjects(params, sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken);
@@ -1853,7 +1883,10 @@ function getSubjects(params, sessionToken) {
       });
     }
     if (params.subject_group) filtered = filtered.filter(s => s.subject_group === params.subject_group);
-    if (params.grade_level)   filtered = filtered.filter(s => s.grade_level === params.grade_level);
+    if (params.grade_level) {
+      const targetG = normalizeGradeLevel_(params.grade_level);
+      filtered = filtered.filter(s => normalizeGradeLevel_(s.grade_level) === targetG);
+    }
     if (params.academic_year) filtered = filtered.filter(s => String(s.academic_year || '').trim() === String(params.academic_year).trim());
     if (params.semester)      filtered = filtered.filter(s => String(s.semester || '').trim() === String(params.semester).trim());
 
@@ -1882,7 +1915,7 @@ function getSubjects(params, sessionToken) {
 
     const distinct = {
       groups: ['ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษาฯ','สุขศึกษาและพลศึกษา','ศิลปะ','การงานอาชีพ','ภาษาต่างประเทศ'],
-      grades: Array.from(new Set(all.map(s => s.grade_level).filter(Boolean))).sort(),
+      grades: Array.from(new Set(all.map(s => normalizeGradeLevel_(s.grade_level)).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th', { numeric: true })),
       semesters: Array.from(new Set(all.map(s => String(s.semester || '')).filter(Boolean))).sort(),
       years: Array.from(new Set(all.map(s => String(s.academic_year || '')).filter(Boolean))).sort().reverse()
     };
@@ -1924,7 +1957,7 @@ function saveSubject(data, sessionToken) {
       subject_type  : data.subject_type || 'basic',
       credit        : Number(data.credit) || 0,
       hours_per_week: Number(data.hours_per_week) || 0,
-      grade_level   : sanitize(data.grade_level),
+      grade_level   : normalizeGradeLevel_(sanitize(data.grade_level)),
       semester      : String(data.semester || '1'),
       academic_year : sanitize(data.academic_year || ''),
       teacher_id    : data.teacher_id || '',
@@ -2040,7 +2073,7 @@ function importSubjectsBulk(recordsJson, sessionToken) {
         subject_type  : r.subject_type || 'basic',
         credit        : Number(r.credit) || 0,
         hours_per_week: Number(r.hours_per_week) || 0,
-        grade_level   : sanitize(r.grade_level),
+        grade_level   : normalizeGradeLevel_(sanitize(r.grade_level)),
         semester      : String(r.semester || '1'),
         academic_year : sanitize(r.academic_year || ''),
         teacher_id    : matchedTeacherId,
@@ -2051,10 +2084,11 @@ function importSubjectsBulk(recordsJson, sessionToken) {
         updated_at    : now
       };
 
+      const cleanGrade = normalizeGradeLevel_(r.grade_level);
       const existingIdx = arr.findIndex(x => 
         x._kind === 'subject' &&
         String(x.subject_code || '').trim().toLowerCase() === String(obj.subject_code || '').trim().toLowerCase() &&
-        String(x.grade_level || '').trim() === String(obj.grade_level || '').trim() &&
+        normalizeGradeLevel_(x.grade_level) === cleanGrade &&
         String(x.semester || '').trim() === String(obj.semester || '').trim()
       );
 
@@ -2174,7 +2208,7 @@ function deleteSubjectsBySemester(params, sessionToken) {
 /**
  * ดึงตาราง ปพ.5 ของรายวิชา → คืน students ในห้องที่เปิดวิชานี้ + คะแนนเดิม
  */
-function getGradeSheet(subjectId, sessionToken, academicYear, semester) {
+function getGradeSheet(subjectId, sessionToken, academicYear, semester, classroom) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
@@ -2185,10 +2219,28 @@ function getGradeSheet(subjectId, sessionToken, academicYear, semester) {
 
     const targetYear = academicYear || subject.academic_year || getConfig().academic_year;
     const targetSem  = semester || subject.semester || '1';
+    const subjGrade  = normalizeGradeLevel_(subject.grade_level);
 
-    const students = readJsonSheet_('Students')
-      .filter(s => s.classroom === subject.grade_level && s.status === 'active')
-      .sort((a, b) => String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th'));
+    const allStudents = readJsonSheet_('Students').filter(s => s.status === 'active');
+
+    const availableClassrooms = Array.from(new Set(
+      allStudents
+        .filter(s => normalizeGradeLevel_(s.classroom) === subjGrade || String(s.classroom).trim() === String(subject.grade_level).trim())
+        .map(s => s.classroom)
+        .filter(Boolean)
+    )).sort((a, b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+
+    const students = allStudents
+      .filter(s => {
+        if (classroom && String(s.classroom).trim() !== String(classroom).trim()) return false;
+        const sGrade = normalizeGradeLevel_(s.classroom);
+        return sGrade === subjGrade || String(s.classroom).trim() === String(subject.grade_level).trim();
+      })
+      .sort((a, b) => {
+        const c1 = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
+        if (c1 !== 0) return c1;
+        return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+      });
 
     const grades = readJsonSheet_('Academic').filter(x =>
       x._kind === 'grade' && x.subject_id === subjectId &&
@@ -2202,6 +2254,7 @@ function getGradeSheet(subjectId, sessionToken, academicYear, semester) {
         grade_id      : g.id || null,
         student_id    : s.id,
         student_code  : s.student_id,
+        classroom     : s.classroom,
         prefix        : s.prefix,
         first_name    : s.first_name,
         last_name     : s.last_name,
@@ -2217,7 +2270,14 @@ function getGradeSheet(subjectId, sessionToken, academicYear, semester) {
       };
     });
 
-    return { status:'success', subject:subject, data:rows, academic_year:targetYear, semester:targetSem };
+    return { 
+      status:'success', 
+      subject:subject, 
+      data:rows, 
+      academic_year:targetYear, 
+      semester:targetSem,
+      classrooms: availableClassrooms 
+    };
 
   } catch (e) {
     logError({ fn:'getGradeSheet', error:e.message });
@@ -2245,12 +2305,14 @@ function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester)
     const minAttPct = Number(config.min_attendance_pct) || 80;
 
     const all = readJsonSheet_('Academic');
-    // ลบ grade เดิมของวิชา/เทอม/ปีเดียวกัน
+    // ลบ grade เดิมของวิชา/เทอม/ปีเดียวกันเฉพาะนักเรียนที่มีใน records ที่ส่งมา (ไม่ลบห้องอื่นที่ไม่ได้ส่ง)
+    const incomingStudentIds = new Set((records || []).map(r => r.student_id).filter(Boolean));
     const others = all.filter(x => !(
       x._kind === 'grade' &&
       x.subject_id === subjectId &&
       String(x.academic_year || '') === String(targetYear || '') &&
-      String(x.semester || '') === String(targetSem || '')
+      String(x.semester || '') === String(targetSem || '') &&
+      incomingStudentIds.has(x.student_id)
     ));
 
     const now = new Date().toISOString();
@@ -2400,7 +2462,7 @@ function calculateGPA(studentId, academicYear, sessionToken) {
 /**
  * สร้าง HTML ปพ.5 — สำหรับเปิดในหน้าต่างใหม่แล้ว print
  */
-function generatePP5HTML(subjectId, sessionToken) {
+function generatePP5HTML(subjectId, sessionToken, academicYear, semester, classroom) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
@@ -2410,13 +2472,16 @@ function generatePP5HTML(subjectId, sessionToken) {
       .filter(x => x._kind === 'subject').find(x => x.id === subjectId);
     if (!subject) return { status:'error', message:'ไม่พบรายวิชา' };
 
-    const sheet = getGradeSheet(subjectId, sessionToken);
+    const targetYear = academicYear || subject.academic_year || config.academic_year;
+    const targetSem  = semester || subject.semester || '1';
+
+    const sheet = getGradeSheet(subjectId, sessionToken, targetYear, targetSem, classroom);
     if (sheet.status !== 'success') return sheet;
 
     const personnel = readJsonSheet_('Personnel');
     const teacher = personnel.find(p => p.id === subject.teacher_id) || {};
 
-    const html = renderPP5Template_(config, subject, teacher, sheet.data);
+    const html = renderPP5Template_(config, subject, teacher, sheet.data, classroom, targetYear, targetSem);
     return { status:'success', html: html };
 
   } catch (e) {
@@ -2425,7 +2490,7 @@ function generatePP5HTML(subjectId, sessionToken) {
   }
 }
 
-function renderPP5Template_(config, subject, teacher, rows) {
+function renderPP5Template_(config, subject, teacher, rows, classroom, targetYear, targetSem) {
   const teacherName = teacher.id ? ((teacher.prefix||'') + (teacher.first_name||'') + ' ' + (teacher.last_name||'')) : '...........................';
   const grade = (g, special) => {
     if (special) return special;
@@ -2446,6 +2511,7 @@ function renderPP5Template_(config, subject, teacher, rows) {
         <td class="t-center">${i+1}</td>
         <td class="t-center">${r.student_code || ''}</td>
         <td>${escapeHTMLServer_((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</td>
+        <td class="t-center">${escapeHTMLServer_(r.classroom || '')}</td>
         <td class="t-center">${m}</td>
         <td class="t-center">${f}</td>
         <td class="t-center">${t}</td>
@@ -2453,6 +2519,10 @@ function renderPP5Template_(config, subject, teacher, rows) {
         <td class="t-center"><b>${grade(gradeLv, r.grade_special)}</b></td>
       </tr>`;
   }).join('');
+
+  const displayClass = classroom 
+    ? `${escapeHTMLServer_(subject.grade_level || '')} (ห้อง ${escapeHTMLServer_(classroom)})`
+    : escapeHTMLServer_(subject.grade_level || '-');
 
   return `
 <!DOCTYPE html><html lang="th"><head>
@@ -2508,11 +2578,11 @@ function renderPP5Template_(config, subject, teacher, rows) {
   </tr>
   <tr>
     <td class="lbl">ชั้น:</td>
-    <td>${escapeHTMLServer_(subject.grade_level || '-')}</td>
+    <td>${displayClass}</td>
     <td class="lbl">ภาคเรียน:</td>
-    <td>${escapeHTMLServer_(subject.semester || '-')}</td>
+    <td>${escapeHTMLServer_(targetSem || subject.semester || '-')}</td>
     <td class="lbl">ปีการศึกษา:</td>
-    <td>${escapeHTMLServer_(subject.academic_year || '-')}</td>
+    <td>${escapeHTMLServer_(targetYear || subject.academic_year || '-')}</td>
   </tr>
   <tr>
     <td class="lbl">ครูผู้สอน:</td>
@@ -2523,9 +2593,10 @@ function renderPP5Template_(config, subject, teacher, rows) {
 <table class="grade-table">
   <thead>
     <tr>
-      <th style="width:40px;">ที่</th>
-      <th style="width:80px;">รหัส</th>
+      <th style="width:35px;">ที่</th>
+      <th style="width:75px;">รหัส</th>
       <th>ชื่อ-นามสกุล</th>
+      <th style="width:55px;">ห้อง</th>
       <th style="width:75px;">ระหว่างภาค<br>(${subject.midterm_weight || 70})</th>
       <th style="width:65px;">ปลายภาค<br>(${subject.final_weight || 30})</th>
       <th style="width:50px;">รวม</th>

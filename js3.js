@@ -25,6 +25,11 @@ function openHTMLDocument(html) {
 /* ============================================================
  *  ACADEMIC
  * ============================================================ */
+function normalizeGradeLevel(str) {
+  if (!str) return '';
+  return String(str).trim().split('/')[0].trim();
+}
+
 const AcademicState = {
   tab: 'subjects',     // 'subjects' | 'grades' | 'gpa'
   page: 1,
@@ -37,6 +42,7 @@ const AcademicState = {
   gradeRows: [],
   academic_year: '',
   semester: '',
+  currentSubjectClassroom: '',
   allSubjects: []
 };
 
@@ -144,7 +150,7 @@ function renderAcademicSubjects() {
       <div class="lg:col-span-2">
         <select id="subGrade" onchange="onSubjectFilter()"
                 class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
-          <option value="">ทุกชั้น\x3c/option>
+          <option value="">ทุกระดับชั้น\x3c/option>
         \x3c/select>
       \x3c/div>
     \x3c/div>
@@ -235,7 +241,7 @@ function renderSubjectsTable(res) {
   const gr = document.getElementById('subGrade');
   if (gr && res.distinct && res.distinct.grades) {
     const cur = AcademicState.grade_level;
-    gr.innerHTML = '<option value="">ทุกชั้น\x3c/option>' +
+    gr.innerHTML = '<option value="">ทุกระดับชั้น\x3c/option>' +
       res.distinct.grades.map(g => `<option value="${escapeHTML(g)}" ${cur===g?'selected':''}>${escapeHTML(g)}\x3c/option>`).join('');
   }
   const yr = document.getElementById('subYear');
@@ -265,7 +271,7 @@ function renderSubjectsTable(res) {
     const filterDesc = [
       AcademicState.academic_year ? `ปีการศึกษา ${AcademicState.academic_year}` : '',
       AcademicState.semester ? `เทอม ${AcademicState.semester}` : '',
-      AcademicState.grade_level ? `ชั้น ${AcademicState.grade_level}` : '',
+      AcademicState.grade_level ? `ระดับชั้น ${AcademicState.grade_level}` : '',
       AcademicState.subject_group ? `กลุ่มสาระ ${AcademicState.subject_group}` : ''
     ].filter(Boolean).join(' · ');
     area.innerHTML = `<div class="empty-state"><i class='bx bx-folder-open'>\x3c/i>ไม่พบรายวิชา ${filterDesc ? `(${escapeHTML(filterDesc)})` : ''}\x3c/div>`;
@@ -282,7 +288,7 @@ function renderSubjectsTable(res) {
             <th class="px-3 py-2.5 text-left ${APP.role === 'teacher' ? 'rounded-l-lg' : ''}">รหัส\x3c/th>
             <th class="px-3 py-2.5 text-left">ชื่อวิชา\x3c/th>
             <th class="px-3 py-2.5 text-left">กลุ่มสาระ\x3c/th>
-            <th class="px-3 py-2.5 text-left">ชั้น\x3c/th>
+            <th class="px-3 py-2.5 text-left">ระดับชั้น\x3c/th>
             <th class="px-3 py-2.5 text-center">หน่วยกิต\x3c/th>
             <th class="px-3 py-2.5 text-left">ครูผู้สอน\x3c/th>
             <th class="px-3 py-2.5 text-center rounded-r-lg">การจัดการ\x3c/th>
@@ -576,7 +582,8 @@ function previewSubjectsCSV(input) {
       const subject_type = getVal(obj, ['subject_type', 'type', 'ประเภทวิชา', 'ประเภท']) || 'basic';
       const credit = getVal(obj, ['credit', 'หน่วยกิต']) || '0';
       const hours_per_week = getVal(obj, ['hours_per_week', 'hours', 'ชั่วโมง', 'จำนวนชั่วโมง', 'คาบ']) || '0';
-      const grade_level = getVal(obj, ['grade_level', 'grade', 'ชั้น', 'ระดับชั้น']);
+      const rawGrade = getVal(obj, ['grade_level', 'grade', 'ชั้น', 'ระดับชั้น']);
+      const grade_level = normalizeGradeLevel(rawGrade);
       const semester = getVal(obj, ['semester', 'เทอม', 'ภาคเรียน']) || '1';
       const academic_year = getVal(obj, ['academic_year', 'year', 'ปีการศึกษา', 'ปี']) || '';
       const teacher_name_raw = getVal(obj, ['teacher_name', 'teacher', 'ครูผู้สอน', 'ครู', 'ผู้สอน', 'ชื่อครู']);
@@ -612,9 +619,27 @@ function previewSubjectsCSV(input) {
       };
     }).filter(r => r.subject_name);
 
-    _csvImportSubjectRecords = records;
+    // Deduplicate records by subject_code + grade_level + semester (merging rooms like ม.1/1, ม.1/2 into master grade ม.1)
+    const dedupedRecords = [];
+    const seenMap = new Map();
+    records.forEach(r => {
+      const codeKey = String(r.subject_code || r.subject_name).trim().toLowerCase();
+      const key = `${codeKey}__${r.grade_level}__${r.semester}`;
+      if (seenMap.has(key)) {
+        const existing = seenMap.get(key);
+        if (!existing.teacher_id && r.teacher_id) {
+          existing.teacher_id = r.teacher_id;
+          existing.teacher_name = r.teacher_name;
+        }
+      } else {
+        seenMap.set(key, r);
+        dedupedRecords.push(r);
+      }
+    });
 
-    body.innerHTML = records.map((r, i) => {
+    _csvImportSubjectRecords = dedupedRecords;
+
+    body.innerHTML = dedupedRecords.map((r, i) => {
       const warn = !r.subject_code ? 'class="warn" title="รหัสวิชาว่างเปล่า"' : '';
       const teacherBadge = r.teacher_name 
         ? (r.teacher_id 
@@ -628,12 +653,12 @@ function previewSubjectsCSV(input) {
           <td class="font-mono">${escapeHTML(r.subject_code)}\x3c/td>
           <td>${escapeHTML(r.subject_name)}\x3c/td>
           <td>${escapeHTML(r.credit)}\x3c/td>
-          <td>${escapeHTML(r.grade_level)} (${escapeHTML(r.academic_year)})\x3c/td>
+          <td>${escapeHTML(r.grade_level)}${r.academic_year ? ` (${escapeHTML(r.academic_year)})` : ' (ทุกปี)'}\x3c/td>
           <td>${teacherBadge}\x3c/td>
         \x3c/tr>
       `;
     }).join('');
-    count.innerText = `พบ ${records.length} รายการ`;
+    count.innerText = `พบ ${dedupedRecords.length} รายการ (ระดับชั้น)`;
     box.style.display = 'block';
   };
   reader.readAsText(file);
@@ -673,6 +698,10 @@ function showSubjectForm(data) {
   const isEdit = !!s.id;
   const groups = ['ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษาฯ','สุขศึกษาและพลศึกษา','ศิลปะ','การงานอาชีพ','ภาษาต่างประเทศ'];
 
+  const curGrade = normalizeGradeLevel(s.grade_level || '');
+  const stdGrades = ['ม.1','ม.2','ม.3','ม.4','ม.5','ม.6','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','อ.1','อ.2','อ.3'];
+  const hasCustomGrade = curGrade && !stdGrades.includes(curGrade);
+
   Swal.fire({
     title: isEdit ? 'แก้ไขรายวิชา' : 'เพิ่มรายวิชาใหม่',
     width: 680,
@@ -710,8 +739,34 @@ function showSubjectForm(data) {
           \x3c/div>
 
           <div class="col-span-4">
-            <label class="form-label">ชั้น\x3c/label>
-            <input type="text" id="sf_grade_level" class="form-input" placeholder="ม.1/1" value="${escapeHTML(s.grade_level||'')}">
+            <label class="form-label">ระดับชั้น <span class="text-red-500">*\x3c/span>\x3c/label>
+            <select id="sf_grade_level" class="form-input font-medium">
+              <option value="">-- เลือกระดับชั้น --\x3c/option>
+              <optgroup label="มัธยมศึกษาตอนต้น">
+                <option value="ม.1" ${curGrade==='ม.1'?'selected':''}>ม.1\x3c/option>
+                <option value="ม.2" ${curGrade==='ม.2'?'selected':''}>ม.2\x3c/option>
+                <option value="ม.3" ${curGrade==='ม.3'?'selected':''}>ม.3\x3c/option>
+              </optgroup>
+              <optgroup label="มัธยมศึกษาตอนปลาย">
+                <option value="ม.4" ${curGrade==='ม.4'?'selected':''}>ม.4\x3c/option>
+                <option value="ม.5" ${curGrade==='ม.5'?'selected':''}>ม.5\x3c/option>
+                <option value="ม.6" ${curGrade==='ม.6'?'selected':''}>ม.6\x3c/option>
+              </optgroup>
+              <optgroup label="ประถมศึกษา">
+                <option value="ป.1" ${curGrade==='ป.1'?'selected':''}>ป.1\x3c/option>
+                <option value="ป.2" ${curGrade==='ป.2'?'selected':''}>ป.2\x3c/option>
+                <option value="ป.3" ${curGrade==='ป.3'?'selected':''}>ป.3\x3c/option>
+                <option value="ป.4" ${curGrade==='ป.4'?'selected':''}>ป.4\x3c/option>
+                <option value="ป.5" ${curGrade==='ป.5'?'selected':''}>ป.5\x3c/option>
+                <option value="ป.6" ${curGrade==='ป.6'?'selected':''}>ป.6\x3c/option>
+              </optgroup>
+              <optgroup label="ปฐมวัย / อนุบาล">
+                <option value="อ.1" ${curGrade==='อ.1'?'selected':''}>อ.1\x3c/option>
+                <option value="อ.2" ${curGrade==='อ.2'?'selected':''}>อ.2\x3c/option>
+                <option value="อ.3" ${curGrade==='อ.3'?'selected':''}>อ.3\x3c/option>
+              </optgroup>
+              ${hasCustomGrade ? `<option value="${escapeHTML(curGrade)}" selected>${escapeHTML(curGrade)} (กำหนดเอง)\x3c/option>` : ''}
+            \x3c/select>
           \x3c/div>
           <div class="col-span-4">
             <label class="form-label">เทอม (ภาคเรียน)\x3c/label>
@@ -765,13 +820,15 @@ function showSubjectForm(data) {
     preConfirm: () => {
       const name = document.getElementById('sf_subject_name').value.trim();
       if (!name) { Swal.showValidationMessage('กรุณากรอกชื่อวิชา'); return false; }
+      const grade = normalizeGradeLevel(document.getElementById('sf_grade_level').value);
+      if (!grade) { Swal.showValidationMessage('กรุณาเลือกระดับชั้น'); return false; }
       return {
         id: document.getElementById('sf_id').value || null,
         subject_code  : document.getElementById('sf_subject_code').value,
         subject_name  : name,
         subject_group : document.getElementById('sf_subject_group').value,
         subject_type  : document.getElementById('sf_subject_type').value,
-        grade_level   : document.getElementById('sf_grade_level').value,
+        grade_level   : grade,
         semester      : document.getElementById('sf_semester').value,
         academic_year : document.getElementById('sf_academic_year').value,
         credit        : document.getElementById('sf_credit').value,
@@ -824,21 +881,33 @@ function renderAcademicGrades() {
       <i class='bx bx-edit mr-1 text-primary' >\x3c/i> บันทึกคะแนน ปพ.5
     \x3c/div>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-      <select id="grYear" onchange="onGradesFilterChange()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-        <option value="">เลือกปีการศึกษา\x3c/option>
-      \x3c/select>
-      <select id="grSem" onchange="onGradesFilterChange()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-        <option value="">เลือกเทอม\x3c/option>
-        <option value="1">เทอม 1\x3c/option>
-        <option value="2">เทอม 2\x3c/option>
-      \x3c/select>
-      <select id="grSubject"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm md:col-span-2">
-        <option value="">เลือกรายวิชา\x3c/option>
-      \x3c/select>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2 mb-3">
+      <div class="md:col-span-2">
+        <select id="grYear" onchange="onGradesFilterChange()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <option value="">เลือกปีการศึกษา\x3c/option>
+        \x3c/select>
+      \x3c/div>
+      <div class="md:col-span-2">
+        <select id="grSem" onchange="onGradesFilterChange()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <option value="">เลือกเทอม\x3c/option>
+          <option value="1">เทอม 1\x3c/option>
+          <option value="2">เทอม 2\x3c/option>
+        \x3c/select>
+      \x3c/div>
+      <div class="md:col-span-5">
+        <select id="grSubject" onchange="onGrSubjectChange()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <option value="">เลือกรายวิชา\x3c/option>
+        \x3c/select>
+      \x3c/div>
+      <div class="md:col-span-3">
+        <select id="grClassroom" onchange="loadGradeSheet()"
+                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium">
+          <option value="">ทุกห้องเรียน\x3c/option>
+        \x3c/select>
+      \x3c/div>
     \x3c/div>
     <div class="flex justify-end mb-3">
       <button class="btn btn-blue" onclick="loadGradeSheet()">
@@ -875,6 +944,12 @@ function renderAcademicGrades() {
     .getSubjects({ page:1, per_page:200 }, APP.token);
 }
 
+function onGrSubjectChange() {
+  const roomSel = document.getElementById('grClassroom');
+  if (roomSel) roomSel.innerHTML = '<option value="">ทุกห้องเรียน\x3c/option>';
+  AcademicState.currentSubjectClassroom = '';
+}
+
 function onGradesFilterChange() {
   const year = document.getElementById('grYear').value;
   const sem  = document.getElementById('grSem').value;
@@ -888,6 +963,7 @@ function onGradesFilterChange() {
     subjects.map(s =>
       `<option value="${s.id}">${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name||'')} · ${escapeHTML(s.grade_level||'')} (เทอม ${escapeHTML(s.semester||'1')})\x3c/option>`
     ).join('');
+  onGrSubjectChange();
 }
 
 function loadGradeSheet() {
@@ -895,9 +971,11 @@ function loadGradeSheet() {
   if (!subjectId) return showToast('warning', 'กรุณาเลือกวิชา');
   const year = document.getElementById('grYear').value || (APP.dashboardData?.config?.academic_year || '');
   const sem  = document.getElementById('grSem').value || '1';
+  const classroom = document.getElementById('grClassroom') ? document.getElementById('grClassroom').value : '';
 
   AcademicState.currentSubjectYear = year;
   AcademicState.currentSubjectSem = sem;
+  AcademicState.currentSubjectClassroom = classroom;
 
   const area = document.getElementById('gradesArea');
   area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
@@ -910,10 +988,19 @@ function loadGradeSheet() {
       }
       AcademicState.currentSubject = res.subject;
       AcademicState.gradeRows = res.data;
+
+      // Update classrooms dropdown if available
+      const roomSel = document.getElementById('grClassroom');
+      if (roomSel && res.classrooms) {
+        const curRoom = classroom;
+        roomSel.innerHTML = '<option value="">ทุกห้องเรียน\x3c/option>' +
+          res.classrooms.map(c => `<option value="${escapeHTML(c)}" ${curRoom === c ? 'selected' : ''}>ห้อง ${escapeHTML(c)}\x3c/option>`).join('');
+      }
+
       renderGradeSheetTable();
     })
     .withFailureHandler(err => { area.innerHTML = `<div class="empty-state"><i class='bx bx-error'>\x3c/i>${escapeHTML(err.message||err)}\x3c/div>`; })
-    .getGradeSheet(subjectId, APP.token, year, sem);
+    .getGradeSheet(subjectId, APP.token, year, sem, classroom);
 }
 
 function renderGradeSheetTable() {
@@ -923,29 +1010,34 @@ function renderGradeSheetTable() {
   const rows = AcademicState.gradeRows;
 
   if (!rows || rows.length === 0) {
-    area.innerHTML = `<div class="empty-state"><i class='bx bx-user-x'>\x3c/i>ไม่มีนักเรียนในชั้น ${escapeHTML(subj.grade_level||'')}\x3c/div>`;
+    const classInfo = AcademicState.currentSubjectClassroom ? ` (ห้อง ${AcademicState.currentSubjectClassroom})` : '';
+    area.innerHTML = `<div class="empty-state"><i class='bx bx-user-x'>\x3c/i>ไม่มีนักเรียนในระดับชั้น ${escapeHTML(subj.grade_level||'')}${escapeHTML(classInfo)}\x3c/div>`;
     return;
   }
+
+  const roomDisplay = AcademicState.currentSubjectClassroom 
+    ? ` · ห้อง <b>${escapeHTML(AcademicState.currentSubjectClassroom)}</b>` 
+    : ' · <b>ทุกห้องเรียน</b>';
 
   area.innerHTML = `
     <div class="p-3 rounded-lg mb-3" style="background:#FAF0F2;border:1px solid #BFDBFE;">
       <div class="font-semibold text-slate-800">
         ${escapeHTML(subj.subject_code||'')} · ${escapeHTML(subj.subject_name||'')}
-      \x3c/div>
+      </div>
       <div class="text-xs text-slate-600 mt-1">
-        ชั้น ${escapeHTML(subj.grade_level||'-')} · เทอม ${escapeHTML(subj.semester||'-')} · ปีการศึกษา ${escapeHTML(subj.academic_year||'-')}
+        ระดับชั้น <b>${escapeHTML(subj.grade_level||'-')}</b>${roomDisplay} · เทอม ${escapeHTML(subj.semester||'-')} · ปีการศึกษา ${escapeHTML(subj.academic_year||'-')}
         · ระหว่างภาค <b>${subj.midterm_weight||70}\x3c/b> · ปลายภาค <b>${subj.final_weight||30}\x3c/b>
-      \x3c/div>
-    \x3c/div>
+      </div>
+    </div>
 
     <div class="flex flex-wrap gap-2 justify-end mb-2">
       <button class="btn btn-light" onclick="printPP5()">
         <i class='bx bx-printer'>\x3c/i> พิมพ์ ปพ.5
-      \x3c/button>
+      </button>
       <button class="btn btn-blue" onclick="saveGradeSheet()">
         <i class='bx bx-save'>\x3c/i> บันทึกคะแนน
-      \x3c/button>
-    \x3c/div>
+      </button>
+    </div>
 
     <div style="overflow-x:auto;">
       <table class="min-w-full text-sm" id="gradeTable">
@@ -971,11 +1063,14 @@ function renderGradeSheetTable() {
                 <div class="flex items-center gap-2">
                   ${avatarHTML(r.photo, r.first_name, 28)}
                   <div>
-                    <div class="font-semibold text-slate-800 text-xs">${escapeHTML((r.prefix||'')+(r.first_name||'')+' '+(r.last_name||''))}\x3c/div>
+                    <div class="font-semibold text-slate-800 text-xs">
+                      ${escapeHTML((r.prefix||'')+(r.first_name||'')+' '+(r.last_name||''))}
+                      ${r.classroom ? `<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-normal">ห้อง ${escapeHTML(r.classroom)}</span>` : ''}
+                    </div>
                     <div class="text-xs text-slate-400 font-mono">${escapeHTML(r.student_code||'')}\x3c/div>
-                  \x3c/div>
-                \x3c/div>
-              \x3c/td>
+                  </div>
+                </div>
+              </td>
               <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-midterm" data-row="${i}" value="${r.score_midterm===''||r.score_midterm==null?'':r.score_midterm}">\x3c/td>
               <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-final"   data-row="${i}" value="${r.score_final===''||r.score_final==null?'':r.score_final}">\x3c/td>
               <td class="px-1 py-1"><div class="grade-output g-total" data-row="${i}">-\x3c/div>\x3c/td>
@@ -1091,6 +1186,10 @@ function saveGradeSheet() {
 
 function printPP5() {
   if (!AcademicState.currentSubject) return showToast('warning', 'เลือกวิชาก่อน');
+  const year = AcademicState.currentSubjectYear || document.getElementById('grYear')?.value || '';
+  const sem  = AcademicState.currentSubjectSem || document.getElementById('grSem')?.value || '';
+  const classroom = document.getElementById('grClassroom') ? document.getElementById('grClassroom').value : '';
+
   showLoading('กำลังเตรียมเอกสาร...');
   google.script.run
     .withSuccessHandler(res => {
@@ -1099,7 +1198,7 @@ function printPP5() {
       openHTMLDocument(res.html);
     })
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
-    .generatePP5HTML(AcademicState.currentSubject.id, APP.token);
+    .generatePP5HTML(AcademicState.currentSubject.id, APP.token, year, sem, classroom);
 }
 
 
