@@ -928,20 +928,29 @@ function renderAcademicGrades() {
     .withSuccessHandler(res => {
       if (res.status !== 'success') return;
       AcademicState.allSubjects = res.data || [];
-      // สร้าง distinct years
-      const years = Array.from(new Set(AcademicState.allSubjects.map(s => s.academic_year).filter(Boolean))).sort().reverse();
+      // สร้าง distinct years โดยมีปีปัจจุบันเป็นค่าตั้งต้นเสมอ
+      const curYear = APP.dashboardData?.config?.academic_year || String(new Date().getFullYear() + 543);
+      const curSem  = APP.dashboardData?.config?.semester || '1';
+      
+      const yearSet = new Set(AcademicState.allSubjects.map(s => String(s.academic_year || '').trim()).filter(Boolean));
+      if (curYear) yearSet.add(curYear);
+      const curYNum = parseInt(curYear, 10);
+      if (!isNaN(curYNum)) {
+        yearSet.add(String(curYNum - 1));
+        yearSet.add(String(curYNum - 2));
+      }
+      const years = Array.from(yearSet).sort().reverse();
+      
       const yrSel = document.getElementById('grYear');
       yrSel.innerHTML = '<option value="">เลือกปีการศึกษา\x3c/option>' +
         years.map(y => `<option value="${escapeHTML(y)}">${escapeHTML(y)}\x3c/option>`).join('');
-      // default ปี/เทอมปัจจุบัน
-      const curYear = APP.dashboardData?.config?.academic_year || '';
-      const curSem  = APP.dashboardData?.config?.semester || '1';
-      if (curYear && years.includes(curYear)) yrSel.value = curYear;
+      
+      if (curYear) yrSel.value = curYear;
       const semSel = document.getElementById('grSem');
       if (curSem) semSel.value = curSem;
       onGradesFilterChange();
     })
-    .getSubjects({ page:1, per_page:200 }, APP.token);
+    .getSubjects({ per_page:1000 }, APP.token);
 }
 
 function onGrSubjectChange() {
@@ -955,13 +964,13 @@ function onGradesFilterChange() {
   const sem  = document.getElementById('grSem').value;
   const sel  = document.getElementById('grSubject');
   const subjects = (AcademicState.allSubjects || []).filter(s => {
-    const yMatch = !year || !s.academic_year || String(s.academic_year).trim() === String(year).trim();
-    const sMatch = !sem  || String(s.semester || '1').trim() === String(sem).trim();
+    const yMatch = !year || !s.academic_year || String(s.academic_year).trim() === '' || String(s.academic_year).trim() === String(year).trim();
+    const sMatch = !sem  || !s.semester || String(s.semester).trim() === '' || String(s.semester).trim() === String(sem).trim();
     return yMatch && sMatch;
   });
   sel.innerHTML = '<option value="">เลือกรายวิชา\x3c/option>' +
     subjects.map(s =>
-      `<option value="${s.id}">${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name||'')} · ${escapeHTML(s.grade_level||'')} (เทอม ${escapeHTML(s.semester||'1')})\x3c/option>`
+      `<option value="${s.id}">${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name||'')} · ${escapeHTML(s.grade_level||'')} (${s.semester ? `เทอม ${escapeHTML(s.semester)}` : 'ทุกเทอม'})\x3c/option>`
     ).join('');
   onGrSubjectChange();
 }

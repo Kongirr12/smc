@@ -1654,7 +1654,7 @@ function clearClassScheduleConfirm() {
   if (!SchedState.classroom) return;
   Swal.fire({
     title: 'ล้างตารางสอน ' + SchedState.classroom + '?',
-    text : 'ข้อมูลทั้งหมดของห้องนี้จะถูกลบ',
+    text : 'ข้อมูลคาบเรียนทั้งหมดของห้องนี้ในภาคเรียนนี้จะถูกลบออกจากระบบ',
     icon:'warning',
     showCancelButton:true,
     confirmButtonText:'ล้างทั้งหมด',
@@ -1662,8 +1662,27 @@ function clearClassScheduleConfirm() {
     confirmButtonColor:'#DC2626'
   }).then(r => {
     if (!r.isConfirmed) return;
-    SchedState.entries = SchedState.entries.filter(e => !(e.classroom === SchedState.classroom && String(e.academic_year) === String(SchedState.academic_year) && String(e.semester) === String(SchedState.semester)));
-    SchedState.isDirty = true;
-    renderClassView();
+    showLoading('กำลังล้างตารางสอน...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status === 'success') {
+          showToast('success', res.message || 'ล้างตารางสอนสำเร็จ');
+          SchedState.entries = SchedState.entries.filter(e => !(
+            e.classroom === SchedState.classroom &&
+            String(e.academic_year) === String(SchedState.academic_year) &&
+            String(e.semester) === String(SchedState.semester)
+          ));
+          SchedState.isDirty = false;
+          renderClassView();
+        } else {
+          Swal.fire({ icon:'error', title:'ผิดพลาด', text:res.message });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({ icon:'error', text: err.message || err });
+      })
+      .clearClassroomSchedule(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
   });
 }

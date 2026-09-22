@@ -172,6 +172,7 @@ function routeApi(action, params, token) {
 
       // ---------- BEHAVIOR ----------
       case 'getBehaviorSummary': return getBehaviorSummary(token);
+      case 'getBehaviorPresets': return getBehaviorPresets(token);
       case 'getBehaviorRecords': return getBehaviorRecords(params, token);
       case 'saveBehaviorRecord': return saveBehaviorRecord(params, token);
       case 'deleteBehaviorRecord': return deleteBehaviorRecord(params.id, token);
@@ -227,7 +228,16 @@ function routeApi(action, params, token) {
       case 'getSchedule': return getSchedule(params, token);
       case 'saveSchedule': return saveSchedule(params, token);
       case 'deleteSchedule': return deleteSchedule(params.id, token);
-      case 'getPeriodConfig': return getPeriodConfig(params.year, params.semester, token);
+      case 'saveScheduleEntry': return saveScheduleEntry(params.data || params, token);
+      case 'saveClassroomScheduleBatch': return saveClassroomScheduleBatch(params.classroom, params.academic_year, params.semester, params.entries, token);
+      case 'deleteScheduleEntry': return deleteScheduleEntry(params.classroom, params.day, params.period_no, params.academic_year, params.semester, token);
+      case 'clearClassroomSchedule': return clearClassroomSchedule(params.classroom, params.academic_year, params.semester, token);
+      case 'copyScheduleSemester': return copyScheduleSemester(params.fromYear, params.fromSem, params.toYear, params.toSem, token);
+      case 'getAllConflicts': return getAllConflicts(params.academic_year, params.semester, token);
+      case 'getTeacherWorkload': return getTeacherWorkload(params.academic_year, params.semester, token);
+      case 'generateSchedulePrintHTML': return generateSchedulePrintHTML(params.classroom, params.academic_year, params.semester, token);
+      case 'generateTeacherScheduleHTML': return generateTeacherScheduleHTML(params.teacher_id, params.academic_year, params.semester, token);
+      case 'getPeriodConfig': return getPeriodConfig(params.academic_year || params.year, params.semester, token);
       case 'savePeriodConfig': return savePeriodConfig(params, token);
       case 'getRooms': return getRooms(params, token);
       case 'saveRoom': return saveRoom(params, token);
@@ -1659,7 +1669,7 @@ function saveAttendanceBulk(payload, sessionToken) {
     try {
       const absLate = (payload.records||[]).filter(r => r.status==='absent' || r.status==='late');
       if (absLate.length > 0) {
-        notifyAttendance_({ date:date, records:records }, payload.classroom || '');
+        notifyAttendance_({ date: date, records: payload.records }, payload.classroom || '');
       }
     } catch(_) {}
 
