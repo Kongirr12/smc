@@ -3,6 +3,11 @@
  *  ระบบตารางสอน มาตรฐาน สพฐ.
  * ============================================================ */
 
+function normalizeGradeLevel(str) {
+  if (!str) return '';
+  return String(str).trim().split('/')[0].trim();
+}
+
 /* ---------- State ---------- */
 const SchedState = {
   tab         : 'class',
@@ -12,8 +17,8 @@ const SchedState = {
   teacher_id  : '',
   classrooms  : [],
   teachers    : [],
-  entries     : [],
-  periods     : [],
+  entries     : null,
+  periods     : null,
   rooms       : [],
   subjects    : [],
   isDirty     : false,
@@ -128,7 +133,7 @@ function renderSchedule(container) {
     \x3c/style>
   `;
 
-  if (SchedState.entries && SchedState.periods) {
+  if (SchedState.entries && SchedState.periods && SchedState.subjects && SchedState.subjects.length > 0) {
     renderSchedTab();
     loadSchedData(true);
   } else {
@@ -187,7 +192,7 @@ function switchSchedTab(tab) {
 
 function loadSchedData(silent) {
   const content = document.getElementById('schedContent');
-  if (content && !silent && (!SchedState.entries || !SchedState.periods)) {
+  if (content && !silent && (!SchedState.entries || !SchedState.periods || !SchedState.subjects || SchedState.subjects.length === 0)) {
     content.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลดข้อมูล...\x3c/div>';
   }
 
@@ -197,6 +202,10 @@ function loadSchedData(silent) {
   let done = 0;
   const check = () => {
     if (++done < 4) return;
+    // เลือกห้องเรียนแรกเป็นค่าเริ่มต้นหากยังไม่ได้เลือก
+    if (!SchedState.classroom && SchedState.classrooms && SchedState.classrooms.length > 0) {
+      SchedState.classroom = SchedState.classrooms[0];
+    }
     // ถ้าเป็นครู → เลือกตัวเองอัตโนมัติ
     if (APP.role === 'teacher') {
       const own = SchedState.teachers.find(t =>
@@ -240,11 +249,11 @@ function loadSchedData(silent) {
 
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status === 'success') SchedState.subjects = res.data;
+      if (res.status === 'success') SchedState.subjects = res.data || [];
       check();
     })
     .withFailureHandler(() => check())
-    .getSubjects({ per_page: 500, academic_year: SchedState.academic_year, semester: SchedState.semester }, APP.token);
+    .getSubjects({ per_page: 1000, academic_year: SchedState.academic_year, all_subjects: true }, APP.token);
 }
 
 function renderSchedTab() {
@@ -353,30 +362,65 @@ function toggleDragDropMode(checked) {
 
 function buildSubjectPalette() {
   if (!SchedState.subjects || SchedState.subjects.length === 0) {
-    return '<div class="text-xs text-slate-500">กำลังโหลดรายวิชา... หรือไม่มีรายวิชา\x3c/div>';
+    return '<div class="text-xs text-slate-500 py-3 text-center"><i class="bx bx-loader-alt bx-spin mr-1"></i>กำลังโหลดรายวิชา... หรือไม่มีรายวิชาในระบบ\x3c/div>';
   }
-  const clsMatch = SchedState.classroom; // e.g. ม.1/1
-  const gradeMatch = clsMatch ? clsMatch.split('/')[0] : '';
+  const clsMatch = SchedState.classroom || ''; // e.g. ม.1/1
+  const targetGrade = normalizeGradeLevel(clsMatch); // e.g. ม.1
   
-  const relevant = SchedState.subjects.filter(s => !s.grade_level || s.grade_level === clsMatch || s.grade_level === gradeMatch);
+  // กรองตามระดับชั้นของห้องเรียน (เช่น ม.1)
+  let relevant = SchedState.subjects.filter(s => {
+    if (!s.grade_level) return true;
+    const sGrade = normalizeGradeLevel(s.grade_level);
+    return sGrade === targetGrade || String(s.grade_level).trim() === clsMatch;
+  });
   
   if (relevant.length === 0) {
-    return '<div class="text-xs text-slate-500">ไม่มีวิชาที่เปิดสอนสำหรับชั้นนี้\x3c/div>';
-  }
-  
-  return relevant.map(s => {
-    const color = SUBJECT_COLORS[s.subject_group] || '#64748B';
     return `
-      <div class="entry-card mb-2" draggable="true" ondragstart="onDragSubjectStart(event, '${s.id}')"
-           style="border-color:${color}; background:white; min-height:50px; cursor:grab;">
-        <div class="entry-bar" style="background:${color};">\x3c/div>
-        <div class="entry-body py-1 px-2">
-          <div class="entry-subject" style="font-size:12px;">${escapeHTML(s.subject_name)}\x3c/div>
-          <div class="entry-teacher" style="font-size:10px;">${escapeHTML(s.teacher_name || 'ไม่ระบุครูผู้สอน')}\x3c/div>
-        \x3c/div>
+      <div class="text-xs text-slate-500 py-3 text-center">
+        <i class='bx bx-info-circle text-amber-500 text-lg mb-1 block'>\x3c/i>
+        ไม่มีรายวิชาสำหรับระดับชั้น <b>${escapeHTML(targetGrade || clsMatch)}\x3c/b>
+        <div class="text-[11px] text-slate-400 mt-1">สามารถเพิ่มรายวิชาได้ที่เมนู "งานวิชาการ"\x3c/div>
       \x3c/div>
     `;
-  }).join('');
+  }
+
+  // กรองตามเทอมที่เลือก
+  const curSem = String(SchedState.semester || '1').trim();
+  const semRelevant = relevant.filter(s => !s.semester || String(s.semester).trim() === '' || String(s.semester).trim() === curSem);
+  
+  // ถ้ามีวิชาที่ตรงเทอมให้แสดงตรงเทอม ถ้าไม่มีให้แสดงวิชาทั้งหมดของชั้นนั้น
+  const displaySubjects = (semRelevant.length > 0) ? semRelevant : relevant;
+  const isFallbackSem = (semRelevant.length === 0 && relevant.length > 0);
+
+  return `
+    ${isFallbackSem ? `
+      <div class="mb-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-800 leading-tight">
+        <i class='bx bx-info-circle mr-0.5'>\x3c/i> ไม่พบวิชาที่ระบุเทอม ${escapeHTML(curSem)} (แสดงรายวิชาทั้งหมดของชั้น ${escapeHTML(targetGrade || clsMatch)})
+      \x3c/div>
+    ` : ''}
+    <div class="space-y-1.5">
+      ${displaySubjects.map(s => {
+        const color = SUBJECT_COLORS[s.subject_group] || '#64748B';
+        const semTag = s.semester ? `เทอม ${escapeHTML(s.semester)}` : 'ทุกเทอม';
+        return `
+          <div class="entry-card mb-2" draggable="true" ondragstart="onDragSubjectStart(event, '${s.id}')"
+               style="border-color:${color}; background:white; min-height:48px; cursor:grab; transition:all 0.15s ease;"
+               title="${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} · ${escapeHTML(s.grade_level||'')} (${semTag})">
+            <div class="entry-bar" style="background:${color};">\x3c/div>
+            <div class="entry-body py-1.5 px-2">
+              <div class="entry-subject font-semibold text-slate-800" style="font-size:12px; line-height:1.2;">
+                ${s.subject_code ? `<span class="font-mono text-slate-500 mr-1">${escapeHTML(s.subject_code)}</span>` : ''}${escapeHTML(s.subject_name)}
+              \x3c/div>
+              <div class="entry-teacher flex justify-between items-center text-[11px] text-slate-500 mt-1">
+                <span class="truncate max-w-[130px]"><i class='bx bx-user text-slate-400'>\x3c/i> ${escapeHTML(s.teacher_name || 'ไม่ระบุครู')}</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">${escapeHTML(s.grade_level || '')}${s.semester ? ` T${s.semester}` : ''}\x3c/span>
+              \x3c/div>
+            \x3c/div>
+          \x3c/div>
+        `;
+      }).join('')}
+    \x3c/div>
+  `;
 }
 
 function onDragSubjectStart(event, subjectId) {
@@ -417,6 +461,9 @@ function onDropGrid(event, dayNo, periodNo) {
      }
   });
 
+  const teacherName = tNames.length > 0 ? tNames.join(', ') : (subject.teacher_name || '');
+  const teacherShort = tShorts.length > 0 ? tShorts.join(', ') : (subject.teacher_name || '');
+
   const data = {
     id: 'temp_' + Date.now() + '_' + Math.floor(Math.random()*1000),
     _kind: 'schedule_entry',
@@ -428,8 +475,8 @@ function onDropGrid(event, dayNo, periodNo) {
     subject_code: subject.subject_code || '',
     subject_group: subject.subject_group || '',
     teacher_id: subject.teacher_id || '',
-    teacher_name: tNames.join(', '),
-    teacher_short: tShorts.join(', '),
+    teacher_name: teacherName,
+    teacher_short: teacherShort,
     room_id: '',
     room_name: '',
     activity_label: '',
@@ -783,18 +830,32 @@ function openEntryForm(day, periodNo, viewType = 'class') {
   const dayLabel = DAYS.find(d => d.no === Number(day)) || {};
   const isHomeroom = period && period.is_homeroom;
 
-  const subjects = [];
-  google.script.run
-    .withSuccessHandler(res => {
-      const allSubjects = res.status === 'success' ? res.data : [];
-      // filter subjects based on view
-      const relevantSubjects = viewType === 'class' 
-        ? allSubjects.filter(s => !s.grade_level || s.grade_level === SchedState.classroom)
-        : allSubjects;
-      showEntryForm(day, periodNo, period, dayLabel, e, relevantSubjects, isHomeroom, viewType);
-    })
-    .withFailureHandler(() => showEntryForm(day, periodNo, period, dayLabel, e, [], isHomeroom, viewType))
-    .getSubjects({ page:1, per_page:500 }, APP.token);
+  const filterSubjectsForView = (allSubjects) => {
+    if (viewType !== 'class') return allSubjects;
+    const clsMatch = SchedState.classroom || '';
+    const targetGrade = normalizeGradeLevel(clsMatch);
+    let filtered = allSubjects.filter(s => {
+      if (!s.grade_level) return true;
+      const sGrade = normalizeGradeLevel(s.grade_level);
+      return sGrade === targetGrade || String(s.grade_level).trim() === clsMatch;
+    });
+    const curSem = String(SchedState.semester || '1').trim();
+    const semFiltered = filtered.filter(s => !s.semester || String(s.semester).trim() === '' || String(s.semester).trim() === curSem);
+    return semFiltered.length > 0 ? semFiltered : filtered;
+  };
+
+  if (SchedState.subjects && SchedState.subjects.length > 0) {
+    showEntryForm(day, periodNo, period, dayLabel, e, filterSubjectsForView(SchedState.subjects), isHomeroom, viewType);
+  } else {
+    google.script.run
+      .withSuccessHandler(res => {
+        const allSubjects = (res && res.status === 'success') ? (res.data || []) : [];
+        SchedState.subjects = allSubjects;
+        showEntryForm(day, periodNo, period, dayLabel, e, filterSubjectsForView(allSubjects), isHomeroom, viewType);
+      })
+      .withFailureHandler(() => showEntryForm(day, periodNo, period, dayLabel, e, [], isHomeroom, viewType))
+      .getSubjects({ per_page: 1000, academic_year: SchedState.academic_year, all_subjects: true }, APP.token);
+  }
 }
 
 function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom, viewType) {
@@ -842,6 +903,7 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
                 <option value="${s.id}"
                         data-color="${SUBJECT_COLORS[s.subject_group]||'#64748B'}"
                         data-group="${escapeHTML(s.subject_group||'')}"
+                        data-teachers="${escapeHTML(s.teacher_id||'')}"
                         ${e.subject_id===s.id?'selected':''}>
                   ${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name||'')}
                   ${s.grade_level ? `· ${escapeHTML(s.grade_level)}` : ''}
@@ -1008,13 +1070,24 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
 
 function onSubjectSelect() {
   const sel = document.getElementById('ef_subject_id');
+  if (!sel) return;
   const opt = sel.options[sel.selectedIndex];
+  if (!opt) return;
   const color = opt.dataset.color;
   if (color) {
     document.getElementById('ef_color').value = color;
     document.querySelectorAll('.color-dot').forEach(el => {
       el.style.borderColor = el.dataset.color === color ? '#0F172A' : 'transparent';
     });
+  }
+  const tIds = (opt.dataset.teachers || '').split(',').map(x => x.trim()).filter(Boolean);
+  if (tIds.length > 0) {
+    const checked = Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked'));
+    if (checked.length === 0) {
+      document.querySelectorAll('input[name="ef_teacher_ids"]').forEach(cb => {
+        if (tIds.includes(cb.value)) cb.checked = true;
+      });
+    }
   }
 }
 

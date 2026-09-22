@@ -1866,8 +1866,8 @@ function getSubjects(params, sessionToken) {
 
     let filtered = all.slice();
 
-    // ครู → เห็นเฉพาะวิชาที่ตนเองรับผิดชอบ
-    if (auth.role === 'teacher') {
+    // ครู → เห็นเฉพาะวิชาที่ตนเองรับผิดชอบ (เว้นแต่ร้องขอ all_subjects สำหรับจัดตารางสอน)
+    if (auth.role === 'teacher' && !params.all_subjects) {
       const ownP = readJsonSheet_('Personnel').find(p =>
         String(p.personnel_id || '').toLowerCase() === String(auth.user.username).toLowerCase()
       );
@@ -1887,8 +1887,24 @@ function getSubjects(params, sessionToken) {
       const targetG = normalizeGradeLevel_(params.grade_level);
       filtered = filtered.filter(s => normalizeGradeLevel_(s.grade_level) === targetG);
     }
-    if (params.academic_year) filtered = filtered.filter(s => String(s.academic_year || '').trim() === String(params.academic_year).trim());
-    if (params.semester)      filtered = filtered.filter(s => String(s.semester || '').trim() === String(params.semester).trim());
+    if (params.academic_year) {
+      const targetY = String(params.academic_year).trim();
+      if (params.academic_year_exact) {
+        filtered = filtered.filter(s => String(s.academic_year || '').trim() === targetY);
+      } else {
+        // วิชาที่ไม่มีระบุปีการศึกษา (หรือระบุตรงกับปีที่ค้นหา) = ใช้งานได้ตลอดหลักสูตร
+        filtered = filtered.filter(s => !s.academic_year || String(s.academic_year).trim() === '' || String(s.academic_year).trim() === targetY);
+      }
+    }
+    if (params.semester) {
+      const targetS = String(params.semester).trim();
+      if (params.semester_exact) {
+        filtered = filtered.filter(s => String(s.semester || '').trim() === targetS);
+      } else {
+        // วิชาที่ไม่มีระบุเทอม (หรือระบุตรงกับเทอมที่ค้นหา) = ใช้งานได้
+        filtered = filtered.filter(s => !s.semester || String(s.semester).trim() === '' || String(s.semester).trim() === targetS);
+      }
+    }
 
     filtered.sort((a, b) => String(a.subject_code || '').localeCompare(String(b.subject_code || '')));
 
@@ -4736,8 +4752,8 @@ function getSchedule(params, sessionToken) {
         subject_name  : sub.subject_name  || '',
         subject_code  : sub.subject_code  || '',
         subject_group : group,
-        teacher_name  : tNames.join(', '),
-        teacher_short : tShorts.join(', '),
+        teacher_name  : tNames.length > 0 ? tNames.join(', ') : (e.teacher_name || sub.teacher_name || ''),
+        teacher_short : tShorts.length > 0 ? tShorts.join(', ') : (e.teacher_short || sub.teacher_name || ''),
         room_name     : room.name || '',
         color         : e.color || SUBJECT_GROUP_COLORS[group] || '#64748B'
       });
