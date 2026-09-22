@@ -76,11 +76,15 @@ function doPost(e) {
   const args = payload.args || [];
   
   try {
-    const fn = typeof globalThis[action] === 'function' ? globalThis[action]
-             : typeof this[action] === 'function' ? this[action]
-             : null;
+    let fn = typeof globalThis[action] === 'function' ? globalThis[action]
+           : typeof this[action] === 'function' ? this[action]
+           : null;
 
-    if (fn) {
+    if (!fn && /^[a-zA-Z0-9_]+$/.test(action)) {
+      try { fn = eval(action); } catch(_) {}
+    }
+
+    if (typeof fn === 'function') {
       const result = fn.apply(null, args);
       return jsonResponse(result);
     } else {
