@@ -89,7 +89,9 @@ function switchAcademicTab(tab) {
 
 /* ----- Subjects ----- */
 function renderAcademicSubjects() {
-  document.getElementById('acSubjects').innerHTML = `
+  const el = document.getElementById('acSubjects');
+  if (!el) return;
+  el.innerHTML = `
     <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
       <div class="text-base font-semibold text-slate-700">
         <i class='bx bx-book-open mr-1 text-primary' >\x3c/i> รายวิชาที่เปิดสอน
@@ -188,6 +190,7 @@ function renderSubjectsTable(res) {
   }
 
   const area = document.getElementById('subjectsTable');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-folder-open'>\x3c/i>ยังไม่มีรายวิชา\x3c/div>`;
     return;
@@ -584,7 +587,9 @@ function deleteSubjectConfirm(id) {
 
 /* ----- Grades (ปพ.5) ----- */
 function renderAcademicGrades() {
-  document.getElementById('acGrades').innerHTML = `
+  const el = document.getElementById('acGrades');
+  if (!el) return;
+  el.innerHTML = `
     <div class="text-base font-semibold text-slate-700 mb-3">
       <i class='bx bx-edit mr-1 text-primary' >\x3c/i> บันทึกคะแนน ปพ.5
     \x3c/div>
@@ -678,6 +683,7 @@ function loadGradeSheet() {
 
 function renderGradeSheetTable() {
   const area = document.getElementById('gradesArea');
+  if (!area) return;
   const subj = AcademicState.currentSubject;
   const rows = AcademicState.gradeRows;
 
@@ -861,7 +867,9 @@ function printPP5() {
 
 /* ----- GPA / ปพ.6 ----- */
 function renderAcademicGPA() {
-  document.getElementById('acGPA').innerHTML = `
+  const el = document.getElementById('acGPA');
+  if (!el) return;
+  el.innerHTML = `
     <div class="text-base font-semibold text-slate-700 mb-3">
       <i class='bx bx-trophy mr-1 text-primary' >\x3c/i> ดู GPA และพิมพ์ ปพ.6
     \x3c/div>
@@ -916,6 +924,7 @@ function loadGpaStudents() {
 
 function renderGpaList(students) {
   const area = document.getElementById('gpaArea');
+  if (!area) return;
   if (!students || students.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-user-x'>\x3c/i>ไม่พบนักเรียน\x3c/div>`;
     return;
@@ -1151,6 +1160,7 @@ function loadFinanceTable() {
 
 function renderFinanceTable(res) {
   const area = document.getElementById('finTable');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-receipt'>\x3c/i>ยังไม่มีรายการ\x3c/div>`;
     return;
@@ -1436,7 +1446,9 @@ function renderDocuments(container) {
 }
 
 function renderDocTypeCards() {
-  document.getElementById('docTypeCards').innerHTML = Object.keys(DOC_TYPES).map(k => {
+  const el = document.getElementById('docTypeCards');
+  if (!el) return;
+  el.innerHTML = Object.keys(DOC_TYPES).map(k => {
     const t = DOC_TYPES[k];
     return `
       <div class="doc-type-card" onclick="DocsState.doc_type='${k}'; DocsState.page=1; document.getElementById('docType').value='${k}'; loadDocuments();"
@@ -1496,6 +1508,7 @@ function loadDocuments() {
 
 function renderDocumentsTable(res) {
   const area = document.getElementById('docTable');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-folder-open'>\x3c/i>ไม่มีเอกสาร\x3c/div>`;
     return;
@@ -1859,6 +1872,7 @@ function loadApprovals() {
 
 function renderApprovalsTable(res) {
   const area = document.getElementById('aprTable');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-task'>\x3c/i>ไม่มีคำขอ\x3c/div>`;
     return;
@@ -2161,6 +2175,7 @@ function loadRegistrations() {
 
 function renderRegistrationsTable(res) {
   const area = document.getElementById('regTable');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-clipboard'>\x3c/i>ไม่มีใบสมัคร\x3c/div>`;
     return;

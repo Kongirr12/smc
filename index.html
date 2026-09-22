@@ -109,7 +109,11 @@
               const item = _apiCache.get(cacheKey);
               if (now - item.time < ttl) {
                 setTimeout(() => {
-                  if (successHandler) successHandler(JSON.parse(JSON.stringify(item.data)));
+                  try {
+                    if (successHandler) successHandler(JSON.parse(JSON.stringify(item.data)));
+                  } catch (e) {
+                    console.error("Cache success callback error:", e);
+                  }
                 }, 0);
                 return proxy;
               }
@@ -147,7 +151,11 @@
                   if (failureHandler) failureHandler(data);
                   else console.error("GAS Error:", data);
                 } else {
-                  if (successHandler) successHandler(data);
+                  try {
+                    if (successHandler) successHandler(data);
+                  } catch (e) {
+                    console.error("Success callback error:", e);
+                  }
                 }
               })
               .catch(err => {

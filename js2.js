@@ -226,6 +226,7 @@ function renderStudentsTable(res) {
   }
 
   const area = document.getElementById('stTableArea');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `
       <div class="empty-state">
@@ -756,6 +757,7 @@ function renderPersonnelTable(res) {
   }
 
   const area = document.getElementById('pTableArea');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `
       <div class="empty-state">

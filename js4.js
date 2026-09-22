@@ -466,11 +466,13 @@ function renderCalendarGrid() {
     \x3c/style>
   `;
 
-  document.getElementById('calGrid').innerHTML = html;
+  const gridEl = document.getElementById('calGrid');
+  if (gridEl) gridEl.innerHTML = html;
 }
 
 function renderCalendarEventList() {
   const area = document.getElementById('calEventList');
+  if (!area) return;
   if (!CalendarState.events || CalendarState.events.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-calendar-x'>\x3c/i>ไม่มีเหตุการณ์ในเดือนนี้\x3c/div>`;
     return;
@@ -711,7 +713,8 @@ function renderFiles(container) {
 
 function loadFilesList(category) {
   FilesState.category = category || '';
-  document.getElementById('filesSection').innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+  const sec = document.getElementById('filesSection');
+  if (sec) sec.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
 
   google.script.run
     .withSuccessHandler(res => {
@@ -726,7 +729,9 @@ function loadFilesList(category) {
 
 function renderFilesView() {
   // Breadcrumb
-  document.getElementById('filesBreadcrumb').innerHTML = `
+  const bc = document.getElementById('filesBreadcrumb');
+  if (!bc) return;
+  bc.innerHTML = `
     <div class="flex items-center gap-2 text-sm">
       <button onclick="loadFilesList('')" class="text-blue-600 hover:underline font-semibold">
         <i class='bx bxs-folder'>\x3c/i> คลังไฟล์
@@ -740,35 +745,38 @@ function renderFilesView() {
 
   // Folders (เฉพาะตอน root)
   const folderArea = document.getElementById('foldersSection');
-  if (FilesState.folders && FilesState.folders.length > 0) {
-    folderArea.innerHTML = `
-      <div class="text-xs font-semibold text-slate-500 uppercase mb-2">โฟลเดอร์\x3c/div>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4">
-        ${FilesState.folders.map(f => `
-          <div class="folder-card" onclick="loadFilesList('${escapeHTML(f.name)}')">
-            <i class='bx bxs-folder' style="font-size:32px; color:#4F46E5;">\x3c/i>
-            <div class="flex-1 min-w-0">
-              <div class="font-semibold text-slate-800 truncate">${escapeHTML(f.name)}\x3c/div>
-              <div class="text-xs text-slate-500">${f.file_count} ไฟล์\x3c/div>
+  if (folderArea) {
+    if (FilesState.folders && FilesState.folders.length > 0) {
+      folderArea.innerHTML = `
+        <div class="text-xs font-semibold text-slate-500 uppercase mb-2">โฟลเดอร์\x3c/div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4">
+          ${FilesState.folders.map(f => `
+            <div class="folder-card" onclick="loadFilesList('${escapeHTML(f.name)}')">
+              <i class='bx bxs-folder' style="font-size:32px; color:#4F46E5;">\x3c/i>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-slate-800 truncate">${escapeHTML(f.name)}\x3c/div>
+                <div class="text-xs text-slate-500">${f.file_count} ไฟล์\x3c/div>
+              \x3c/div>
             \x3c/div>
-          \x3c/div>
-        `).join('')}
-      \x3c/div>
-      <style>
-        .folder-card {
-          background:white; border:1px solid #F1F5F9; border-radius:12px;
-          padding:12px; display:flex; align-items:center; gap:10px;
-          cursor:pointer; transition:all .15s;
-        }
-        .folder-card:hover { border-color:#4F46E5; transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.06); }
-      \x3c/style>
-    `;
-  } else {
-    folderArea.innerHTML = '';
+          `).join('')}
+        \x3c/div>
+        <style>
+          .folder-card {
+            background:white; border:1px solid #F1F5F9; border-radius:12px;
+            padding:12px; display:flex; align-items:center; gap:10px;
+            cursor:pointer; transition:all .15s;
+          }
+          .folder-card:hover { border-color:#4F46E5; transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.06); }
+        \x3c/style>
+      `;
+    } else {
+      folderArea.innerHTML = '';
+    }
   }
 
   // Files
   const filesArea = document.getElementById('filesSection');
+  if (!filesArea) return;
   if (!FilesState.files || FilesState.files.length === 0) {
     filesArea.innerHTML = `<div class="empty-state"><i class='bx bx-file'>\x3c/i>ยังไม่มีไฟล์${FilesState.category ? ' ในโฟลเดอร์นี้' : ''}\x3c/div>`;
     return;
@@ -995,6 +1003,7 @@ function loadUsers() {
 
 function renderUsersTable(res) {
   const area = document.getElementById('userTable');
+  if (!area) return;
   if (res.data.length === 0) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-user-x'>\x3c/i>ไม่พบผู้ใช้\x3c/div>`;
     return;
@@ -1288,7 +1297,9 @@ function loadSettings() {
 }
 
 function renderSettingsForm(c) {
-  document.getElementById('settingsContent').innerHTML = `
+  const el = document.getElementById('settingsContent');
+  if (!el) return;
+  el.innerHTML = `
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
       <!-- โรงเรียน -->

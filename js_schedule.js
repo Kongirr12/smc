@@ -262,6 +262,7 @@ function renderSchedTab() {
  * ============================================================ */
 function renderClassView() {
   const area = document.getElementById('schedContent');
+  if (!area) return;
   area.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <div class="flex items-center gap-2">
@@ -496,6 +497,7 @@ function onClassroomChange() {
  * ============================================================ */
 function renderTeacherView() {
   const area = document.getElementById('schedContent');
+  if (!area) return;
   area.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <div class="flex items-center gap-2">
@@ -535,6 +537,7 @@ function onTeacherChange() {
  * ============================================================ */
 function renderAllView() {
   const area = document.getElementById('schedContent');
+  if (!area) return;
   if (SchedState.classrooms.length === 0) {
     area.innerHTML = '<div class="empty-state"><i class="bx bx-info-circle">\x3c/i>ยังไม่มีห้องเรียน — เพิ่มนักเรียนก่อน\x3c/div>';
     return;
@@ -1053,6 +1056,7 @@ function viewEntryDetail(id) {
  * ============================================================ */
 function renderRoomsTab() {
   const area = document.getElementById('schedContent');
+  if (!area) return;
   area.innerHTML = `
     <div class="flex items-center justify-between mb-3">
       <div class="text-sm font-semibold text-slate-700">
@@ -1232,6 +1236,7 @@ function deleteRoomConfirm(id) {
  * ============================================================ */
 function renderPeriodsTab() {
   const area = document.getElementById('schedContent');
+  if (!area) return;
   const periods = SchedState.periods.length > 0 ? SchedState.periods : [];
 
   area.innerHTML = `
