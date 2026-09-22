@@ -51,13 +51,18 @@ function renderBehavior(container) {
       .bhv-badge-neg { background:#FEE2E2;color:#B91C1C;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700; }
     </style>
   `;
-  loadBehaviorData();
+  if (BHV.summary && BHV.presets) {
+    renderBhvSummary();
+    loadBehaviorData(true);
+  } else {
+    loadBehaviorData();
+  }
 }
 
-function loadBehaviorData() {
-  showLoading('กำลังโหลด...');
+function loadBehaviorData(silent) {
+  if (!silent) showLoading('กำลังโหลด...');
   let done = 0;
-  const check = () => { if (++done >= 2) { hideLoading(); renderBhvSummary(); } };
+  const check = () => { if (++done >= 2) { if (!silent) hideLoading(); renderBhvSummary(); } };
 
   google.script.run
     .withSuccessHandler(res => { if (res.status==='success') BHV.summary = res.data; check(); })

@@ -62,17 +62,27 @@ function renderClassroomMgmt(container) {
     </style>
   `;
 
-  loadClassroomList();
+  if (CLS.rooms && CLS.rooms.length > 0) {
+    renderCLS();
+    loadClassroomList(true);
+  } else {
+    loadClassroomList();
+  }
 }
 
-function loadClassroomList() {
+function loadClassroomList(silent) {
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status !== 'success') return showToast('error', res.message);
+      if (res.status !== 'success') {
+        if (!silent) showToast('error', res.message);
+        return;
+      }
       CLS.rooms = res.data;
       renderCLS();
     })
-    .withFailureHandler(err => showToast('error', err.message || err))
+    .withFailureHandler(err => {
+      if (!silent) showToast('error', err.message || err);
+    })
     .getClassroomList({ academic_year: CLS.academicYear }, APP.token);
 }
 

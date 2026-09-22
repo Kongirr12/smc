@@ -128,7 +128,12 @@ function renderSchedule(container) {
     \x3c/style>
   `;
 
-  loadSchedData();
+  if (SchedState.entries && SchedState.periods) {
+    renderSchedTab();
+    loadSchedData(true);
+  } else {
+    loadSchedData();
+  }
 }
 
 function checkDirtyState(callback) {
@@ -180,9 +185,11 @@ function switchSchedTab(tab) {
   });
 }
 
-function loadSchedData() {
-  document.getElementById('schedContent').innerHTML =
-    '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลดข้อมูล...\x3c/div>';
+function loadSchedData(silent) {
+  const content = document.getElementById('schedContent');
+  if (content && !silent && (!SchedState.entries || !SchedState.periods)) {
+    content.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลดข้อมูล...\x3c/div>';
+  }
 
   // Not forcing tab to 'teacher' here so teachers can switch tabs
 

@@ -124,7 +124,12 @@ function renderAcademicSubjects() {
       <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
     \x3c/div>
   `;
-  loadSubjects();
+  if (AcademicState.data && !AcademicState.search) {
+    renderSubjectsTable(AcademicState.data);
+    loadSubjects(true);
+  } else {
+    loadSubjects();
+  }
 }
 
 let _subSearchTimer = null;
@@ -142,17 +147,24 @@ function onSubjectFilter() {
 }
 function subjectsGoToPage(p) { AcademicState.page = p; loadSubjects(); }
 
-function loadSubjects() {
+function loadSubjects(silent) {
   const area = document.getElementById('subjectsTable');
-  if (area) area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+  if (area && !silent && (!AcademicState.data || AcademicState.search)) {
+    area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+  }
 
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status !== 'success') return showToast('error', res.message);
+      if (res.status !== 'success') {
+        if (!silent) showToast('error', res.message);
+        return;
+      }
       AcademicState.data = res;
       renderSubjectsTable(res);
     })
-    .withFailureHandler(err => showToast('error', err.message || err))
+    .withFailureHandler(err => {
+      if (!silent) showToast('error', err.message || err);
+    })
     .getSubjects({
       page: AcademicState.page,
       search: AcademicState.search,

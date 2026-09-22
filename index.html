@@ -12,6 +12,10 @@
   <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" id="favicon">
   <link rel="apple-touch-icon" href="app-icon.jpg">
   <link rel="shortcut icon" href="app-icon.jpg">
+  <!-- Preconnect to Google Apps Script & CDNs -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
+  <link rel="dns-prefetch" href="https://script.google.com">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -52,6 +56,31 @@
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyIe7i5qQ3h4AKjDU2_9mOahz7XDp7IdpBuYh95zFYA_L-GJm1sifVp6k-0qqqAlQeT/exec"; // UPDATE THIS URL LATER
 
+    // High-performance In-flight Deduplication & Micro-cache
+    const _apiCache = new Map();
+    const _inFlightRequests = new Map();
+
+    // Cacheable read-only queries with TTL (ms)
+    const CACHE_TTL_MAP = {
+      'getConfig': 120000,
+      'getTeachersForDropdown': 180000,
+      'getClassroomsForDropdown': 180000,
+      'getPeriodConfig': 180000,
+      'getUsersAndTeachers': 180000
+    };
+
+    window.clearAppCache = function(actionPrefix) {
+      if (!actionPrefix) {
+        _apiCache.clear();
+        return;
+      }
+      for (const key of _apiCache.keys()) {
+        if (key.startsWith(actionPrefix)) {
+          _apiCache.delete(key);
+        }
+      }
+    };
+
     function createRunner() {
       let successHandler = null;
       let failureHandler = null;
@@ -66,25 +95,67 @@
             return function(fn) { failureHandler = fn; return proxy; };
           }
           return function(...args) {
-            fetch(GAS_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ action: prop, args: args })
-            })
-            .then(res => res.json())
-            .then(data => {
-              if (data.status === 'error') {
-                if (failureHandler) failureHandler(data);
-                else console.error("GAS Error:", data);
-              } else {
-                if (successHandler) successHandler(data);
+            const isMutation = /^(save|delete|import|transfer|change|review|record|update|logout|reset)/i.test(prop);
+            if (isMutation) {
+              _apiCache.clear(); // Invalidate cache on mutations
+            }
+
+            const cacheKey = prop + ':' + JSON.stringify(args);
+            const ttl = CACHE_TTL_MAP[prop] || 0;
+            const now = Date.now();
+
+            // 1. Check cached response
+            if (!isMutation && ttl > 0 && _apiCache.has(cacheKey)) {
+              const item = _apiCache.get(cacheKey);
+              if (now - item.time < ttl) {
+                setTimeout(() => {
+                  if (successHandler) successHandler(JSON.parse(JSON.stringify(item.data)));
+                }, 0);
+                return proxy;
               }
-            })
-            .catch(err => {
-              if (failureHandler) failureHandler(err);
-              else console.error("Fetch Error:", err);
-            });
-            return proxy; // return proxy for chaining if needed
+            }
+
+            // 2. Request deduplication (reuse in-flight Promise for idempotent calls)
+            let fetchPromise;
+            if (!isMutation && _inFlightRequests.has(cacheKey)) {
+              fetchPromise = _inFlightRequests.get(cacheKey);
+            } else {
+              fetchPromise = fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: prop, args: args })
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (!isMutation && ttl > 0 && data && data.status !== 'error') {
+                  _apiCache.set(cacheKey, { time: Date.now(), data: data });
+                }
+                return data;
+              })
+              .finally(() => {
+                _inFlightRequests.delete(cacheKey);
+              });
+
+              if (!isMutation) {
+                _inFlightRequests.set(cacheKey, fetchPromise);
+              }
+            }
+
+            fetchPromise
+              .then(data => {
+                if (data && data.status === 'error') {
+                  if (failureHandler) failureHandler(data);
+                  else console.error("GAS Error:", data);
+                } else {
+                  if (successHandler) successHandler(data);
+                }
+              })
+              .catch(err => {
+                if (failureHandler) failureHandler(err);
+                else console.error("Fetch Error:", err);
+              });
+
+            return proxy;
           };
         }
       });

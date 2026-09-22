@@ -76,16 +76,11 @@ function doPost(e) {
   const args = payload.args || [];
   
   try {
-    let fn = null;
-    try { fn = globalThis[action]; } catch(e) {}
-    if (!fn) {
-      try { fn = this[action]; } catch(e) {}
-    }
-    if (!fn) {
-      try { fn = eval(action); } catch(e) {}
-    }
+    const fn = typeof globalThis[action] === 'function' ? globalThis[action]
+             : typeof this[action] === 'function' ? this[action]
+             : null;
 
-    if (typeof fn === 'function') {
+    if (fn) {
       const result = fn.apply(null, args);
       return jsonResponse(result);
     } else {
@@ -488,7 +483,8 @@ function _ensureSheet_(sheetName) {
 function appendJsonRow_(sheetName, obj) {
   readJsonSheet_(sheetName); // Ensure cache is fully populated first
   const sheet = _ensureSheet_(sheetName);
-  const nextRow = sheet.getLastRow() + 1;
+  const currentCount = _jsonSheetCache_[sheetName] ? _jsonSheetCache_[sheetName].length : 0;
+  const nextRow = currentCount + 2;
   sheet.getRange(nextRow, 1).setValue(JSON.stringify(obj));
   
   _jsonSheetCache_[sheetName].push(obj);
@@ -499,7 +495,8 @@ function appendJsonRows_(sheetName, arr) {
   if (!arr || arr.length === 0) return;
   readJsonSheet_(sheetName); // Ensure cache is fully populated first
   const sheet = _ensureSheet_(sheetName);
-  const nextRow = sheet.getLastRow() + 1;
+  const currentCount = _jsonSheetCache_[sheetName] ? _jsonSheetCache_[sheetName].length : 0;
+  const nextRow = currentCount + 2;
   const values = arr.map(obj => [JSON.stringify(obj)]);
   sheet.getRange(nextRow, 1, arr.length, 1).setValues(values);
   
@@ -654,6 +651,7 @@ function login(username, password) {
 
 function logout(sessionToken) {
   try {
+    try { CacheService.getScriptCache().remove('fast_sess_' + sessionToken); } catch(_) {}
     const arr = readJsonSheet_('Sessions');
     const next = arr.filter(s => s.token !== sessionToken);
     writeJsonSheet_('Sessions', next);
@@ -706,6 +704,15 @@ function validateSession(sessionToken) {
 function validateSessionLight_(sessionToken) {
   try {
     if (!sessionToken) return { valid:false };
+
+    // 1. Check Fast CacheService
+    try {
+      const cached = CacheService.getScriptCache().get('fast_sess_' + sessionToken);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (_) {}
+
     const sessions = readJsonSheet_('Sessions');
     const s = sessions.find(x => x.token === sessionToken);
     if (!s) return { valid:false };
@@ -718,7 +725,14 @@ function validateSessionLight_(sessionToken) {
     if (!user) return { valid:false };
     const safe = Object.assign({}, user);
     delete safe.password;
-    return { valid:true, user:safe, role:s.role, role_info:CONFIG.USER_ROLES[s.role] || null };
+    const res = { valid:true, user:safe, role:s.role, role_info:CONFIG.USER_ROLES[s.role] || null };
+
+    // 2. Cache valid session for 20 minutes (1200s)
+    try {
+      CacheService.getScriptCache().put('fast_sess_' + sessionToken, JSON.stringify(res), 1200);
+    } catch (_) {}
+
+    return res;
   } catch (e) {
     return { valid:false };
   }

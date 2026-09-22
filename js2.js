@@ -159,7 +159,12 @@ function renderStudents(container) {
       \x3c/div>
     \x3c/div>
   `;
-  loadStudents();
+  if (StudentsState.data && !StudentsState.search) {
+    renderStudentsTable(StudentsState.data);
+    loadStudents(true);
+  } else {
+    loadStudents();
+  }
 }
 
 let _stSearchTimer = null;
@@ -178,17 +183,24 @@ function onStudentFilter() {
 }
 function studentsGoToPage(p) { StudentsState.page = p; loadStudents(); }
 
-function loadStudents() {
+function loadStudents(silent) {
   const area = document.getElementById('stTableArea');
-  if (area) area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+  if (area && !silent && (!StudentsState.data || StudentsState.search)) {
+    area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+  }
 
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status !== 'success') return showToast('error', res.message);
+      if (res.status !== 'success') {
+        if (!silent) showToast('error', res.message);
+        return;
+      }
       StudentsState.data = res;
       renderStudentsTable(res);
     })
-    .withFailureHandler(err => showToast('error', err.message || err))
+    .withFailureHandler(err => {
+      if (!silent) showToast('error', err.message || err);
+    })
     .getStudents({
       page: StudentsState.page,
       search: StudentsState.search,
@@ -684,7 +696,12 @@ function renderPersonnel(container) {
       \x3c/div>
     \x3c/div>
   `;
-  loadPersonnel();
+  if (PersonnelState.data && !PersonnelState.search) {
+    renderPersonnelTable(PersonnelState.data);
+    loadPersonnel(true);
+  } else {
+    loadPersonnel();
+  }
 }
 
 let _pSearchTimer = null;
@@ -703,17 +720,24 @@ function onPersonnelFilter() {
 }
 function personnelGoToPage(p) { PersonnelState.page = p; loadPersonnel(); }
 
-function loadPersonnel() {
+function loadPersonnel(silent) {
   const area = document.getElementById('pTableArea');
-  if (area) area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+  if (area && !silent && (!PersonnelState.data || PersonnelState.search)) {
+    area.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลด...\x3c/div>';
+  }
 
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status !== 'success') return showToast('error', res.message);
+      if (res.status !== 'success') {
+        if (!silent) showToast('error', res.message);
+        return;
+      }
       PersonnelState.data = res;
       renderPersonnelTable(res);
     })
-    .withFailureHandler(err => showToast('error', err.message || err))
+    .withFailureHandler(err => {
+      if (!silent) showToast('error', err.message || err);
+    })
     .getPersonnel({
       page: PersonnelState.page,
       search: PersonnelState.search,
