@@ -284,9 +284,17 @@ let _csvImportSubjectRecords = [];
 
 function showImportSubjectsCSV() {
   _csvImportSubjectRecords = [];
+  if (!AcademicState.teachers || !AcademicState.teachers.length) {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.status === 'success') AcademicState.teachers = res.data;
+      })
+      .getTeachersForDropdown(APP.token);
+  }
+
   Swal.fire({
     title: 'นำเข้ารายวิชาจาก CSV',
-    width: 640,
+    width: 680,
     showCancelButton: true,
     confirmButtonText: '<i class="bx bx-upload">\x3c/i> นำเข้า',
     cancelButtonText: 'ยกเลิก',
@@ -323,6 +331,7 @@ function showImportSubjectsCSV() {
                   <th class="px-2 py-1.5 text-left font-semibold border-b">ชื่อวิชา\x3c/th>
                   <th class="px-2 py-1.5 text-left font-semibold border-b">หน่วยกิต\x3c/th>
                   <th class="px-2 py-1.5 text-left font-semibold border-b">ชั้น\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">ครูผู้สอน\x3c/th>
                 \x3c/tr>
               \x3c/thead>
               <tbody id="csvSubjectPreviewBody">\x3c/tbody>
@@ -357,43 +366,87 @@ function previewSubjectsCSV(input) {
   const reader = new FileReader();
   reader.onload = e => {
     const rows = parseCSV(e.target.result);
-    if (rows.length < 2) { body.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-3">ไม่พบข้อมูล\x3c/td>\x3c/tr>'; box.style.display='block'; return; }
+    if (rows.length < 2) { 
+      body.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-3">ไม่พบข้อมูล\x3c/td>\x3c/tr>'; 
+      box.style.display = 'block'; 
+      return; 
+    }
     const headers = rows[0].map(h => h.trim().toLowerCase().replace(/^\uFEFF/, ''));
     const dataRows = rows.slice(1);
+
+    const getVal = (rowMap, keys) => {
+      for (let k of keys) {
+        if (rowMap[k] !== undefined && rowMap[k] !== null && String(rowMap[k]).trim() !== '') {
+          return String(rowMap[k]).trim();
+        }
+      }
+      return '';
+    };
+
+    const normalizeName = str => {
+      if (!str) return '';
+      return String(str)
+        .replace(/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|ว่าที่\s*ร\.ต\.|ว่าที่ร้อยตรี|ครู|อ\.|อาจารย์|ผอ\.)\s*/i, '')
+        .replace(/[\s\.\-_]/g, '')
+        .toLowerCase();
+    };
+
     const records = dataRows.map((row, idx) => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-      
+
+      const subject_code = getVal(obj, ['subject_code', 'code', 'รหัสวิชา', 'รหัส']);
+      const subject_name = getVal(obj, ['subject_name', 'name', 'ชื่อวิชา', 'รายวิชา', 'ชื่อรายวิชา']);
+      const subject_group = getVal(obj, ['subject_group', 'group', 'กลุ่มสาระ', 'กลุ่มสาระการเรียนรู้', 'หมวดวิชา']);
+      const subject_type = getVal(obj, ['subject_type', 'type', 'ประเภทวิชา', 'ประเภท']) || 'basic';
+      const credit = getVal(obj, ['credit', 'หน่วยกิต']) || '0';
+      const hours_per_week = getVal(obj, ['hours_per_week', 'hours', 'ชั่วโมง', 'จำนวนชั่วโมง', 'คาบ']) || '0';
+      const grade_level = getVal(obj, ['grade_level', 'grade', 'ชั้น', 'ระดับชั้น']);
+      const semester = getVal(obj, ['semester', 'เทอม', 'ภาคเรียน']) || '1';
+      const academic_year = getVal(obj, ['academic_year', 'year', 'ปีการศึกษา', 'ปี']) || '';
+      const teacher_name_raw = getVal(obj, ['teacher_name', 'teacher', 'ครูผู้สอน', 'ครู', 'ผู้สอน', 'ชื่อครู']);
+
       let tId = '';
-      const tNameStr = (obj.teacher_name || '').trim();
-      if (tNameStr && AcademicState.teachers) {
-        // ลองหาชื่อครูจาก AcademicState.teachers (สมมติว่ามี .first_name หรือ .name ให้แมตช์)
-        // หรือดึงครูทั้งหมดมารอไว้ก่อน
-        const found = AcademicState.teachers.find(t => 
-          (t.name && t.name.includes(tNameStr)) || 
-          (t.first_name && (t.first_name + ' ' + t.last_name).includes(tNameStr)) ||
-          (t.first_name && t.first_name.includes(tNameStr))
-        );
-        if (found) tId = found.id;
+      let displayTeacherName = teacher_name_raw;
+
+      if (teacher_name_raw && AcademicState.teachers && AcademicState.teachers.length) {
+        const cleanInput = normalizeName(teacher_name_raw);
+        const found = AcademicState.teachers.find(t => {
+          const cleanT = normalizeName(t.name || '');
+          return cleanT === cleanInput || 
+                 (cleanInput.length >= 3 && (cleanT.includes(cleanInput) || cleanInput.includes(cleanT)));
+        });
+        if (found) {
+          tId = found.id;
+          displayTeacherName = found.name;
+        }
       }
 
       return {
-        subject_code: obj.subject_code || '',
-        subject_name: obj.subject_name || '',
-        subject_group: obj.subject_group || '',
-        subject_type: obj.subject_type || 'basic',
-        credit: obj.credit || '0',
-        hours_per_week: obj.hours_per_week || '0',
-        grade_level: obj.grade_level || '',
-        semester: obj.semester || '1',
-        academic_year: obj.academic_year || '',
-        teacher_id: tId
+        subject_code,
+        subject_name,
+        subject_group,
+        subject_type,
+        credit,
+        hours_per_week,
+        grade_level,
+        semester,
+        academic_year,
+        teacher_id: tId,
+        teacher_name: displayTeacherName
       };
     }).filter(r => r.subject_name);
+
     _csvImportSubjectRecords = records;
 
     body.innerHTML = records.map((r, i) => {
       const warn = !r.subject_code ? 'class="warn" title="รหัสวิชาว่างเปล่า"' : '';
+      const teacherBadge = r.teacher_name 
+        ? (r.teacher_id 
+            ? `<span class="text-emerald-700 font-medium"><i class='bx bx-check-circle'>\x3c/i> ${escapeHTML(r.teacher_name)}\x3c/span>`
+            : `<span class="text-amber-700 font-medium" title="จะจับคู่ชื่อครูกับฐานข้อมูลให้อัตโนมัติ"><i class='bx bx-user'>\x3c/i> ${escapeHTML(r.teacher_name)}\x3c/span>`)
+        : '<span class="text-slate-400 italic">ไม่ระบุ\x3c/span>';
+
       return `
         <tr ${warn}>
           <td>${i+1}\x3c/td>
@@ -401,6 +454,7 @@ function previewSubjectsCSV(input) {
           <td>${escapeHTML(r.subject_name)}\x3c/td>
           <td>${escapeHTML(r.credit)}\x3c/td>
           <td>${escapeHTML(r.grade_level)} (${escapeHTML(r.academic_year)})\x3c/td>
+          <td>${teacherBadge}\x3c/td>
         \x3c/tr>
       `;
     }).join('');

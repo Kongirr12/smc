@@ -1860,11 +1860,22 @@ function getSubjects(params, sessionToken) {
 
     const personnel = readJsonSheet_('Personnel');
     const persMap = {};
-    personnel.forEach(p => persMap[p.id] = p);
+    const normMap = {};
+    personnel.forEach(p => {
+      persMap[p.id] = p;
+      const fn = ((p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||'')).trim();
+      const norm = fn.replace(/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|ว่าที่\s*ร\.ต\.|ว่าที่ร้อยตรี|ครู|อ\.|อาจารย์|ผอ\.)\s*/i, '').replace(/[\s\.\-_]/g, '').toLowerCase();
+      if (norm) normMap[norm] = p;
+    });
+
     filtered = filtered.map(s => {
-      const t = persMap[s.teacher_id];
+      let t = persMap[s.teacher_id];
+      if (!t && s.teacher_name) {
+        const normIn = String(s.teacher_name).replace(/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|ว่าที่\s*ร\.ต\.|ว่าที่ร้อยตรี|ครู|อ\.|อาจารย์|ผอ\.)\s*/i, '').replace(/[\s\.\-_]/g, '').toLowerCase();
+        t = normMap[normIn];
+      }
       return Object.assign({}, s, {
-        teacher_name: t ? ((t.prefix||'') + (t.first_name||'') + ' ' + (t.last_name||'')) : '-'
+        teacher_name: t ? ((t.prefix||'') + (t.first_name||'') + ' ' + (t.last_name||'')) : (s.teacher_name || '-')
       });
     });
 
@@ -1914,6 +1925,7 @@ function saveSubject(data, sessionToken) {
       semester      : String(data.semester || '1'),
       academic_year : sanitize(data.academic_year) || getConfig().academic_year,
       teacher_id    : data.teacher_id || '',
+      teacher_name  : sanitize(data.teacher_name || ''),
       midterm_weight: Number(data.midterm_weight) || 70,
       final_weight  : Number(data.final_weight) || 30
     };
@@ -1952,11 +1964,63 @@ function importSubjectsBulk(recordsJson, sessionToken) {
     }
 
     const arr = readJsonSheet_('Academic');
+    const personnel = readJsonSheet_('Personnel');
     const now = new Date().toISOString();
     let count = 0;
 
+    function normalizeThaiName(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|ว่าที่\s*ร\.ต\.|ว่าที่ร้อยตรี|ครู|อ\.|อาจารย์|ผอ\.)\s*/i, '')
+        .replace(/[\s\.\-_]/g, '')
+        .toLowerCase();
+    }
+
+    const teacherLookup = [];
+    personnel.forEach(p => {
+      const fullName = ((p.prefix || '') + (p.first_name || '') + ' ' + (p.last_name || '')).trim();
+      const normFull = normalizeThaiName(fullName);
+      const normFirst = normalizeThaiName(p.first_name || '');
+      teacherLookup.push({
+        id: p.id,
+        fullName: fullName,
+        normFull: normFull,
+        normFirst: normFirst,
+        personnel_id: String(p.personnel_id || '').toLowerCase()
+      });
+    });
+
     for (let r of records) {
-      if (!r.subject_name) continue; // ข้ามถ้ารายการไม่มีชื่อวิชา
+      if (!r.subject_name) continue;
+
+      let matchedTeacherId = r.teacher_id || '';
+      let matchedTeacherName = r.teacher_name || '';
+
+      if (matchedTeacherId) {
+        const found = teacherLookup.find(t => t.id === matchedTeacherId);
+        if (found) {
+          matchedTeacherName = found.fullName;
+        }
+      }
+
+      if (!matchedTeacherId && matchedTeacherName) {
+        const inputNorm = normalizeThaiName(matchedTeacherName);
+        let found = teacherLookup.find(t => t.normFull === inputNorm);
+        if (!found && inputNorm.length >= 3) {
+          found = teacherLookup.find(t => t.normFull.includes(inputNorm) || inputNorm.includes(t.normFull));
+        }
+        if (!found && inputNorm.length >= 3) {
+          found = teacherLookup.find(t => t.normFirst === inputNorm);
+        }
+        if (!found) {
+          found = teacherLookup.find(t => t.personnel_id && t.personnel_id === String(matchedTeacherName).trim().toLowerCase());
+        }
+
+        if (found) {
+          matchedTeacherId = found.id;
+          matchedTeacherName = found.fullName;
+        }
+      }
 
       const obj = {
         _kind         : 'subject',
@@ -1970,13 +2034,29 @@ function importSubjectsBulk(recordsJson, sessionToken) {
         grade_level   : sanitize(r.grade_level),
         semester      : String(r.semester || '1'),
         academic_year : sanitize(r.academic_year) || getConfig().academic_year,
-        teacher_id    : r.teacher_id || '',
+        teacher_id    : matchedTeacherId,
+        teacher_name  : matchedTeacherName,
         midterm_weight: Number(r.midterm_weight) || 70,
         final_weight  : Number(r.final_weight) || 30,
         created_at    : now,
         updated_at    : now
       };
-      arr.push(obj);
+
+      const existingIdx = arr.findIndex(x => 
+        x._kind === 'subject' &&
+        String(x.subject_code || '').trim().toLowerCase() === String(obj.subject_code || '').trim().toLowerCase() &&
+        String(x.grade_level || '').trim() === String(obj.grade_level || '').trim() &&
+        String(x.semester || '').trim() === String(obj.semester || '').trim() &&
+        String(x.academic_year || '').trim() === String(obj.academic_year || '').trim()
+      );
+
+      if (existingIdx >= 0) {
+        obj.id = arr[existingIdx].id;
+        obj.created_at = arr[existingIdx].created_at || now;
+        arr[existingIdx] = Object.assign(arr[existingIdx], obj);
+      } else {
+        arr.push(obj);
+      }
       count++;
     }
 
