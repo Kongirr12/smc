@@ -41,7 +41,7 @@ const CONFIG = {
     'Config','Users','Sessions','Students','Personnel','Attendance',
     'Academic','Registration','Finance','Documents','Approvals',
     'Calendar','Files','Errors',
-    'Schedule'
+    'Schedule','Classrooms','Behavior','Notifications'
   ]
 };
 
