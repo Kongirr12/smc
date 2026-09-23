@@ -226,6 +226,11 @@ function routeApi(action, params, token) {
       case 'deleteFile': return deleteFile(params.id);
       case 'deleteFileById': return deleteFile(params.id);
 
+      // ---------- CUSTOM TEMPLATES ----------
+      case 'getCustomTemplates': return getCustomTemplates(token);
+      case 'saveCustomTemplate': return saveCustomTemplate(params.data ? (typeof params.data === 'string' ? JSON.parse(params.data) : params.data) : params, token);
+      case 'deleteCustomTemplate': return deleteCustomTemplate(params.id, token);
+
       // ---------- REPORTS ----------
       case 'getReportsOverview': return getReportsOverview(token);
 
@@ -5070,6 +5075,88 @@ function deleteFileById(fileId, sessionToken) {
     return { status:'success', message:'ลบไฟล์สำเร็จ' };
   } catch (e) {
     logError({ fn:'deleteFileById', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+/* ============================================================
+ *  CUSTOM TEMPLATES — แบบฟอร์ม 4 ฝ่ายที่อัพโหลดโดยแอดมิน
+ * ============================================================ */
+function getCustomTemplates(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    const list = readJsonSheet_('CustomTemplates') || [];
+    return { status:'success', data: list };
+  } catch (e) {
+    logError({ fn:'getCustomTemplates', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function saveCustomTemplate(data, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    if (!data || !data.title || !data.dept) {
+      return { status:'error', message:'กรุณาระบุชื่อแบบฟอร์มและฝ่ายที่เกี่ยวข้อง' };
+    }
+
+    const now = new Date().toISOString();
+    const clean = {
+      title        : sanitize(data.title),
+      dept         : sanitize(data.dept),
+      desc         : sanitize(data.desc || ''),
+      format       : sanitize(data.format || 'เอกสารแนบ'),
+      file_name    : sanitize(data.file_name || ''),
+      file_id      : sanitize(data.file_id || ''),
+      download_url : data.download_url || '',
+      view_url     : data.view_url || '',
+      file_size    : data.file_size || 0,
+      tags         : Array.isArray(data.tags) ? data.tags : (data.tags ? String(data.tags).split(',').map(s=>s.trim()).filter(Boolean) : []),
+      is_custom    : true,
+      uploader_name: (auth.user && (auth.user.name || auth.user.username)) || 'Admin',
+      created_by   : (auth.user && auth.user.id) || ''
+    };
+
+    if (data.id) {
+      const ok = updateJsonById_('CustomTemplates', data.id, d => {
+        Object.assign(d, clean, { updated_at: now });
+      });
+      return ok ? { status:'success', message:'แก้ไขแบบฟอร์มสำเร็จ', data: clean } : { status:'error', message:'ไม่พบแบบฟอร์ม' };
+    } else {
+      const newObj = Object.assign({
+        id: 'cust_tmpl_' + generateId(),
+        created_at: now,
+        updated_at: now
+      }, clean);
+      appendJsonRow_('CustomTemplates', newObj);
+      return { status:'success', message:'อัพโหลดและบันทึกแบบฟอร์มสำเร็จ', data: newObj };
+    }
+  } catch (e) {
+    logError({ fn:'saveCustomTemplate', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function deleteCustomTemplate(id, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    if (auth.role === 'teacher') {
+      return { status:'error', message:'คุณไม่มีสิทธิ์ลบแบบฟอร์มนี้' };
+    }
+
+    const list = readJsonSheet_('CustomTemplates') || [];
+    const item = list.find(x => x.id === id);
+    if (item && item.file_id) {
+      try { DriveApp.getFileById(item.file_id).setTrashed(true); } catch (_) {}
+    }
+
+    const ok = deleteJsonById_('CustomTemplates', id);
+    return ok ? { status:'success', message:'ลบแบบฟอร์มสำเร็จ' } : { status:'error', message:'ไม่พบแบบฟอร์ม' };
+  } catch (e) {
+    logError({ fn:'deleteCustomTemplate', error:e.message });
     return { status:'error', message:e.message };
   }
 }

@@ -1264,30 +1264,101 @@ const FOUR_DEPT_TEMPLATES = [
 
 let TemplatesState = {
   activeDept: 'all',
-  searchQuery: ''
+  searchQuery: '',
+  customTemplates: [],
+  loaded: false
 };
+
+function updateTemplateCounts() {
+  const allTemplates = [...FOUR_DEPT_TEMPLATES, ...(TemplatesState.customTemplates || [])];
+  TEMPLATE_DEPARTMENTS.all.count = allTemplates.length;
+  Object.keys(TEMPLATE_DEPARTMENTS).forEach(k => {
+    if (k !== 'all') {
+      TEMPLATE_DEPARTMENTS[k].count = allTemplates.filter(t => t.dept === k).length;
+    }
+  });
+}
+
+function renderTemplateStats() {
+  const area = document.getElementById('templateStatsArea');
+  if (!area) return;
+  area.innerHTML = `
+    <div class="stat-card" style="border-left:4px solid #3B82F6;">
+      <div class="text-xs font-semibold text-slate-500">ฝ่ายบริหารวิชาการ</div>
+      <div class="text-2xl font-bold text-blue-600 mt-1">${TEMPLATE_DEPARTMENTS.academic.count} <span class="text-xs font-normal text-slate-400">ฟอร์ม</span></div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid #10B981;">
+      <div class="text-xs font-semibold text-slate-500">ฝ่ายบริหารงบประมาณ</div>
+      <div class="text-2xl font-bold text-emerald-600 mt-1">${TEMPLATE_DEPARTMENTS.budget.count} <span class="text-xs font-normal text-slate-400">ฟอร์ม</span></div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid #F59E0B;">
+      <div class="text-xs font-semibold text-slate-500">ฝ่ายบริหารงานบุคคล</div>
+      <div class="text-2xl font-bold text-amber-600 mt-1">${TEMPLATE_DEPARTMENTS.personnel.count} <span class="text-xs font-normal text-slate-400">ฟอร์ม</span></div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid #8B5CF6;">
+      <div class="text-xs font-semibold text-slate-500">ฝ่ายบริหารทั่วไป</div>
+      <div class="text-2xl font-bold text-purple-600 mt-1">${TEMPLATE_DEPARTMENTS.general.count} <span class="text-xs font-normal text-slate-400">ฟอร์ม</span></div>
+    </div>
+  `;
+}
+
+function loadCustomTemplates() {
+  // 1. โหลดจาก LocalStorage ก่อนเพื่อให้แสดงผลทันที
+  try {
+    const cached = localStorage.getItem('mhc_custom_templates');
+    if (cached) {
+      TemplatesState.customTemplates = JSON.parse(cached) || [];
+      updateTemplateCounts();
+      renderTemplateStats();
+      renderTemplateCards();
+    }
+  } catch (_) {}
+
+  // 2. ดึงข้อมูลล่าสุดจาก Google Apps Script Backend
+  if (typeof google !== 'undefined' && google.script && google.script.run && typeof APP !== 'undefined') {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.status === 'success' && Array.isArray(res.data)) {
+          TemplatesState.customTemplates = res.data;
+          try {
+            localStorage.setItem('mhc_custom_templates', JSON.stringify(res.data));
+          } catch (_) {}
+          updateTemplateCounts();
+          renderTemplateStats();
+          renderTemplateCards();
+        }
+      })
+      .withFailureHandler(err => {
+        console.warn('Cannot load custom templates from backend:', err);
+      })
+      .getCustomTemplates(APP.token);
+  }
+}
 
 /* ============================================================
  *  RENDER TEMPLATES PAGE
  * ============================================================ */
 function renderTemplates(container) {
-  // Update counts
-  TEMPLATE_DEPARTMENTS.all.count = FOUR_DEPT_TEMPLATES.length;
-  Object.keys(TEMPLATE_DEPARTMENTS).forEach(k => {
-    if (k !== 'all') {
-      TEMPLATE_DEPARTMENTS[k].count = FOUR_DEPT_TEMPLATES.filter(t => t.dept === k).length;
-    }
-  });
+  updateTemplateCounts();
+
+  const isAdmin = typeof APP !== 'undefined' && APP.role && APP.role !== 'teacher';
 
   container.innerHTML = `
     ${pageHeader('แบบฟอร์มงาน 4 ฝ่าย', 'bxs-file-doc', `
-      <div class="text-xs text-slate-500 font-medium">
-        ศูนย์ดาวน์โหลดแบบฟอร์มเอกสารมาตรฐาน โรงเรียนมหาชัยพิทยาคาร
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="text-xs text-slate-500 font-medium hidden sm:block">
+          ศูนย์ดาวน์โหลดแบบฟอร์มเอกสารมาตรฐาน โรงเรียนมหาชัยพิทยาคาร
+        </div>
+        ${isAdmin ? `
+          <button class="btn btn-blue btn-sm" onclick="openUploadTemplateModal()">
+            <i class='bx bx-cloud-upload'></i> อัพโหลดแบบฟอร์ม (Admin)
+          </button>
+        ` : ''}
       </div>
     `)}
 
     <!-- Search & Summary Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+    <div id="templateStatsArea" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
       <div class="stat-card" style="border-left:4px solid #3B82F6;">
         <div class="text-xs font-semibold text-slate-500">ฝ่ายบริหารวิชาการ</div>
         <div class="text-2xl font-bold text-blue-600 mt-1">${TEMPLATE_DEPARTMENTS.academic.count} <span class="text-xs font-normal text-slate-400">ฟอร์ม</span></div>
@@ -1402,6 +1473,7 @@ function renderTemplates(container) {
   `;
 
   renderTemplateCards();
+  loadCustomTemplates();
 }
 
 function switchTemplateDept(deptId) {
@@ -1417,20 +1489,35 @@ function handleTemplateSearch(query) {
   renderTemplateCards();
 }
 
+function getIconByFormat(fmt) {
+  const f = String(fmt || '').toLowerCase();
+  if (f.includes('doc')) return 'bxs-file-doc';
+  if (f.includes('pdf')) return 'bxs-file-pdf';
+  if (f.includes('xls')) return 'bxs-spreadsheet';
+  if (f.includes('zip') || f.includes('rar')) return 'bxs-file-archive';
+  return 'bxs-file-blank';
+}
+
 function renderTemplateCards() {
   const grid = document.getElementById('templatesListGrid');
   if (!grid) return;
 
   const q = TemplatesState.searchQuery;
   const dept = TemplatesState.activeDept;
+  const isAdmin = typeof APP !== 'undefined' && APP.role && APP.role !== 'teacher';
 
-  const filtered = FOUR_DEPT_TEMPLATES.filter(t => {
+  const allTemplates = [
+    ...(TemplatesState.customTemplates || []),
+    ...FOUR_DEPT_TEMPLATES
+  ];
+
+  const filtered = allTemplates.filter(t => {
     const matchDept = dept === 'all' || t.dept === dept;
     const matchQuery = !q ||
       t.title.toLowerCase().includes(q) ||
-      t.desc.toLowerCase().includes(q) ||
-      t.summary.toLowerCase().includes(q) ||
-      t.tags.some(tag => tag.toLowerCase().includes(q));
+      (t.desc && t.desc.toLowerCase().includes(q)) ||
+      (t.summary && t.summary.toLowerCase().includes(q)) ||
+      (t.tags && Array.isArray(t.tags) && t.tags.some(tag => tag.toLowerCase().includes(q)));
     return matchDept && matchQuery;
   });
 
@@ -1447,20 +1534,28 @@ function renderTemplateCards() {
 
   grid.innerHTML = filtered.map(t => {
     const dInfo = TEMPLATE_DEPARTMENTS[t.dept] || TEMPLATE_DEPARTMENTS.general;
+    const isCustom = !!t.is_custom;
+
     return `
       <div class="tmpl-card">
         <div>
           <!-- Header -->
           <div class="flex items-start gap-3 mb-2.5">
             <div class="tmpl-icon-box" style="background:${dInfo.badgeBg}; color:${dInfo.color};">
-              <i class='bx ${t.icon}'></i>
+              <i class='bx ${t.icon || getIconByFormat(t.format)}'></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-1.5 mb-1">
+              <div class="flex items-center gap-1.5 mb-1 flex-wrap">
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:${dInfo.badgeBg}; color:${dInfo.badgeText};">
                   ${dInfo.label}
                 </span>
-                <span class="text-[10px] text-slate-400 font-medium">Word .doc</span>
+                ${isCustom ? `
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    <i class='bx bx-cloud-upload'></i> อัพโหลดโดยโรงเรียน
+                  </span>
+                ` : `
+                  <span class="text-[10px] text-slate-400 font-medium">Word .doc</span>
+                `}
               </div>
               <h3 class="text-sm font-bold text-slate-800 leading-snug truncate" title="${escapeHTML(t.title)}">
                 ${escapeHTML(t.title)}
@@ -1469,13 +1564,19 @@ function renderTemplateCards() {
           </div>
 
           <!-- Description -->
-          <p class="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-3">
-            ${escapeHTML(t.desc)}
+          <p class="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-2">
+            ${escapeHTML(t.desc || 'แบบฟอร์มเอกสารมาตรฐาน')}
           </p>
+
+          ${isCustom ? `
+            <div class="text-[10px] text-slate-400 mb-2.5">
+              โดย: ${escapeHTML(t.uploader_name || 'Admin')} ${t.file_size ? '· ' + formatFileSize(t.file_size) : ''}
+            </div>
+          ` : ''}
 
           <!-- Tags -->
           <div class="flex flex-wrap gap-1 mb-4">
-            ${t.tags.slice(0, 3).map(tag => `
+            ${(t.tags || []).slice(0, 3).map(tag => `
               <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">#${escapeHTML(tag)}</span>
             `).join('')}
           </div>
@@ -1483,19 +1584,264 @@ function renderTemplateCards() {
 
         <!-- Action Buttons -->
         <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
-          <button type="button" class="btn btn-blue btn-sm flex-1 text-xs justify-center" onclick="downloadTemplateDoc('${t.id}')">
-            <i class='bx bxs-download'></i> ดาวน์โหลด Word
-          </button>
-          <button type="button" class="btn btn-light btn-sm text-xs px-2.5" onclick="previewTemplatePrint('${t.id}')" title="ดูตัวอย่าง / พิมพ์เอกสาร A4">
-            <i class='bx bx-printer'></i> ดู / พิมพ์
-          </button>
-          <button type="button" class="btn btn-light btn-sm text-xs px-2" onclick="copyTemplateContent('${t.id}')" title="คัดลอกข้อความ">
-            <i class='bx bx-copy'></i>
-          </button>
+          ${isCustom ? `
+            <a href="${t.download_url || t.view_url}" target="_blank" download class="btn btn-blue btn-sm flex-1 text-xs justify-center" style="text-decoration:none;">
+              <i class='bx bxs-download'></i> ดาวน์โหลด (${escapeHTML(t.format || 'ไฟล์')})
+            </a>
+            ${t.view_url ? `
+              <button type="button" class="btn btn-light btn-sm text-xs px-2.5" onclick="window.open('${t.view_url}','_blank')" title="เปิดดูตัวอย่าง">
+                <i class='bx bx-show'></i>
+              </button>
+            ` : ''}
+            ${isAdmin ? `
+              <button type="button" class="btn btn-light btn-sm text-xs px-2 text-danger" onclick="deleteCustomTemplateConfirm('${t.id}')" title="ลบแบบฟอร์ม">
+                <i class='bx bx-trash'></i>
+              </button>
+            ` : ''}
+          ` : `
+            <button type="button" class="btn btn-blue btn-sm flex-1 text-xs justify-center" onclick="downloadTemplateDoc('${t.id}')">
+              <i class='bx bxs-download'></i> ดาวน์โหลด Word
+            </button>
+            <button type="button" class="btn btn-light btn-sm text-xs px-2.5" onclick="previewTemplatePrint('${t.id}')" title="ดูตัวอย่าง / พิมพ์เอกสาร A4">
+              <i class='bx bx-printer'></i> ดู / พิมพ์
+            </button>
+            <button type="button" class="btn btn-light btn-sm text-xs px-2" onclick="copyTemplateContent('${t.id}')" title="คัดลอกข้อความ">
+              <i class='bx bx-copy'></i>
+            </button>
+          `}
         </div>
       </div>
     `;
   }).join('');
+}
+
+/* ============================================================
+ *  ADMIN: UPLOAD CUSTOM TEMPLATE MODAL
+ * ============================================================ */
+function openUploadTemplateModal() {
+  Swal.fire({
+    title: 'อัพโหลดแบบฟอร์มเอกสาร (งาน 4 ฝ่าย)',
+    width: 620,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-cloud-upload"></i> อัพโหลดและเผยแพร่',
+    cancelButtonText: 'ยกเลิก',
+    html: `
+      <div style="text-align:left; font-size:13px; font-family:'Sarabun', sans-serif;">
+        <div class="mb-3">
+          <label class="form-label">ฝ่ายที่เกี่ยวข้อง <span class="text-danger">*</span></label>
+          <select id="tmpl_dept" class="form-input">
+            <option value="academic">📚 ฝ่ายบริหารวิชาการ</option>
+            <option value="budget">💰 ฝ่ายบริหารงบประมาณและแผนงาน</option>
+            <option value="personnel">👥 ฝ่ายบริหารงานบุคคล</option>
+            <option value="general">🏢 ฝ่ายบริหารทั่วไป</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">ชื่อแบบฟอร์ม / เอกสาร <span class="text-danger">*</span></label>
+          <input type="text" id="tmpl_title" class="form-input" placeholder="เช่น แบบฟอร์มขอใช้อินเทอร์เน็ตโรงเรียน">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">คำอธิบายรายละเอียด</label>
+          <textarea id="tmpl_desc" class="form-input" rows="2" placeholder="อธิบายวัตถุประสงค์ หรือขั้นตอนการยื่นเอกสาร..."></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">แท็กคำค้นหา (คั่นด้วยเครื่องหมายจุลภาค)</label>
+          <input type="text" id="tmpl_tags" class="form-input" placeholder="เช่น ขอใช้, คอมพิวเตอร์, อินเทอร์เน็ต">
+        </div>
+
+        <div class="mb-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+          <label class="form-label font-bold text-slate-800">เลือกไฟล์จากเครื่องคอมพิวเตอร์</label>
+          <input type="file" id="tmpl_file" class="form-input" accept=".doc,.docx,.pdf,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt">
+          <div class="text-[11px] text-slate-500 mt-1">รองรับไฟล์ Word (.docx/.doc), PDF, Excel (.xlsx/.xls), Zip (ขนาดไม่เกิน 8MB)</div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">หรือ ระบุลิงก์ดาวน์โหลดตรง / ลิงก์ Google Drive</label>
+          <input type="url" id="tmpl_url" class="form-input" placeholder="https://drive.google.com/...">
+        </div>
+      </div>
+      <style>
+        .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px; }
+        .form-input { width:100%; padding:8px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
+        .form-input:focus { outline:none; border-color:#4F46E5; background:white; }
+      </style>
+    `,
+    preConfirm: () => {
+      const dept = document.getElementById('tmpl_dept').value;
+      const title = document.getElementById('tmpl_title').value.trim();
+      const desc = document.getElementById('tmpl_desc').value.trim();
+      const tags = document.getElementById('tmpl_tags').value.trim();
+      const fileInput = document.getElementById('tmpl_file');
+      const urlInput = document.getElementById('tmpl_url').value.trim();
+
+      if (!title) {
+        Swal.showValidationMessage('กรุณาระบุชื่อแบบฟอร์ม');
+        return false;
+      }
+      if ((!fileInput.files || fileInput.files.length === 0) && !urlInput) {
+        Swal.showValidationMessage('กรุณาเลือกไฟล์เพื่ออัพโหลด หรือระบุลิงก์ดาวน์โหลด');
+        return false;
+      }
+
+      return {
+        dept,
+        title,
+        desc,
+        tags,
+        file: (fileInput.files && fileInput.files.length > 0) ? fileInput.files[0] : null,
+        url: urlInput
+      };
+    }
+  }).then(async r => {
+    if (!r.isConfirmed || !r.value) return;
+    const formVals = r.value;
+
+    showLoading('กำลังเตรียมอัพโหลดแบบฟอร์ม...');
+    try {
+      let fileId = '';
+      let downloadUrl = formVals.url || '';
+      let viewUrl = formVals.url || '';
+      let fileName = formVals.title;
+      let fileSize = 0;
+      let format = 'เอกสาร';
+
+      if (formVals.file) {
+        document.getElementById('loadingText').textContent = `กำลังอัพโหลด "${formVals.file.name}" เข้า Google Drive...`;
+        const uploadRes = await uploadFileToGAS(formVals.file, 'templates_' + formVals.dept);
+        fileId = uploadRes.file_id || '';
+        downloadUrl = uploadRes.download_url || '';
+        viewUrl = uploadRes.view_url || '';
+        fileName = formVals.file.name;
+        fileSize = uploadRes.size || formVals.file.size;
+        
+        const ext = fileName.split('.').pop().toUpperCase();
+        format = ext ? `${ext}` : 'เอกสารแนบ';
+      }
+
+      const templateData = {
+        title: formVals.title,
+        dept: formVals.dept,
+        desc: formVals.desc,
+        tags: formVals.tags ? formVals.tags.split(',').map(s=>s.trim()).filter(Boolean) : [],
+        format: format,
+        file_name: fileName,
+        file_id: fileId,
+        download_url: downloadUrl,
+        view_url: viewUrl,
+        file_size: fileSize,
+        icon: getIconByFormat(format)
+      };
+
+      document.getElementById('loadingText').textContent = 'กำลังบันทึกข้อมูลแบบฟอร์ม...';
+
+      if (typeof google !== 'undefined' && google.script && google.script.run && typeof APP !== 'undefined') {
+        google.script.run
+          .withSuccessHandler(saveRes => {
+            hideLoading();
+            if (saveRes.status === 'success') {
+              const savedItem = saveRes.data || templateData;
+              TemplatesState.customTemplates.unshift(savedItem);
+              try {
+                localStorage.setItem('mhc_custom_templates', JSON.stringify(TemplatesState.customTemplates));
+              } catch (_) {}
+              updateTemplateCounts();
+              renderTemplateStats();
+              renderTemplateCards();
+              showToast('success', 'อัพโหลดและเผยแพร่แบบฟอร์มเรียบร้อยแล้ว');
+            } else {
+              Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text:saveRes.message });
+            }
+          })
+          .withFailureHandler(err => {
+            hideLoading();
+            saveCustomTemplateLocally(templateData);
+          })
+          .saveCustomTemplate(templateData, APP.token);
+      } else {
+        hideLoading();
+        saveCustomTemplateLocally(templateData);
+      }
+    } catch (err) {
+      hideLoading();
+      Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: err.message || err });
+    }
+  });
+}
+
+function saveCustomTemplateLocally(templateData) {
+  const newItem = Object.assign({
+    id: 'cust_tmpl_' + Date.now(),
+    is_custom: true,
+    uploader_name: (typeof APP !== 'undefined' && APP.user && (APP.user.name || APP.user.username)) || 'Admin',
+    created_at: new Date().toISOString()
+  }, templateData);
+
+  TemplatesState.customTemplates.unshift(newItem);
+  try {
+    localStorage.setItem('mhc_custom_templates', JSON.stringify(TemplatesState.customTemplates));
+  } catch (_) {}
+
+  updateTemplateCounts();
+  renderTemplateStats();
+  renderTemplateCards();
+  showToast('success', 'บันทึกแบบฟอร์มเรียบร้อยแล้ว');
+}
+
+/* ============================================================
+ *  ADMIN: DELETE CUSTOM TEMPLATE
+ * ============================================================ */
+function deleteCustomTemplateConfirm(id) {
+  const item = TemplatesState.customTemplates.find(x => x.id === id);
+  const title = item ? item.title : 'แบบฟอร์มนี้';
+
+  Swal.fire({
+    title: 'ยืนยันการลบแบบฟอร์ม?',
+    text: `คุณต้องการลบ "${title}" ออกจากระบบใช่หรือไม่`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ลบแบบฟอร์ม',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#DC2626'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    showLoading('กำลังลบแบบฟอร์ม...');
+
+    const removeLocal = () => {
+      TemplatesState.customTemplates = TemplatesState.customTemplates.filter(x => x.id !== id);
+      try {
+        localStorage.setItem('mhc_custom_templates', JSON.stringify(TemplatesState.customTemplates));
+      } catch (_) {}
+      updateTemplateCounts();
+      renderTemplateStats();
+      renderTemplateCards();
+    };
+
+    if (typeof google !== 'undefined' && google.script && google.script.run && typeof APP !== 'undefined') {
+      google.script.run
+        .withSuccessHandler(res => {
+          hideLoading();
+          removeLocal();
+          if (res && res.status === 'success') {
+            showToast('success', res.message || 'ลบแบบฟอร์มเรียบร้อย');
+          } else {
+            showToast('success', 'ลบแบบฟอร์มเรียบร้อย');
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          removeLocal();
+          showToast('success', 'ลบแบบฟอร์มเรียบร้อย');
+        })
+        .deleteCustomTemplate(id, APP.token);
+    } else {
+      hideLoading();
+      removeLocal();
+      showToast('success', 'ลบแบบฟอร์มเรียบร้อย');
+    }
+  });
 }
 
 /* ============================================================
@@ -1751,3 +2097,6 @@ window.handleTemplateSearch = handleTemplateSearch;
 window.downloadTemplateDoc = downloadTemplateDoc;
 window.previewTemplatePrint = previewTemplatePrint;
 window.copyTemplateContent = copyTemplateContent;
+window.openUploadTemplateModal = openUploadTemplateModal;
+window.deleteCustomTemplateConfirm = deleteCustomTemplateConfirm;
+
