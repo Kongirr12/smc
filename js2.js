@@ -360,7 +360,14 @@ function renderStudentsTable(res) {
                   </div>
                 </div>
               \x3c/td>
-              <td class="px-3 py-2.5 font-mono text-xs">${escapeHTML(s.student_id || '-')}\x3c/td>
+              <td class="px-3 py-2.5 font-mono text-xs">
+                <span class="inline-flex items-center gap-1 cursor-pointer hover:text-blue-600 hover:underline group"
+                      onclick="quickEditStudentId('${s.id}', '${escapeHTML(s.student_id || '')}', '${escapeHTML(formatStudentFullName(s))}')"
+                      title="คลิกเพื่อแก้ไขเลขประจำตัว">
+                  <span>${escapeHTML(s.student_id || '-')}</span>
+                  <i class='bx bx-edit text-slate-300 group-hover:text-blue-600 text-xs transition'></i>
+                </span>
+              \x3c/td>
               <td class="px-3 py-2.5"><span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium">${escapeHTML(s.classroom || '-')}\x3c/span>\x3c/td>
               <td class="px-3 py-2.5">${s.gender === 'male' ? 'ชาย' : s.gender === 'female' ? 'หญิง' : '-'}\x3c/td>
               <td class="px-3 py-2.5">
@@ -826,8 +833,8 @@ function showStudentForm(data) {
             <input type="number" id="f_student_number" class="form-input font-mono" min="1" max="999" placeholder="เช่น 1" value="${escapeHTML(s.student_number !== undefined && s.student_number !== null ? String(s.student_number) : '')}">
           \x3c/div>
           <div class="col-span-3">
-            <label class="form-label">เลขประจำตัว SGS\x3c/label>
-            <input type="text" id="f_student_id" class="form-input font-mono" placeholder="เช่น 32415" value="${escapeHTML(s.student_id || '')}">
+            <label class="form-label">เลขประจำตัวนักเรียน\x3c/label>
+            <input type="text" id="f_student_id" class="form-input font-mono" placeholder="เช่น 32415 (ว่างไว้สร้างอัตโนมัติ)" value="${escapeHTML(s.student_id || '')}">
           \x3c/div>
           <div class="col-span-3">
             <label class="form-label">ชั้น\x3c/label>
@@ -983,6 +990,57 @@ function viewStudent(id) {
     })
     .withFailureHandler(err => showToast('error', err.message || err))
     .getStudentById(id, APP.token);
+}
+
+function quickEditStudentId(id, currentId, studentName) {
+  Swal.fire({
+    title: 'แก้ไขเลขประจำตัวนักเรียน',
+    html: `
+      <div style="text-align:left;font-size:13px;line-height:1.6;">
+        <div style="margin-bottom:8px;color:#475569;">นักเรียน: <b>${escapeHTML(studentName)}</b>\x3c/div>
+        <label class="form-label" style="font-weight:600;margin-bottom:4px;display:block;">เลขประจำตัวนักเรียน (SGS / รหัสโรงเรียน):\x3c/label>
+        <input type="text" id="swal_quick_student_id" class="form-input font-mono"
+               style="width:100%;padding:8px 10px;border:1.5px solid #CBD5E1;border-radius:8px;font-size:14px;box-sizing:border-box;"
+               value="${escapeHTML(currentId)}" placeholder="เช่น 32415 (หรือเว้นว่างไว้เพื่อสร้างอัตโนมัติ)">
+        <div style="font-size:11px;color:#94A3B8;margin-top:6px;">
+          * หากเว้นว่างไว้ ระบบจะสร้างเลขประจำตัวให้อัตโนมัติ<br>
+          * สามารถระบุรหัสประจำตัวตามระบบ SGS ได้โดยตรง
+        \x3c/div>
+      \x3c/div>
+    `,
+    width: 440,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-save">\x3c/i> บันทึก',
+    cancelButtonText: 'ยกเลิก',
+    preConfirm: () => {
+      return (document.getElementById('swal_quick_student_id').value || '').trim();
+    }
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    showLoading('กำลังบันทึก...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status === 'success') {
+          showToast('success', res.message || 'แก้ไขเลขประจำตัวสำเร็จ');
+          const updatedId = res.data ? res.data.student_id : r.value;
+          if (StudentsState.data && StudentsState.data.data) {
+            const st = StudentsState.data.data.find(x => x.id === id);
+            if (st) st.student_id = updatedId;
+            renderStudentsTable(StudentsState.data);
+          } else {
+            loadStudents();
+          }
+        } else {
+          showToast('error', res.message);
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', err.message || err);
+      })
+      .quickUpdateStudentId(id, r.value, APP.token);
+  });
 }
 
 function deleteStudent(id) {
@@ -2825,9 +2883,9 @@ function showImportStudentsCSV() {
         <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg mb-3 text-xs text-blue-900 leading-relaxed">
           <i class='bx bx-info-circle text-sm text-blue-600 font-bold'></i>
           <strong>รองรับไฟล์จากระบบ SGS และไฟล์รายชื่อนักเรียน:</strong><br>
-          • <code>เลขประจำตัว</code> / <code>เลขประจำตัวนักเรียน</code> (ใช้รหัส SGS โดยตรง ไม่สร้างเลขสุ่มขึ้นมาเอง)<br>
-          • <code>คำนำหน้า</code>, <code>ชื่อ</code>, <code>นามสกุล</code> (หรือ <code>ชื่อ-นามสกุล</code>), <code>ชั้น</code>, <code>เพศ</code>, <code>เลขบัตรประชาชน</code><br>
-          <em>*ระบบจะตัดคำนำหน้าที่ซ้ำ เช่น เด็กชายเด็กชาย และระบุเพศให้อัตโนมัติ</em>
+          • <code>เลขประจำตัว</code> / <code>เลขประจำตัวนักเรียน</code> (ใช้รหัส SGS หรือหากไม่มีในไฟล์ ระบบจะสร้างให้อัตโนมัติ)<br>
+          • <code>เลขที่</code>, <code>คำนำหน้า</code>, <code>ชื่อ</code>, <code>นามสกุล</code> (หรือ <code>ชื่อ-นามสกุล</code>), <code>ชั้น</code>, <code>เพศ</code>, <code>ปีการศึกษา</code>, <code>เลขบัตรประชาชน</code><br>
+          <em>*ระบบจะตัดคำนำหน้าที่ซ้ำ และสามารถแก้ไขเลขประจำตัวนักเรียนได้ทุกเมื่อ</em>
         </div>
 
         <div class="grid grid-cols-2 gap-2 mb-3">
@@ -2936,7 +2994,7 @@ function previewStudentsCSV(input) {
       const fullName = (r.prefix ? r.prefix : '') + r.first_name + ' ' + r.last_name;
       return `<tr>
         <td class="px-2 py-1.5 border-b">${r.student_number ? `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-1 rounded text-xs font-bold mr-1">เลขที่ ${r.student_number}</span>` : `${i+1}`}\x3c/td>
-        <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '-')}</td>
+        <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '(สร้างอัตโนมัติ)')}</td>
         <td class="px-2 py-1.5 border-b font-medium text-slate-800">${escapeHTML(fullName)}\x3c/td>
         <td class="px-2 py-1.5 border-b">${escapeHTML(r.classroom || '-')}\x3c/td>
         <td class="px-2 py-1.5 border-b">${escapeHTML(genderText)}\x3c/td>

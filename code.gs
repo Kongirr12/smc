@@ -128,6 +128,7 @@ function routeApi(action, params, token) {
       case 'cleanStudentsData': return cleanStudentsData(token);
       case 'autoAssignStudentNumbers': return autoAssignStudentNumbers(params.classroom || params.classroomName, params.academic_year || params.academicYear, params.mode, token);
       case 'updateStudentNumbers': return updateStudentNumbers(params.classroom || params.classroomName, params.academic_year || params.academicYear, params.numberMap || params.data, token);
+      case 'quickUpdateStudentId': return quickUpdateStudentId(params.id, params.student_id !== undefined ? params.student_id : params.newStudentId, token);
 
       // ---------- PERSONNEL ----------
       case 'getPersonnel': return getPersonnel(params, token);
@@ -1177,6 +1178,11 @@ function saveStudent(studentData, sessionToken) {
       let updated = null;
       const found = updateJsonById_('Students', studentData.id, s => {
         Object.assign(s, clean);
+        if (clean.student_id !== undefined && clean.student_id !== '') {
+          s.student_id = clean.student_id;
+        } else if (!s.student_id) {
+          s.student_id = generateStudentId();
+        }
         s.updated_at = new Date().toISOString();
         updated = s;
         return s;
@@ -1188,7 +1194,7 @@ function saveStudent(studentData, sessionToken) {
       const now = new Date().toISOString();
       const obj = Object.assign({
         id            : generateId(),
-        student_id    : clean.student_id || '',
+        student_id    : clean.student_id || generateStudentId(),
         student_number: clean.student_number || null,
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Students', obj);
@@ -1262,6 +1268,16 @@ function importStudentsCSV(rows, sessionToken) {
     const now = new Date().toISOString();
     const config = getConfig();
     const defaultYear = String(config.academic_year || (new Date().getFullYear() + 543));
+
+    // Calculate max student ID sequence for running IDs if student_id is blank
+    let maxSeq = 0;
+    all.forEach(s => {
+      const sid = String(s.student_id || '');
+      if (sid.startsWith(defaultYear)) {
+        const num = parseInt(sid.slice(defaultYear.length), 10);
+        if (!isNaN(num) && num > maxSeq) maxSeq = num;
+      }
+    });
 
     // Lookup maps for deduplication and updating
     const byStudentId = {};
@@ -1376,12 +1392,17 @@ function importStudentsCSV(rows, sessionToken) {
           existing.updated_at = now;
           updatedCount++;
         } else {
-          // Insert new student - use SGS student_id and student_number directly, no auto-generated sequence!
+          // Insert new student - use SGS/custom student_id if provided, otherwise auto-generate running sequence!
+          let assignedStudentId = clean.student_id;
+          if (!assignedStudentId) {
+            maxSeq++;
+            assignedStudentId = defaultYear + String(maxSeq).padStart(4, '0');
+          }
           const obj = Object.assign({
             id            : generateId(),
-            student_id    : clean.student_id || '',
+            student_id    : assignedStudentId,
             student_number: clean.student_number || null
-          }, clean, { created_at: now, updated_at: now });
+          }, clean, { student_id: assignedStudentId, created_at: now, updated_at: now });
 
           all.push(obj);
           if (obj.student_id) byStudentId[obj.student_id] = obj;
@@ -4024,7 +4045,7 @@ function approveRegistration(id, sessionToken) {
     const now = new Date().toISOString();
     const newStudent = {
       id          : generateId(),
-      student_id  : sd.student_id || '',
+      student_id  : sd.student_id || generateStudentId(),
       prefix      : sd.prefix || '',
       first_name  : sd.first_name || '',
       last_name   : sd.last_name || '',
@@ -6540,6 +6561,39 @@ function updateStudentNumbers(classroomName, academicYear, numberMap, sessionTok
     };
   } catch (e) {
     logError({ fn: 'updateStudentNumbers', error: e.message });
+    return { status: 'error', message: e.message };
+  }
+}
+
+function quickUpdateStudentId(id, newStudentId, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    if (!id) return { status: 'error', message: 'ไม่พบ ID นักเรียน' };
+
+    let cleanId = sanitize(newStudentId || '').trim();
+    if (!cleanId) {
+      cleanId = generateStudentId();
+    }
+
+    let updated = null;
+    const found = updateJsonById_('Students', id, s => {
+      s.student_id = cleanId;
+      s.updated_at = new Date().toISOString();
+      updated = s;
+      return s;
+    });
+
+    if (!found) return { status: 'error', message: 'ไม่พบข้อมูลนักเรียน' };
+
+    return {
+      status: 'success',
+      message: 'แก้ไขเลขประจำตัวนักเรียนสำเร็จ',
+      data: updated
+    };
+  } catch (e) {
+    logError({ fn: 'quickUpdateStudentId', error: e.message });
     return { status: 'error', message: e.message };
   }
 }
