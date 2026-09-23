@@ -1155,6 +1155,10 @@ function saveStudent(studentData, sessionToken) {
       status       : studentData.status || 'active'
     };
 
+    if (studentData.student_id !== undefined) {
+      clean.student_id = sanitize(studentData.student_id);
+    }
+
     // ตรวจสอบเลขบัตรซ้ำ
     if (clean.national_id) {
       const all = readJsonSheet_('Students');
@@ -1178,7 +1182,7 @@ function saveStudent(studentData, sessionToken) {
       const now = new Date().toISOString();
       const obj = Object.assign({
         id        : generateId(),
-        student_id: sanitize(studentData.student_id) || generateStudentId(),
+        student_id: clean.student_id || '',
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Students', obj);
       return { status:'success', data:obj, message:'เพิ่มนักเรียนสำเร็จ' };
@@ -1252,16 +1256,6 @@ function importStudentsCSV(rows, sessionToken) {
     const config = getConfig();
     const defaultYear = String(config.academic_year || (new Date().getFullYear() + 543));
 
-    // Calculate max student ID sequence for running IDs
-    let maxSeq = 0;
-    all.forEach(s => {
-      const sid = String(s.student_id || '');
-      if (sid.startsWith(defaultYear)) {
-        const num = parseInt(sid.slice(defaultYear.length), 10);
-        if (!isNaN(num) && num > maxSeq) maxSeq = num;
-      }
-    });
-
     // Lookup maps for deduplication and updating
     const byStudentId = {};
     const byNationalId = {};
@@ -1326,6 +1320,7 @@ function importStudentsCSV(rows, sessionToken) {
         batchProcessed.add(batchKey);
 
         const clean = {
+          student_id     : sanitize(sidKey || row.student_id || ''),
           prefix         : sanitize(prefix),
           first_name     : sanitize(firstName),
           last_name      : sanitize(lastName),
@@ -1362,18 +1357,17 @@ function importStudentsCSV(rows, sessionToken) {
               existing[k] = clean[k];
             }
           });
+          // Ensure SGS student_id from CSV updates existing record if available
+          if (clean.student_id) {
+            existing.student_id = clean.student_id;
+          }
           existing.updated_at = now;
           updatedCount++;
         } else {
-          // Insert new student
-          let assignedStudentId = sidKey;
-          if (!assignedStudentId) {
-            maxSeq++;
-            assignedStudentId = defaultYear + String(maxSeq).padStart(4, '0');
-          }
+          // Insert new student - use SGS student_id directly, no auto-generated sequence!
           const obj = Object.assign({
             id        : generateId(),
-            student_id: assignedStudentId
+            student_id: clean.student_id || ''
           }, clean, { created_at: now, updated_at: now });
 
           all.push(obj);
@@ -1469,7 +1463,7 @@ function cleanStudentsData(sessionToken) {
           return uFnKey === fnKey;
         });
         if (existing) {
-          ['classroom', 'academic_year', 'national_id', 'parent_name', 'parent_phone', 'birth_date', 'photo', 'gender'].forEach(f => {
+          ['student_id', 'classroom', 'academic_year', 'national_id', 'parent_name', 'parent_phone', 'birth_date', 'photo', 'gender'].forEach(f => {
             if (!existing[f] && s[f]) existing[f] = s[f];
           });
         }
@@ -3997,7 +3991,7 @@ function approveRegistration(id, sessionToken) {
     const now = new Date().toISOString();
     const newStudent = {
       id          : generateId(),
-      student_id  : generateStudentId(),
+      student_id  : sd.student_id || '',
       prefix      : sd.prefix || '',
       first_name  : sd.first_name || '',
       last_name   : sd.last_name || '',

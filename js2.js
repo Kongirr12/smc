@@ -819,7 +819,11 @@ function showStudentForm(data) {
         <!-- Academic Info -->
         <div class="text-xs font-semibold text-blue-600 mb-2 uppercase">ข้อมูลการศึกษา\x3c/div>
         <div class="grid grid-cols-12 gap-2 mb-4">
-          <div class="col-span-3">
+          <div class="col-span-4">
+            <label class="form-label">เลขประจำตัวนักเรียน (SGS)\x3c/label>
+            <input type="text" id="f_student_id" class="form-input font-mono" placeholder="เลขประจำตัว SGS เช่น 32415" value="${escapeHTML(s.student_id || '')}">
+          \x3c/div>
+          <div class="col-span-4">
             <label class="form-label">ชั้น\x3c/label>
             <select id="f_classroom" class="form-input">
               <option value="">-- เลือก --\x3c/option>
@@ -830,15 +834,15 @@ function showStudentForm(data) {
                 ? `<option value="${escapeHTML(s.classroom)}" selected>${escapeHTML(s.classroom)}\x3c/option>` : ''}
             \x3c/select>
           \x3c/div>
-          <div class="col-span-3">
+          <div class="col-span-4">
             <label class="form-label">ปีการศึกษา\x3c/label>
             <input type="text" id="f_academic_year" class="form-input" value="${escapeHTML(s.academic_year || APP.dashboardData?.config?.academic_year || '')}">
           \x3c/div>
-          <div class="col-span-3">
+          <div class="col-span-6">
             <label class="form-label">สัญชาติ\x3c/label>
             <input type="text" id="f_nationality" class="form-input" value="${escapeHTML(s.nationality||'ไทย')}">
           \x3c/div>
-          <div class="col-span-3">
+          <div class="col-span-6">
             <label class="form-label">ศาสนา\x3c/label>
             <input type="text" id="f_religion" class="form-input" value="${escapeHTML(s.religion||'พุทธ')}">
           \x3c/div>
@@ -897,6 +901,7 @@ function showStudentForm(data) {
 
       return {
         id           : document.getElementById('f_id').value || null,
+        student_id   : (document.getElementById('f_student_id').value || '').trim(),
         prefix       : document.getElementById('f_prefix').value,
         first_name   : fn,
         last_name    : ln,
@@ -2720,9 +2725,23 @@ function extractStudentFromCSVRow(headers, row, defaultClassroom, defaultYear) {
   const rawPrefix   = getVal('prefix', 'คำนำหน้า', 'คำนำหน้านาม', 'คำนำหน้าชื่อ', 'title');
   const rawFirst    = getVal('first_name', 'firstname', 'first', 'ชื่อ', 'ชื่อจริง');
   const rawLast     = getVal('last_name', 'lastname', 'last', 'นามสกุล');
-  const rawFull     = getVal('full_name', 'fullname', 'name', 'ชื่อ-นามสกุล', 'ชื่อ - นามสกุล', 'ชื่อ นามสกุล', 'ชื่อและนามสกุล');
-  const studentId   = getVal('student_id', 'studentid', 'id', 'เลขประจำตัว', 'รหัสนักเรียน', 'รหัสประจำตัว', 'รหัส');
-  const nationalId  = getVal('national_id', 'nationalid', 'citizen_id', 'citizenid', 'id_card', 'เลขประจำตัวประชาชน', 'เลขบัตรประชาชน', 'เลขบัตร', 'บัตรประชาชน');
+  let studentId     = getVal(
+    'student_id', 'studentid', 'std_id', 'st_id', 'sgs_id', 'id',
+    'เลขประจำตัว', 'เลขประจำตัวนักเรียน', 'รหัสนักเรียน', 'รหัสประจำตัว',
+    'รหัสประจำตัวนักเรียน', 'เลขประจำตัวผู้เรียน', 'รหัสผู้เรียน', 'เลขนักเรียน', 'รหัส'
+  );
+  if (!studentId) {
+    for (const key of Object.keys(raw)) {
+      const lk = key.toLowerCase();
+      if ((lk.includes('เลขประจำตัว') || lk.includes('รหัสนักเรียน') || lk.includes('studentid') || lk.includes('sgs')) &&
+          !lk.includes('ประชาชน') && !lk.includes('national') && !lk.includes('citizen') && !lk.includes('card')) {
+        if (raw[key]) {
+          studentId = raw[key];
+          break;
+        }
+      }
+    }
+  }
   let classroom     = getVal('classroom', 'room', 'class', 'grade', 'ชั้น', 'ห้อง', 'ระดับชั้น', 'ชั้นเรียน', 'ชั้น/ห้อง');
   let academicYear  = getVal('academic_year', 'academicyear', 'year', 'ปีการศึกษา', 'ปี');
   const rawGender   = getVal('gender', 'sex', 'เพศ');
@@ -2784,12 +2803,12 @@ function showImportStudentsCSV() {
     html: `
       <div style="text-align:left; font-size:14px;">
         <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg mb-3 text-xs text-blue-900 leading-relaxed">
-          <i class='bx bx-info-circle text-sm text-blue-600 font-bold'>\x3c/i>
-          <strong>รองรับหัวคอลัมน์ทั้งภาษาไทยและอังกฤษ:</strong><br>
-          • <code>คำนำหน้า</code>, <code>ชื่อ</code>, <code>นามสกุล</code> (หรือ <code>ชื่อ-นามสกุล</code> คอลัมน์เดียว)<br>
-          • <code>เลขประจำตัว</code> (student_id), <code>ชั้น</code> (classroom), <code>เพศ</code>, <code>ปีการศึกษา</code>, <code>เลขบัตรประชาชน</code><br>
+          <i class='bx bx-info-circle text-sm text-blue-600 font-bold'></i>
+          <strong>รองรับไฟล์จากระบบ SGS และไฟล์รายชื่อนักเรียน:</strong><br>
+          • <code>เลขประจำตัว</code> / <code>เลขประจำตัวนักเรียน</code> (ใช้รหัส SGS โดยตรง ไม่สร้างเลขสุ่มขึ้นมาเอง)<br>
+          • <code>คำนำหน้า</code>, <code>ชื่อ</code>, <code>นามสกุล</code> (หรือ <code>ชื่อ-นามสกุล</code>), <code>ชั้น</code>, <code>เพศ</code>, <code>เลขบัตรประชาชน</code><br>
           <em>*ระบบจะตัดคำนำหน้าที่ซ้ำ เช่น เด็กชายเด็กชาย และระบุเพศให้อัตโนมัติ</em>
-        \x3c/div>
+        </div>
 
         <div class="grid grid-cols-2 gap-2 mb-3">
           <div>
@@ -2897,7 +2916,7 @@ function previewStudentsCSV(input) {
       const fullName = (r.prefix ? r.prefix : '') + r.first_name + ' ' + r.last_name;
       return `<tr>
         <td class="px-2 py-1.5 border-b">${i+1}\x3c/td>
-        <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '(สร้างอัตโนมัติ)')}\x3c/td>
+        <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '-')}</td>
         <td class="px-2 py-1.5 border-b font-medium text-slate-800">${escapeHTML(fullName)}\x3c/td>
         <td class="px-2 py-1.5 border-b">${escapeHTML(r.classroom || '-')}\x3c/td>
         <td class="px-2 py-1.5 border-b">${escapeHTML(genderText)}\x3c/td>
