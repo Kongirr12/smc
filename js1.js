@@ -555,6 +555,10 @@ function renderDashboardData(d) {
   // Chart: เข้าเรียน 7 วัน
   const ctxA = document.getElementById('chartAttendance');
   if (ctxA) {
+    if (APP.charts.attendance) {
+      try { APP.charts.attendance.destroy(); } catch (_) {}
+      delete APP.charts.attendance;
+    }
     APP.charts.attendance = new Chart(ctxA, {
       type: 'line',
       data: {
@@ -583,6 +587,10 @@ function renderDashboardData(d) {
   // Chart: การเงิน
   const ctxF = document.getElementById('chartFinance');
   if (ctxF) {
+    if (APP.charts.finance) {
+      try { APP.charts.finance.destroy(); } catch (_) {}
+      delete APP.charts.finance;
+    }
     APP.charts.finance = new Chart(ctxF, {
       type: 'doughnut',
       data: {

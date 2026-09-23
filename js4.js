@@ -330,6 +330,13 @@ function renderReportsOverview(d) {
   const chartTickColor = isDark ? '#94A3B8' : '#64748B';
   const chartLegendColor = isDark ? '#E2E8F0' : '#475569';
 
+  ['repAttendance', 'repFinance', 'repGrade', 'repDept'].forEach(k => {
+    if (APP.charts && APP.charts[k]) {
+      try { APP.charts[k].destroy(); } catch (_) {}
+      delete APP.charts[k];
+    }
+  });
+
   // Chart: Attendance 30 days
   const ctxA = document.getElementById('repChartAttendance');
   if (ctxA) {

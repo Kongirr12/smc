@@ -518,11 +518,16 @@ function appendJsonRow_(sheetName, obj) {
   const sheet = _ensureSheet_(sheetName);
   const currentCount = _jsonSheetCache_[sheetName] ? _jsonSheetCache_[sheetName].length : 0;
   const nextRow = currentCount + 2;
+  const maxRows = sheet.getMaxRows();
+  if (nextRow > maxRows) {
+    sheet.insertRowsAfter(maxRows, nextRow - maxRows + 50);
+  }
   sheet.getRange(nextRow, 1).setValue(JSON.stringify(obj));
   
   _jsonSheetCache_[sheetName].push(obj);
   _setCacheChunks_(sheetName, JSON.stringify(_jsonSheetCache_[sheetName]));
   try { CacheService.getScriptCache().remove('dashboard_core_cache'); } catch(_) {}
+  try { CacheService.getScriptCache().remove('reports_overview_cache'); } catch(_) {}
 }
 
 function appendJsonRows_(sheetName, arr) {
@@ -531,12 +536,17 @@ function appendJsonRows_(sheetName, arr) {
   const sheet = _ensureSheet_(sheetName);
   const currentCount = _jsonSheetCache_[sheetName] ? _jsonSheetCache_[sheetName].length : 0;
   const nextRow = currentCount + 2;
+  const maxRows = sheet.getMaxRows();
+  if (nextRow + arr.length - 1 > maxRows) {
+    sheet.insertRowsAfter(maxRows, (nextRow + arr.length - 1) - maxRows + 50);
+  }
   const values = arr.map(obj => [JSON.stringify(obj)]);
   sheet.getRange(nextRow, 1, arr.length, 1).setValues(values);
   
   _jsonSheetCache_[sheetName] = _jsonSheetCache_[sheetName].concat(arr);
   _setCacheChunks_(sheetName, JSON.stringify(_jsonSheetCache_[sheetName]));
   try { CacheService.getScriptCache().remove('dashboard_core_cache'); } catch(_) {}
+  try { CacheService.getScriptCache().remove('reports_overview_cache'); } catch(_) {}
 }
 
 function writeJsonSheet_(sheetName, arr) {
@@ -556,24 +566,41 @@ function writeJsonSheet_(sheetName, arr) {
   _jsonSheetCache_[sheetName] = arr.slice();
   _setCacheChunks_(sheetName, JSON.stringify(arr));
   try { CacheService.getScriptCache().remove('dashboard_core_cache'); } catch(_) {}
+  try { CacheService.getScriptCache().remove('reports_overview_cache'); } catch(_) {}
 }
 
 function updateJsonById_(sheetName, id, updater) {
   const arr = readJsonSheet_(sheetName);
-  let found = false;
-  const next = arr.map(o => {
-    if (o.id === id) { found = true; return updater(o); }
-    return o;
-  });
-  if (found) writeJsonSheet_(sheetName, next);
-  return found;
+  const idx = arr.findIndex(o => o.id === id);
+  if (idx === -1) return false;
+
+  const res = updater(arr[idx]);
+  const next = (res !== undefined) ? res : arr[idx];
+  arr[idx] = next;
+
+  // Single-cell direct update instead of wiping and rewriting entire sheet (~100ms vs ~3000ms)
+  const sheet = _ensureSheet_(sheetName);
+  const rowNum = idx + 2;
+  const maxRows = sheet.getMaxRows();
+  if (rowNum > maxRows) {
+    sheet.insertRowsAfter(maxRows, rowNum - maxRows + 20);
+  }
+  sheet.getRange(rowNum, 1).setValue(JSON.stringify(next));
+
+  _jsonSheetCache_[sheetName] = arr;
+  _setCacheChunks_(sheetName, JSON.stringify(arr));
+  try { CacheService.getScriptCache().remove('dashboard_core_cache'); } catch(_) {}
+  try { CacheService.getScriptCache().remove('reports_overview_cache'); } catch(_) {}
+  return true;
 }
 
 function deleteJsonById_(sheetName, id) {
   const arr = readJsonSheet_(sheetName);
-  const next = arr.filter(o => o.id !== id);
-  writeJsonSheet_(sheetName, next);
-  return arr.length !== next.length;
+  const idx = arr.findIndex(o => o.id === id);
+  if (idx === -1) return false;
+  arr.splice(idx, 1);
+  writeJsonSheet_(sheetName, arr);
+  return true;
 }
 
 
@@ -694,6 +721,15 @@ function login(username, password) {
     // ส่งคืนข้อมูลที่ปลอดภัย
     const safeUser = Object.assign({}, user);
     delete safeUser.password;
+    if (!safeUser.permissions && CONFIG.USER_ROLES[user.role]) {
+      safeUser.permissions = CONFIG.USER_ROLES[user.role].permissions;
+    }
+
+    // Pre-populate fast_sess_ cache immediately so subsequent calls hit cache in 5ms
+    try {
+      const sessObj = { valid:true, user:safeUser, role:user.role, role_info:CONFIG.USER_ROLES[user.role] || null };
+      CacheService.getScriptCache().put('fast_sess_' + token, JSON.stringify(sessObj), 1200);
+    } catch (_) {}
 
     let dashboardData = null;
     try {
@@ -924,7 +960,7 @@ function getDashboardDataCore_() {
   };
 
   try {
-    CacheService.getScriptCache().put('dashboard_core_cache', JSON.stringify(result), 30);
+    CacheService.getScriptCache().put('dashboard_core_cache', JSON.stringify(result), 300);
   } catch(_) {}
 
   return result;
@@ -1032,7 +1068,7 @@ function deleteFile(fileId) {
  *  Helpers
  * ============================================================ */
 function generateId() {
-  return Utilities.getUuid();
+  return Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
 }
 
 function hashPassword(password) {
@@ -1045,7 +1081,7 @@ function hashPassword(password) {
 
 function logError(errObj) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Errors');
+    const sheet = _getSheetByName_('Errors');
     if (!sheet) return;
     sheet.appendRow([JSON.stringify({
       time: new Date().toISOString(),
@@ -1056,7 +1092,9 @@ function logError(errObj) {
 
 function sanitize(input) {
   if (input === null || input === undefined) return '';
-  return String(input)
+  const str = String(input).trim();
+  if (str.indexOf('<') === -1) return str;
+  return str
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<[^>]+>/g, '')
     .trim();
@@ -1994,9 +2032,11 @@ function getAttendanceByClassDate(classroom, date, sessionToken) {
       });
 
     const att = readJsonSheet_('Attendance').filter(a => a.date === date);
+    const attMap = {};
+    att.forEach(a => { attMap[a.student_id] = a; });
 
     const rows = students.map(s => {
-      const exist = att.find(a => a.student_id === s.id);
+      const exist = attMap[s.id];
       return {
         student_id    : s.id,
         student_code  : s.student_id,
@@ -2062,9 +2102,11 @@ function getAttendanceBySubjectDate(subject_id, date, sessionToken, classroom) {
       });
 
     const att = readJsonSheet_('Attendance').filter(a => a.date === date && a.subject_id === subject_id);
+    const attMap = {};
+    att.forEach(a => { attMap[a.student_id] = a; });
 
     const rows = students.map(s => {
-      const exist = att.find(a => a.student_id === s.id);
+      const exist = attMap[s.id];
       return {
         student_id    : s.id,
         student_code  : s.student_id,
@@ -2103,6 +2145,7 @@ function getAttendanceBySubjectDate(subject_id, date, sessionToken, classroom) {
  * payload.subject_id ถ้ามี = บันทึกรายวิชา, ถ้าไม่มี = บันทึกรายวัน
  */
 function saveAttendanceBulk(payload, sessionToken) {
+  const lock = LockService.getScriptLock();
   try {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
@@ -2110,6 +2153,7 @@ function saveAttendanceBulk(payload, sessionToken) {
     if (!payload || !payload.date || !Array.isArray(payload.records)) {
       return { status:'error', message:'ข้อมูลไม่ครบถ้วน' };
     }
+    try { lock.waitLock(10000); } catch (_) {}
     const date = payload.date;
     const recordedBy = auth.user.id;
 
@@ -2171,6 +2215,8 @@ function saveAttendanceBulk(payload, sessionToken) {
   } catch (e) {
     logError({ fn:'saveAttendanceBulk', error:e.message });
     return { status:'error', message:e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
   }
 }
 
@@ -3772,21 +3818,23 @@ function saveDocument(data, sessionToken) {
       // แจ้งเตือนผู้ที่ได้รับมอบหมายใหม่
       const newAssigned = clean.assigned_to.filter(id => !oldAssigned.includes(id));
       if (newAssigned.length > 0) {
-        const notifs = readJsonSheet_('Notifications');
         const personnelList = readJsonSheet_('Personnel');
         const usersList = readJsonSheet_('Users');
         const now = new Date().toISOString();
-        
+        const pMap = {};
+        personnelList.forEach(p => { pMap[p.id] = p; });
+        const uMap = {};
+        usersList.forEach(u => { if (u.username) uMap[String(u.username).toLowerCase()] = u; });
+
+        const newNotifs = [];
         newAssigned.forEach(pid => {
-          // Map Personnel.id to User.id
           let targetUserId = pid;
-          const p = personnelList.find(x => x.id === pid);
-          if (p) {
-            const u = usersList.find(x => String(x.username).toLowerCase() === String(p.personnel_id).toLowerCase());
+          const p = pMap[pid];
+          if (p && p.personnel_id) {
+            const u = uMap[String(p.personnel_id).toLowerCase()];
             if (u) targetUserId = u.id;
           }
-          
-          notifs.push({
+          newNotifs.push({
             id: generateId(),
             user_id: targetUserId,
             type: 'document_assigned',
@@ -3798,7 +3846,9 @@ function saveDocument(data, sessionToken) {
             created_at: now
           });
         });
-        writeJsonSheet_('Notifications', notifs);
+        if (newNotifs.length > 0) {
+          appendJsonRows_('Notifications', newNotifs);
+        }
       }
       
       return { status:'success', data:updated, message:'แก้ไขเอกสารสำเร็จ' };
@@ -3812,21 +3862,23 @@ function saveDocument(data, sessionToken) {
       appendJsonRow_('Documents', obj);
       
       if (clean.assigned_to.length > 0) {
-        const notifs = readJsonSheet_('Notifications');
         const personnelList = readJsonSheet_('Personnel');
         const usersList = readJsonSheet_('Users');
         const now = new Date().toISOString();
-        
+        const pMap = {};
+        personnelList.forEach(p => { pMap[p.id] = p; });
+        const uMap = {};
+        usersList.forEach(u => { if (u.username) uMap[String(u.username).toLowerCase()] = u; });
+
+        const newNotifs = [];
         clean.assigned_to.forEach(pid => {
-          // Map Personnel.id to User.id
           let targetUserId = pid;
-          const p = personnelList.find(x => x.id === pid);
-          if (p) {
-            const u = usersList.find(x => String(x.username).toLowerCase() === String(p.personnel_id).toLowerCase());
+          const p = pMap[pid];
+          if (p && p.personnel_id) {
+            const u = uMap[String(p.personnel_id).toLowerCase()];
             if (u) targetUserId = u.id;
           }
-          
-          notifs.push({
+          newNotifs.push({
             id: generateId(),
             user_id: targetUserId,
             type: 'document_assigned',
@@ -3838,7 +3890,9 @@ function saveDocument(data, sessionToken) {
             created_at: now
           });
         });
-        writeJsonSheet_('Notifications', notifs);
+        if (newNotifs.length > 0) {
+          appendJsonRows_('Notifications', newNotifs);
+        }
       }
       
       return { status:'success', data:obj, message:'บันทึกเอกสารสำเร็จ' };
@@ -4304,88 +4358,90 @@ function getReportsOverview(sessionToken) {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
 
-    const students   = readJsonSheet_('Students');
-    const personnel  = readJsonSheet_('Personnel');
-    const attendance = readJsonSheet_('Attendance');
-    const finance    = readJsonSheet_('Finance');
-    const academic   = readJsonSheet_('Academic');
-    const documents  = readJsonSheet_('Documents');
-    const approvals  = readJsonSheet_('Approvals');
-    const registrations = readJsonSheet_('Registration');
+    return getCachedJson_('reports_overview_cache', 60, function() {
+      const students   = readJsonSheet_('Students');
+      const personnel  = readJsonSheet_('Personnel');
+      const attendance = readJsonSheet_('Attendance');
+      const finance    = readJsonSheet_('Finance');
+      const academic   = readJsonSheet_('Academic');
+      const documents  = readJsonSheet_('Documents');
+      const approvals  = readJsonSheet_('Approvals');
+      const registrations = readJsonSheet_('Registration');
 
-    // นักเรียน แบ่งตามชั้น
-    const studentByGrade = {};
-    students.filter(s => s.status === 'active').forEach(s => {
-      const c = s.classroom || 'ไม่ระบุ';
-      studentByGrade[c] = (studentByGrade[c] || 0) + 1;
-    });
+      // นักเรียน แบ่งตามชั้น
+      const studentByGrade = {};
+      students.filter(s => s.status === 'active').forEach(s => {
+        const c = s.classroom || 'ไม่ระบุ';
+        studentByGrade[c] = (studentByGrade[c] || 0) + 1;
+      });
 
-    // เพศ
-    const studentGender = { male: 0, female: 0, other: 0 };
-    students.filter(s => s.status === 'active').forEach(s => {
-      if (s.gender === 'male')   studentGender.male++;
-      else if (s.gender === 'female') studentGender.female++;
-      else studentGender.other++;
-    });
+      // เพศ
+      const studentGender = { male: 0, female: 0, other: 0 };
+      students.filter(s => s.status === 'active').forEach(s => {
+        if (s.gender === 'male')   studentGender.male++;
+        else if (s.gender === 'female') studentGender.female++;
+        else studentGender.other++;
+      });
 
-    // บุคลากร แบ่งตามฝ่าย
-    const personnelByDept = {};
-    personnel.filter(p => p.status === 'active').forEach(p => {
-      const d = p.department || 'ไม่ระบุ';
-      personnelByDept[d] = (personnelByDept[d] || 0) + 1;
-    });
+      // บุคลากร แบ่งตามฝ่าย
+      const personnelByDept = {};
+      personnel.filter(p => p.status === 'active').forEach(p => {
+        const d = p.department || 'ไม่ระบุ';
+        personnelByDept[d] = (personnelByDept[d] || 0) + 1;
+      });
 
-    // อัตราการเข้าเรียน 30 วันย้อนหลัง — optimized with date-indexed map
-    const attendByDate = {};
-    attendance.forEach(a => {
-      if (!attendByDate[a.date]) attendByDate[a.date] = { total:0, presentOrLate:0 };
-      attendByDate[a.date].total++;
-      if (a.status === 'present' || a.status === 'late') attendByDate[a.date].presentOrLate++;
-    });
-    
-    const last30 = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const ds = d.toISOString().slice(0,10);
-      const bucket = attendByDate[ds];
-      const pct = bucket && bucket.total > 0 ? Math.round((bucket.presentOrLate / bucket.total) * 100) : null;
-      last30.push({ date: ds, pct: pct });
-    }
-
-    // การเงินรายเดือน 12 เดือน
-    const monthly = {};
-    finance.forEach(f => {
-      const ym = (f.date || '').slice(0, 7);
-      if (!ym) return;
-      if (!monthly[ym]) monthly[ym] = { income: 0, expense: 0 };
-      const amt = Number(f.amount) || 0;
-      if (f.type === 'income')  monthly[ym].income  += amt;
-      if (f.type === 'expense') monthly[ym].expense += amt;
-    });
-    const monthlyArr = Object.keys(monthly).sort().slice(-12).map(ym => ({
-      ym: ym, income: monthly[ym].income, expense: monthly[ym].expense
-    }));
-
-    return {
-      status: 'success',
-      data: {
-        counts: {
-          students_active : students.filter(s => s.status === 'active').length,
-          students_total  : students.length,
-          personnel_active: personnel.filter(p => p.status === 'active').length,
-          personnel_total : personnel.length,
-          subjects        : academic.filter(x => x._kind === 'subject').length,
-          documents       : documents.length,
-          approvals_pending: approvals.filter(a => a.status === 'pending').length,
-          registrations_pending: registrations.filter(r => r.status === 'pending').length
-        },
-        student_by_grade : studentByGrade,
-        student_gender   : studentGender,
-        personnel_by_dept: personnelByDept,
-        attendance_30days: last30,
-        finance_monthly  : monthlyArr
+      // อัตราการเข้าเรียน 30 วันย้อนหลัง — optimized with date-indexed map
+      const attendByDate = {};
+      attendance.forEach(a => {
+        if (!attendByDate[a.date]) attendByDate[a.date] = { total:0, presentOrLate:0 };
+        attendByDate[a.date].total++;
+        if (a.status === 'present' || a.status === 'late') attendByDate[a.date].presentOrLate++;
+      });
+      
+      const last30 = [];
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const ds = d.toISOString().slice(0,10);
+        const bucket = attendByDate[ds];
+        const pct = bucket && bucket.total > 0 ? Math.round((bucket.presentOrLate / bucket.total) * 100) : null;
+        last30.push({ date: ds, pct: pct });
       }
-    };
+
+      // การเงินรายเดือน 12 เดือน
+      const monthly = {};
+      finance.forEach(f => {
+        const ym = (f.date || '').slice(0, 7);
+        if (!ym) return;
+        if (!monthly[ym]) monthly[ym] = { income: 0, expense: 0 };
+        const amt = Number(f.amount) || 0;
+        if (f.type === 'income')  monthly[ym].income  += amt;
+        if (f.type === 'expense') monthly[ym].expense += amt;
+      });
+      const monthlyArr = Object.keys(monthly).sort().slice(-12).map(ym => ({
+        ym: ym, income: monthly[ym].income, expense: monthly[ym].expense
+      }));
+
+      return {
+        status: 'success',
+        data: {
+          counts: {
+            students_active : students.filter(s => s.status === 'active').length,
+            students_total  : students.length,
+            personnel_active: personnel.filter(p => p.status === 'active').length,
+            personnel_total : personnel.length,
+            subjects        : academic.filter(x => x._kind === 'subject').length,
+            documents       : documents.length,
+            approvals_pending: approvals.filter(a => a.status === 'pending').length,
+            registrations_pending: registrations.filter(r => r.status === 'pending').length
+          },
+          student_by_grade : studentByGrade,
+          student_gender   : studentGender,
+          personnel_by_dept: personnelByDept,
+          attendance_30days: last30,
+          finance_monthly  : monthlyArr
+        }
+      };
+    });
 
   } catch (e) {
     logError({ fn:'getReportsOverview', error:e.message });

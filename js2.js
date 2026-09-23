@@ -2494,9 +2494,9 @@ function updateReportSubjects() {
   if (finalSubjects.length === 0) {
     grp.innerHTML = `<option value="" disabled>ไม่พบรายวิชาในชั้นนี้</option>`;
   } else {
-    finalSubjects.forEach(s => {
-      grp.innerHTML += `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)}${s.subject_code ? ' (' + escapeHTML(s.subject_code) + ')' : ''}\x3c/option>`;
-    });
+    grp.innerHTML = finalSubjects.map(s => 
+      `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)}${s.subject_code ? ' (' + escapeHTML(s.subject_code) + ')' : ''}</option>`
+    ).join('');
   }
 
   // ถ้ายังไม่มี scheduleCache สำหรับชั้นนี้ ให้ดึงเพื่อโหลดวิชาแบบ real-time
@@ -2508,14 +2508,15 @@ function updateReportSubjects() {
         if (res.status === 'success' && res.data && res.data.length > 0) {
           // บันทึก cache เฉพาะถ้าชั้นยังตรงกัน
           if (document.getElementById('rptClassroom').value === cls) {
-            grp.innerHTML = '';
             const seen = new Set();
+            const opts = [];
             res.data.forEach(e => {
               if (e.subject_id && !seen.has(e.subject_id)) {
                 seen.add(e.subject_id);
-                grp.innerHTML += `<option value="${escapeHTML(e.subject_id)}">${escapeHTML(e.subject_name || e.subject_id)}${e.subject_code ? ' (' + escapeHTML(e.subject_code) + ')' : ''}\x3c/option>`;
+                opts.push(`<option value="${escapeHTML(e.subject_id)}">${escapeHTML(e.subject_name || e.subject_id)}${e.subject_code ? ' (' + escapeHTML(e.subject_code) + ')' : ''}</option>`);
               }
             });
+            grp.innerHTML = opts.join('');
           }
         }
       })
