@@ -2438,6 +2438,7 @@ function renderAttendanceReport() {
       \x3c/select>
       <select id="rptType" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
         <option value="homeroom">หน้าเสาธง / โฮมรูม\x3c/option>
+        <option value="all_subjects">ภาพรวมทุกรายวิชา (รวมทุกวิชา)\x3c/option>
         <optgroup label="แยกตามรายวิชา" id="rptSubjectGroup">
         \x3c/optgroup>
       \x3c/select>
@@ -2555,10 +2556,15 @@ function renderAttendanceReportData(res, start, end, rptType) {
     return;
   }
 
-  const showPct = rptType === 'homeroom';
+  const showPct = true;
   const rptClass = document.getElementById('rptClassroom')?.value || '';
   const rptTypeEl = document.getElementById('rptType');
-  const typeText = showPct ? 'การเข้าแถวหน้าเสาธง' : 'เวลาเรียนรายวิชา ' + (rptTypeEl?.options[rptTypeEl.selectedIndex]?.text?.replace(/\s*\(.*\)/, '') || '').trim();
+  let typeText = 'การเข้าแถวหน้าเสาธง';
+  if (rptType === 'all_subjects') {
+    typeText = 'เวลาเรียนภาพรวมทุกรายวิชา (รวมทุกวิชา)';
+  } else if (rptType !== 'homeroom') {
+    typeText = 'เวลาเรียนรายวิชา ' + (rptTypeEl?.options[rptTypeEl.selectedIndex]?.text?.replace(/\s*\(.*\)/, '') || '').trim();
+  }
 
   // บันทึกข้อมูลล่าสุดไว้สำหรับพิมพ์และส่งออก
   AttendanceState.reportLastData = {
@@ -2682,7 +2688,7 @@ function printAttendanceReport() {
   }
 
   const { res, start, end, rptType, classroom, typeText } = last;
-  const showPct = rptType === 'homeroom';
+  const showPct = true;
 
   const dateRangeStr = (start && end)
     ? `ข้อมูลระหว่างวันที่ ${formatThaiDate(parseLocalDate(start))} ถึง ${formatThaiDate(parseLocalDate(end))}`
