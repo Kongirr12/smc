@@ -1,6 +1,8 @@
 /**
  * ============================================================
- *  Smart School Office v1.4 — Backend (Apps Script)
+ *  MHC Smart School — Backend (Apps Script)
+ *  พัฒนาสำหรับ: โรงเรียนมหาชัยพิทยาคาร
+ *  ผู้จัดทำ / พัฒนาระบบโดย: ครูก้องนที อุ่นเจริญ
  *  รวมทุก Part ไว้ในไฟล์เดียว
  *
  *  ประกอบด้วย 6 ส่วน:
@@ -24,8 +26,10 @@
  ============================================================ */
 
 const CONFIG = {
-  APP_NAME       : 'Smart School Office',
-  APP_VERSION    : '1.2',
+  APP_NAME       : 'MHC Smart School',
+  SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
+  AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
+  APP_VERSION    : '2.7.8',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
