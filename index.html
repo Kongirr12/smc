@@ -9,13 +9,29 @@
   <meta name="apple-mobile-web-app-title" content="MHC Smart School">
   <meta name="theme-color" content="#4F46E5">
   <title>MHC Smart School</title>
-  <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" id="favicon">
+  
+  <!-- App Favicon & Apple Touch Icons (Mac Safari Bookmark & Share) -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico" id="favicon">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" href="app-icon.jpg">
-  <link rel="shortcut icon" href="app-icon.jpg">
+  <link rel="shortcut icon" href="favicon-32.png">
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Open Graph & Meta for macOS Safari bookmark / Share sheet -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MHC Smart School">
+  <meta property="og:description" content="ระบบบริหารจัดการโรงเรียนอัจฉริยะ Smart School Management System">
+  <meta property="og:image" content="app-icon.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="app-icon.jpg">
+
   <!-- Preconnect to Google Apps Script & CDNs -->
   <link rel="preconnect" href="https://script.google.com">
   <link rel="preconnect" href="https://script.googleusercontent.com">
   <link rel="dns-prefetch" href="https://script.google.com">
+  <link rel="preload" href="styles.css" as="style">
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -60,18 +76,43 @@
     const _apiCache = new Map();
     const _inFlightRequests = new Map();
 
-    // Cacheable read-only queries with TTL (ms)
+    // Hydrate persistent dropdowns from sessionStorage for 0ms initial form renders
+    try {
+      const persistedCache = sessionStorage.getItem('sso_api_cache');
+      if (persistedCache) {
+        const parsed = JSON.parse(persistedCache);
+        const now = Date.now();
+        Object.keys(parsed).forEach(k => {
+          if (now - parsed[k].time < 300000) {
+            _apiCache.set(k, parsed[k]);
+          }
+        });
+      }
+    } catch (_) {}
+
+    // High-speed API cache TTL (ms) for ultra-fast navigation
     const CACHE_TTL_MAP = {
-      'getConfig': 120000,
-      'getTeachersForDropdown': 180000,
-      'getClassroomsForDropdown': 180000,
-      'getPeriodConfig': 180000,
-      'getUsersAndTeachers': 180000
+      'getConfig': 300000,
+      'getTeachersForDropdown': 300000,
+      'getClassroomsForDropdown': 300000,
+      'getPeriodConfig': 300000,
+      'getUsersAndTeachers': 300000,
+      'getStudents': 60000,
+      'getClassrooms': 120000,
+      'getSubjects': 180000,
+      'getPersonnel': 180000,
+      'getCalendarEvents': 120000,
+      'getRooms': 300000,
+      'getSchoolYear': 300000,
+      'getDashboardData': 30000,
+      'getSidebarBadges': 60000,
+      'getDepartments': 300000
     };
 
     window.clearAppCache = function(actionPrefix) {
       if (!actionPrefix) {
         _apiCache.clear();
+        try { sessionStorage.removeItem('sso_api_cache'); } catch (_) {}
         return;
       }
       for (const key of _apiCache.keys()) {
@@ -79,6 +120,7 @@
           _apiCache.delete(key);
         }
       }
+      try { sessionStorage.removeItem('sso_api_cache'); } catch (_) {}
     };
 
     let _sessionRedirectActive = false;
@@ -160,19 +202,23 @@
             return function(fn) { failureHandler = fn; return proxy; };
           }
           return function(...args) {
-            const isMutation = /^(save|delete|import|transfer|change|review|record|update|logout|reset)/i.test(prop);
+            const isMutation = /^(save|delete|import|transfer|change|review|record|update|logout|reset|autoAssign|clean|quickUpdate|enroll)/i.test(prop);
             if (isMutation) {
               _apiCache.clear(); // Invalidate cache on mutations
+              try { sessionStorage.removeItem('sso_api_cache'); } catch (_) {}
             }
 
             const cacheKey = prop + ':' + JSON.stringify(args);
             const ttl = CACHE_TTL_MAP[prop] || 0;
             const now = Date.now();
 
-            // 1. Check cached response
+            // 1. Check cached response (Instant 0ms Cache Hit + SWR)
+            let hasReturnedStale = false;
             if (!isMutation && ttl > 0 && _apiCache.has(cacheKey)) {
               const item = _apiCache.get(cacheKey);
-              if (now - item.time < ttl) {
+              const age = now - item.time;
+              if (age < ttl) {
+                // Completely fresh cache hit: 0ms instant response
                 setTimeout(() => {
                   try {
                     if (successHandler) successHandler(JSON.parse(JSON.stringify(item.data)));
@@ -181,6 +227,14 @@
                   }
                 }, 0);
                 return proxy;
+              } else if (age < ttl * 2) {
+                // SWR: return stale data immediately so UI doesn't lag, then revalidate in background
+                hasReturnedStale = true;
+                setTimeout(() => {
+                  try {
+                    if (successHandler) successHandler(JSON.parse(JSON.stringify(item.data)));
+                  } catch (e) {}
+                }, 0);
               }
             }
 
@@ -198,6 +252,13 @@
               .then(data => {
                 if (!isMutation && ttl > 0 && data && data.status !== 'error') {
                   _apiCache.set(cacheKey, { time: Date.now(), data: data });
+                  if (prop === 'getClassroomsForDropdown' || prop === 'getTeachersForDropdown' || prop === 'getConfig') {
+                    try {
+                      const toSave = JSON.parse(sessionStorage.getItem('sso_api_cache') || '{}');
+                      toSave[cacheKey] = { time: Date.now(), data: data };
+                      sessionStorage.setItem('sso_api_cache', JSON.stringify(toSave));
+                    } catch (_) {}
+                  }
                 }
                 return data;
               })
@@ -387,8 +448,6 @@
       const cachedName = localStorage.getItem('cached_school_name');
       if (cachedLogo) {
         document.getElementById('loginLogoImage').src = cachedLogo;
-        const favicon = document.getElementById('favicon');
-        if(favicon) favicon.href = cachedLogo;
       }
       if (cachedName) {
         document.getElementById('loginSchoolName').textContent = cachedName;

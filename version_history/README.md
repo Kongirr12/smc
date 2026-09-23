@@ -9,6 +9,7 @@
 
 | เวอร์ชัน | วันที่อัปเดต | หัวข้อการปรับปรุงหลัก | ไฟล์เอกสาร |
 | :--- | :--- | :--- | :--- |
+| **v2.5.0** | 23 ก.ย. 2569 | เปลี่ยน Favicon เป็นไอคอน Mac (แชร์ที่คั่นหน้า / Safari Touch Icon / PWA) & ปรับแต่งประสิทธิภาพทั้งระบบให้เร็วที่สุด (Extreme Performance) | [v2.5.0-mac-icon-and-extreme-performance.md](./v2.5.0-mac-icon-and-extreme-performance.md) |
 | **v2.4.1** | 23 ก.ย. 2569 | แก้ไขข้อผิดพลาดการอ่านไฟล์นำเข้า CSV นักเรียน (Fix CSV Import Parsing Error) | [v2.4.1-csv-import-fix.md](./v2.4.1-csv-import-fix.md) |
 | **v2.4.0** | 23 ก.ย. 2569 | ระบบกำหนดและจัดการเลขที่นักเรียน (Roll Numbers), จัดเรียงเลขที่อัตโนมัติตามมาตรฐาน สพฐ./SGS, แก้ไขเลขที่รายห้อง และรองรับในระบบเช็คชื่อ/CSV | [v2.4.0-student-number-management.md](./v2.4.0-student-number-management.md) |
 | **v2.3.0** | 23 ก.ย. 2569 | ระบบนำเข้า CSV อัจฉริยะ (แก้คำนำหน้าซ้ำ), ลบข้อมูลซ้ำ, ระบบลบนักเรียนทีละหลายคน (Batch Delete) และลบตามตัวกรอง (Filter Delete) | [v2.3.0-smart-csv-import-and-batch-delete.md](./v2.3.0-smart-csv-import-and-batch-delete.md) |

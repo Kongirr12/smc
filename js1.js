@@ -46,6 +46,7 @@ function handleSessionCheck(res) {
     APP.role = res.role;
     if (res.dashboardData) {
       APP.dashboardData = res.dashboardData;
+      APP._dashboardTs = Date.now();
     }
     enterApp();
   } else {
@@ -113,6 +114,7 @@ function doLogin() {
       APP.role  = res.user.role;
       if (res.dashboardData) {
         APP.dashboardData = res.dashboardData;
+        APP._dashboardTs = Date.now();
       }
       (remember ? localStorage : sessionStorage).setItem('sso_token', res.token);
       enterApp();
@@ -190,8 +192,6 @@ function enterApp() {
     }
     if (config.school_logo) {
       localStorage.setItem('cached_school_logo', config.school_logo);
-      const favicon = document.getElementById('favicon');
-      if (favicon) favicon.href = config.school_logo;
       
       const logoBox = document.getElementById('logoBoxSidebar');
       if (logoBox) {
@@ -686,6 +686,7 @@ function readNotification(id, link_type, link_id) {
 }
 
 function refreshBadges() {
+  if (document.hidden) return; // ไม่ส่ง polling เมื่อแท็บไม่ได้ถูกเปิดดู เพื่อประหยัดเน็ตและ CPU
   if (!APP.token) return;
   google.script.run
     .withSuccessHandler(res => {
@@ -719,6 +720,13 @@ function refreshBadges() {
     .withFailureHandler(()=>{})
     .getSidebarBadges(APP.token);
 }
+
+// เมื่อกลับมาเปิดดูแท็บ จะอัปเดตแจ้งเตือนทันทีโดยไม่ต้องรอรอบ Interval
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && APP.token) {
+    refreshBadges();
+  }
+});
 
 
 /* ============================================================

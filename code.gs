@@ -516,6 +516,7 @@ function appendJsonRow_(sheetName, obj) {
   
   _jsonSheetCache_[sheetName].push(obj);
   _setCacheChunks_(sheetName, JSON.stringify(_jsonSheetCache_[sheetName]));
+  try { CacheService.getScriptCache().remove('dashboard_core_cache'); } catch(_) {}
 }
 
 function appendJsonRows_(sheetName, arr) {
@@ -529,6 +530,7 @@ function appendJsonRows_(sheetName, arr) {
   
   _jsonSheetCache_[sheetName] = _jsonSheetCache_[sheetName].concat(arr);
   _setCacheChunks_(sheetName, JSON.stringify(_jsonSheetCache_[sheetName]));
+  try { CacheService.getScriptCache().remove('dashboard_core_cache'); } catch(_) {}
 }
 
 function writeJsonSheet_(sheetName, arr) {
@@ -547,6 +549,7 @@ function writeJsonSheet_(sheetName, arr) {
   }
   _jsonSheetCache_[sheetName] = arr.slice();
   _setCacheChunks_(sheetName, JSON.stringify(arr));
+  try { CacheService.getScriptCache().remove('dashboard_core_cache'); } catch(_) {}
 }
 
 function updateJsonById_(sheetName, id, updater) {
@@ -799,6 +802,13 @@ function changeOwnPassword(sessionToken, oldPassword, newPassword) {
  *  Dashboard
  * ============================================================ */
 function getDashboardDataCore_() {
+  try {
+    const cached = CacheService.getScriptCache().get('dashboard_core_cache');
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch(_) {}
+
   const config     = getConfig();
   const students   = readJsonSheet_('Students');
   const personnel  = readJsonSheet_('Personnel');
@@ -852,7 +862,7 @@ function getDashboardDataCore_() {
   // คำขอรออนุมัติ
   const pendingApprovals = approvals.filter(a => a.status === 'pending').length;
 
-  return {
+  const result = {
     status: 'success',
     data: {
       config: { school_name: config.school_name, school_logo: config.school_logo, academic_year: config.academic_year, semester: config.semester },
@@ -868,11 +878,17 @@ function getDashboardDataCore_() {
       pending_approvals: pendingApprovals
     }
   };
+
+  try {
+    CacheService.getScriptCache().put('dashboard_core_cache', JSON.stringify(result), 30);
+  } catch(_) {}
+
+  return result;
 }
 
 function getDashboardData(sessionToken) {
   try {
-    const v = validateSession(sessionToken);
+    const v = validateSessionLight_(sessionToken);
     if (!v.valid) return { status:'error', message:'session_invalid' };
     const dash = getDashboardDataCore_();
     if (dash.status === 'success') {
