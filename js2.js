@@ -1795,8 +1795,10 @@ function renderAttendance(container) {
     \x3c/div>
   `;
 
-  // ตั้งค่า mode เริ่มต้น: ครูใช้รายวิชา, staff/admin ใช้รายห้อง
-  AttendanceState.mode = APP.role === 'teacher' ? 'subject' : 'class';
+  // ตั้งค่า mode เริ่มต้น: หากยังไม่ได้เลือก ให้เริ่มต้นที่หน้าเสาธง/โฮมรูม หรือคงค่าเดิมที่เลือกไว้
+  if (!AttendanceState.mode) {
+    AttendanceState.mode = 'class';
+  }
 
   let loaded = 0;
   const checkReady = () => { if (++loaded >= 3) renderAttendanceRecord(); };
@@ -1847,7 +1849,6 @@ function renderAttendanceRecord() {
 
   c.innerHTML = `
     <div class="flex gap-2 mb-3 flex-wrap items-center">
-      ${APP.role !== 'teacher' ? `
       <div class="flex rounded-lg overflow-hidden border border-slate-200" style="font-size:13px;">
         <button id="attModeSubject" onclick="switchAttMode('subject')"
           class="px-3 py-1.5 font-semibold transition-colors ${mode==='subject'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
@@ -1858,7 +1859,6 @@ function renderAttendanceRecord() {
           <i class='bx bxs-building'>\x3c/i> หน้าเสาธง / โฮมรูม
         </button>
       </div>
-      ` : '<span class="text-sm font-semibold text-blue-600"><i class=\'bx bx-book-open\'></i> บันทึกรายวิชา\x3c/span>'}
 
       <select id="attClassroom" onchange="onAttClassroomChange()"
               class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
