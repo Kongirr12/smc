@@ -7,9 +7,162 @@
 /* ============================================================
  *  REPORTS
  * ============================================================ */
+const SYSTEM_REPORT_DEFINITIONS = [
+  // หมวด 1: ข้อมูลนักเรียน & บุคลากร & พฤติกรรม
+  {
+    id: 'students_by_grade',
+    category: 'students',
+    categoryName: 'ข้อมูลนักเรียน',
+    title: 'รายชื่อนักเรียนแยกตามชั้น',
+    desc: 'ข้อมูลประจำตัว เพศ วันเกิด และผู้ปกครอง',
+    icon: 'bxs-user-detail',
+    color: '#4F46E5',
+    hasCls: true
+  },
+  {
+    id: 'behavior_summary',
+    category: 'students',
+    categoryName: 'พฤติกรรม',
+    title: 'สรุปคะแนนพฤติกรรมนักเรียน',
+    desc: 'คะแนนสะสม คะแนนบวก-ลบ และระดับความเสี่ยง',
+    icon: 'bxs-heart',
+    color: '#EC4899',
+    hasCls: true
+  },
+  {
+    id: 'behavior_records',
+    category: 'students',
+    categoryName: 'พฤติกรรม',
+    title: 'ประวัติบันทึกพฤติกรรมรายเหตุการณ์',
+    desc: 'บันทึกเหตุการณ์ความดี/พฤติกรรมไม่พึงประสงค์',
+    icon: 'bx-history',
+    color: '#F43F5E',
+    hasDate: true,
+    hasBhvType: true
+  },
+  {
+    id: 'risk_students_summary',
+    category: 'students',
+    categoryName: 'กลุ่มเสี่ยง',
+    title: 'รายงานนักเรียนกลุ่มเสี่ยง (มส. / พฤติกรรม)',
+    desc: 'นักเรียนที่เวลาเรียน < 80% หรือคะแนนพฤติกรรมติดลบ',
+    icon: 'bxs-error-circle',
+    color: '#EF4444',
+    hasCls: true
+  },
+  {
+    id: 'personnel_list',
+    category: 'students',
+    categoryName: 'บุคลากร',
+    title: 'รายชื่อครูและบุคลากร',
+    desc: 'ตำแหน่ง ฝ่าย/กลุ่มสาระ โทรศัพท์ และอีเมล',
+    icon: 'bxs-group',
+    color: '#06B6D4'
+  },
+
+  // หมวด 2: เวลาเรียนและการเข้าชั้นเรียน
+  {
+    id: 'attendance_all_subjects',
+    category: 'attendance',
+    categoryName: 'เวลาเรียน Matrix',
+    title: 'เวลาเรียนภาพรวมทุกรายวิชา (Matrix)',
+    desc: 'ตารางสรุป % เวลาเรียนแยกทุกวิชา พร้อมตรวจ มส.',
+    icon: 'bxs-grid-alt',
+    color: '#2563EB',
+    hasCls: true,
+    hasDate: true
+  },
+  {
+    id: 'attendance_homeroom',
+    category: 'attendance',
+    categoryName: 'เข้าแถวหน้าเสาธง',
+    title: 'สรุปการเข้าแถวหน้าเสาธง / โฮมรูม',
+    desc: 'สถิติมา ขาด ลา สาย รายห้องหรือทั้งโรงเรียน',
+    icon: 'bxs-flag-alt',
+    color: '#10B981',
+    hasCls: true,
+    hasDate: true
+  },
+  {
+    id: 'attendance_summary',
+    category: 'attendance',
+    categoryName: 'เวลาเรียน',
+    title: 'สรุปการเข้าเรียนรายบุคคล (ภาพรวม)',
+    desc: 'สถิติการเข้าเรียนสะสมและร้อยละการเข้าเรียน',
+    icon: 'bxs-check-square',
+    color: '#059669',
+    hasCls: true,
+    hasDate: true
+  },
+
+  // หมวด 3: วิชาการและตารางสอน
+  {
+    id: 'gpa_by_grade',
+    category: 'academic',
+    categoryName: 'วิชาการ',
+    title: 'GPA นักเรียนแยกตามชั้น',
+    desc: 'ผลการเรียนเฉลี่ยสะสมและหน่วยกิตรวม',
+    icon: 'bxs-trophy',
+    color: '#8B5CF6',
+    hasCls: true,
+    hasYear: true
+  },
+  {
+    id: 'schedule_summary',
+    category: 'academic',
+    categoryName: 'ตารางสอน',
+    title: 'ตารางสอนและภาระงานสอน',
+    desc: 'สรุปตารางสอนประจำชั้นและภาระงานสอนของครู',
+    icon: 'bxs-calendar-check',
+    color: '#6366F1'
+  },
+
+  // หมวด 4: การเงินและสารบรรณ
+  {
+    id: 'finance_summary',
+    category: 'admin',
+    categoryName: 'การเงิน',
+    title: 'สรุปการเงินรายรับ-รายจ่าย',
+    desc: 'รายการรับจ่ายตามหมวดหมู่ พร้อมยอดคงเหลือสุทธิ',
+    icon: 'bxs-wallet',
+    color: '#F59E0B',
+    hasDate: true
+  },
+  {
+    id: 'documents_summary',
+    category: 'admin',
+    categoryName: 'สารบรรณ',
+    title: 'ทะเบียนหนังสือราชการและคำสั่ง',
+    desc: 'หนังสือรับ หนังสือส่ง และคำสั่งโรงเรียน',
+    icon: 'bxs-envelope',
+    color: '#D97706',
+    hasDate: true,
+    hasDocType: true
+  },
+  {
+    id: 'approvals_summary',
+    category: 'admin',
+    categoryName: 'ระบบอนุมัติ',
+    title: 'สรุปการขออนุมัติและประวัติการลา',
+    desc: 'ใบลาครู/บุคลากร คำขอจัดซื้อ และเบิกจ่าย',
+    icon: 'bxs-badge-check',
+    color: '#14B8A6',
+    hasDate: true
+  }
+];
+
 function renderReports(container) {
   container.innerHTML = `
-    ${pageHeader('รายงาน', 'bxs-bar-chart-alt-2', '')}
+    ${pageHeader('รายงาน', 'bxs-bar-chart-alt-2', `
+      <div class="flex gap-2">
+        <button class="btn btn-light" onclick="document.getElementById('reportsDownloadSection')?.scrollIntoView({ behavior:'smooth' })">
+          <i class='bx bx-download'>\x3c/i> รายการดาวน์โหลด
+        \x3c/button>
+        <button class="btn btn-blue" onclick="loadReportsOverview()">
+          <i class='bx bx-refresh'>\x3c/i> รีเฟรชข้อมูล
+        \x3c/button>
+      \x3c/div>
+    `)}
 
     <!-- Stat counts -->
     <div id="repCounts" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">\x3c/div>
@@ -44,26 +197,49 @@ function renderReports(container) {
     \x3c/div>
 
     <!-- Export Section -->
-    <div class="page-card">
-      <div class="page-card-header"><h2><i class='bx bx-download text-primary' >\x3c/i> ดาวน์โหลดรายงาน\x3c/h2>\x3c/div>
+    <div class="page-card" id="reportsDownloadSection">
+      <div class="page-card-header flex flex-wrap items-center justify-between gap-2">
+        <h2><i class='bx bx-download text-primary'>\x3c/i> ศูนย์ดาวน์โหลดและส่งออกรายงาน\x3c/h2>
+        <div class="text-xs text-slate-500 font-normal">
+          คลิกที่การ์ดเพื่อกำหนดเงื่อนไข หรือกดไอคอน <i class='bx bx-download text-indigo-600 font-bold'>\x3c/i> ด้านขวาเพื่อดาวน์โหลด Excel ได้ทันที
+        </div>
+      </div>
       <div class="page-card-body">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          ${[
-            { id:'students_by_grade',   title:'รายชื่อนักเรียนแยกตามชั้น', icon:'bxs-user-detail', color:'#4F46E5' },
-            { id:'attendance_summary',  title:'สรุปการเข้าเรียน',         icon:'bxs-check-square', color:'#10B981' },
-            { id:'finance_summary',     title:'สรุปการเงิน',              icon:'bxs-wallet',      color:'#F59E0B' },
-            { id:'gpa_by_grade',        title:'GPA นักเรียน',             icon:'bxs-trophy',      color:'#8B5CF6' },
-            { id:'personnel_list',      title:'รายชื่อบุคลากร',           icon:'bxs-group',       color:'#06B6D4' }
-          ].map(r => `
-            <div class="report-card" onclick="openReportDialog('${r.id}', '${r.title}')">
-              <div class="ic" style="background:${r.color}1A; color:${r.color};">
+        <!-- Category Filter Tabs -->
+        <div class="flex flex-wrap gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800 text-xs">
+          <button class="rep-cat-btn active" data-cat="all" onclick="filterReportCards('all')">
+            ทั้งหมด (${SYSTEM_REPORT_DEFINITIONS.length})
+          \x3c/button>
+          <button class="rep-cat-btn" data-cat="students" onclick="filterReportCards('students')">
+            <i class='bx bxs-user-detail'>\x3c/i> นักเรียน & พฤติกรรม
+          \x3c/button>
+          <button class="rep-cat-btn" data-cat="attendance" onclick="filterReportCards('attendance')">
+            <i class='bx bxs-check-square'>\x3c/i> เวลาเรียน & เช็คชื่อ
+          \x3c/button>
+          <button class="rep-cat-btn" data-cat="academic" onclick="filterReportCards('academic')">
+            <i class='bx bxs-book-content'>\x3c/i> วิชาการ & ตารางสอน
+          \x3c/button>
+          <button class="rep-cat-btn" data-cat="admin" onclick="filterReportCards('admin')">
+            <i class='bx bxs-folder-open'>\x3c/i> การเงิน & สารบรรณ
+          \x3c/button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="repCardsGrid">
+          ${SYSTEM_REPORT_DEFINITIONS.map(r => `
+            <div class="report-card group" data-category="${r.category}" onclick="openReportDialog('${r.id}', '${escapeHTML(r.title)}')">
+              <div class="ic" style="background:${r.color}15; color:${r.color};">
                 <i class='bx ${r.icon}'>\x3c/i>
               \x3c/div>
-              <div class="flex-1 min-w-0">
-                <div class="font-semibold text-slate-800">${r.title}\x3c/div>
-                <div class="text-xs text-slate-500 mt-1">กดเพื่อ Export Excel\x3c/div>
-              \x3c/div>
-              <i class='bx bx-chevron-right text-slate-400'>\x3c/i>
+              <div class="flex-1 min-w-0 pr-1">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                  <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold" style="background:${r.color}15; color:${r.color};">${r.categoryName}\x3c/span>
+                </div>
+                <div class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-snug truncate" title="${escapeHTML(r.title)}">${r.title}\x3c/div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate" title="${escapeHTML(r.desc)}">${r.desc}\x3c/div>
+              </div>
+              <button type="button" class="btn-quick-dl" title="ดาวน์โหลดด่วน (ค่าเริ่มต้นทั้งหมด)" onclick="event.stopPropagation(); quickDownloadReport('${r.id}', '${escapeHTML(r.title)}')">
+                <i class='bx bx-download'>\x3c/i>
+              \x3c/button>
             \x3c/div>
           `).join('')}
         \x3c/div>
@@ -72,16 +248,39 @@ function renderReports(container) {
 
     <style>
       .report-card {
-        background:white; border:1px solid #F1F5F9; border-radius:14px;
-        padding:14px; display:flex; align-items:center; gap:12px;
-        cursor:pointer; transition:all .15s;
+        background:white; border:1px solid #E2E8F0; border-radius:14px;
+        padding:12px 14px; display:flex; align-items:center; gap:12px;
+        cursor:pointer; transition:all .15s; position:relative;
       }
       .report-card:hover { border-color:#4F46E5; transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.06); }
       .report-card .ic {
-        width:46px; height:46px; border-radius:12px;
+        width:44px; height:44px; border-radius:12px;
         display:flex; align-items:center; justify-content:center;
         font-size:22px; flex-shrink:0;
       }
+      .btn-quick-dl {
+        width:34px; height:34px; border-radius:8px; border:1px solid #E2E8F0;
+        display:flex; align-items:center; justify-content:center;
+        background:#F8FAFC; color:#475569; font-size:16px;
+        cursor:pointer; transition:all .15s; flex-shrink:0;
+      }
+      .btn-quick-dl:hover {
+        background:#4F46E5; color:white; border-color:#4F46E5; transform:scale(1.05);
+      }
+      .rep-cat-btn {
+        padding:5px 12px; border-radius:999px; border:1px solid #E2E8F0;
+        background:#FFFFFF; color:#64748B; font-weight:600; cursor:pointer;
+        transition:all .15s; display:inline-flex; align-items:center; gap:4px;
+      }
+      .rep-cat-btn:hover { border-color:#CBD5E1; color:#1E293B; background:#F8FAFC; }
+      .rep-cat-btn.active { background:#4F46E5; color:#FFFFFF; border-color:#4F46E5; }
+      .dark-mode .report-card { background:#1E293B; border-color:#334155; }
+      .dark-mode .report-card:hover { border-color:#6366F1; box-shadow:0 8px 20px rgba(0,0,0,.25); }
+      .dark-mode .btn-quick-dl { background:#334155; border-color:#475569; color:#CBD5E1; }
+      .dark-mode .btn-quick-dl:hover { background:#6366F1; border-color:#6366F1; color:#FFFFFF; }
+      .dark-mode .rep-cat-btn { background:#1E293B; border-color:#334155; color:#94A3B8; }
+      .dark-mode .rep-cat-btn:hover { background:#334155; color:#F1F5F9; }
+      .dark-mode .rep-cat-btn.active { background:#4F46E5; border-color:#4F46E5; color:#FFFFFF; }
     \x3c/style>
   `;
 
@@ -226,22 +425,68 @@ function renderReportsOverview(d) {
   }
 }
 
+function filterReportCards(category) {
+  const cards = document.querySelectorAll('#repCardsGrid .report-card');
+  const buttons = document.querySelectorAll('.rep-cat-btn');
+  buttons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cat === category);
+  });
+  cards.forEach(card => {
+    if (category === 'all' || card.dataset.category === category) {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+function quickDownloadReport(reportType, title) {
+  showLoading('กำลังดาวน์โหลดรายงาน ' + title + '...');
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })();
+  
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status !== 'success') return showToast('error', res.message || 'ไม่สามารถดาวน์โหลดได้');
+      exportToExcel(res.headers, res.rows, (res.title || title) + '_' + today + '.xls');
+      showToast('success', 'ดาวน์โหลดรายงานสำเร็จ');
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', err.message || err);
+    })
+    .generateReport(reportType, { classroom: '', start: monthAgo, end: today, type: 'all', doc_type: 'all' }, APP.token);
+}
+
 function openReportDialog(reportType, title) {
-  // ฟอร์มเลือก parameters
-  const today = new Date().toISOString().slice(0,10);
-  const monthAgo = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0,10); })();
+  const rDef = (typeof SYSTEM_REPORT_DEFINITIONS !== 'undefined' ? SYSTEM_REPORT_DEFINITIONS : []).find(x => x.id === reportType) || {};
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })();
+
+  let clsList = (window.AttendanceState && AttendanceState.classrooms) || [];
+  if (!clsList.length && window._apiCache) {
+    const cached = window._apiCache.get('getClassroomsForDropdown') || window._apiCache.get('getClassrooms');
+    if (cached && cached.data) clsList = cached.data;
+  }
+  if (!clsList.length) {
+    clsList = ['ม.1/1', 'ม.1/2', 'ม.2/1', 'ม.2/2', 'ม.3/1', 'ม.3/2', 'ม.4/1', 'ม.4/2', 'ม.5/1', 'ม.5/2', 'ม.6/1', 'ม.6/2'];
+  }
 
   let extraHtml = '';
-  if (reportType === 'students_by_grade' || reportType === 'attendance_summary' || reportType === 'gpa_by_grade') {
-    extraHtml = `
-      <div>
-        <label class="form-label">ชั้นเรียน (เว้นว่าง = ทุกชั้น)\x3c/label>
-        <input type="text" id="rep_classroom" class="form-input" placeholder="เช่น ม.1/1">
+  if (rDef.hasCls || reportType === 'students_by_grade' || reportType === 'attendance_summary' || reportType === 'gpa_by_grade' || reportType === 'attendance_all_subjects' || reportType === 'attendance_homeroom' || reportType === 'behavior_summary' || reportType === 'risk_students_summary') {
+    extraHtml += `
+      <div class="mb-3">
+        <label class="form-label">ชั้นเรียน\x3c/label>
+        <select id="rep_classroom" class="form-input">
+          <option value="">ทุกชั้นเรียน (ทั้งโรงเรียน)\x3c/option>
+          ${clsList.map(c => `<option value="${escapeHTML(c)}">ชั้น ${escapeHTML(c)}\x3c/option>`).join('')}
+        \x3c/select>
       \x3c/div>`;
   }
-  if (reportType === 'attendance_summary' || reportType === 'finance_summary') {
+  if (rDef.hasDate || reportType === 'attendance_summary' || reportType === 'finance_summary' || reportType === 'attendance_all_subjects' || reportType === 'attendance_homeroom' || reportType === 'behavior_records' || reportType === 'documents_summary' || reportType === 'approvals_summary') {
     extraHtml += `
-      <div class="grid grid-cols-2 gap-2 mt-2">
+      <div class="grid grid-cols-2 gap-2 mb-3">
         <div>
           <label class="form-label">ตั้งแต่วันที่\x3c/label>
           <input type="date" id="rep_start" class="form-input" value="${monthAgo}">
@@ -252,11 +497,35 @@ function openReportDialog(reportType, title) {
         \x3c/div>
       \x3c/div>`;
   }
-  if (reportType === 'gpa_by_grade') {
+  if (rDef.hasBhvType || reportType === 'behavior_records') {
     extraHtml += `
-      <div class="mt-2">
+      <div class="mb-3">
+        <label class="form-label">ประเภทพฤติกรรม\x3c/label>
+        <select id="rep_type" class="form-input">
+          <option value="all">ทั้งหมด (ทั้งเชิงบวกและไม่พึงประสงค์)\x3c/option>
+          <option value="positive">ความดี / พฤติกรรมเชิงบวก (+)\x3c/option>
+          <option value="negative">พฤติกรรมไม่พึงประสงค์ (-)\x3c/option>
+        \x3c/select>
+      \x3c/div>`;
+  }
+  if (rDef.hasDocType || reportType === 'documents_summary') {
+    extraHtml += `
+      <div class="mb-3">
+        <label class="form-label">ประเภทเอกสาร\x3c/label>
+        <select id="rep_type" class="form-input">
+          <option value="all">ทั้งหมด\x3c/option>
+          <option value="in">หนังสือรับเข้า\x3c/option>
+          <option value="out">หนังสือส่งออก\x3c/option>
+          <option value="order">คำสั่งโรงเรียน\x3c/option>
+          <option value="notice">ประกาศ\x3c/option>
+        \x3c/select>
+      \x3c/div>`;
+  }
+  if (rDef.hasYear || reportType === 'gpa_by_grade') {
+    extraHtml += `
+      <div class="mb-3">
         <label class="form-label">ปีการศึกษา (เว้นว่าง = ทุกปี)\x3c/label>
-        <input type="text" id="rep_year" class="form-input" placeholder="2569">
+        <input type="text" id="rep_year" class="form-input" placeholder="เช่น 2569">
       \x3c/div>`;
   }
 
@@ -268,18 +537,22 @@ function openReportDialog(reportType, title) {
     cancelButtonText: 'ยกเลิก',
     html: `
       <div style="text-align:left;">
-        ${extraHtml || '<div class="text-sm text-slate-600">กด "ดาวน์โหลด" เพื่อสร้างรายงาน\x3c/div>'}
-      \x3c/div>
+        <div class="text-xs text-slate-500 mb-3">${escapeHTML(rDef.desc || 'ระบุเงื่อนไขที่ต้องการเพื่อสร้างรายงาน')}</div>
+        ${extraHtml || '<div class="text-sm text-slate-600">กด "ดาวน์โหลด Excel" เพื่อสร้างรายงานทันที</div>'}
+      </div>
       <style>
-        .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
-        .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
-      \x3c/style>
+        .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px; }
+        .form-input { width:100%; padding:8px 10px; border:1.5px solid #CBD5E1; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; box-sizing:border-box; }
+        .form-input:focus { border-color:#4F46E5; background:#FFFFFF; outline:none; }
+      </style>
     `,
     preConfirm: () => ({
       classroom    : (document.getElementById('rep_classroom') || {}).value || '',
       start        : (document.getElementById('rep_start')     || {}).value || '',
       end          : (document.getElementById('rep_end')       || {}).value || '',
-      academic_year: (document.getElementById('rep_year')      || {}).value || ''
+      academic_year: (document.getElementById('rep_year')      || {}).value || '',
+      type         : (document.getElementById('rep_type')      || {}).value || '',
+      doc_type     : (document.getElementById('rep_type')      || {}).value || ''
     })
   }).then(r => {
     if (!r.isConfirmed) return;
@@ -287,11 +560,14 @@ function openReportDialog(reportType, title) {
     google.script.run
       .withSuccessHandler(res => {
         hideLoading();
-        if (res.status !== 'success') return showToast('error', res.message);
-        exportToExcel(res.headers, res.rows, res.title + '_' + new Date().toISOString().slice(0,10) + '.xls');
+        if (res.status !== 'success') return showToast('error', res.message || 'ไม่สามารถสร้างรายงานได้');
+        exportToExcel(res.headers, res.rows, (res.title || title) + '_' + new Date().toISOString().slice(0, 10) + '.xls');
         showToast('success', 'ดาวน์โหลดสำเร็จ');
       })
-      .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', err.message || err);
+      })
       .generateReport(reportType, r.value, APP.token);
   });
 }

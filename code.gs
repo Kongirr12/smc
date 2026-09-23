@@ -4525,6 +4525,312 @@ function generateReport(reportType, params, sessionToken) {
                    p.phone, p.email,
                    p.start_date ? formatThaiDateServer_(p.start_date) : '']);
 
+    } else if (reportType === 'attendance_all_subjects') {
+      title = 'เวลาเรียนภาพรวมทุกรายวิชา' + (params.classroom ? ' ชั้น ' + params.classroom : '');
+      const cls = params.classroom || '';
+      const start = params.start;
+      const end = params.end;
+      
+      let attendance = readJsonSheet_('Attendance');
+      if (start) attendance = attendance.filter(a => a.date >= start);
+      if (end)   attendance = attendance.filter(a => a.date <= end);
+      attendance = attendance.filter(a => a.period !== 'homeroom' && a.subject_id);
+
+      const allStudents = readJsonSheet_('Students').filter(s => s.status === 'active');
+      let targetStudents = cls ? allStudents.filter(s => String(s.classroom) === String(cls)) : allStudents;
+      
+      targetStudents.sort((a, b) => {
+        const cComp = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
+        if (cComp !== 0) return cComp;
+        const na = Number(a.student_number || a.student_no || 0);
+        const nb = Number(b.student_number || b.student_no || 0);
+        if (na && nb) return na - nb;
+        return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+      });
+
+      const allSubjects = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
+      const subjectMap = new Map();
+      allSubjects.forEach(s => subjectMap.set(String(s.id), s));
+
+      const subjectIdSet = new Set(attendance.map(a => String(a.subject_id)).filter(Boolean));
+      try {
+        const scheduleEntries = readJsonSheet_('Schedule').filter(x => x._kind === 'entry' && (!cls || String(x.classroom || '').trim() === String(cls).trim()));
+        scheduleEntries.forEach(e => { if (e.subject_id) subjectIdSet.add(String(e.subject_id)); });
+      } catch (_) {}
+
+      const subjectsInfo = Array.from(subjectIdSet).map(subId => {
+        const sObj = subjectMap.get(subId) || {};
+        const subRecords = attendance.filter(a => String(a.subject_id) === subId);
+        const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
+        return {
+          id: subId,
+          code: sObj.subject_code || subId,
+          name: sObj.subject_name || sObj.subject_code || subId,
+          periods: periodKeys.size
+        };
+      }).sort((a, b) => (a.code || '').localeCompare(b.code || '', 'th'));
+
+      headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', ...subjectsInfo.map(s => `${s.code} ${s.name} (${s.periods} คาบ)`), 'มา (รวม)', 'ขาด (รวม)', 'ลา (รวม)', 'สาย (รวม)', 'รวมทั้งหมด', '% เข้าเรียนเฉลี่ย', 'สถานะ'];
+
+      rows = targetStudents.map((s, idx) => {
+        const sAtt = attendance.filter(a => a.student_id === s.id);
+        const sSum = _attendanceSummary_(sAtt);
+        let hasRisk = false;
+        const subCols = subjectsInfo.map(sub => {
+          const subAtt = sAtt.filter(a => String(a.subject_id) === sub.id);
+          if (subAtt.length === 0) return '-';
+          const p = _attendanceSummary_(subAtt).attendance_pct;
+          if (p < 80) hasRisk = true;
+          return p.toFixed(1) + '%';
+        });
+
+        return [
+          idx + 1,
+          s.classroom || '-',
+          s.student_id,
+          (s.prefix || '') + (s.first_name || '') + ' ' + (s.last_name || ''),
+          ...subCols,
+          sSum.present,
+          sSum.absent,
+          sSum.leave,
+          sSum.late,
+          sSum.total,
+          sSum.attendance_pct.toFixed(1) + '%',
+          hasRisk ? 'เสี่ยง มส.' : 'ปกติ'
+        ];
+      });
+
+    } else if (reportType === 'attendance_homeroom') {
+      title = 'สรุปการเข้าแถวหน้าเสาธงและโฮมรูม' + (params.classroom ? ' ชั้น ' + params.classroom : '');
+      const cls = params.classroom || '';
+      const start = params.start;
+      const end = params.end;
+
+      let attendance = readJsonSheet_('Attendance');
+      if (start) attendance = attendance.filter(a => a.date >= start);
+      if (end)   attendance = attendance.filter(a => a.date <= end);
+      attendance = attendance.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
+
+      const students = readJsonSheet_('Students').filter(s => s.status === 'active');
+      let targetStudents = cls ? students.filter(s => String(s.classroom) === String(cls)) : students;
+
+      targetStudents.sort((a, b) => {
+        const cComp = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
+        if (cComp !== 0) return cComp;
+        const na = Number(a.student_number || a.student_no || 0);
+        const nb = Number(b.student_number || b.student_no || 0);
+        if (na && nb) return na - nb;
+        return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+      });
+
+      headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', 'มา (วัน)', 'ขาด (วัน)', 'ลา (วัน)', 'มาสาย (วัน)', 'รวม (วัน)', '% การมาแถว'];
+      rows = targetStudents.map((s, idx) => {
+        const arr = attendance.filter(a => a.student_id === s.id);
+        const sum = _attendanceSummary_(arr);
+        return [
+          idx + 1,
+          s.classroom || '-',
+          s.student_id,
+          (s.prefix || '') + (s.first_name || '') + ' ' + (s.last_name || ''),
+          sum.present,
+          sum.absent,
+          sum.leave,
+          sum.late,
+          sum.total,
+          sum.attendance_pct.toFixed(1) + '%'
+        ];
+      });
+
+    } else if (reportType === 'behavior_summary') {
+      title = 'สรุปคะแนนพฤติกรรมและความประพฤตินักเรียน' + (params.classroom ? ' ชั้น ' + params.classroom : '');
+      const cls = params.classroom || '';
+      const records = readJsonSheet_('Behavior');
+      const students = readJsonSheet_('Students').filter(s => s.status === 'active');
+      let targetStudents = cls ? students.filter(s => String(s.classroom) === String(cls)) : students;
+
+      headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', 'คะแนนสะสม', 'คะแนนบวก (+)', 'คะแนนลบ (-)', 'จำนวนครั้งที่บันทึก', 'ระดับความเสี่ยง'];
+      
+      const list = targetStudents.map(s => {
+        const mine = records.filter(b => b.student_id === s.id);
+        const total = mine.reduce((sum, b) => sum + Number(b.score || 0), 0);
+        const pos = mine.filter(b => b.type === 'positive').reduce((sum, b) => sum + Number(b.score || 0), 0);
+        const neg = mine.filter(b => b.type === 'negative').reduce((sum, b) => sum + Number(b.score || 0), 0);
+        const risk = total < -20 ? 'เสี่ยงสูงมาก' : total < 0 ? 'เสี่ยงปานกลาง' : 'ปกติ';
+        return {
+          classroom: s.classroom || '-',
+          code: s.student_id,
+          name: (s.prefix || '') + (s.first_name || '') + ' ' + (s.last_name || ''),
+          total: total,
+          pos: pos,
+          neg: neg,
+          events: mine.length,
+          risk: risk
+        };
+      });
+
+      list.sort((a, b) => a.total - b.total);
+      rows = list.map((item, idx) => [
+        idx + 1,
+        item.classroom,
+        item.code,
+        item.name,
+        item.total,
+        '+' + item.pos,
+        item.neg,
+        item.events,
+        item.risk
+      ]);
+
+    } else if (reportType === 'behavior_records') {
+      title = 'ประวัติการบันทึกพฤติกรรมรายเหตุการณ์';
+      const records = readJsonSheet_('Behavior');
+      const students = readJsonSheet_('Students');
+      const stuMap = new Map();
+      students.forEach(s => stuMap.set(s.id, s));
+
+      let filtered = records;
+      if (params.start) filtered = filtered.filter(b => b.date >= params.start);
+      if (params.end)   filtered = filtered.filter(b => b.date <= params.end);
+      if (params.type && params.type !== 'all') filtered = filtered.filter(b => b.type === params.type);
+
+      headers = ['วันที่', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', 'ประเภท', 'รายการพฤติกรรม / เหตุการณ์', 'คะแนน', 'ผู้บันทึก'];
+      rows = filtered
+        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+        .map(b => {
+          const s = stuMap.get(b.student_id) || {};
+          return [
+            formatThaiDateServer_(b.date),
+            s.classroom || '-',
+            s.student_id || '-',
+            (s.prefix || '') + (s.first_name || '') + ' ' + (s.last_name || ''),
+            b.type === 'positive' ? 'ความดี/สร้างสรรค์ (+)' : 'พฤติกรรมไม่พึงประสงค์ (-)',
+            b.reason || b.note || '-',
+            (Number(b.score) > 0 ? '+' : '') + (b.score || 0),
+            b.recorded_by || '-'
+          ];
+        });
+
+    } else if (reportType === 'risk_students_summary') {
+      title = 'รายงานสรุปนักเรียนกลุ่มเสี่ยง (มส. / พฤติกรรม / ขาดเรียน)';
+      const cls = params.classroom || '';
+      const students = readJsonSheet_('Students').filter(s => s.status === 'active');
+      let targetStudents = cls ? students.filter(s => String(s.classroom) === String(cls)) : students;
+      const attendance = readJsonSheet_('Attendance');
+      const behavior = readJsonSheet_('Behavior');
+
+      headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', 'เบอร์ผู้ปกครอง', '% เวลาเรียน', 'คะแนนพฤติกรรม', 'ประเด็นความเสี่ยง'];
+
+      const riskList = [];
+      targetStudents.forEach(s => {
+        const sAtt = attendance.filter(a => a.student_id === s.id);
+        const attSum = _attendanceSummary_(sAtt);
+        const attPct = attSum.total > 0 ? attSum.attendance_pct : 100;
+
+        const sBhv = behavior.filter(b => b.student_id === s.id);
+        const bhvScore = sBhv.reduce((sum, b) => sum + Number(b.score || 0), 0);
+
+        const risks = [];
+        if (attSum.total > 0 && attPct < 80) risks.push(`เสี่ยง มส. (${attPct.toFixed(1)}%)`);
+        if (bhvScore < 0) risks.push(`คะแนนพฤติกรรมติดลบ (${bhvScore})`);
+        if (attSum.absent >= 5) risks.push(`ขาดเรียนสะสม ${attSum.absent} คาบ`);
+
+        if (risks.length > 0) {
+          riskList.push({
+            classroom: s.classroom || '-',
+            student_id: s.student_id,
+            name: (s.prefix || '') + (s.first_name || '') + ' ' + (s.last_name || ''),
+            parent_phone: s.parent_phone || s.phone || '-',
+            attPct: attPct.toFixed(1) + '%',
+            bhvScore: bhvScore,
+            risks: risks.join(', ')
+          });
+        }
+      });
+
+      riskList.sort((a, b) => String(a.classroom).localeCompare(String(b.classroom), 'th', { numeric: true }));
+      rows = riskList.map((item, idx) => [
+        idx + 1,
+        item.classroom,
+        item.student_id,
+        item.name,
+        item.parent_phone,
+        item.attPct,
+        item.bhvScore,
+        item.risks
+      ]);
+
+    } else if (reportType === 'schedule_summary') {
+      title = 'สรุปตารางสอนและภาระงานสอน';
+      const entries = readJsonSheet_('Schedule').filter(x => x._kind === 'entry');
+      const subjects = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
+      const personnel = readJsonSheet_('Personnel');
+      const subMap = new Map();
+      subjects.forEach(s => subMap.set(String(s.id), s));
+      const teachMap = new Map();
+      personnel.forEach(p => teachMap.set(String(p.id), p));
+
+      headers = ['วัน', 'คาบที่', 'ชั้นเรียน', 'รหัสวิชา', 'ชื่อรายวิชา', 'ครูผู้สอน', 'ห้องเรียน'];
+      const dayOrder = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
+      const dayNames = { mon: 'จันทร์', tue: 'อังคาร', wed: 'พุธ', thu: 'พฤหัสบดี', fri: 'ศุกร์', sat: 'เสาร์', sun: 'อาทิตย์' };
+
+      rows = entries
+        .sort((a, b) => (dayOrder[a.day] || 99) - (dayOrder[b.day] || 99) || Number(a.period || 0) - Number(b.period || 0))
+        .map(e => {
+          const s = subMap.get(String(e.subject_id)) || {};
+          const p = teachMap.get(String(e.teacher_id)) || {};
+          return [
+            dayNames[e.day] || e.day,
+            'คาบ ' + (e.period || '-'),
+            e.classroom || '-',
+            s.subject_code || e.subject_id || '-',
+            s.subject_name || '-',
+            (p.prefix || '') + (p.first_name || '') + ' ' + (p.last_name || '') || '-',
+            e.room || '-'
+          ];
+        });
+
+    } else if (reportType === 'documents_summary') {
+      title = 'ทะเบียนหนังสือราชการและสารบรรณโรงเรียน';
+      const documents = readJsonSheet_('Documents');
+      let filtered = documents;
+      if (params.start) filtered = filtered.filter(d => d.date >= params.start);
+      if (params.end)   filtered = filtered.filter(d => d.date <= params.end);
+      if (params.doc_type && params.doc_type !== 'all') filtered = filtered.filter(d => d.doc_type === params.doc_type);
+
+      headers = ['เลขทะเบียน', 'เลขที่หนังสือ', 'ลงวันที่', 'ประเภทเอกสาร', 'เรื่อง', 'จาก / ผู้ส่ง', 'ถึง / ผู้รับ', 'สถานะ'];
+      rows = filtered
+        .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+        .map(d => [
+          d.reg_number || d.doc_number || '-',
+          d.doc_number || '-',
+          d.date ? formatThaiDateServer_(d.date) : '-',
+          ({in:'หนังสือรับเข้า', out:'หนังสือส่งออก', order:'คำสั่งโรงเรียน', notice:'ประกาศ'})[d.doc_type] || d.doc_type || '-',
+          d.title || '-',
+          d.from_source || d.sender || '-',
+          d.to_target || d.receiver || '-',
+          d.status || 'ปกติ'
+        ]);
+
+    } else if (reportType === 'approvals_summary') {
+      title = 'สรุปการขออนุมัติและประวัติการลา';
+      const approvals = readJsonSheet_('Approvals');
+      let filtered = approvals;
+      if (params.start) filtered = filtered.filter(a => a.created_at && a.created_at.slice(0, 10) >= params.start);
+      if (params.end)   filtered = filtered.filter(a => a.created_at && a.created_at.slice(0, 10) <= params.end);
+
+      headers = ['วันที่ยื่น', 'ผู้ยื่นคำขอ', 'ประเภทคำขอ', 'เรื่อง / เหตุผล', 'จำนวนเงิน/จำนวนวัน', 'สถานะ', 'ผู้อนุมัติ'];
+      rows = filtered
+        .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+        .map(a => [
+          a.created_at ? a.created_at.slice(0, 10) : '-',
+          a.requester_name || a.user_id || '-',
+          ({leave:'ใบลา', purchase:'จัดซื้อจัดจ้าง', budget:'เบิกจ่ายงบประมาณ'})[a.type] || a.type || '-',
+          a.title || a.reason || '-',
+          a.amount ? Number(a.amount).toLocaleString() + ' บาท' : (a.days ? a.days + ' วัน' : '-'),
+          ({pending:'รออนุมัติ', approved:'อนุมัติแล้ว', rejected:'ไม่อนุมัติ'})[a.status] || a.status || '-',
+          a.approver_name || '-'
+        ]);
+
     } else {
       return { status:'error', message:'รายงานไม่ถูกต้อง' };
     }
