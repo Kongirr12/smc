@@ -230,6 +230,7 @@ function routeApi(action, params, token) {
       case 'getCustomTemplates': return getCustomTemplates(token);
       case 'saveCustomTemplate': return saveCustomTemplate(params.data ? (typeof params.data === 'string' ? JSON.parse(params.data) : params.data) : params, token);
       case 'deleteCustomTemplate': return deleteCustomTemplate(params.id, token);
+      case 'resetCustomTemplates': return resetCustomTemplates(token);
 
       // ---------- REPORTS ----------
       case 'getReportsOverview': return getReportsOverview(token);
@@ -5107,31 +5108,45 @@ function saveCustomTemplate(data, sessionToken) {
       title        : sanitize(data.title),
       dept         : sanitize(data.dept),
       desc         : sanitize(data.desc || ''),
-      format       : sanitize(data.format || 'เอกสารแนบ'),
+      format       : sanitize(data.format || 'Word (.doc)'),
+      icon         : sanitize(data.icon || 'bxs-file-doc'),
       file_name    : sanitize(data.file_name || ''),
       file_id      : sanitize(data.file_id || ''),
       download_url : data.download_url || '',
       view_url     : data.view_url || '',
       file_size    : data.file_size || 0,
       tags         : Array.isArray(data.tags) ? data.tags : (data.tags ? String(data.tags).split(',').map(s=>s.trim()).filter(Boolean) : []),
-      is_custom    : true,
+      is_custom    : data.is_custom !== false,
+      is_override  : !!data.is_override,
+      docBody      : data.docBody || '',
       uploader_name: (auth.user && (auth.user.name || auth.user.username)) || 'Admin',
-      created_by   : (auth.user && auth.user.id) || ''
+      updated_at   : now
     };
 
     if (data.id) {
-      const ok = updateJsonById_('CustomTemplates', data.id, d => {
-        Object.assign(d, clean, { updated_at: now });
-      });
-      return ok ? { status:'success', message:'แก้ไขแบบฟอร์มสำเร็จ', data: clean } : { status:'error', message:'ไม่พบแบบฟอร์ม' };
+      clean.id = data.id;
+      const list = readJsonSheet_('CustomTemplates') || [];
+      const existing = list.find(x => x.id === data.id);
+      if (existing) {
+        updateJsonById_('CustomTemplates', data.id, d => {
+          Object.assign(d, clean, { updated_at: now });
+        });
+      } else {
+        // Built-in template override
+        clean.created_at = now;
+        clean.is_override = true;
+        appendJsonRow_('CustomTemplates', clean);
+      }
+      return { status:'success', message:'บันทึกการแก้ไขแบบฟอร์มสำเร็จ', data: clean };
     } else {
+      const newId = 'cust_tmpl_' + generateId();
       const newObj = Object.assign({
-        id: 'cust_tmpl_' + generateId(),
+        id: newId,
         created_at: now,
-        updated_at: now
+        created_by: (auth.user && auth.user.id) || ''
       }, clean);
       appendJsonRow_('CustomTemplates', newObj);
-      return { status:'success', message:'อัพโหลดและบันทึกแบบฟอร์มสำเร็จ', data: newObj };
+      return { status:'success', message:'เพิ่มแบบฟอร์มใหม่สำเร็จ', data: newObj };
     }
   } catch (e) {
     logError({ fn:'saveCustomTemplate', error:e.message });
@@ -5153,10 +5168,37 @@ function deleteCustomTemplate(id, sessionToken) {
       try { DriveApp.getFileById(item.file_id).setTrashed(true); } catch (_) {}
     }
 
-    const ok = deleteJsonById_('CustomTemplates', id);
-    return ok ? { status:'success', message:'ลบแบบฟอร์มสำเร็จ' } : { status:'error', message:'ไม่พบแบบฟอร์ม' };
+    if (item) {
+      deleteJsonById_('CustomTemplates', id);
+    }
+    // Record deletion for built-in or persistent tracking across clients
+    appendJsonRow_('CustomTemplates', {
+      id: id,
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: (auth.user && auth.user.id) || ''
+    });
+
+    return { status:'success', message:'ลบแบบฟอร์มสำเร็จ' };
   } catch (e) {
     logError({ fn:'deleteCustomTemplate', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function resetCustomTemplates(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    if (auth.role !== 'admin') {
+      return { status:'error', message:'เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถคืนค่าแบบฟอร์มได้' };
+    }
+    const list = readJsonSheet_('CustomTemplates') || [];
+    const keep = list.filter(x => !x.is_deleted && !x.is_override);
+    writeJsonSheet_('CustomTemplates', keep);
+    return { status:'success', message:'คืนค่าแบบฟอร์มเริ่มต้นเรียบร้อยแล้ว' };
+  } catch (e) {
+    logError({ fn:'resetCustomTemplates', error:e.message });
     return { status:'error', message:e.message };
   }
 }
