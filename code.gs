@@ -2212,21 +2212,95 @@ function getAttendanceReport(params, sessionToken) {
         attendance = attendance.filter(a => a.subject_id === rtype);
       }
 
-      const classStudents = students.filter(s => String(s.classroom) === String(params.classroom));
+      const classStudents = students
+        .filter(s => String(s.classroom) === String(params.classroom))
+        .sort((a, b) => {
+          const na = Number(a.student_number || a.student_no || 0);
+          const nb = Number(b.student_number || b.student_no || 0);
+          if (na && nb) return na - nb;
+          return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+        });
       const ids = new Set(classStudents.map(s => s.id));
       const list = attendance.filter(a => ids.has(a.student_id));
 
+      let subjectsInfo = [];
+      if (rtype === 'all_subjects') {
+        const allSubjects = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
+        const subjectMap = new Map();
+        allSubjects.forEach(s => subjectMap.set(String(s.id), s));
+
+        const subjectIdSet = new Set(list.map(a => String(a.subject_id)).filter(Boolean));
+        
+        try {
+          const scheduleEntries = readJsonSheet_('Schedule').filter(x => 
+            x._kind === 'entry' && String(x.classroom || '').trim() === String(params.classroom || '').trim()
+          );
+          scheduleEntries.forEach(e => {
+            if (e.subject_id) subjectIdSet.add(String(e.subject_id));
+          });
+        } catch (_) {}
+
+        if (subjectIdSet.size === 0) {
+          allSubjects.forEach(s => {
+            if (s.grade_level && String(params.classroom).includes(String(s.grade_level))) {
+              subjectIdSet.add(String(s.id));
+            }
+          });
+        }
+
+        subjectsInfo = Array.from(subjectIdSet).map(subId => {
+          const sObj = subjectMap.get(subId) || {};
+          const subRecords = list.filter(a => String(a.subject_id) === subId);
+          const subSum = _attendanceSummary_(subRecords);
+          const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
+          
+          let riskCount = 0;
+          classStudents.forEach(stu => {
+            const stuSubRecs = subRecords.filter(a => a.student_id === stu.id);
+            if (stuSubRecs.length > 0) {
+              const p = _attendanceSummary_(stuSubRecs).attendance_pct;
+              if (p < 80) riskCount++;
+            }
+          });
+
+          return {
+            id: subId,
+            subject_code: sObj.subject_code || subId,
+            subject_name: sObj.subject_name || sObj.subject_code || subId,
+            periods_count: periodKeys.size,
+            summary: subSum,
+            risk_count: riskCount
+          };
+        }).sort((a, b) => (a.subject_code || '').localeCompare(b.subject_code || '', 'th'));
+      }
+
       const perStudent = classStudents.map(s => {
         const stu = list.filter(a => a.student_id === s.id);
-        return Object.assign(
+        const stuObj = Object.assign(
           { student_id: s.id, student_code: s.student_id, prefix: s.prefix,
-            first_name: s.first_name, last_name: s.last_name },
+            first_name: s.first_name, last_name: s.last_name, student_number: s.student_number || s.student_no || '' },
           _attendanceSummary_(stu)
         );
+
+        if (rtype === 'all_subjects') {
+          stuObj.by_subject = {};
+          subjectsInfo.forEach(sub => {
+            const subStu = stu.filter(a => String(a.subject_id) === sub.id);
+            stuObj.by_subject[sub.id] = _attendanceSummary_(subStu);
+          });
+        }
+
+        return stuObj;
       });
       
       const total = _attendanceSummary_(list);
-      return { status:'success', data:perStudent, summary:total };
+      return { 
+        status: 'success', 
+        data: perStudent, 
+        summary: total,
+        subjects: subjectsInfo,
+        report_type: rtype
+      };
     }
 
     if (mode === 'monthly') {
