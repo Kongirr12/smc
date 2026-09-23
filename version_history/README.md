@@ -9,6 +9,7 @@
 
 | เวอร์ชัน | วันที่อัปเดต | หัวข้อการปรับปรุงหลัก | ไฟล์เอกสาร |
 | :--- | :--- | :--- | :--- |
+| **v2.4.1** | 23 ก.ย. 2569 | แก้ไขข้อผิดพลาดการอ่านไฟล์นำเข้า CSV นักเรียน (Fix CSV Import Parsing Error) | [v2.4.1-csv-import-fix.md](./v2.4.1-csv-import-fix.md) |
 | **v2.4.0** | 23 ก.ย. 2569 | ระบบกำหนดและจัดการเลขที่นักเรียน (Roll Numbers), จัดเรียงเลขที่อัตโนมัติตามมาตรฐาน สพฐ./SGS, แก้ไขเลขที่รายห้อง และรองรับในระบบเช็คชื่อ/CSV | [v2.4.0-student-number-management.md](./v2.4.0-student-number-management.md) |
 | **v2.3.0** | 23 ก.ย. 2569 | ระบบนำเข้า CSV อัจฉริยะ (แก้คำนำหน้าซ้ำ), ลบข้อมูลซ้ำ, ระบบลบนักเรียนทีละหลายคน (Batch Delete) และลบตามตัวกรอง (Filter Delete) | [v2.3.0-smart-csv-import-and-batch-delete.md](./v2.3.0-smart-csv-import-and-batch-delete.md) |
 | **v2.2.0** | 22 ก.ย. 2569 | ระบบความปลอดภัย Session (Auto-logout เมื่อ Token หมดอายุ), ระบบเลือกนักเรียนหลายคน (Multi-Select) และเปลี่ยนห้องเรียนแบบกลุ่ม (Batch Transfer) | [v2.2.0-session-security-and-multiselect.md](./v2.2.0-session-security-and-multiselect.md) |

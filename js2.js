@@ -2685,9 +2685,9 @@ function parseCSV(text, delimiter) {
 function downloadSampleCSV(type) {
   let content = '';
   if (type === 'students') {
-    content = '\uFEFFเลขประจำตัว,คำนำหน้า,ชื่อ,นามสกุล,ชั้น,ปีการศึกษา,เพศ,เลขบัตรประชาชน,ผู้ปกครอง,เบอร์โทรศัพท์\n' +
-      '25680001,เด็กชาย,สมชาย,ใจดี,ม.1/1,2568,ชาย,1234567890123,สมหมาย ใจดี,0812345678\n' +
-      '25680002,เด็กหญิง,สมหญิง,รักเรียน,ม.1/1,2568,หญิง,1234567890124,สมหญิง รักเรียน,0898765432\n';
+    content = '\uFEFFเลขที่,เลขประจำตัว,คำนำหน้า,ชื่อ,นามสกุล,ชั้น,ปีการศึกษา,เพศ,เลขบัตรประชาชน,ผู้ปกครอง,เบอร์โทรศัพท์\n' +
+      '1,25680001,เด็กชาย,สมชาย,ใจดี,ม.1/1,2568,ชาย,1234567890123,สมหมาย ใจดี,0812345678\n' +
+      '2,25680002,เด็กหญิง,สมหญิง,รักเรียน,ม.1/1,2568,หญิง,1234567890124,สมหญิง รักเรียน,0898765432\n';
   } else if (type === 'subjects') {
     content = '\uFEFFsubject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_name\n' +
       'ว21101,วิทยาศาสตร์พื้นฐาน,วิทยาศาสตร์,basic,1.5,3,ม.1,1,2568,นายมั่นคง หัตถสินธ์\n' +
@@ -2791,6 +2791,7 @@ function extractStudentFromCSVRow(headers, row, defaultClassroom, defaultYear) {
   const rawPrefix   = getVal('prefix', 'คำนำหน้า', 'คำนำหน้านาม', 'คำนำหน้าชื่อ', 'title');
   const rawFirst    = getVal('first_name', 'firstname', 'first', 'ชื่อ', 'ชื่อจริง');
   const rawLast     = getVal('last_name', 'lastname', 'last', 'นามสกุล');
+  const rawFull     = getVal('full_name', 'fullname', 'name', 'ชื่อ-นามสกุล', 'ชื่อ - นามสกุล', 'ชื่อ นามสกุล', 'ชื่อและนามสกุล');
   let studentId     = getVal(
     'student_id', 'studentid', 'std_id', 'st_id', 'sgs_id', 'id',
     'เลขประจำตัว', 'เลขประจำตัวนักเรียน', 'รหัสนักเรียน', 'รหัสประจำตัว',
@@ -2808,6 +2809,11 @@ function extractStudentFromCSVRow(headers, row, defaultClassroom, defaultYear) {
       }
     }
   }
+
+  const nationalId  = getVal(
+    'national_id', 'nationalid', 'citizen_id', 'citizenid', 'id_card',
+    'เลขประจำตัวประชาชน', 'เลขบัตรประชาชน', 'เลขบัตร', 'บัตรประชาชน', 'เลขประชาชน'
+  );
 
   const rawStudentNumber = getVal(
     'student_number', 'studentno', 'student_no', 'std_no', 'seat_number',
@@ -2962,50 +2968,56 @@ function previewStudentsCSV(input) {
 
   const reader = new FileReader();
   reader.onload = e => {
-    const rows = parseCSV(e.target.result);
-    if (rows.length < 2) {
-      body.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-3">ไม่พบข้อมูลในไฟล์\x3c/td>\x3c/tr>';
-      box.style.display='block';
-      return;
-    }
-    const headers = rows[0].map(h => h.trim());
-    const dataRows = rows.slice(1);
-
-    const seenInBatch = new Set();
-    const records = [];
-
-    dataRows.forEach(row => {
-      const rec = extractStudentFromCSVRow(headers, row, defClass, defYear);
-      if (rec.first_name && rec.last_name) {
-        // Deduplicate in batch
-        const key = (rec.student_id ? 'id:' + rec.student_id : '') + '_' + rec.first_name + '_' + rec.last_name;
-        if (!seenInBatch.has(key)) {
-          seenInBatch.add(key);
-          records.push(rec);
-        }
+    try {
+      const rows = parseCSV(e.target.result);
+      if (rows.length < 2) {
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-3">ไม่พบข้อมูลในไฟล์\x3c/td>\x3c/tr>';
+        box.style.display='block';
+        return;
       }
-    });
+      const headers = rows[0].map(h => h.trim());
+      const dataRows = rows.slice(1);
 
-    _csvImportRecords = records;
-    count.textContent = `พบ ${records.length} รายการ (ไม่ซ้ำ)`;
-    const show = records.slice(0, 20);
-    body.innerHTML = show.map((r, i) => {
-      const genderText = r.gender === 'male' ? 'ชาย' : r.gender === 'female' ? 'หญิง' : '-';
-      const fullName = (r.prefix ? r.prefix : '') + r.first_name + ' ' + r.last_name;
-      return `<tr>
-        <td class="px-2 py-1.5 border-b">${r.student_number ? `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-1 rounded text-xs font-bold mr-1">เลขที่ ${r.student_number}</span>` : `${i+1}`}\x3c/td>
-        <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '(สร้างอัตโนมัติ)')}</td>
-        <td class="px-2 py-1.5 border-b font-medium text-slate-800">${escapeHTML(fullName)}\x3c/td>
-        <td class="px-2 py-1.5 border-b">${escapeHTML(r.classroom || '-')}\x3c/td>
-        <td class="px-2 py-1.5 border-b">${escapeHTML(genderText)}\x3c/td>
-        <td class="px-2 py-1.5 border-b">${escapeHTML(r.academic_year || '-')}\x3c/td>
-      \x3c/tr>`;
-    }).join('') + (records.length > 20 ? `<tr><td colspan="6" class="text-center text-slate-400 py-2">... และอีก ${records.length-20} รายการ\x3c/td>\x3c/tr>` : '');
+      const seenInBatch = new Set();
+      const records = [];
 
-    if (!records.length) {
-      body.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-3">ไม่พบข้อมูลที่ใช้ได้ (ต้องมีชื่อและนามสกุล)\x3c/td>\x3c/tr>';
+      dataRows.forEach(row => {
+        const rec = extractStudentFromCSVRow(headers, row, defClass, defYear);
+        if (rec.first_name && rec.last_name) {
+          // Deduplicate in batch
+          const key = (rec.student_id ? 'id:' + rec.student_id : '') + '_' + rec.first_name + '_' + rec.last_name;
+          if (!seenInBatch.has(key)) {
+            seenInBatch.add(key);
+            records.push(rec);
+          }
+        }
+      });
+
+      _csvImportRecords = records;
+      count.textContent = `พบ ${records.length} รายการ (ไม่ซ้ำ)`;
+      const show = records.slice(0, 20);
+      body.innerHTML = show.map((r, i) => {
+        const genderText = r.gender === 'male' ? 'ชาย' : r.gender === 'female' ? 'หญิง' : '-';
+        const fullName = (r.prefix ? r.prefix : '') + r.first_name + ' ' + r.last_name;
+        return `<tr>
+          <td class="px-2 py-1.5 border-b">${r.student_number ? `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-1 rounded text-xs font-bold mr-1">เลขที่ ${r.student_number}</span>` : `${i+1}`}\x3c/td>
+          <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '(สร้างอัตโนมัติ)')}</td>
+          <td class="px-2 py-1.5 border-b font-medium text-slate-800">${escapeHTML(fullName)}\x3c/td>
+          <td class="px-2 py-1.5 border-b">${escapeHTML(r.classroom || '-')}\x3c/td>
+          <td class="px-2 py-1.5 border-b">${escapeHTML(genderText)}\x3c/td>
+          <td class="px-2 py-1.5 border-b">${escapeHTML(r.academic_year || '-')}\x3c/td>
+        \x3c/tr>`;
+      }).join('') + (records.length > 20 ? `<tr><td colspan="6" class="text-center text-slate-400 py-2">... และอีก ${records.length-20} รายการ\x3c/td>\x3c/tr>` : '');
+
+      if (!records.length) {
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-3">ไม่พบข้อมูลที่ใช้ได้ (ต้องมีชื่อและนามสกุล)\x3c/td>\x3c/tr>';
+      }
+      box.style.display = 'block';
+    } catch (err) {
+      console.error('Error in previewStudentsCSV:', err);
+      body.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 py-3">เกิดข้อผิดพลาดในการอ่านไฟล์: ${escapeHTML(err.message || err)}\x3c/td>\x3c/tr>`;
+      box.style.display = 'block';
     }
-    box.style.display = 'block';
   };
   reader.readAsText(file);
 }
