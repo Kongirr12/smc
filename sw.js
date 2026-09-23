@@ -1,10 +1,10 @@
 /* ============================================================
  *  MHC Smart School — Service Worker (PWA & Offline Cache)
- *  Version: 2.6.0
- *  Strategy: Stale-While-Revalidate for Static Assets
+ *  Version: 2.6.2
+ *  Strategy: Network-First for App Code, Cache-First for Assets
  * ============================================================ */
 
-const CACHE_NAME = 'mhc-smart-school-v2.6.0';
+const CACHE_NAME = 'mhc-smart-school-v2.6.2';
 
 const PRECACHE_ASSETS = [
   './',
@@ -29,7 +29,7 @@ const PRECACHE_ASSETS = [
   'manifest.json'
 ];
 
-// Install: Pre-cache core application shell
+// Install: Pre-cache core application shell & activate immediately
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
@@ -41,13 +41,14 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate: Clean up previous version caches
+// Activate: Clean up previous version caches immediately
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
           if (key !== CACHE_NAME) {
+            console.log('Purging outdated cache:', key);
             return caches.delete(key);
           }
         })
@@ -56,7 +57,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: Stale-While-Revalidate for static assets, Network-only for live API
+// Fetch: Network-First for JS/CSS/HTML app code, Cache-First for static icons/fonts
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
@@ -66,23 +67,37 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 2. Stale-While-Revalidate for application assets and CDNs
-  event.respondWith(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.match(req).then(cachedResponse => {
-        const fetchPromise = fetch(req)
-          .then(networkResponse => {
-            if (networkResponse && networkResponse.status === 200) {
-              cache.put(req, networkResponse.clone());
-            }
-            return networkResponse;
-          })
-          .catch(() => {
-            // Offline fallback
-            return cachedResponse;
-          });
+  const isAppCode = url.origin === self.location.origin && 
+    (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html') || url.pathname.endsWith('/'));
 
-        return cachedResponse || fetchPromise;
+  if (isAppCode) {
+    // Network-First: Always fetch latest version when online so updates apply immediately
+    event.respondWith(
+      fetch(req).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200) {
+          const resClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, resClone));
+        }
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(req);
+      })
+    );
+    return;
+  }
+
+  // 2. Cache-First for static media/assets/CDNs
+  event.respondWith(
+    caches.match(req).then(cachedResponse => {
+      if (cachedResponse) return cachedResponse;
+      return fetch(req).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200) {
+          const resClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, resClone));
+        }
+        return networkResponse;
+      }).catch(err => {
+        console.warn('Fetch fallback failed:', err);
       });
     })
   );

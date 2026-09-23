@@ -362,7 +362,7 @@
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2.6.2">
 </head>
 <body>
 
@@ -627,17 +627,17 @@
 
 
   <!-- ================== Scripts ================== -->
-  <script src="js1.js"></script>
-  <script src="js2.js"></script>
-  <script src="js3.js"></script>
-  <script src="js4.js"></script>
-  <script src="js_schedule.js"></script>
-  <script src="js_classroom.js"></script>
-  <script src="js_behavior.js"></script>
-  <script src="js_student_card.js"></script>
-  <script src="js_qr_attendance.js"></script>
-  <script src="js_line_oa.js"></script>
-  <script src="js_manual.js"></script>
+  <script src="js1.js?v=2.6.2"></script>
+  <script src="js2.js?v=2.6.2"></script>
+  <script src="js3.js?v=2.6.2"></script>
+  <script src="js4.js?v=2.6.2"></script>
+  <script src="js_schedule.js?v=2.6.2"></script>
+  <script src="js_classroom.js?v=2.6.2"></script>
+  <script src="js_behavior.js?v=2.6.2"></script>
+  <script src="js_student_card.js?v=2.6.2"></script>
+  <script src="js_qr_attendance.js?v=2.6.2"></script>
+  <script src="js_line_oa.js?v=2.6.2"></script>
+  <script src="js_manual.js?v=2.6.2"></script>
  
   <!-- PWA Service Worker Registration -->
   <script>
@@ -646,6 +646,7 @@
         navigator.serviceWorker.register('./sw.js')
           .then(reg => {
             console.log('MHC Smart School Service Worker registered:', reg.scope);
+            try { reg.update(); } catch (_) {}
           })
           .catch(err => {
             console.warn('Service Worker registration skipped:', err);
