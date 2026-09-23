@@ -2895,7 +2895,7 @@ function printAttendanceReport() {
     </div>
 
     <div class="footer">
-      <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร</span>
+      <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
       <span>พิมพ์เมื่อ: ${printTimestamp}</span>
     </div>
   </div>
