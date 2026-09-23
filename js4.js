@@ -126,6 +126,11 @@ function renderReportsOverview(d) {
   `;
   }
 
+  const isDark = document.documentElement.classList.contains('dark-mode');
+  const chartGridColor = isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9';
+  const chartTickColor = isDark ? '#94A3B8' : '#64748B';
+  const chartLegendColor = isDark ? '#E2E8F0' : '#475569';
+
   // Chart: Attendance 30 days
   const ctxA = document.getElementById('repChartAttendance');
   if (ctxA) {
@@ -144,8 +149,8 @@ function renderReportsOverview(d) {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { min:0, max:100, ticks:{ stepSize:25, callback:v => v+'%' }, grid:{ color:'#F1F5F9' } },
-          x: { grid:{ display:false }, ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit:10 } }
+          y: { min:0, max:100, ticks:{ color: chartTickColor, stepSize:25, callback:v => v+'%' }, grid:{ color: chartGridColor } },
+          x: { grid:{ display:false }, ticks:{ color: chartTickColor, maxRotation:0, autoSkip:true, maxTicksLimit:10 } }
         }
       }
     });
@@ -165,10 +170,10 @@ function renderReportsOverview(d) {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position:'bottom', labels:{ font:{ family:'Sarabun', size:12 }, padding:10, boxWidth:12 } } },
+        plugins: { legend: { position:'bottom', labels:{ color: chartLegendColor, font:{ family:'Sarabun', size:12 }, padding:10, boxWidth:12 } } },
         scales: {
-          y: { grid:{ color:'#F1F5F9' }, ticks:{ callback:v => v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
-          x: { grid:{ display:false } }
+          y: { grid:{ color: chartGridColor }, ticks:{ color: chartTickColor, callback:v => v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
+          x: { grid:{ display:false }, ticks:{ color: chartTickColor } }
         }
       }
     });
@@ -190,7 +195,7 @@ function renderReportsOverview(d) {
       },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '60%',
-        plugins: { legend: { position:'right', labels:{ font:{ family:'Sarabun', size:11 }, boxWidth:10, padding:8 } } }
+        plugins: { legend: { position:'right', labels:{ color: chartLegendColor, font:{ family:'Sarabun', size:11 }, boxWidth:10, padding:8 } } }
       }
     });
   }
@@ -213,8 +218,8 @@ function renderReportsOverview(d) {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { grid:{ display:false } },
-          x: { grid:{ color:'#F1F5F9' }, ticks:{ stepSize:1, precision:0 } }
+          y: { grid:{ display:false }, ticks:{ color: chartTickColor } },
+          x: { grid:{ color: chartGridColor }, ticks:{ color: chartTickColor, stepSize:1, precision:0 } }
         }
       }
     });

@@ -40,7 +40,7 @@
   <script>
     // Load theme immediately to prevent flash
     if(localStorage.getItem('smart_school_dark_mode') === 'true') {
-      document.documentElement.classList.add('dark-mode');
+      document.documentElement.classList.add('dark', 'dark-mode');
     }
   </script>
 
@@ -48,6 +48,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {

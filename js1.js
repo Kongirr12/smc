@@ -241,24 +241,61 @@ function enterApp() {
 }
 
 /* ============================================================
- *  Dark Mode Toggle
+ *  Dark Mode Toggle & Chart Theme Sync
  * ============================================================ */
+function applyChartTheme(isDark) {
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = isDark ? '#94A3B8' : '#64748B';
+    Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9';
+  }
+  if (window.APP && window.APP.charts) {
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9';
+    const tickColor = isDark ? '#94A3B8' : '#64748B';
+    const legendColor = isDark ? '#E2E8F0' : '#475569';
+
+    Object.values(window.APP.charts).forEach(c => {
+      if (!c || !c.options) return;
+      if (c.options.scales) {
+        ['x', 'y'].forEach(axis => {
+          if (c.options.scales[axis]) {
+            if (c.options.scales[axis].grid && c.options.scales[axis].grid.display !== false) {
+              c.options.scales[axis].grid.color = gridColor;
+            }
+            if (c.options.scales[axis].ticks) {
+              c.options.scales[axis].ticks.color = tickColor;
+            }
+          }
+        });
+      }
+      if (c.options.plugins && c.options.plugins.legend && c.options.plugins.legend.labels) {
+        c.options.plugins.legend.labels.color = legendColor;
+      }
+      try { c.update(); } catch (_) {}
+    });
+  }
+}
+
 function toggleDarkMode() {
   const isDark = document.documentElement.classList.toggle('dark-mode');
+  document.documentElement.classList.toggle('dark', isDark);
   localStorage.setItem('smart_school_dark_mode', isDark);
   
   const icon = document.querySelector('#btnDarkMode i');
   if (icon) {
     icon.className = isDark ? 'bx bx-sun' : 'bx bx-moon';
   }
+  applyChartTheme(isDark);
 }
 
-// Initial icon state
+// Initial icon & theme state
 document.addEventListener('DOMContentLoaded', () => {
-  if (localStorage.getItem('smart_school_dark_mode') === 'true') {
+  const isDark = localStorage.getItem('smart_school_dark_mode') === 'true';
+  if (isDark) {
+    document.documentElement.classList.add('dark', 'dark-mode');
     const icon = document.querySelector('#btnDarkMode i');
     if (icon) icon.className = 'bx bx-sun';
   }
+  applyChartTheme(isDark);
 });
 
 /* ============================================================
@@ -508,6 +545,11 @@ function renderDashboardData(d) {
   setTxt('statAttendance', (d.stats.attendance_pct ? d.stats.attendance_pct.toFixed(1) : '0') + '%');
   setTxt('statBalance', formatMoney(d.stats.balance));
 
+  const isDarkTheme = document.documentElement.classList.contains('dark-mode');
+  const chartGridColor = isDarkTheme ? 'rgba(255,255,255,0.06)' : '#F1F5F9';
+  const chartTickColor = isDarkTheme ? '#94A3B8' : '#64748B';
+  const chartLegendColor = isDarkTheme ? '#E2E8F0' : '#475569';
+
   // Chart: เข้าเรียน 7 วัน
   const ctxA = document.getElementById('chartAttendance');
   if (ctxA) {
@@ -529,8 +571,8 @@ function renderDashboardData(d) {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { min: 0, max: 100, ticks: { stepSize: 25, callback: v => v + '%' }, grid:{ color:'#F1F5F9' } },
-          x: { grid: { display: false } }
+          y: { min: 0, max: 100, ticks: { color: chartTickColor, stepSize: 25, callback: v => v + '%' }, grid:{ color: chartGridColor } },
+          x: { ticks: { color: chartTickColor }, grid: { display: false } }
         }
       }
     });
@@ -552,7 +594,7 @@ function renderDashboardData(d) {
       options: {
         responsive: true, maintainAspectRatio: false, cutout: '70%',
         plugins: {
-          legend: { position: 'bottom', labels: { font: { family: 'Sarabun', size: 12 }, padding: 12, boxWidth: 12 } },
+          legend: { position: 'bottom', labels: { color: chartLegendColor, font: { family: 'Sarabun', size: 12 }, padding: 12, boxWidth: 12 } },
           tooltip: { callbacks: { label: c => c.label + ': ' + formatMoney(c.parsed) } }
         }
       }
