@@ -1,8 +1,20 @@
 // ============================================================
 //  MODULE: แบบฟอร์มงาน 4 ฝ่าย โรงเรียนมหาชัยพิทยาคาร
-//  ระบบ MHC Smart School | v2.7.1
+//  ระบบ MHC Smart School | v2.7.6
 //  พัฒนาโดย ครูก้องนที อุ่นเจริญ
 // ============================================================
+
+if (typeof escapeHTML !== 'function') {
+  function escapeHTML(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+}
 
 const TEMPLATE_DEPARTMENTS = {
   all: { id: 'all', label: 'ทั้งหมด', icon: 'bxs-grid-alt', count: 30, color: '#4F46E5', badgeBg: '#EEF2FF', badgeText: '#4338CA' },
@@ -2963,8 +2975,10 @@ function loadCustomTemplates() {
 /* ============================================================
  *  RENDER TEMPLATES PAGE
  * ============================================================ */
-function renderTemplates() {
-  const container = document.getElementById('mainContent') || document.getElementById('content');
+function renderTemplates(targetContainer) {
+  const container = (targetContainer && targetContainer.nodeType)
+    ? targetContainer
+    : (document.getElementById('pageContent') || document.getElementById('mainContent') || document.getElementById('content'));
   if (!container) return;
 
   const isAdmin = typeof APP !== 'undefined' && APP.role && APP.role !== 'teacher';
@@ -3907,3 +3921,6 @@ window.copyTemplateContent = copyTemplateContent;
 window.openTemplateModal = openTemplateModal;
 window.deleteTemplateConfirm = deleteTemplateConfirm;
 window.resetTemplateDefaultsConfirm = resetTemplateDefaultsConfirm;
+window.FOUR_DEPT_TEMPLATES = FOUR_DEPT_TEMPLATES;
+window.TEMPLATE_DEPARTMENTS = TEMPLATE_DEPARTMENTS;
+window.TemplatesState = TemplatesState;
