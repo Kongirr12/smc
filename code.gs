@@ -674,17 +674,17 @@ function logout(sessionToken) {
 
 function validateSession(sessionToken) {
   try {
-    if (!sessionToken) return { valid:false };
+    if (!sessionToken) return { valid:false, message:'session_invalid', code:401 };
     const sessions = readJsonSheet_('Sessions');
     const s = sessions.find(x => x.token === sessionToken);
-    if (!s) return { valid:false };
+    if (!s) return { valid:false, message:'session_invalid', code:401 };
     if (new Date(s.expires_at).getTime() < Date.now()) {
       logout(sessionToken);
-      return { valid:false, expired:true };
+      return { valid:false, expired:true, message:'session_invalid', code:401 };
     }
     const users = readJsonSheet_('Users');
     const user = users.find(u => u.id === s.user_id);
-    if (!user) return { valid:false };
+    if (!user) return { valid:false, message:'session_invalid', code:401 };
     const safe = Object.assign({}, user);
     delete safe.password;
 
@@ -707,13 +707,13 @@ function validateSession(sessionToken) {
     };
   } catch (e) {
     logError({ fn:'validateSession', error:e.message });
-    return { valid:false };
+    return { valid:false, message:'session_invalid', code:401 };
   }
 }
 
 function validateSessionLight_(sessionToken) {
   try {
-    if (!sessionToken) return { valid:false };
+    if (!sessionToken) return { valid:false, message:'session_invalid', code:401 };
 
     // 1. Check Fast CacheService
     try {
@@ -725,14 +725,14 @@ function validateSessionLight_(sessionToken) {
 
     const sessions = readJsonSheet_('Sessions');
     const s = sessions.find(x => x.token === sessionToken);
-    if (!s) return { valid:false };
+    if (!s) return { valid:false, message:'session_invalid', code:401 };
     if (new Date(s.expires_at).getTime() < Date.now()) {
       logout(sessionToken);
-      return { valid:false, expired:true };
+      return { valid:false, expired:true, message:'session_invalid', code:401 };
     }
     const users = readJsonSheet_('Users');
     const user = users.find(u => u.id === s.user_id);
-    if (!user) return { valid:false };
+    if (!user) return { valid:false, message:'session_invalid', code:401 };
     const safe = Object.assign({}, user);
     delete safe.password;
     if (!safe.permissions && CONFIG.USER_ROLES[s.role]) {
@@ -747,7 +747,7 @@ function validateSessionLight_(sessionToken) {
 
     return res;
   } catch (e) {
-    return { valid:false };
+    return { valid:false, message:'session_invalid', code:401 };
   }
 }
 
@@ -761,7 +761,7 @@ function cleanExpiredSessions_() {
 function changeOwnPassword(sessionToken, oldPassword, newPassword) {
   try {
     const v = validateSessionLight_(sessionToken);
-    if (!v.valid) return { status:'error', message:'หมดอายุการใช้งาน' };
+    if (!v.valid) return { status:'error', message:'session_invalid', code:401 };
     const users = readJsonSheet_('Users');
     const me = users.find(u => u.id === v.user.id);
     if (me.password !== hashPassword(oldPassword)) {
@@ -4215,7 +4215,7 @@ function deleteFileById(fileId, sessionToken) {
  * ============================================================ */
 function _requireAdmin_(token) {
   const v = validateSessionLight_(token);
-  if (!v.valid) return { ok:false, response:{ status:'error', message:'session_invalid' } };
+  if (!v.valid) return { ok:false, response:{ status:'error', message:'session_invalid', code:401 } };
   if (v.role !== 'admin') return { ok:false, response:{ status:'error', message:'admin_only', code:403 } };
   return { ok:true, user:v.user };
 }

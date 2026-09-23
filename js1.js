@@ -25,7 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
     showLoading('กำลังตรวจสอบการเข้าสู่ระบบ...');
     google.script.run
       .withSuccessHandler(handleSessionCheck)
-      .withFailureHandler(() => { hideLoading(); showLoginScreen(); })
+      .withFailureHandler(() => {
+        hideLoading();
+        if (typeof window.handleSessionInvalid === 'function') {
+          window.handleSessionInvalid('ไม่สามารถตรวจสอบเซสชันได้ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+        } else {
+          showLoginScreen();
+        }
+      })
       .validateSession(saved);
   } else {
     showLoginScreen();
@@ -42,9 +49,13 @@ function handleSessionCheck(res) {
     }
     enterApp();
   } else {
-    sessionStorage.removeItem('sso_token');
-    localStorage.removeItem('sso_token');
-    showLoginScreen();
+    if (typeof window.handleSessionInvalid === 'function') {
+      window.handleSessionInvalid('เซสชันเดิมหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+    } else {
+      sessionStorage.removeItem('sso_token');
+      localStorage.removeItem('sso_token');
+      showLoginScreen();
+    }
   }
 }
 
@@ -138,16 +149,26 @@ function doLogout() {
   }).then(r => {
     if (!r.isConfirmed) return;
     showLoading('กำลังออกจากระบบ...');
+    if (APP._badgeInterval) {
+      clearInterval(APP._badgeInterval);
+      APP._badgeInterval = null;
+    }
+    const curToken = APP.token;
+    sessionStorage.removeItem('sso_token');
+    localStorage.removeItem('sso_token');
+    APP.token = null; APP.user = null; APP.role = null;
+    if (typeof window.clearAppCache === 'function') window.clearAppCache();
+
     google.script.run
       .withSuccessHandler(() => {
         hideLoading();
-        sessionStorage.removeItem('sso_token');
-        localStorage.removeItem('sso_token');
-        APP.token = null; APP.user = null; APP.role = null;
         showLoginScreen();
       })
-      .withFailureHandler(() => { hideLoading(); showLoginScreen(); })
-      .logout(APP.token);
+      .withFailureHandler(() => {
+        hideLoading();
+        showLoginScreen();
+      })
+      .logout(curToken);
   });
 }
 
@@ -668,7 +689,11 @@ function refreshBadges() {
   if (!APP.token) return;
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status !== 'success') return;
+      if (res && (res.message === 'session_invalid' || res.code === 401)) {
+        if (typeof window.handleSessionInvalid === 'function') window.handleSessionInvalid();
+        return;
+      }
+      if (!res || res.status !== 'success') return;
       const badge = document.getElementById('badgeApprovals');
       const dot   = document.getElementById('topbarDot');
       if (res.pending_approvals !== undefined) {

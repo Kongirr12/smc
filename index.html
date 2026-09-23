@@ -81,6 +81,71 @@
       }
     };
 
+    let _sessionRedirectActive = false;
+    window.handleSessionInvalid = function(msg) {
+      if (_sessionRedirectActive) return;
+      _sessionRedirectActive = true;
+
+      // 1. เคลียร์ token ออกจาก session/local storage
+      try {
+        sessionStorage.removeItem('sso_token');
+        localStorage.removeItem('sso_token');
+      } catch (_) {}
+
+      // 2. เคลียร์ State ของ APP
+      if (window.APP) {
+        window.APP.token = null;
+        window.APP.user  = null;
+        window.APP.role  = null;
+        if (window.APP._badgeInterval) {
+          clearInterval(window.APP._badgeInterval);
+          window.APP._badgeInterval = null;
+        }
+      }
+
+      // 3. ล้างแคช API
+      if (typeof window.clearAppCache === 'function') {
+        window.clearAppCache();
+      }
+
+      // 4. ซ่อน overlay loading
+      if (typeof hideLoading === 'function') hideLoading();
+      const loader = document.getElementById('loadingOverlay');
+      if (loader) loader.style.display = 'none';
+
+      // 5. สลับกลับมาหน้าล็อคอิน
+      const loginScreen = document.getElementById('loginScreen');
+      const appLayout   = document.getElementById('appLayout');
+      const isAlreadyOnLogin = loginScreen && loginScreen.style.display !== 'none' && appLayout && appLayout.style.display === 'none';
+
+      if (typeof showLoginScreen === 'function') {
+        showLoginScreen();
+      } else {
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (appLayout)   appLayout.style.display   = 'none';
+      }
+
+      // 6. แจ้งเตือนผู้ใช้ด้วย SweetAlert2 (ถ้ายังไม่ได้อยู่หน้าล็อคอิน)
+      const text = msg || 'เซสชันการใช้งานของคุณหมดอายุ หรือไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่อีกครั้ง';
+      if (!isAlreadyOnLogin && window.Swal && Swal.fire) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'เซสชันหมดอายุ',
+          text: text,
+          confirmButtonText: 'เข้าสู่ระบบใหม่',
+          confirmButtonColor: '#4F46E5',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+        }).then(() => {
+          _sessionRedirectActive = false;
+          const uInput = document.getElementById('loginUsername');
+          if (uInput) uInput.focus();
+        });
+      } else {
+        _sessionRedirectActive = false;
+      }
+    };
+
     function createRunner() {
       let successHandler = null;
       let failureHandler = null;
@@ -147,6 +212,23 @@
 
             fetchPromise
               .then(data => {
+                // ตรวจสอบเซสชันหมดอายุ หรือไม่ถูกต้อง
+                const isSessionInvalid = data && (
+                  data.message === 'session_invalid' ||
+                  data.code === 401 ||
+                  (prop === 'validateSession' && data.valid === false) ||
+                  (prop !== 'login' && data.status === 'error' && (
+                    data.message === 'session_invalid' ||
+                    data.message === 'หมดอายุการใช้งาน' ||
+                    data.message === 'Unauthorized'
+                  ))
+                );
+
+                if (isSessionInvalid) {
+                  window.handleSessionInvalid(data.message === 'หมดอายุการใช้งาน' ? 'เซสชันหมดอายุการใช้งาน กรุณาเข้าสู่ระบบใหม่' : 'เซสชันการใช้งานของคุณหมดอายุ หรือไม่ถูกต้อง กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+                  return;
+                }
+
                 if (data && data.status === 'error') {
                   if (failureHandler) failureHandler(data);
                   else console.error("GAS Error:", data);
