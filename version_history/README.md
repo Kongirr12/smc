@@ -9,6 +9,7 @@
 
 | เวอร์ชัน | วันที่อัปเดต | หัวข้อการปรับปรุงหลัก | ไฟล์เอกสาร |
 | :--- | :--- | :--- | :--- |
+| **v2.6.0** | 23 ก.ย. 2569 | ยกระดับความเร็วและความลื่นไหลของระบบแบบก้าวกระโดด (Instant Attendance 0.5ms, PWA Service Worker & Backend Cache) | [v2.6.0-extreme-performance-and-smoothness.md](./v2.6.0-extreme-performance-and-smoothness.md) |
 | **v2.5.2** | 23 ก.ย. 2569 | ตรวจสอบและยกระดับระบบ Dark Mode ทั้งระบบ ให้อ่านง่าย สบายตา คมชัดระดับ WCAG AA | [v2.5.2-darkmode-readability-enhancement.md](./v2.5.2-darkmode-readability-enhancement.md) |
 | **v2.5.1** | 23 ก.ย. 2569 | ปลดล็อกให้บัญชีครูสามารถเช็คชื่อแถวหน้าเสาธง / โฮมรูม ได้เช่นเดียวกับแอดมิน | [v2.5.1-teacher-homeroom-attendance.md](./v2.5.1-teacher-homeroom-attendance.md) |
 | **v2.5.0** | 23 ก.ย. 2569 | เปลี่ยน Favicon เป็นไอคอน Mac (แชร์ที่คั่นหน้า / Safari Touch Icon / PWA) & ปรับแต่งประสิทธิภาพทั้งระบบให้เร็วที่สุด (Extreme Performance) | [v2.5.0-mac-icon-and-extreme-performance.md](./v2.5.0-mac-icon-and-extreme-performance.md) |

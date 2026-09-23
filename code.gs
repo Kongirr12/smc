@@ -572,24 +572,61 @@ function deleteJsonById_(sheetName, id) {
 
 
 /* ============================================================
+ *  High-Speed Server Cache Layer (Google Apps Script CacheService)
+ * ============================================================ */
+function getCachedJson_(key, ttlSeconds, fetcherFn) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get(key);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    const data = fetcherFn();
+    if (data !== undefined && data !== null) {
+      const str = JSON.stringify(data);
+      if (str.length < 95000) {
+        cache.put(key, str, Math.min(ttlSeconds || 600, 21600));
+      }
+    }
+    return data;
+  } catch (e) {
+    return fetcherFn();
+  }
+}
+
+function clearCachedKeys_(keys) {
+  try {
+    const cache = CacheService.getScriptCache();
+    if (Array.isArray(keys)) {
+      cache.removeAll(keys);
+    } else if (typeof keys === 'string') {
+      cache.remove(keys);
+    }
+  } catch (_) {}
+}
+
+
+/* ============================================================
  *  Config
  * ============================================================ */
 function getConfig() {
-  const arr = readJsonSheet_('Config');
-  const cfg = arr[0] || {};
-  let changed = false;
-  if (cfg.school_name === 'โรงเรียนตัวอย่าง' || !cfg.school_name) {
-    cfg.school_name = 'โรงเรียนมหาชัยพิทยาคาร';
-    changed = true;
-  }
-  if (!cfg.school_logo || cfg.school_logo === '' || cfg.school_logo.indexOf('pic.in.th') !== -1) {
-    cfg.school_logo = 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
-    changed = true;
-  }
-  if (changed && (cfg.id || arr.length > 0)) {
-    saveConfig(cfg);
-  }
-  return cfg;
+  return getCachedJson_('app_config', 1800, function() {
+    const arr = readJsonSheet_('Config');
+    const cfg = arr[0] || {};
+    let changed = false;
+    if (cfg.school_name === 'โรงเรียนตัวอย่าง' || !cfg.school_name) {
+      cfg.school_name = 'โรงเรียนมหาชัยพิทยาคาร';
+      changed = true;
+    }
+    if (!cfg.school_logo || cfg.school_logo === '' || cfg.school_logo.indexOf('pic.in.th') !== -1) {
+      cfg.school_logo = 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
+      changed = true;
+    }
+    if (changed && (cfg.id || arr.length > 0)) {
+      saveConfig(cfg);
+    }
+    return cfg;
+  });
 }
 
 function saveConfig(configData) {
@@ -600,6 +637,7 @@ function saveConfig(configData) {
       updated_at: new Date().toISOString()
     });
     writeJsonSheet_('Config', [merged]);
+    clearCachedKeys_(['app_config', 'classrooms_dropdown']);
     return { status:'success', data: merged };
   } catch (e) {
     logError({ fn:'saveConfig', error:e.message });
@@ -1808,6 +1846,7 @@ function savePersonnel(data, sessionToken) {
         return p;
       });
       if (!found) return { status:'error', message:'ไม่พบข้อมูลที่จะแก้ไข' };
+      clearCachedKeys_('teachers_dropdown');
       return { status:'success', data:updated, message:'แก้ไขข้อมูลสำเร็จ' };
     } else {
       const now = new Date().toISOString();
@@ -1816,6 +1855,7 @@ function savePersonnel(data, sessionToken) {
         personnel_id : generatePersonnelId()
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Personnel', obj);
+      clearCachedKeys_('teachers_dropdown');
       return { status:'success', data:obj, message:'เพิ่มบุคลากรสำเร็จ' };
     }
   } catch (e) {
@@ -1899,6 +1939,7 @@ function deletePersonnel(id, sessionToken) {
       return { status:'error', message:'no_permission' };
     }
     const ok = deleteJsonById_('Personnel', id);
+    if (ok) clearCachedKeys_('teachers_dropdown');
     return ok
       ? { status:'success', message:'ลบข้อมูลสำเร็จ' }
       : { status:'error', message:'ไม่พบข้อมูล' };
@@ -4131,14 +4172,16 @@ function getTeachersForDropdown(sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
-    const list = readJsonSheet_('Personnel')
-      .filter(p => p.type === 'teacher' && p.status === 'active')
-      .map(p => ({
-        id: p.id,
-        name: (p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||''),
-        department: p.department
-      }));
-    return { status:'success', data:list };
+    return getCachedJson_('teachers_dropdown', 1800, function() {
+      const list = readJsonSheet_('Personnel')
+        .filter(p => p.type === 'teacher' && p.status === 'active')
+        .map(p => ({
+          id: p.id,
+          name: (p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||''),
+          department: p.department
+        }));
+      return { status:'success', data:list };
+    });
   } catch (e) {
     return { status:'error', message:e.message };
   }
@@ -5005,29 +5048,32 @@ function getPeriodConfig(academicYear, semester, sessionToken) {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
 
-    const all = readJsonSheet_('Schedule');
-    const found = all
-      .filter(x => x._kind === 'period_config')
-      .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    const cacheKey = 'period_cfg_' + (academicYear || '') + '_' + (semester || '');
+    return getCachedJson_(cacheKey, 1800, function() {
+      const all = readJsonSheet_('Schedule');
+      const found = all
+        .filter(x => x._kind === 'period_config')
+        .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
 
-    // filter ตาม year+semester ถ้าระบุ
-    let cfg = found.find(x =>
-      (!academicYear || String(x.academic_year) === String(academicYear)) &&
-      (!semester     || String(x.semester)      === String(semester))
-    );
+      // filter ตาม year+semester ถ้าระบุ
+      let cfg = found.find(x =>
+        (!academicYear || String(x.academic_year) === String(academicYear)) &&
+        (!semester     || String(x.semester)      === String(semester))
+      );
 
-    if (!cfg) {
-      // ส่ง default กลับไปถ้ายังไม่เคยตั้งค่า
-      cfg = {
-        _kind        : 'period_config',
-        academic_year: academicYear || (getConfig().academic_year || String(new Date().getFullYear() + 543)),
-        semester     : semester || '1',
-        periods      : DEFAULT_PERIODS,
-        work_days    : [1,2,3,4,5],
-        is_default   : true
-      };
-    }
-    return { status:'success', data:cfg };
+      if (!cfg) {
+        // ส่ง default กลับไปถ้ายังไม่เคยตั้งค่า
+        cfg = {
+          _kind        : 'period_config',
+          academic_year: academicYear || (getConfig().academic_year || String(new Date().getFullYear() + 543)),
+          semester     : semester || '1',
+          periods      : DEFAULT_PERIODS,
+          work_days    : [1,2,3,4,5],
+          is_default   : true
+        };
+      }
+      return { status:'success', data:cfg };
+    });
 
   } catch(e) {
     logError({ fn:'getPeriodConfig', error:e.message });
@@ -5064,6 +5110,10 @@ function savePeriodConfig(data, sessionToken) {
       updated_at   : now
     };
     writeJsonSheet_('Schedule', others.concat([obj]));
+    clearCachedKeys_([
+      'period_cfg_' + (data.academic_year || '') + '_' + (data.semester || ''),
+      'period_cfg__'
+    ]);
     return { status:'success', data:obj, message:'บันทึกตั้งค่าคาบเรียนสำเร็จ' };
 
   } catch(e) {
@@ -6435,6 +6485,7 @@ function saveClassroom(data, sessionToken) {
         Object.assign(r, clean); r.updated_at = new Date().toISOString(); updated = r; return r;
       });
       if (!found) return { status:'error', message:'ไม่พบห้องเรียน' };
+      clearCachedKeys_('classrooms_dropdown');
       return { status:'success', data:updated, message:'แก้ไขห้องเรียนสำเร็จ' };
     } else {
       const all = readJsonSheet_('Classrooms');
@@ -6443,6 +6494,7 @@ function saveClassroom(data, sessionToken) {
       const now = new Date().toISOString();
       const obj = Object.assign({ id:generateId() }, clean, { created_at:now, updated_at:now });
       appendJsonRow_('Classrooms', obj);
+      clearCachedKeys_('classrooms_dropdown');
       return { status:'success', data:obj, message:'เพิ่มห้องเรียนสำเร็จ' };
     }
   } catch(e) {
@@ -6456,6 +6508,7 @@ function deleteClassroom(id, sessionToken) {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
     const found = deleteJsonById_('Classrooms', id);
+    if (found) clearCachedKeys_('classrooms_dropdown');
     return found ? { status:'success', message:'ลบห้องเรียนสำเร็จ' }
                  : { status:'error', message:'ไม่พบห้องเรียน' };
   } catch(e) { return { status:'error', message:e.message }; }
@@ -6649,13 +6702,15 @@ function getClassroomsForDropdown(sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
-    const ay    = getConfig().academic_year;
-    const rooms = readJsonSheet_('Classrooms')
-      .filter(r => String(r.academic_year) === String(ay) && r.status === 'active')
-      .map(r => r.name);
-    const fromStudents = readJsonSheet_('Students').map(s => s.classroom).filter(Boolean);
-    const merged = Array.from(new Set([...rooms, ...fromStudents])).sort();
-    return { status:'success', data:merged };
+    return getCachedJson_('classrooms_dropdown', 900, function() {
+      const ay    = getConfig().academic_year;
+      const rooms = readJsonSheet_('Classrooms')
+        .filter(r => String(r.academic_year) === String(ay) && r.status === 'active')
+        .map(r => r.name);
+      const fromStudents = readJsonSheet_('Students').map(s => s.classroom).filter(Boolean);
+      const merged = Array.from(new Set([...rooms, ...fromStudents])).sort();
+      return { status:'success', data:merged };
+    });
   } catch(e) { return { status:'error', message:e.message }; }
 }
 
