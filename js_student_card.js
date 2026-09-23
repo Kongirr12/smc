@@ -64,7 +64,7 @@ function renderStudentCard(container) {
       .scard-print-btn:hover { color:#4F46E5; }
       .barcode-svg { display:block; }
       @media print {
-        body > *:not(#cardPrintOverlay) { display:none !important; }
+        body.printing-cards > *:not(#cardPrintOverlay) { display:none !important; }
         #cardPrintOverlay { position:static !important;padding:0 !important;background:white !important; }
         #cardPrintOverlay > div { max-width:none !important;margin:0 !important; }
         #cardPrintOverlay > div > div:first-child { display:none !important; }
@@ -229,6 +229,7 @@ function printCards(students) {
   // ย้าย overlay ไปติด body โดยตรง เพื่อให้ @media print display:none ทำงานถูกต้อง
   document.body.appendChild(overlay);
   overlay.style.display = 'block';
+  document.body.classList.add('printing-cards');
 
   // JsBarcode — วาด barcode ใน svg
   setTimeout(function() {
@@ -257,6 +258,7 @@ function printCards(students) {
 }
 
 function closePrintOverlay() {
+  document.body.classList.remove('printing-cards');
   const o = document.getElementById('cardPrintOverlay');
   if (o) o.style.display = 'none';
 }

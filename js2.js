@@ -2449,20 +2449,10 @@ function renderAttendanceReport() {
       <button class="btn btn-light" onclick="exportReportCSV()">
         <i class='bx bx-spreadsheet'>\x3c/i> โหลด CSV
       \x3c/button>
-      <button class="btn btn-light" onclick="window.print()">
+      <button class="btn btn-light" onclick="printAttendanceReport()">
         <i class='bx bx-printer'>\x3c/i> พิมพ์ PDF
       \x3c/button>
     \x3c/div>
-
-    <style>
-      @media print {
-        body * { visibility: hidden !important; }
-        #rptArea, #rptArea * { visibility: visible !important; }
-        #rptArea { position: absolute; left: 0; top: 0; width: 100%; }
-        .rpt-card { border: 1px solid #ccc !important; }
-        .status-badge { border: 1px solid #ccc !important; }
-      }
-    \x3c/style>
 
     <div id="rptArea">
       <div class="empty-state">
@@ -2566,15 +2556,26 @@ function renderAttendanceReportData(res, start, end, rptType) {
   }
 
   const showPct = rptType === 'homeroom';
-  const rptClass = document.getElementById('rptClassroom').value;
+  const rptClass = document.getElementById('rptClassroom')?.value || '';
   const rptTypeEl = document.getElementById('rptType');
-  const typeText = showPct ? 'การเข้าแถวหน้าเสาธง' : 'เวลาเรียนรายวิชา ' + rptTypeEl.options[rptTypeEl.selectedIndex].text.replace(/\\s*\\(.*\\)/, '').trim();
+  const typeText = showPct ? 'การเข้าแถวหน้าเสาธง' : 'เวลาเรียนรายวิชา ' + (rptTypeEl?.options[rptTypeEl.selectedIndex]?.text?.replace(/\s*\(.*\)/, '') || '').trim();
+
+  // บันทึกข้อมูลล่าสุดไว้สำหรับพิมพ์และส่งออก
+  AttendanceState.reportLastData = {
+    res: res,
+    start: start,
+    end: end,
+    rptType: rptType,
+    classroom: rptClass,
+    typeText: typeText
+  };
 
   const printHeader = `
     <div class="hidden print:block text-center mb-6">
-      <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="โลโก้โรงเรียน" style="width: 80px; height: 80px; margin: 0 auto 10px auto; object-fit: contain;">
-      <div style="font-size:18px; font-weight:bold;">รายงาน${typeText}\x3c/div>
-      <div style="font-size:16px; font-weight:bold; margin-top:4px;">ระดับชั้น ${escapeHTML(rptClass)} โรงเรียนมหาชัยพิทยาคาร\x3c/div>
+      <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="โลโก้โรงเรียน" style="width: 70px; height: 70px; margin: 0 auto 8px auto; object-fit: contain;">
+      <div style="font-size:18px; font-weight:bold; color:#0F172A;">รายงาน${typeText}\x3c/div>
+      <div style="font-size:15px; font-weight:bold; color:#334155; margin-top:3px;">ระดับชั้น ${escapeHTML(rptClass)} โรงเรียนมหาชัยพิทยาคาร\x3c/div>
+      ${start && end ? `<div style="font-size:13px; color:#64748B; margin-top:3px;">ข้อมูลระหว่างวันที่ ${formatThaiDate(parseLocalDate(start))} ถึง ${formatThaiDate(parseLocalDate(end))}\x3c/div>` : ''}
     \x3c/div>
   `;
 
@@ -2614,34 +2615,38 @@ function renderAttendanceReportData(res, start, end, rptType) {
       <table class="min-w-full text-sm">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-3 py-2.5 text-left">นักเรียน\x3c/th>
-            <th class="px-3 py-2.5 text-center">มา\x3c/th>
-            <th class="px-3 py-2.5 text-center">ขาด\x3c/th>
-            <th class="px-3 py-2.5 text-center">ลา\x3c/th>
-            <th class="px-3 py-2.5 text-center">มาสาย\x3c/th>
-            <th class="px-3 py-2.5 text-center">รวม\x3c/th>
-            ${showPct ? `<th class="px-3 py-2.5 text-center">% เข้าเรียน\x3c/th>` : ''}
-          \x3c/tr>
-        \x3c/thead>
+            <th class="px-2 py-2.5 text-center" style="width:45px;">ลำดับ\x3c/th>
+            <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+            <th class="px-3 py-2.5 text-left">ชื่อ - นามสกุล\x3c/th>
+            <th class="px-2 py-2.5 text-center" style="width:48px;">มา\x3c/th>
+            <th class="px-2 py-2.5 text-center" style="width:48px;">ขาด\x3c/th>
+            <th class="px-2 py-2.5 text-center" style="width:48px;">ลา\x3c/th>
+            <th class="px-2 py-2.5 text-center" style="width:48px;">มาสาย\x3c/th>
+            <th class="px-2 py-2.5 text-center" style="width:52px;">รวม\x3c/th>
+            ${showPct ? `<th class="px-2 py-2.5 text-center" style="width:75px;">% เข้าเรียน\x3c/th>` : ''}
+          </tr>
+        </thead>
         <tbody>
-          ${res.data.map(r => {
+          ${res.data.map((r, idx) => {
             const pct = r.attendance_pct || 0;
             const bad = pct < 80;
             return `
             <tr class="border-b border-slate-100 hover:bg-slate-50">
+              <td class="px-2 py-2.5 text-center text-slate-500 font-medium">${idx + 1}\x3c/td>
+              <td class="px-2 py-2.5 text-center font-mono text-xs text-slate-600">${escapeHTML(r.student_code || '-')}\x3c/td>
               <td class="px-3 py-2.5">
                 <div class="font-semibold text-slate-800">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
               \x3c/td>
-              <td class="px-3 py-2.5 text-center text-green-700 font-semibold">${r.present}\x3c/td>
-              <td class="px-3 py-2.5 text-center text-red-600 font-semibold">${r.absent}\x3c/td>
-              <td class="px-3 py-2.5 text-center text-amber-700 font-semibold">${r.leave}\x3c/td>
-              <td class="px-3 py-2.5 text-center text-blue-600 font-semibold">${r.late}\x3c/td>
-              <td class="px-3 py-2.5 text-center text-slate-600">${r.total}\x3c/td>
+              <td class="px-2 py-2.5 text-center text-green-700 font-semibold">${r.present}\x3c/td>
+              <td class="px-2 py-2.5 text-center text-red-600 font-semibold">${r.absent}\x3c/td>
+              <td class="px-2 py-2.5 text-center text-amber-700 font-semibold">${r.leave}\x3c/td>
+              <td class="px-2 py-2.5 text-center text-blue-600 font-semibold">${r.late}\x3c/td>
+              <td class="px-2 py-2.5 text-center text-slate-600 font-semibold">${r.total}\x3c/td>
               ${showPct ? `
-              <td class="px-3 py-2.5 text-center">
+              <td class="px-2 py-2.5 text-center">
                 <span class="status-badge ${bad ? 'status-inactive' : 'status-active'}">${pct.toFixed(1)}%\x3c/span>
               \x3c/td>` : ''}
-            \x3c/tr>`;
+            </tr>`;
           }).join('')}
         \x3c/tbody>
       \x3c/table>
@@ -2654,6 +2659,272 @@ function renderAttendanceReportData(res, start, end, rptType) {
       .rpt-card .val { font-size: 22px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
     \x3c/style>
   `;
+}
+
+function parseLocalDate(dateStr) {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  const p = String(dateStr).slice(0, 10).split('-');
+  if (p.length === 3) return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  return new Date(dateStr);
+}
+
+function printAttendanceReport() {
+  const area = document.getElementById('rptArea');
+  if (!area || !area.querySelector('table')) {
+    return showToast('warning', 'กรุณากดดูรายงานก่อนพิมพ์');
+  }
+
+  const last = AttendanceState.reportLastData;
+  if (!last || !last.res || !last.res.data) {
+    window.print();
+    return;
+  }
+
+  const { res, start, end, rptType, classroom, typeText } = last;
+  const showPct = rptType === 'homeroom';
+
+  const dateRangeStr = (start && end)
+    ? `ข้อมูลระหว่างวันที่ ${formatThaiDate(parseLocalDate(start))} ถึง ${formatThaiDate(parseLocalDate(end))}`
+    : (start ? `ข้อมูลตั้งแต่วันที่ ${formatThaiDate(parseLocalDate(start))}` : '');
+
+  const now = new Date();
+  const printTimestamp = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear() + 543} เวลา ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
+
+  const rowsHtml = res.data.map((r, idx) => {
+    const pct = r.attendance_pct || 0;
+    const bad = pct < 80;
+    const pctBadge = `<span style="display:inline-block; padding:1px 6px; border-radius:4px; font-weight:700; font-size:10.5px; ${bad ? 'background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5;' : 'background:#DCFCE7; color:#15803D; border:1px solid #86EFAC;'}">${pct.toFixed(1)}%</span>`;
+    return `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:11px;">${escapeHTML(r.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; padding-left:6px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+        <td style="text-align:center; color:#15803D; font-weight:600;">${r.present}</td>
+        <td style="text-align:center; color:#B91C1C; font-weight:600;">${r.absent}</td>
+        <td style="text-align:center; color:#B45309; font-weight:600;">${r.leave}</td>
+        <td style="text-align:center; color:#1D4ED8; font-weight:600;">${r.late}</td>
+        <td style="text-align:center; font-weight:700;">${r.total}</td>
+        ${showPct ? `<td style="text-align:center;">${pctBadge}</td>` : ''}
+      </tr>
+    `;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>รายงาน${escapeHTML(typeText)} - ${escapeHTML(classroom)}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm 10mm 12mm 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #FFFFFF;
+      color: #0F172A;
+      font-family: 'Sarabun', 'Prompt', 'Kanit', system-ui, -apple-system, sans-serif;
+      font-size: 11.5px;
+      line-height: 1.35;
+      width: 100%;
+    }
+    .print-doc {
+      width: 100%;
+      max-width: 190mm;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .logo {
+      width: 65px;
+      height: 65px;
+      object-fit: contain;
+      margin: 0 auto 6px auto;
+      display: block;
+    }
+    .title {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #0F172A;
+      margin: 0;
+      line-height: 1.2;
+    }
+    .subtitle {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #334155;
+      margin: 3px 0 0 0;
+    }
+    .date-range {
+      font-size: 10pt;
+      color: #475569;
+      margin: 3px 0 0 0;
+    }
+    .summary-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-radius: 6px;
+      padding: 6px 12px;
+      margin: 10px 0 12px 0;
+      font-size: 11px;
+    }
+    .summary-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .summary-item strong {
+      font-size: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    thead {
+      display: table-header-group;
+    }
+    tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    th {
+      background-color: #F1F5F9;
+      color: #1E293B;
+      border: 1px solid #94A3B8;
+      padding: 5px 3px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+    }
+    td {
+      border: 1px solid #CBD5E1;
+      padding: 4px 3px;
+      font-size: 11px;
+      vertical-align: middle;
+      line-height: 1.25;
+    }
+    tbody tr:nth-child(even) {
+      background-color: #FAFAFA;
+    }
+    .signature-section {
+      margin-top: 25px;
+      display: flex;
+      justify-content: flex-end;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .signature-box {
+      text-align: center;
+      min-width: 260px;
+      font-size: 11pt;
+    }
+    .signature-box .line {
+      margin-top: 6px;
+    }
+    .footer {
+      margin-top: 15px;
+      padding-top: 6px;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 9pt;
+      color: #94A3B8;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+  <div class="print-doc">
+    <div class="header">
+      <img class="logo" src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="ตราโรงเรียน">
+      <h1 class="title">รายงาน${escapeHTML(typeText)}</h1>
+      <div class="subtitle">ระดับชั้น ${escapeHTML(classroom)} โรงเรียนมหาชัยพิทยาคาร</div>
+      ${dateRangeStr ? `<div class="date-range">${escapeHTML(dateRangeStr)}</div>` : ''}
+    </div>
+
+    <div class="summary-bar">
+      <div class="summary-item">นักเรียน: <strong>${res.data.length} คน</strong></div>
+      <div class="summary-item" style="color:#15803D;">มาเรียน: <strong>${formatNumber(res.summary.present)}</strong></div>
+      <div class="summary-item" style="color:#B91C1C;">ขาด: <strong>${formatNumber(res.summary.absent)}</strong></div>
+      <div class="summary-item" style="color:#B45309;">ลา: <strong>${formatNumber(res.summary.leave)}</strong></div>
+      <div class="summary-item" style="color:#1D4ED8;">มาสาย: <strong>${formatNumber(res.summary.late)}</strong></div>
+      ${showPct ? `<div class="summary-item">เฉลี่ยเข้าเรียน: <strong>${res.summary.attendance_pct.toFixed(1)}%</strong></div>` : ''}
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:34px;">ลำดับ</th>
+          <th style="width:65px;">เลขประจำตัว</th>
+          <th style="width:auto; text-align:left; padding-left:8px;">ชื่อ - สกุล</th>
+          <th style="width:40px;">มา</th>
+          <th style="width:40px;">ขาด</th>
+          <th style="width:40px;">ลา</th>
+          <th style="width:40px;">มาสาย</th>
+          <th style="width:44px;">รวม</th>
+          ${showPct ? '<th style="width:65px;">% เข้าเรียน</th>' : ''}
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+
+    <div class="signature-section">
+      <div class="signature-box">
+        <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
+        <div class="line">( .............................................................. )</div>
+        <div class="line">ตำแหน่ง ครูประจำชั้น / ครูผู้สอน</div>
+        <div class="line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร</span>
+      <span>พิมพ์เมื่อ: ${printTimestamp}</span>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  let iframe = document.getElementById('attPrintIframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'attPrintIframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.style.zIndex = '-9999';
+    document.body.appendChild(iframe);
+  }
+
+  const iDoc = iframe.contentWindow.document;
+  iDoc.open();
+  iDoc.write(html);
+  iDoc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }, 250);
 }
 
 function exportReportCSV() {

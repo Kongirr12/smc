@@ -1263,7 +1263,78 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,.25) !important;
 }
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 10mm 12mm 10mm;
+  }
   html.dark-mode { background-color: white !important; color: black !important; }
+  html, body {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  /* Hide navigation, sidebar, topbar, buttons, pagination pills when printing */
+  .sidebar, .topbar, .app-footer, .tab-pill, #loadingOverlay,
+  .print\:hidden, #attReport > .grid:first-child,
+  button, select, input[type="date"] {
+    display: none !important;
+  }
+  .main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    background: transparent !important;
+  }
+  .content, .page-card, .page-card-body {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+  #attReport, #rptArea {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 190mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  #rptArea div {
+    overflow: visible !important;
+  }
+  #rptArea table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+  }
+  #rptArea thead {
+    display: table-header-group !important;
+  }
+  #rptArea tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  #rptArea th {
+    background-color: #F1F5F9 !important;
+    border: 1px solid #94A3B8 !important;
+    color: #1E293B !important;
+    padding: 5px 3px !important;
+    font-size: 11px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  #rptArea td {
+    border: 1px solid #CBD5E1 !important;
+    padding: 4px 3px !important;
+    font-size: 11px !important;
+  }
 }
 html.dark-mode .border-slate-200, html.dark-mode .border-slate-100,
 html.dark-mode .ring-slate-200, html.dark-mode .border-b, html.dark-mode .border {
