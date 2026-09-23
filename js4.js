@@ -593,12 +593,14 @@ const EVENT_TYPES = {
 function renderCalendar(container) {
   container.innerHTML = `
     ${pageHeader('ปฏิทินและข่าวสาร', 'bxs-calendar-event', `
-      ${APP.role !== 'teacher' ? `
-        <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap items-center">
+        <button class="btn btn-light" onclick="downloadCalendarTemplateCSV()"><i class='bx bx-download'></i> ตัวอย่าง CSV</button>
+        <button class="btn btn-light" onclick="printCalendar()"><i class='bx bx-printer'></i> พิมพ์ปฏิทิน</button>
+        ${APP.role !== 'teacher' ? `
           <button class="btn btn-light" onclick="openCSVImportModal()"><i class='bx bx-upload'></i> นำเข้า CSV</button>
           <button class="btn btn-blue" onclick="openCalendarForm()"><i class='bx bx-plus'></i> เพิ่มเหตุการณ์</button>
-        </div>
-      ` : ''}
+        ` : ''}
+      </div>
     `)}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1860,12 +1862,17 @@ function openCSVImportModal() {
     html: `
       <div style="text-align:left; font-size:13px; font-family:'Sarabun', sans-serif;">
         <div class="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200" style="font-size:12px; color:#475569; line-height:1.6;">
-          <strong>รูปแบบคอลัมน์ของไฟล์ CSV:</strong><br>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+            <strong style="color:#1E293B;">รูปแบบคอลัมน์ของไฟล์ CSV:</strong>
+            <button type="button" class="btn btn-sm" onclick="downloadCalendarTemplateCSV()" style="padding:4px 10px; font-size:11px; font-weight:600; color:#4338CA; background:#EEF2FF; border:1px solid #C7D2FE; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+              <i class='bx bx-download'></i> ดาวน์โหลดไฟล์ตัวอย่าง CSV
+            </button>
+          </div>
           <code style="background:#fff; padding:2px 6px; border-radius:4px; display:inline-block; border:1px solid #E2E8F0; margin:4px 0;">
             หัวข้อ,ประเภท,วันเริ่มต้น,วันสิ้นสุด,เวลาเริ่มต้น,เวลาสิ้นสุด,สถานที่,รายละเอียด,ปักหมุด
           </code><br>
           * <strong>หัวข้อ</strong> และ <strong>วันเริ่มต้น</strong> (YYYY-MM-DD) เป็นฟิลด์จำเป็นต้องมี<br>
-          * ประเภทที่รองรับ: <span class="badge" style="background:#F2D5DA;color:#3730A3;padding:1px 5px;font-size:10px;border-radius:4px;">academic</span>, <span class="badge" style="background:#DCFCE7;color:#15803D;padding:1px 5px;font-size:10px;border-radius:4px;">activity</span>, <span class="badge" style="background:#FEF3C7;color:#B45309;padding:1px 5px;font-size:10px;border-radius:4px;">meeting</span>, <span class="badge" style="background:#FEE2E2;color:#B91C1C;padding:1px 5px;font-size:10px;border-radius:4px;">holiday</span>, <span class="badge" style="background:#F1F5F9;color:#334155;padding:1px 5px;font-size:10px;border-radius:4px;">general</span>
+          * ประเภทที่รองรับ: <span class="badge" style="background:#F2D5DA;color:#3730A3;padding:1px 5px;font-size:10px;border-radius:4px;">academic</span> (วิชาการ), <span class="badge" style="background:#DCFCE7;color:#15803D;padding:1px 5px;font-size:10px;border-radius:4px;">activity</span> (กิจกรรม), <span class="badge" style="background:#FEF3C7;color:#B45309;padding:1px 5px;font-size:10px;border-radius:4px;">meeting</span> (ประชุม), <span class="badge" style="background:#FEE2E2;color:#B91C1C;padding:1px 5px;font-size:10px;border-radius:4px;">holiday</span> (วันหยุด), <span class="badge" style="background:#F1F5F9;color:#334155;padding:1px 5px;font-size:10px;border-radius:4px;">general</span> (ทั่วไป)
         </div>
         
         <div class="mb-3">
@@ -2082,3 +2089,504 @@ window.parseCSVText = function(text) {
 
   return events;
 };
+
+/* ============================================================
+ *  CALENDAR EXPORT / PRINT / TEMPLATE
+ * ============================================================ */
+function downloadCalendarTemplateCSV() {
+  const headers = ['หัวข้อ','ประเภท','วันเริ่มต้น','วันสิ้นสุด','เวลาเริ่มต้น','เวลาสิ้นสุด','สถานที่','รายละเอียด','ปักหมุด'];
+  const sampleRows = [
+    ['เปิดภาคเรียนที่ 1 ประจำปีการศึกษา 2569','academic','2026-05-18','2026-05-18','08:30','16:30','โรงเรียนมหาชัยพิทยาคาร','วันเปิดภาคเรียนที่ 1 ประจำปีการศึกษา 2569','true'],
+    ['พิธีไหว้ครู ประจำปีการศึกษา 2569','activity','2026-06-11','2026-06-11','08:30','12:00','หอประชุมใหญ่','พิธีไหว้ครูและมอบทุนการศึกษาแก่นักเรียน','false'],
+    ['สอบวัดผลกลางภาคเรียนที่ 1','academic','2026-07-06','2026-07-08','08:30','15:30','อาคารเรียน','การสอบวัดผลกลางภาคเรียนที่ 1','true'],
+    ['วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว','holiday','2026-07-28','2026-07-28','','','','วันหยุดราชการ','false'],
+    ['วันหยุดวันอาสาฬหบูชา','holiday','2026-07-29','2026-07-29','','','','วันหยุดราชการ','false'],
+    ['ประชุมผู้ปกครองและคณะกรรมการสถานศึกษา','meeting','2026-08-14','2026-08-14','09:00','12:00','ห้องประชุมวิทยพัฒน์','ประชุมสัญจรประจำภาคเรียน','false'],
+    ['กิจกรรมวันวิทยาศาสตร์แห่งชาติ','activity','2026-08-18','2026-08-18','08:30','15:30','ลานกิจกรรมและหอประชุม','นิทรรศการและแข่งขันทักษะทางวิทยาศาสตร์','false'],
+    ['สอบปลายภาคเรียนที่ 1','academic','2026-09-28','2026-09-30','08:30','15:30','อาคารเรียน','การสอบวัดผลปลายภาคเรียนที่ 1','true']
+  ];
+
+  const csvRows = [
+    headers.join(','),
+    ...sampleRows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+  ];
+  const csvContent = csvRows.join('\r\n');
+  const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ตัวอย่างไฟล์นำเข้า_ปฏิทินวิชาการ.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast('success', 'ดาวน์โหลดไฟล์ตัวอย่าง CSV สำเร็จ');
+}
+window.downloadCalendarTemplateCSV = downloadCalendarTemplateCSV;
+
+function printCalendar() {
+  const safeEscape = (str) => typeof escapeHTML === 'function' ? escapeHTML(str || '') : String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const y = CalendarState.year || new Date().getFullYear();
+  const m = CalendarState.month || (new Date().getMonth() + 1);
+  const thaiMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const thaiMonthsShort = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const monthName = thaiMonths[m] || '';
+  const yearBE = y + 543;
+
+  const first = new Date(y, m - 1, 1);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const startDay = first.getDay(); // 0 = Sun, 1 = Mon ...
+
+  const events = (CalendarState.events || []).slice().sort((a, b) => {
+    if (a.start_date !== b.start_date) return a.start_date.localeCompare(b.start_date);
+    return (a.start_time || '').localeCompare(b.start_time || '');
+  });
+
+  const typeConfig = {
+    academic: { label: 'วิชาการ', color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE' },
+    activity: { label: 'กิจกรรม', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
+    meeting : { label: 'ประชุม',  color: '#B45309', bg: '#FFFBEB', border: '#FDE68A' },
+    holiday : { label: 'วันหยุด', color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA' },
+    general : { label: 'ทั่วไป',  color: '#475569', bg: '#F8FAFC', border: '#E2E8F0' }
+  };
+
+  // Calendar Grid Rows (7 columns)
+  let gridRowsHTML = '';
+  let dayCounter = 1;
+  const totalWeeks = Math.ceil((startDay + daysInMonth) / 7);
+
+  for (let week = 0; week < totalWeeks; week++) {
+    gridRowsHTML += '<tr>';
+    for (let dow = 0; dow < 7; dow++) {
+      const cellIndex = week * 7 + dow;
+      if (cellIndex < startDay || dayCounter > daysInMonth) {
+        gridRowsHTML += '<td class="empty-cell">&nbsp;</td>';
+      } else {
+        const d = dayCounter;
+        const ds = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const dayEvents = events.filter(e => {
+          const s = e.start_date;
+          const en = e.end_date || s;
+          return s <= ds && ds <= en;
+        });
+
+        const isSun = dow === 0;
+        const isSat = dow === 6;
+        const dateClass = isSun ? 'day-num num-sun' : (isSat ? 'day-num num-sat' : 'day-num');
+
+        let evHTML = '';
+        dayEvents.slice(0, 3).forEach(e => {
+          const t = typeConfig[e.type] || typeConfig.general;
+          const timePrefix = e.start_time ? `<span class="ev-time">${safeEscape(e.start_time)}</span> ` : '';
+          evHTML += `
+            <div class="ev-pill" style="border-left: 2.5px solid ${t.color}; background:${t.bg}; color:${t.color};">
+              ${timePrefix}${safeEscape(e.title)}
+            </div>
+          `;
+        });
+        if (dayEvents.length > 3) {
+          evHTML += `<div style="font-size:8px; color:#64748B; font-weight:600; padding-left:2px;">+${dayEvents.length - 3} อื่นๆ</div>`;
+        }
+
+        gridRowsHTML += `
+          <td class="day-cell">
+            <div class="${dateClass}">${d}</div>
+            <div class="ev-cell-body">${evHTML}</div>
+          </td>
+        `;
+        dayCounter++;
+      }
+    }
+    gridRowsHTML += '</tr>';
+  }
+
+  // Format Date Range
+  function formatRange(sStr, eStr) {
+    if (!sStr) return '-';
+    const sp = sStr.split('-').map(Number);
+    const sFormatted = `${sp[2]} ${thaiMonthsShort[sp[1]] || ''} ${sp[0] + 543}`;
+    if (!eStr || sStr === eStr) return sFormatted;
+    const ep = eStr.split('-').map(Number);
+    if (sp[0] === ep[0] && sp[1] === ep[1]) {
+      return `${sp[2]} - ${ep[2]} ${thaiMonthsShort[sp[1]] || ''} ${sp[0] + 543}`;
+    }
+    return `${sFormatted} - ${ep[2]} ${thaiMonthsShort[ep[1]] || ''} ${ep[0] + 543}`;
+  }
+
+  let tableRowsHTML = '';
+  if (events.length === 0) {
+    tableRowsHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center; padding:16px; color:#64748B; font-size:11px;">
+          ไม่มีกิจกรรมหรือกำหนดการที่บันทึกไว้ในเดือนนี้
+        </td>
+      </tr>
+    `;
+  } else {
+    events.forEach((e, idx) => {
+      const t = typeConfig[e.type] || typeConfig.general;
+      const timeStr = e.start_time ? (e.end_time ? `${safeEscape(e.start_time)} - ${safeEscape(e.end_time)} น.` : `${safeEscape(e.start_time)} น.`) : 'ตลอดวัน';
+      tableRowsHTML += `
+        <tr>
+          <td style="text-align:center; width:35px;">${idx + 1}</td>
+          <td style="white-space:nowrap; width:130px; font-weight:600;">${formatRange(e.start_date, e.end_date)}</td>
+          <td style="white-space:nowrap; width:95px; text-align:center;">${timeStr}</td>
+          <td style="width:75px; text-align:center;">
+            <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
+          </td>
+          <td>
+            <div style="font-weight:700; color:#0F172A;">${safeEscape(e.title)}</div>
+            ${e.description ? `<div style="font-size:10px; color:#64748B; margin-top:2px; line-height:1.3;">${safeEscape(e.description)}</div>` : ''}
+          </td>
+          <td style="width:130px; color:#334155;">${safeEscape(e.location || '-')}</td>
+        </tr>
+      `;
+    });
+  }
+
+  const printTimeStr = new Date().toLocaleDateString('th-TH', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+
+  const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ปฏิทินวิชาการ_${monthName}_${yearBE}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 8mm 10mm 10mm 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #0F172A;
+      background: #FFFFFF;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .print-doc {
+      width: 100%;
+      max-width: 277mm;
+      margin: 0 auto;
+    }
+    .no-print-bar {
+      background: #1E293B;
+      color: white;
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .btn-print {
+      background: #800020;
+      color: white;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-print:hover {
+      background: #600018;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #800020;
+      margin-bottom: 8px;
+    }
+    .logo {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+    }
+    .header-text {
+      text-align: center;
+    }
+    .header-school {
+      font-size: 16px;
+      font-weight: 800;
+      color: #800020;
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      margin: 1px 0;
+    }
+    .header-sub {
+      font-size: 10px;
+      color: #64748B;
+    }
+    
+    /* Calendar Grid Table */
+    .cal-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      border: 1.5px solid #0F172A;
+    }
+    .cal-table th {
+      background: #F1F5F9;
+      color: #0F172A;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 4px;
+      text-align: center;
+      border: 1px solid #CBD5E1;
+      width: 14.285%;
+    }
+    .cal-table th.sun-th { color: #DC2626; background: #FEF2F2; }
+    .cal-table th.sat-th { color: #D97706; background: #FFFBEB; }
+    .cal-table td {
+      border: 1px solid #CBD5E1;
+      vertical-align: top;
+      padding: 3px;
+      height: 52px;
+      background: #FFFFFF;
+    }
+    .cal-table td.empty-cell {
+      background: #F8FAFC;
+    }
+    .day-num {
+      font-weight: 700;
+      font-size: 11px;
+      color: #1E293B;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .num-sun { color: #DC2626; }
+    .num-sat { color: #D97706; }
+    .ev-cell-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+    }
+    .ev-pill {
+      font-size: 9px;
+      line-height: 1.25;
+      padding: 1px 3px;
+      border-radius: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ev-time {
+      font-weight: 600;
+      opacity: 0.85;
+    }
+
+    /* List Table */
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0F172A;
+      margin: 8px 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .event-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 10px;
+      margin-bottom: 12px;
+      border: 1px solid #CBD5E1;
+    }
+    .event-table th {
+      background: #F1F5F9;
+      color: #0F172A;
+      border: 1px solid #CBD5E1;
+      padding: 4px 6px;
+      font-weight: 700;
+      text-align: left;
+    }
+    .event-table td {
+      border: 1px solid #CBD5E1;
+      padding: 4px 6px;
+      vertical-align: top;
+    }
+    .type-tag {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* Signatures */
+    .sig-container {
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      page-break-inside: avoid;
+      padding: 0 40px;
+    }
+    .sig-box {
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .sig-line {
+      margin-bottom: 38px;
+    }
+
+    /* Footer */
+    .print-footer {
+      margin-top: 12px;
+      padding-top: 6px;
+      border-top: 1px solid #CBD5E1;
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #64748B;
+      page-break-inside: avoid;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: transparent;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-doc">
+    <div class="no-print no-print-bar">
+      <div>
+        <strong>ตัวอย่างก่อนพิมพ์: ปฏิทินวิชาการและกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}</strong>
+        <span style="font-size:11px; opacity:0.8; margin-left:8px;">(กระดาษ A4 แนวนอน)</span>
+      </div>
+      <button class="btn-print" onclick="window.print()">
+        🖨 พิมพ์ / บันทึกเป็น PDF
+      </button>
+    </div>
+
+    <div class="header">
+      <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="School Logo" class="logo">
+      <div class="header-text">
+        <div class="header-school">โรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="header-title">ปฏิทินวิชาการและกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}</div>
+        <div class="header-sub">ฝ่ายบริหารงานวิชาการ | สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
+      </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <table class="cal-table">
+      <thead>
+        <tr>
+          <th class="sun-th">อาทิตย์</th>
+          <th>จันทร์</th>
+          <th>อังคาร</th>
+          <th>พุธ</th>
+          <th>พฤหัสบดี</th>
+          <th>ศุกร์</th>
+          <th class="sat-th">เสาร์</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${gridRowsHTML}
+      </tbody>
+    </table>
+
+    <!-- Event List -->
+    <div class="section-title">
+      <span>📌 กำหนดการและกิจกรรมในรอบเดือน</span>
+    </div>
+    <table class="event-table">
+      <thead>
+        <tr>
+          <th style="width:35px; text-align:center;">ลำดับ</th>
+          <th style="width:130px;">วัน/เดือน/ปี</th>
+          <th style="width:95px; text-align:center;">เวลา</th>
+          <th style="width:75px; text-align:center;">ประเภท</th>
+          <th>กิจกรรม / รายละเอียด</th>
+          <th style="width:130px;">สถานที่</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRowsHTML}
+      </tbody>
+    </table>
+
+    <!-- Signature -->
+    <div class="sig-container">
+      <div class="sig-box">
+        <div class="sig-line">ลงชื่อ............................................................ผู้จัดทำ</div>
+        <div>(............................................................)</div>
+        <div>ผู้ประสานงาน / ฝ่ายบริหารงานวิชาการ</div>
+        <div>วันที่ ..... เดือน .................... พ.ศ. ........</div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-line">ลงชื่อ............................................................ผู้อนุมัติ</div>
+        <div>(นายสมหมาย ชัยพันธุ์)</div>
+        <div>ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div>วันที่ ..... เดือน .................... พ.ศ. ........</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="print-footer">
+      <div>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</div>
+      <div>พิมพ์เมื่อ: ${printTimeStr} น.</div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        window.print();
+      }, 350);
+    });
+  </script>
+</body>
+</html>`;
+
+  if (typeof openHTMLDocument === 'function') {
+    openHTMLDocument(html);
+  } else {
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    } else {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Popup ถูกปิด',
+        text: 'กรุณาอนุญาตให้เปิด pop-up จาก URL นี้เพื่อพิมพ์เอกสาร'
+      });
+    }
+  }
+}
+window.printCalendar = printCalendar;
+
