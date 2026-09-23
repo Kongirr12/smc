@@ -289,8 +289,31 @@ function showClassroomStudentDialog(roomId, roomName, ay, students) {
     showConfirmButton: false,
     showCloseButton: true,
     html: `
-      <div style="font-size:13px;color:#64748B;margin-bottom:12px;">
-        จำนวน ${students.length} คน (ปีการศึกษา ${escapeHTML(String(ay))})
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;color:#64748B;">
+          จำนวน ${students.length} คน (ปีการศึกษา ${escapeHTML(String(ay))})
+        </div>
+        ${students.length ? `
+          <div id="clsNormalToolbar" style="display:flex;gap:6px;">
+            <button type="button" class="btn btn-light" style="padding:4px 10px;font-size:12px;" onclick="toggleEditStudentNumbers(true)">
+              <i class='bx bx-edit-alt'></i> แก้ไขเลขที่
+            </button>
+            <button type="button" class="btn btn-light" style="padding:4px 10px;font-size:12px;color:#4F46E5;font-weight:600;" onclick="openAutoAssignNumbersDialog('${escapeHTML(roomId)}','${escapeHTML(roomName)}','${escapeHTML(String(ay))}')">
+              <i class='bx bx-sort-down'></i> จัดเรียงเลขที่
+            </button>
+          </div>
+          <div id="clsEditToolbar" style="display:none;gap:6px;">
+            <button type="button" class="btn btn-blue" style="padding:4px 12px;font-size:12px;" onclick="saveStudentNumbers('${escapeHTML(roomId)}','${escapeHTML(roomName)}','${escapeHTML(String(ay))}')">
+              <i class='bx bx-save'></i> บันทึกเลขที่
+            </button>
+            <button type="button" class="btn btn-light" style="padding:4px 10px;font-size:12px;" onclick="toggleEditStudentNumbers(false)">
+              ยกเลิก
+            </button>
+          </div>
+        ` : ''}
+      </div>
+      <div id="clsEditBanner" style="display:none;padding:8px 12px;background:#EFF6FF;color:#1E40AF;border-radius:8px;font-size:12px;margin-bottom:10px;font-weight:500;">
+        <i class='bx bx-info-circle'></i> <b>โหมดกำหนดเลขที่:</b> ป้อนเลขที่ของนักเรียนแต่ละคนในช่องด้านล่าง แล้วกด "บันทึกเลขที่"
       </div>
       ${students.length ? `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;
@@ -312,7 +335,20 @@ function showClassroomStudentDialog(roomId, roomName, ay, students) {
               ${avatarHTML(s.photo, s.first_name, 36)}
               <div style="flex:1;text-align:left;">
                 <div style="font-weight:600;">${escapeHTML((s.prefix||'')+s.first_name+' '+s.last_name)}</div>
-                <div style="font-size:11px;color:#94A3B8;">รหัส: ${escapeHTML(s.student_id||'')} (เลขที่ ${i+1})</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                  <span style="font-size:11px;color:#94A3B8;">รหัส: ${escapeHTML(s.student_id||'-')}</span>
+                  <span class="cls-num-badge" style="font-size:11px;font-weight:600;color:#2563EB;background:#EFF6FF;padding:1px 7px;border-radius:6px;border:1px solid #DBEAFE;">
+                    เลขที่ ${s.student_number || (i+1)}
+                  </span>
+                  <div class="cls-num-edit" style="display:none;align-items:center;gap:4px;" onclick="event.stopPropagation();">
+                    <span style="font-size:11px;font-weight:600;color:#475569;">เลขที่:</span>
+                    <input type="number" class="cls-number-input" data-student-id="${escapeHTML(s.id)}"
+                           value="${s.student_number !== null && s.student_number !== undefined ? s.student_number : (i+1)}"
+                           min="1" max="999"
+                           style="width:56px;padding:2px 6px;border:1.5px solid #3B82F6;border-radius:6px;text-align:center;font-weight:700;font-size:12px;outline:none;"
+                           onclick="event.stopPropagation();">
+                  </div>
+                </div>
               </div>
               <button class="btn btn-light" style="padding:5px 8px;font-size:11px;"
                       onclick="event.stopPropagation();viewStudent('${escapeHTML(s.id)}')">
@@ -343,6 +379,114 @@ function showClassroomStudentDialog(roomId, roomName, ay, students) {
   });
 
   window._clsSelected = selected;
+}
+
+function toggleEditStudentNumbers(isEdit) {
+  const banner = document.getElementById('clsEditBanner');
+  const normalTb = document.getElementById('clsNormalToolbar');
+  const editTb = document.getElementById('clsEditToolbar');
+  const badges = document.querySelectorAll('.cls-num-badge');
+  const edits = document.querySelectorAll('.cls-num-edit');
+
+  if (banner) banner.style.display = isEdit ? 'block' : 'none';
+  if (normalTb) normalTb.style.display = isEdit ? 'none' : 'flex';
+  if (editTb) editTb.style.display = isEdit ? 'flex' : 'none';
+  badges.forEach(b => b.style.display = isEdit ? 'none' : 'inline-block');
+  edits.forEach(e => e.style.display = isEdit ? 'inline-flex' : 'none');
+}
+
+function saveStudentNumbers(roomId, roomName, ay) {
+  const inputs = document.querySelectorAll('.cls-number-input');
+  const numberMap = {};
+  inputs.forEach(inp => {
+    const sid = inp.getAttribute('data-student-id');
+    const val = parseInt(inp.value, 10);
+    if (sid) numberMap[sid] = (!isNaN(val) && val > 0) ? val : null;
+  });
+
+  showLoading('กำลังบันทึกเลขที่...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status === 'success') {
+        showToast('success', res.message);
+        openClassroomStudents(roomId, roomName, ay);
+      } else {
+        showToast('error', res.message);
+      }
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', err.message || err);
+    })
+    .updateStudentNumbers(roomName, ay, numberMap, APP.token);
+}
+
+function openAutoAssignNumbersDialog(roomId, roomName, ay) {
+  Swal.fire({
+    title: 'จัดเรียงเลขที่อัตโนมัติ',
+    html: `
+      <div style="text-align:left;font-size:13px;line-height:1.5;">
+        <p style="color:#64748B;margin-bottom:12px;">
+          เลือกลำดับการจัดเรียงเลขที่สำหรับห้อง <b>${escapeHTML(roomName)}</b>:
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #3B82F6;background:#F0FDF4;border-radius:10px;cursor:pointer;">
+            <input type="radio" name="auto_assign_mode" value="sgs_standard" checked style="margin-top:3px;accent-color:#2563EB;">
+            <div>
+              <div style="font-weight:700;color:#1E293B;">ตามมาตรฐาน สพฐ. / SGS (แนะนำ)</div>
+              <div style="font-size:12px;color:#64748B;">เรียงนักเรียนชาย (ก-ฮ) ก่อน แล้วตามด้วยนักเรียนหญิง (ก-ฮ)</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #E2E8F0;background:#F8FAFC;border-radius:10px;cursor:pointer;">
+            <input type="radio" name="auto_assign_mode" value="thai_name" style="margin-top:3px;accent-color:#2563EB;">
+            <div>
+              <div style="font-weight:700;color:#1E293B;">เรียงตามชื่อ ก-ฮ (ทั้งหมด)</div>
+              <div style="font-size:12px;color:#64748B;">เรียงตามลำดับพยัญชนะไทย ก ถึง ฮ โดยไม่แยกเพศ</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #E2E8F0;background:#F8FAFC;border-radius:10px;cursor:pointer;">
+            <input type="radio" name="auto_assign_mode" value="student_id" style="margin-top:3px;accent-color:#2563EB;">
+            <div>
+              <div style="font-weight:700;color:#1E293B;">เรียงตามเลขประจำตัวนักเรียน (SGS ID)</div>
+              <div style="font-size:12px;color:#64748B;">เรียงจากรหัสประจำตัวนักเรียนน้อยไปมาก</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    `,
+    width: 480,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-sort-down"></i> จัดเรียงทันที',
+    cancelButtonText: 'ยกเลิก',
+    preConfirm: () => {
+      const selected = document.querySelector('input[name="auto_assign_mode"]:checked');
+      return selected ? selected.value : 'sgs_standard';
+    }
+  }).then(r => {
+    if (!r.isConfirmed) {
+      openClassroomStudents(roomId, roomName, ay);
+      return;
+    }
+    showLoading('กำลังจัดเรียงเลขที่...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status === 'success') {
+          showToast('success', res.message);
+          openClassroomStudents(roomId, roomName, ay);
+        } else {
+          showToast('error', res.message);
+          openClassroomStudents(roomId, roomName, ay);
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', err.message || err);
+        openClassroomStudents(roomId, roomName, ay);
+      })
+      .autoAssignStudentNumbers(roomName, ay, r.value, APP.token);
+  });
 }
 
 function toggleStudent(id, row) {

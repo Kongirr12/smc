@@ -126,6 +126,8 @@ function routeApi(action, params, token) {
       case 'importStudents': return importStudents(params, token);
       case 'importStudentsCSV': return importStudentsCSV(typeof params.records === 'string' ? JSON.parse(params.records || '[]') : (params.records || []), token);
       case 'cleanStudentsData': return cleanStudentsData(token);
+      case 'autoAssignStudentNumbers': return autoAssignStudentNumbers(params.classroom || params.classroomName, params.academic_year || params.academicYear, params.mode, token);
+      case 'updateStudentNumbers': return updateStudentNumbers(params.classroom || params.classroomName, params.academic_year || params.academicYear, params.numberMap || params.data, token);
 
       // ---------- PERSONNEL ----------
       case 'getPersonnel': return getPersonnel(params, token);
@@ -1158,6 +1160,10 @@ function saveStudent(studentData, sessionToken) {
     if (studentData.student_id !== undefined) {
       clean.student_id = sanitize(studentData.student_id);
     }
+    if (studentData.student_number !== undefined) {
+      const sn = parseInt(studentData.student_number, 10);
+      clean.student_number = (!isNaN(sn) && sn > 0) ? sn : null;
+    }
 
     // ตรวจสอบเลขบัตรซ้ำ
     if (clean.national_id) {
@@ -1181,8 +1187,9 @@ function saveStudent(studentData, sessionToken) {
       // insert
       const now = new Date().toISOString();
       const obj = Object.assign({
-        id        : generateId(),
-        student_id: clean.student_id || '',
+        id            : generateId(),
+        student_id    : clean.student_id || '',
+        student_number: clean.student_number || null,
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Students', obj);
       return { status:'success', data:obj, message:'เพิ่มนักเรียนสำเร็จ' };
@@ -1319,8 +1326,10 @@ function importStudentsCSV(rows, sessionToken) {
         }
         batchProcessed.add(batchKey);
 
+        const sn = (row.student_number !== undefined && row.student_number !== '') ? parseInt(row.student_number, 10) : null;
         const clean = {
           student_id     : sanitize(sidKey || row.student_id || ''),
+          student_number : (!isNaN(sn) && sn > 0) ? sn : null,
           prefix         : sanitize(prefix),
           first_name     : sanitize(firstName),
           last_name      : sanitize(lastName),
@@ -1357,17 +1366,21 @@ function importStudentsCSV(rows, sessionToken) {
               existing[k] = clean[k];
             }
           });
-          // Ensure SGS student_id from CSV updates existing record if available
+          // Ensure SGS student_id and student_number from CSV updates existing record if available
           if (clean.student_id) {
             existing.student_id = clean.student_id;
+          }
+          if (clean.student_number) {
+            existing.student_number = clean.student_number;
           }
           existing.updated_at = now;
           updatedCount++;
         } else {
-          // Insert new student - use SGS student_id directly, no auto-generated sequence!
+          // Insert new student - use SGS student_id and student_number directly, no auto-generated sequence!
           const obj = Object.assign({
-            id        : generateId(),
-            student_id: clean.student_id || ''
+            id            : generateId(),
+            student_id    : clean.student_id || '',
+            student_number: clean.student_number || null
           }, clean, { created_at: now, updated_at: now });
 
           all.push(obj);
@@ -1884,23 +1897,34 @@ function getAttendanceByClassDate(classroom, date, sessionToken) {
 
     const students = readJsonSheet_('Students')
       .filter(s => String(s.classroom) === String(classroom) && s.status === 'active')
-      .sort((a, b) => String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th'));
+      .sort((a, b) => {
+        const numA = parseInt(a.student_number, 10);
+        const numB = parseInt(b.student_number, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        if (!isNaN(numA)) return -1;
+        if (!isNaN(numB)) return 1;
+        const gA = (a.gender === 'male') ? 1 : ((a.gender === 'female') ? 2 : 3);
+        const gB = (b.gender === 'male') ? 1 : ((b.gender === 'female') ? 2 : 3);
+        if (gA !== gB) return gA - gB;
+        return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+      });
 
     const att = readJsonSheet_('Attendance').filter(a => a.date === date);
 
     const rows = students.map(s => {
       const exist = att.find(a => a.student_id === s.id);
       return {
-        student_id  : s.id,
-        student_code: s.student_id,
-        prefix      : s.prefix,
-        first_name  : s.first_name,
-        last_name   : s.last_name,
-        photo       : s.photo,
-        status      : exist ? exist.status : 'present',
-        leave_type  : exist ? exist.leave_type : '',
-        note        : exist ? exist.note : '',
-        attendance_id: exist ? exist.id : null
+        student_id    : s.id,
+        student_code  : s.student_id,
+        student_number: s.student_number || null,
+        prefix        : s.prefix,
+        first_name    : s.first_name,
+        last_name     : s.last_name,
+        photo         : s.photo,
+        status        : exist ? exist.status : 'present',
+        leave_type    : exist ? exist.leave_type : '',
+        note          : exist ? exist.note : '',
+        attendance_id : exist ? exist.id : null
       };
     });
 
@@ -1942,6 +1966,14 @@ function getAttendanceBySubjectDate(subject_id, date, sessionToken, classroom) {
       .sort((a, b) => {
         const c1 = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
         if (c1 !== 0) return c1;
+        const numA = parseInt(a.student_number, 10);
+        const numB = parseInt(b.student_number, 10);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        if (!isNaN(numA)) return -1;
+        if (!isNaN(numB)) return 1;
+        const gA = (a.gender === 'male') ? 1 : ((a.gender === 'female') ? 2 : 3);
+        const gB = (b.gender === 'male') ? 1 : ((b.gender === 'female') ? 2 : 3);
+        if (gA !== gB) return gA - gB;
         return String(a.first_name||'').localeCompare(String(b.first_name||''), 'th');
       });
 
@@ -1950,17 +1982,18 @@ function getAttendanceBySubjectDate(subject_id, date, sessionToken, classroom) {
     const rows = students.map(s => {
       const exist = att.find(a => a.student_id === s.id);
       return {
-        student_id   : s.id,
-        student_code : s.student_id,
-        classroom    : s.classroom,
-        prefix       : s.prefix,
-        first_name   : s.first_name,
-        last_name    : s.last_name,
-        photo        : s.photo,
-        status       : exist ? exist.status  : 'present',
-        leave_type   : exist ? exist.leave_type : '',
-        note         : exist ? exist.note    : '',
-        attendance_id: exist ? exist.id      : null
+        student_id    : s.id,
+        student_code  : s.student_id,
+        student_number: s.student_number || null,
+        classroom     : s.classroom,
+        prefix        : s.prefix,
+        first_name    : s.first_name,
+        last_name     : s.last_name,
+        photo         : s.photo,
+        status        : exist ? exist.status  : 'present',
+        leave_type    : exist ? exist.leave_type : '',
+        note          : exist ? exist.note    : '',
+        attendance_id : exist ? exist.id      : null
       };
     });
 
@@ -6399,9 +6432,116 @@ function getClassroomStudents(classroomName, academicYear, sessionToken) {
     const students = readJsonSheet_('Students').filter(s =>
       s.classroom === classroomName && String(s.academic_year) === String(ay) && s.status === 'active'
     );
-    students.sort((a, b) => String(a.first_name||'').localeCompare(String(b.first_name||''), 'th'));
+    students.sort((a, b) => {
+      const numA = parseInt(a.student_number, 10);
+      const numB = parseInt(b.student_number, 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      if (!isNaN(numA)) return -1;
+      if (!isNaN(numB)) return 1;
+      const gA = (a.gender === 'male') ? 1 : ((a.gender === 'female') ? 2 : 3);
+      const gB = (b.gender === 'male') ? 1 : ((b.gender === 'female') ? 2 : 3);
+      if (gA !== gB) return gA - gB;
+      return String(a.first_name||'').localeCompare(String(b.first_name||''), 'th');
+    });
     return { status:'success', data:students, total:students.length };
   } catch(e) { return { status:'error', message:e.message }; }
+}
+
+function autoAssignStudentNumbers(classroomName, academicYear, mode, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    const ay = String(academicYear || getConfig().academic_year).trim();
+    const all = readJsonSheet_('Students');
+    const classStudents = all.filter(s =>
+      s.classroom === classroomName && String(s.academic_year) === ay && s.status === 'active'
+    );
+
+    if (!classStudents.length) {
+      return { status: 'error', message: 'ไม่พบนักเรียนในห้องเรียนนี้' };
+    }
+
+    if (mode === 'sgs_standard') {
+      // Male (ก-ฮ) first, then Female (ก-ฮ)
+      classStudents.sort((a, b) => {
+        const gA = (a.gender === 'male') ? 1 : ((a.gender === 'female') ? 2 : 3);
+        const gB = (b.gender === 'male') ? 1 : ((b.gender === 'female') ? 2 : 3);
+        if (gA !== gB) return gA - gB;
+        return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+      });
+    } else if (mode === 'student_id') {
+      // Sort by SGS student_id
+      classStudents.sort((a, b) => {
+        const idA = String(a.student_id || '');
+        const idB = String(b.student_id || '');
+        return idA.localeCompare(idB, undefined, { numeric: true });
+      });
+    } else {
+      // Default: thai_name (ก-ฮ รวม)
+      classStudents.sort((a, b) => {
+        return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+      });
+    }
+
+    const now = new Date().toISOString();
+    classStudents.forEach((s, idx) => {
+      s.student_number = idx + 1;
+      s.updated_at = now;
+    });
+
+    writeJsonSheet_('Students', all);
+
+    return {
+      status: 'success',
+      message: 'จัดเรียงเลขที่นักเรียน ' + classStudents.length + ' คน สำเร็จ',
+      data: classStudents
+    };
+  } catch (e) {
+    logError({ fn: 'autoAssignStudentNumbers', error: e.message });
+    return { status: 'error', message: e.message };
+  }
+}
+
+function updateStudentNumbers(classroomName, academicYear, numberMap, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    let map = numberMap;
+    if (typeof map === 'string') {
+      try { map = JSON.parse(map); } catch(e) { map = {}; }
+    }
+    map = map || {};
+
+    const ay = String(academicYear || getConfig().academic_year).trim();
+    const all = readJsonSheet_('Students');
+    const now = new Date().toISOString();
+    let updatedCount = 0;
+
+    all.forEach(s => {
+      if (s.classroom === classroomName && String(s.academic_year) === ay && s.status === 'active') {
+        if (map[s.id] !== undefined) {
+          const num = parseInt(map[s.id], 10);
+          s.student_number = (!isNaN(num) && num > 0) ? num : null;
+          s.updated_at = now;
+          updatedCount++;
+        }
+      }
+    });
+
+    if (updatedCount > 0) {
+      writeJsonSheet_('Students', all);
+    }
+
+    return {
+      status: 'success',
+      message: 'บันทึกเลขที่นักเรียน ' + updatedCount + ' คน เรียบร้อยแล้ว'
+    };
+  } catch (e) {
+    logError({ fn: 'updateStudentNumbers', error: e.message });
+    return { status: 'error', message: e.message };
+  }
 }
 
 function transferStudents(studentIds, targetClassroom, sessionToken, targetYear) {

@@ -353,8 +353,10 @@ function renderStudentsTable(res) {
                 <div class="flex items-center gap-3">
                   ${avatarHTML(s.photo, s.first_name, 36)}
                   <div>
-                    <div class="font-semibold text-slate-800">${escapeHTML(formatStudentFullName(s))}\x3c/div>
-                    <div class="text-xs text-slate-500">${escapeHTML(s.national_id || '-')}\x3c/div>
+                    <div class="font-semibold text-slate-800">
+                      ${s.student_number ? `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 text-[11px] px-1.5 py-0.5 rounded font-bold mr-1">เลขที่ ${s.student_number}</span>` : ''}${escapeHTML(formatStudentFullName(s))}
+                    </div>
+                    <div class="text-xs text-slate-500">${escapeHTML(s.national_id || '-')}</div>
                   </div>
                 </div>
               \x3c/td>
@@ -819,11 +821,15 @@ function showStudentForm(data) {
         <!-- Academic Info -->
         <div class="text-xs font-semibold text-blue-600 mb-2 uppercase">ข้อมูลการศึกษา\x3c/div>
         <div class="grid grid-cols-12 gap-2 mb-4">
-          <div class="col-span-4">
-            <label class="form-label">เลขประจำตัวนักเรียน (SGS)\x3c/label>
-            <input type="text" id="f_student_id" class="form-input font-mono" placeholder="เลขประจำตัว SGS เช่น 32415" value="${escapeHTML(s.student_id || '')}">
+          <div class="col-span-3">
+            <label class="form-label">เลขที่\x3c/label>
+            <input type="number" id="f_student_number" class="form-input font-mono" min="1" max="999" placeholder="เช่น 1" value="${escapeHTML(s.student_number !== undefined && s.student_number !== null ? String(s.student_number) : '')}">
           \x3c/div>
-          <div class="col-span-4">
+          <div class="col-span-3">
+            <label class="form-label">เลขประจำตัว SGS\x3c/label>
+            <input type="text" id="f_student_id" class="form-input font-mono" placeholder="เช่น 32415" value="${escapeHTML(s.student_id || '')}">
+          \x3c/div>
+          <div class="col-span-3">
             <label class="form-label">ชั้น\x3c/label>
             <select id="f_classroom" class="form-input">
               <option value="">-- เลือก --\x3c/option>
@@ -834,7 +840,7 @@ function showStudentForm(data) {
                 ? `<option value="${escapeHTML(s.classroom)}" selected>${escapeHTML(s.classroom)}\x3c/option>` : ''}
             \x3c/select>
           \x3c/div>
-          <div class="col-span-4">
+          <div class="col-span-3">
             <label class="form-label">ปีการศึกษา\x3c/label>
             <input type="text" id="f_academic_year" class="form-input" value="${escapeHTML(s.academic_year || APP.dashboardData?.config?.academic_year || '')}">
           \x3c/div>
@@ -900,9 +906,10 @@ function showStudentForm(data) {
       if (nid && nid.length !== 13) { Swal.showValidationMessage('เลขบัตรประชาชนต้อง 13 หลัก'); return false; }
 
       return {
-        id           : document.getElementById('f_id').value || null,
-        student_id   : (document.getElementById('f_student_id').value || '').trim(),
-        prefix       : document.getElementById('f_prefix').value,
+        id            : document.getElementById('f_id').value || null,
+        student_id    : (document.getElementById('f_student_id').value || '').trim(),
+        student_number: (document.getElementById('f_student_number').value || '').trim(),
+        prefix        : document.getElementById('f_prefix').value,
         first_name   : fn,
         last_name    : ln,
         national_id  : nid,
@@ -953,7 +960,7 @@ function viewStudent(id) {
               ${avatarHTML(s.photo, s.first_name, 80)}
               <div>
                 <div class="text-xl font-bold">${escapeHTML(formatStudentFullName(s))}</div>
-                <div class="text-sm text-slate-500">รหัส: ${escapeHTML(s.student_id || '-')}\x3c/div>
+                <div class="text-sm text-slate-500">รหัส: ${escapeHTML(s.student_id || '-')} ${s.student_number ? `(เลขที่ ${escapeHTML(String(s.student_number))})` : ''}\x3c/div>
                 <div class="mt-1"><span class="status-badge status-active">${({active:'กำลังศึกษา',graduate:'จบการศึกษา',transfer:'ย้าย',inactive:'ไม่ใช้งาน'})[s.status]||s.status}\x3c/span>\x3c/div>
               \x3c/div>
             \x3c/div>
@@ -2113,22 +2120,23 @@ function renderAttendanceList() {
       <table class="min-w-full text-sm att-desktop-table">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-3 py-2.5 text-left rounded-l-lg" style="width:50px;">ลำดับ</th>
-            <th class="px-3 py-2.5 text-left">นักเรียน</th>
-            <th class="px-3 py-2.5 text-center rounded-r-lg" style="width:280px;">สถานะ</th>
-          </tr>
-        </thead>
+            <th class="px-3 py-2.5 text-center rounded-l-lg" style="width:60px;">เลขที่\x3c/th>
+            <th class="px-3 py-2.5 text-left">นักเรียน\x3c/th>
+            <th class="px-3 py-2.5 text-center rounded-r-lg" style="width:280px;">สถานะ\x3c/th>
+          \x3c/tr>
+        \x3c/thead>
         <tbody>
           ${AttendanceState.records.map((r, i) => `
             <tr class="border-b border-slate-100" data-row="${i}">
-              <td class="px-3 py-2 text-center text-slate-500">${i+1}</td>
+              <td class="px-3 py-2 text-center text-slate-700 font-bold">${r.student_number ? r.student_number : (i+1)}\x3c/td>
               <td class="px-3 py-2">
                 <div class="flex items-center gap-2">
                   <div>
-                    <div class="font-semibold text-slate-800 text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
+                    <div class="font-semibold text-slate-800 text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
+                    ${r.student_code ? `<div class="text-[11px] text-slate-400 font-mono">รหัส ${escapeHTML(r.student_code)}\x3c/div>` : ''}
                   </div>
                 </div>
-              </td>
+              \x3c/td>
               <td class="px-3 py-2 text-center">
                 <div class="att-status-group">
                   ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
@@ -2136,16 +2144,16 @@ function renderAttendanceList() {
                   ${attStatusButton(i, 'leave',   r.status, '#F59E0B', 'ลา')}
                   ${attStatusButton(i, 'late',    r.status, '#4F46E5', 'สาย')}
                 </div>
-              </td>
-            </tr>
+              \x3c/td>
+            \x3c/tr>
           `).join('')}
-        </tbody>
-      </table>
+        \x3c/tbody>
+      \x3c/table>
 
       <div class="att-mobile-list">
         ${AttendanceState.records.map((r, i) => `
           <div class="att-mobile-row" data-row="${i}">
-            <div class="att-mobile-name">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</div>
+            <div class="att-mobile-name"><span class="inline-block bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-xs font-bold mr-1">เลขที่ ${r.student_number || (i+1)}\x3c/span> ${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
             <div class="att-status-group">
               ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
               ${attStatusButton(i, 'absent',  r.status, '#DC2626', 'ขาด')}
@@ -2742,6 +2750,17 @@ function extractStudentFromCSVRow(headers, row, defaultClassroom, defaultYear) {
       }
     }
   }
+
+  const rawStudentNumber = getVal(
+    'student_number', 'studentno', 'student_no', 'std_no', 'seat_number',
+    'seatno', 'seat_no', 'เลขที่', 'ลำดับที่', 'ลำดับ', 'no', 'number'
+  );
+  let studentNumber = null;
+  if (rawStudentNumber) {
+    const sn = parseInt(rawStudentNumber, 10);
+    if (!isNaN(sn) && sn > 0) studentNumber = sn;
+  }
+
   let classroom     = getVal('classroom', 'room', 'class', 'grade', 'ชั้น', 'ห้อง', 'ระดับชั้น', 'ชั้นเรียน', 'ชั้น/ห้อง');
   let academicYear  = getVal('academic_year', 'academicyear', 'year', 'ปีการศึกษา', 'ปี');
   const rawGender   = getVal('gender', 'sex', 'เพศ');
@@ -2767,8 +2786,9 @@ function extractStudentFromCSVRow(headers, row, defaultClassroom, defaultYear) {
   }
 
   return {
-    student_id   : studentId,
-    prefix       : nameObj.prefix,
+    student_id    : studentId,
+    student_number: studentNumber,
+    prefix        : nameObj.prefix,
     first_name   : nameObj.first_name,
     last_name    : nameObj.last_name,
     national_id  : nationalId,
@@ -2915,7 +2935,7 @@ function previewStudentsCSV(input) {
       const genderText = r.gender === 'male' ? 'ชาย' : r.gender === 'female' ? 'หญิง' : '-';
       const fullName = (r.prefix ? r.prefix : '') + r.first_name + ' ' + r.last_name;
       return `<tr>
-        <td class="px-2 py-1.5 border-b">${i+1}\x3c/td>
+        <td class="px-2 py-1.5 border-b">${r.student_number ? `<span class="inline-block bg-blue-50 text-blue-700 border border-blue-200 px-1 rounded text-xs font-bold mr-1">เลขที่ ${r.student_number}</span>` : `${i+1}`}\x3c/td>
         <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '-')}</td>
         <td class="px-2 py-1.5 border-b font-medium text-slate-800">${escapeHTML(fullName)}\x3c/td>
         <td class="px-2 py-1.5 border-b">${escapeHTML(r.classroom || '-')}\x3c/td>
