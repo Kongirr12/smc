@@ -168,7 +168,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
@@ -293,7 +293,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
@@ -726,7 +726,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
@@ -848,7 +848,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
@@ -973,7 +973,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
@@ -1259,7 +1259,7 @@ const FOUR_DEPT_TEMPLATES = [
       <p class="no-indent"><strong>เรื่อง:</strong> ขออนุมัติเบิกจ่ายค่าใช้จ่ายในการเดินทางไปราชการ</p>
       <p class="no-indent"><strong>เรียน:</strong> ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</p>
 
-      <p>ตามที่ได้รับอนุมัติให้ ข้าพเจ้า .............................................................. ตำแหน่ง .............................................................. สังกัด โรงเรียนมหาชัยพิทยาคาร พร้อมคณะ เดินทางไปปฏิบัติราชการเรื่อง ................................................................................. ณ ................................................................................. ตามหนังสือขออนุมัติ ที่ ศธ ........................................ ลงวันที่ ...../...../.......... นั้น</p>
+      <p>ตามที่ได้รับอนุมัติให้ ข้าพเจ้า .............................................................. ตำแหน่ง .............................................................. สังกัด โรงเรียนมหาชัยพิทยาคาร พร้อมคณะ เดินทางไปปฏิบัติราชการเรื่อง ................................................................................. ณ ................................................................................. ตามหนังสือขออนุมัติ ที่ ................................................................ ลงวันที่ ...../...../.......... นั้น</p>
 
       <p>บัดนี้ การปฏิบัติราชการได้เสร็จสิ้นลงแล้ว ข้าพเจ้าจึงขออนุมัติเบิกจ่ายค่าใช้จ่ายในการเดินทางไปราชการ ตามระเบียบกระทรวงการคลัง ดังนี้:</p>
 
@@ -1642,7 +1642,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
@@ -1867,7 +1867,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
@@ -1962,7 +1962,7 @@ const FOUR_DEPT_TEMPLATES = [
       <p class="no-indent"><strong>หัวข้อการประชุม/อบรม:</strong> ....................................................................................................................................................</p>
       <p class="no-indent"><strong>หน่วยงานผู้จัด:</strong> ......................................................... <strong>สถานที่จัด:</strong> .............................................................</p>
       <p class="no-indent"><strong>ระยะเวลา:</strong> วันที่ ..... ถึง ..... เดือน .................... พ.ศ. ........ รวม ..... วัน</p>
-      <p class="no-indent"><strong>ตามหนังสืออนุมัติไปราชการ ที่:</strong> ศธ ................................................................ ลงวันที่ ...../...../..........</p>
+      <p class="no-indent"><strong>ตามหนังสืออนุมัติไปราชการ ที่:</strong> ................................................................ ลงวันที่ ...../...../..........</p>
       <hr style="border:none; border-top:1px dashed #666; margin:8pt 0;">
 
       <p class="no-indent"><strong>1. สรุปสาระสำคัญและองค์ความรู้ที่ได้รับ:</strong></p>
@@ -2174,7 +2174,7 @@ const FOUR_DEPT_TEMPLATES = [
       </div>
       
       <div style="margin-top:15pt; border:1px solid #000; padding:8pt; font-size:14pt;">
-        <strong>การตรวจสอบของงานบุคคล:</strong> ได้ตรวจสอบข้อมูลแล้ว ถูกต้องตามทะเบียนประวัติ ออกหนังสือรับรองเลขที่ ศธ ..................../....................<br><br>
+        <strong>การตรวจสอบของงานบุคคล:</strong> ได้ตรวจสอบข้อมูลแล้ว ถูกต้องตามทะเบียนประวัติ ออกหนังสือรับรองเลขที่ ..................../....................<br><br>
         <strong>คำสั่ง / การอนุมัติ:</strong> ( ) อนุมัติและลงนามแล้ว&nbsp;&nbsp;( ) ไม่อนุมัติ<br><br>
         <div style="text-align:center;">
           ลงชื่อ..............................................................ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร<br>
@@ -2582,7 +2582,7 @@ const FOUR_DEPT_TEMPLATES = [
       <table class="borderless" style="width:100%; border:none !important; border-collapse:collapse; margin:2pt 0;">
         <tr>
           <td style="width:55%; border:none !important; padding:0; vertical-align:top;">
-            <strong>ที่</strong>&nbsp;&nbsp;ศธ ........................................
+            <strong>ที่</strong>&nbsp;&nbsp;................................................................
           </td>
           <td style="width:45%; border:none !important; padding:0; vertical-align:top;">
             <strong>วันที่</strong>&nbsp;&nbsp;.....&nbsp;&nbsp;เดือน&nbsp;&nbsp;....................&nbsp;&nbsp;พ.ศ.&nbsp;&nbsp;............
