@@ -144,7 +144,13 @@ function routeApi(action, params, token) {
       case 'saveClassroom': return saveClassroom(params, token);
       case 'deleteClassroom': return deleteClassroom(params.id, token);
       case 'getClassroomStudents': return getClassroomStudents(params.classroomName, params.academic_year, token);
-      case 'transferStudents': return transferStudents(JSON.parse(params.studentIds || '[]'), params.targetRoom, token);
+      case 'transferStudents': {
+        let sIds = params.studentIds;
+        if (typeof sIds === 'string') {
+          try { sIds = JSON.parse(sIds); } catch(e) { sIds = [sIds]; }
+        }
+        return transferStudents(sIds || [], params.targetClassroom || params.targetRoom, token, params.targetYear || params.academic_year);
+      }
 
       // ---------- ACADEMIC ----------
       case 'getSubjects': return getSubjects(params, token);
@@ -6032,7 +6038,7 @@ function getClassroomStudents(classroomName, academicYear, sessionToken) {
   } catch(e) { return { status:'error', message:e.message }; }
 }
 
-function transferStudents(studentIds, targetClassroom, sessionToken) {
+function transferStudents(studentIds, targetClassroom, sessionToken, targetYear) {
   try {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
@@ -6042,9 +6048,21 @@ function transferStudents(studentIds, targetClassroom, sessionToken) {
     const now   = new Date().toISOString();
     const all   = readJsonSheet_('Students');
     let count   = 0;
-    all.forEach(s => { if (idSet.has(s.id)) { s.classroom = targetClassroom; s.updated_at = now; count++; } });
+    all.forEach(s => {
+      if (idSet.has(s.id)) {
+        s.classroom = targetClassroom;
+        if (targetYear) {
+          s.academic_year = String(targetYear).trim();
+        }
+        s.updated_at = now;
+        count++;
+      }
+    });
     writeJsonSheet_('Students', all);
-    return { status:'success', message:'ย้าย ' + count + ' คน → ' + targetClassroom + ' สำเร็จ' };
+    return {
+      status:'success',
+      message:'ย้าย ' + count + ' คน → ' + targetClassroom + (targetYear ? ' (ปีการศึกษา ' + targetYear + ')' : '') + ' สำเร็จ'
+    };
   } catch(e) {
     logError({ fn:'transferStudents', error:e.message });
     return { status:'error', message:e.message };

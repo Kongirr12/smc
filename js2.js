@@ -107,7 +107,8 @@ const StudentsState = {
   classroom: '',
   academic_year: '',
   status: '',
-  data: null
+  data: null,
+  selected: []
 };
 
 function renderStudents(container) {
@@ -153,6 +154,30 @@ function renderStudents(container) {
           \x3c/select>
         \x3c/div>
 
+        <!-- Batch Action Toolbar -->
+        <div id="stBatchBar" class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl items-center justify-between gap-3 shadow-sm transition-all" style="display:${StudentsState.selected && StudentsState.selected.length > 0 ? 'flex' : 'none'};">
+          <div class="flex items-center flex-wrap gap-2">
+            <span class="inline-flex items-center justify-center min-w-[26px] h-6 px-2 rounded-full bg-blue-600 text-white text-xs font-bold" id="stBatchCount">
+              ${StudentsState.selected ? StudentsState.selected.length : 0}
+            </span>
+            <span class="text-sm font-medium text-slate-700">เลือกอยู่ <strong id="stBatchCountText" class="text-blue-700 font-bold">${StudentsState.selected ? StudentsState.selected.length : 0}</strong> คน</span>
+            <button type="button" class="btn btn-sm btn-light text-xs text-slate-500 hover:text-slate-800 ml-1" onclick="clearSelectedStudents()">
+              <i class='bx bx-x'>\x3c/i> ยกเลิกการเลือก
+            </button>
+            <span id="stSelectAllMatchingWrap" style="display:none;" class="text-xs text-blue-600">
+              <span class="text-slate-300 mx-1">|</span>
+              <button type="button" class="underline hover:text-blue-800 font-medium" onclick="selectAllMatchingStudents()">
+                เลือกทั้งหมด <span id="stTotalMatchingCount">0</span> คนตามตัวกรองนี้
+              </button>
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-1.5 shadow-sm" onclick="openBatchClassroomModal()">
+              <i class='bx bx-transfer text-base'>\x3c/i> กำหนดชั้นเรียนให้นักเรียนที่เลือก
+            </button>
+          </div>
+        </div>
+
         <div id="stTableArea">
           <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
         \x3c/div>
@@ -172,13 +197,19 @@ function onStudentSearch() {
   StudentsState.search = document.getElementById('stSearch').value;
   StudentsState.page = 1;
   clearTimeout(_stSearchTimer);
-  _stSearchTimer = setTimeout(loadStudents, 300);
+  _stSearchTimer = setTimeout(() => {
+    StudentsState.selected = [];
+    updateStudentBatchBar();
+    loadStudents();
+  }, 300);
 }
 function onStudentFilter() {
   StudentsState.classroom    = document.getElementById('stClassroom').value;
   StudentsState.academic_year= document.getElementById('stYear').value;
   StudentsState.status       = document.getElementById('stStatus').value;
   StudentsState.page = 1;
+  StudentsState.selected = [];
+  updateStudentBatchBar();
   loadStudents();
 }
 function studentsGoToPage(p) { StudentsState.page = p; loadStudents(); }
@@ -249,7 +280,10 @@ function renderStudentsTable(res) {
       <table class="min-w-full text-sm">
         <thead>
           <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-3 py-2.5 text-left rounded-l-lg">นักเรียน\x3c/th>
+            <th class="px-3 py-2.5 text-center rounded-l-lg" style="width:44px;">
+              <input type="checkbox" id="stSelectAll" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" onchange="toggleSelectAllStudents(this)" title="เลือกทั้งหมดในหน้านี้">
+            </th>
+            <th class="px-3 py-2.5 text-left">นักเรียน\x3c/th>
             <th class="px-3 py-2.5 text-left">รหัส\x3c/th>
             <th class="px-3 py-2.5 text-left">ชั้น\x3c/th>
             <th class="px-3 py-2.5 text-left">เพศ\x3c/th>
@@ -259,19 +293,24 @@ function renderStudentsTable(res) {
           \x3c/tr>
         \x3c/thead>
         <tbody>
-          ${res.data.map(s => `
-            <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+          ${res.data.map(s => {
+            const isChecked = Array.isArray(StudentsState.selected) && StudentsState.selected.includes(s.id);
+            return `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition ${isChecked ? 'bg-blue-50/50' : ''}">
+              <td class="px-3 py-2.5 text-center">
+                <input type="checkbox" class="st-chk rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" value="${s.id}" ${isChecked ? 'checked' : ''} onchange="toggleSelectStudent('${s.id}', this)">
+              </td>
               <td class="px-3 py-2.5">
                 <div class="flex items-center gap-3">
                   ${avatarHTML(s.photo, s.first_name, 36)}
                   <div>
                     <div class="font-semibold text-slate-800">${escapeHTML((s.prefix||'') + (s.first_name||'') + ' ' + (s.last_name||''))}\x3c/div>
                     <div class="text-xs text-slate-500">${escapeHTML(s.national_id || '-')}\x3c/div>
-                  \x3c/div>
-                \x3c/div>
+                  </div>
+                </div>
               \x3c/td>
               <td class="px-3 py-2.5 font-mono text-xs">${escapeHTML(s.student_id || '-')}\x3c/td>
-              <td class="px-3 py-2.5">${escapeHTML(s.classroom || '-')}\x3c/td>
+              <td class="px-3 py-2.5"><span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium">${escapeHTML(s.classroom || '-')}\x3c/span>\x3c/td>
               <td class="px-3 py-2.5">${s.gender === 'male' ? 'ชาย' : s.gender === 'female' ? 'หญิง' : '-'}\x3c/td>
               <td class="px-3 py-2.5">
                 <div class="text-slate-700">${escapeHTML(s.parent_name || '-')}\x3c/div>
@@ -284,21 +323,244 @@ function renderStudentsTable(res) {
                 <div class="flex justify-center gap-1">
                   <button class="btn btn-light btn-icon" onclick="viewStudent('${s.id}')" title="ดูข้อมูล">
                     <i class='bx bx-show'>\x3c/i>
-                  \x3c/button>
+                  </button>
                   ${APP.role !== 'teacher' ? `
                   <button class="btn btn-light btn-icon text-primary" onclick="openStudentForm('${s.id}')" title="แก้ไข" ><i class='bx bx-edit'><\/i><\/button>
                   <button class="btn btn-light btn-icon text-danger" onclick="deleteStudent('${s.id}')" title="ลบ" ><i class='bx bx-trash'><\/i><\/button>
                   ` : ''}
-                \x3c/div>
+                </div>
               \x3c/td>
             \x3c/tr>
-          `).join('')}
+          `;}).join('')}
         \x3c/tbody>
       \x3c/table>
     \x3c/div>
     ${paginationHTML(res.page, res.total_pages, 'studentsGoToPage')}
     <div class="text-xs text-slate-400 text-right mt-1">รวม ${res.total} รายการ\x3c/div>
   `;
+  updateStudentBatchBar();
+}
+
+/* ---------- Batch Selection & Classroom Update ---------- */
+function toggleSelectStudent(id, el) {
+  if (!Array.isArray(StudentsState.selected)) StudentsState.selected = [];
+  if (el.checked) {
+    if (!StudentsState.selected.includes(id)) StudentsState.selected.push(id);
+  } else {
+    StudentsState.selected = StudentsState.selected.filter(x => x !== id);
+  }
+  updateStudentBatchBar();
+}
+
+function toggleSelectAllStudents(masterEl) {
+  if (!Array.isArray(StudentsState.selected)) StudentsState.selected = [];
+  const pageIds = (StudentsState.data && StudentsState.data.data) ? StudentsState.data.data.map(s => s.id) : [];
+  if (masterEl.checked) {
+    pageIds.forEach(id => {
+      if (!StudentsState.selected.includes(id)) StudentsState.selected.push(id);
+    });
+  } else {
+    StudentsState.selected = StudentsState.selected.filter(id => !pageIds.includes(id));
+  }
+  document.querySelectorAll('.st-chk').forEach(chk => {
+    chk.checked = StudentsState.selected.includes(chk.value);
+  });
+  updateStudentBatchBar();
+}
+
+function clearSelectedStudents() {
+  StudentsState.selected = [];
+  document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
+  const master = document.getElementById('stSelectAll');
+  if (master) { master.checked = false; master.indeterminate = false; }
+  updateStudentBatchBar();
+}
+
+function selectAllMatchingStudents() {
+  showLoading('กำลังเลือกนักเรียนทั้งหมด...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res && res.status === 'success' && res.data) {
+        StudentsState.selected = res.data.map(s => s.id);
+        document.querySelectorAll('.st-chk').forEach(c => c.checked = true);
+        const selAll = document.getElementById('stSelectAll');
+        if (selAll) selAll.checked = true;
+        updateStudentBatchBar();
+        showToast('info', 'เลือกนักเรียนทั้งหมด ' + StudentsState.selected.length + ' คนแล้ว');
+      } else {
+        showToast('error', (res && res.message) || 'ไม่สามารถโหลดรายชื่อทั้งหมดได้');
+      }
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', err.message || err);
+    })
+    .getStudents({
+      page: 1,
+      per_page: 5000,
+      search: StudentsState.search,
+      classroom: StudentsState.classroom,
+      academic_year: StudentsState.academic_year,
+      status: StudentsState.status
+    }, APP.token);
+}
+
+function updateStudentBatchBar() {
+  const bar = document.getElementById('stBatchBar');
+  const count = (StudentsState.selected || []).length;
+  const badge = document.getElementById('stBatchCount');
+  const countText = document.getElementById('stBatchCountText');
+  const matchWrap = document.getElementById('stSelectAllMatchingWrap');
+  const totalMatching = document.getElementById('stTotalMatchingCount');
+  const master = document.getElementById('stSelectAll');
+
+  if (bar) {
+    bar.style.display = count > 0 ? 'flex' : 'none';
+  }
+  if (badge) badge.textContent = count;
+  if (countText) countText.textContent = count;
+
+  const totalResults = (StudentsState.data && StudentsState.data.total) || 0;
+  if (matchWrap && totalMatching) {
+    if (count > 0 && totalResults > count) {
+      matchWrap.style.display = 'inline';
+      totalMatching.textContent = totalResults;
+    } else {
+      matchWrap.style.display = 'none';
+    }
+  }
+
+  if (master) {
+    const chks = Array.from(document.querySelectorAll('.st-chk'));
+    if (chks.length > 0) {
+      const allChecked = chks.every(c => c.checked);
+      const someChecked = chks.some(c => c.checked);
+      master.checked = allChecked;
+      master.indeterminate = !allChecked && someChecked;
+    } else {
+      master.checked = false;
+      master.indeterminate = false;
+    }
+  }
+}
+
+function openBatchClassroomModal() {
+  const count = (StudentsState.selected || []).length;
+  if (count === 0) {
+    showToast('warning', 'กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
+    return;
+  }
+
+  showLoading('กำลังโหลดข้อมูลห้องเรียน...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      const roomsFromBackend = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : [];
+      const roomsFromState = (StudentsState.data && StudentsState.data.distinct && StudentsState.data.distinct.classrooms) || [];
+      const allRooms = Array.from(new Set([...roomsFromBackend, ...roomsFromState])).filter(Boolean).sort();
+      _showBatchClassroomDialog(allRooms);
+    })
+    .withFailureHandler(() => {
+      hideLoading();
+      const roomsFromState = (StudentsState.data && StudentsState.data.distinct && StudentsState.data.distinct.classrooms) || [];
+      _showBatchClassroomDialog(roomsFromState);
+    })
+    .getClassroomsForDropdown(APP.token);
+}
+
+function _showBatchClassroomDialog(rooms) {
+  const count = (StudentsState.selected || []).length;
+  const currentYear = APP.dashboardData?.config?.academic_year || String(new Date().getFullYear() + 543);
+  const roomOptions = rooms.map(r => `<option value="${escapeHTML(r)}">ชั้น ${escapeHTML(r)}\x3c/option>`).join('');
+
+  Swal.fire({
+    title: `กำหนดชั้นเรียน (${count} คน)`,
+    width: 480,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-check">\x3c/i> ยืนยันเปลี่ยนชั้นเรียน',
+    cancelButtonText: 'ยกเลิก',
+    focusConfirm: false,
+    html: `
+      <div style="text-align:left; font-size:14px;">
+        <div class="p-3 bg-blue-50 text-blue-900 rounded-lg mb-3 text-sm flex items-center gap-2.5">
+          <i class='bx bx-user-check text-2xl text-blue-600'>\x3c/i>
+          <div>
+            <div class="font-semibold">เลือกนักเรียนอยู่ ${count} คน\x3c/div>
+            <div class="text-xs text-blue-700">ระบบจะกำหนดห้องเรียนและปีการศึกษาให้นักเรียนที่เลือกทั้งหมดพร้อมกัน\x3c/div>
+          \x3c/div>
+        \x3c/div>
+
+        <div class="mb-3">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ชั้น/ห้องเรียนเป้าหมาย <span class="text-red-500">*\x3c/span>\x3c/label>
+          <select id="batch_target_room" class="form-input w-full p-2 border border-slate-300 rounded-lg text-sm" onchange="const custom = document.getElementById('batch_custom_room_wrap'); if (custom) { custom.style.display = this.value === '__custom__' ? 'block' : 'none'; if(this.value === '__custom__') document.getElementById('batch_custom_room').focus(); }">
+            <option value="">-- เลือกห้องเรียน --\x3c/option>
+            ${roomOptions}
+            <option value="__custom__">➕ ระบุชื่อชั้น/ห้องเรียนใหม่เอง...\x3c/option>
+          \x3c/select>
+        \x3c/div>
+
+        <div id="batch_custom_room_wrap" class="mb-3" style="display:none;">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ระบุชื่อชั้น/ห้องเรียนใหม่ <span class="text-red-500">*\x3c/span>\x3c/label>
+          <input type="text" id="batch_custom_room" class="form-input w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="เช่น ม.1/1, ป.2/3, อนุบาล 1">
+        \x3c/div>
+
+        <div class="mb-3">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ปีการศึกษา (ไม่บังคับ)\x3c/label>
+          <input type="text" id="batch_target_year" class="form-input w-full p-2 border border-slate-300 rounded-lg text-sm" value="${escapeHTML(currentYear)}" placeholder="เช่น 2567 (เว้นว่างไว้เพื่อคงเดิม)">
+          <div class="text-[11px] text-slate-500 mt-1">ใส่อัปเดตเมื่อเลื่อนชั้นขึ้นปีการศึกษาใหม่ หรือเว้นว่างเพื่อคงเดิม\x3c/div>
+        \x3c/div>
+      \x3c/div>
+    `,
+    preConfirm: () => {
+      const sel = document.getElementById('batch_target_room').value;
+      let room = sel;
+      if (sel === '__custom__') {
+        room = (document.getElementById('batch_custom_room').value || '').trim();
+      }
+      if (!room) {
+        Swal.showValidationMessage('กรุณาเลือกหรือระบุชั้นเรียนเป้าหมาย');
+        return false;
+      }
+      const year = (document.getElementById('batch_target_year').value || '').trim();
+      return { targetClassroom: room, targetYear: year };
+    }
+  }).then(result => {
+    if (!result.isConfirmed || !result.value) return;
+    const { targetClassroom, targetYear } = result.value;
+
+    showLoading(`กำลังเปลี่ยนชั้นเรียนให้นักเรียน ${count} คน...`);
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res && res.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'สำเร็จ',
+            text: res.message || `เปลี่ยนชั้นเรียนเป็น ${targetClassroom} สำเร็จ`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          StudentsState.selected = [];
+          loadStudents();
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: (res && res.message) || 'ไม่สามารถย้ายชั้นเรียนได้'
+          });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: err.message || err
+        });
+      })
+      .transferStudents(StudentsState.selected, targetClassroom, APP.token, targetYear);
+  });
 }
 
 function openStudentForm(id) {
