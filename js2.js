@@ -111,6 +111,29 @@ const StudentsState = {
   selected: []
 };
 
+function formatStudentFullName(s) {
+  if (!s) return '';
+  let prefix = (s.prefix || '').trim();
+  let first = (s.first_name || '').trim();
+  let last = (s.last_name || '').trim();
+
+  // Strip duplicate prefix if first starts with prefix
+  while (prefix && first.startsWith(prefix)) {
+    first = first.substring(prefix.length).trim();
+  }
+  // Strip known prefix repetitions inside first
+  const known = ['เด็กชาย', 'เด็กหญิง', 'นาย', 'นางสาว', 'นาง', 'ด.ช.', 'ด.ญ.', 'น.ส.'];
+  for (const k of known) {
+    if (first.startsWith(k)) {
+      if (!prefix) prefix = k;
+      while (first.startsWith(k)) {
+        first = first.substring(k.length).trim();
+      }
+    }
+  }
+  return (prefix || '') + first + (last ? ' ' + last : '');
+}
+
 function renderStudents(container) {
   container.innerHTML = `
     ${pageHeader('ข้อมูลนักเรียน', 'bxs-user-detail', `
@@ -118,6 +141,9 @@ function renderStudents(container) {
         <i class='bx bx-download'>\x3c/i> Export
       \x3c/button>
       ${APP.role !== 'teacher' ? `
+      <button class="btn btn-light" onclick="cleanStudentDataConfirm()" title="ลบข้อมูลนักเรียนที่ซ้ำกัน และแก้ไขคำนำหน้าที่ซ้ำ เช่น เด็กชายเด็กชาย">
+        <i class='bx bx-check-double text-blue-600'>\x3c/i> จัดการชื่อ/ลบข้อมูลซ้ำ
+      \x3c/button>
       <button class="btn btn-light" onclick="showImportStudentsCSV()">
         <i class='bx bx-upload'><\/i> นำเข้า CSV
       <\/button>
@@ -304,7 +330,7 @@ function renderStudentsTable(res) {
                 <div class="flex items-center gap-3">
                   ${avatarHTML(s.photo, s.first_name, 36)}
                   <div>
-                    <div class="font-semibold text-slate-800">${escapeHTML((s.prefix||'') + (s.first_name||'') + ' ' + (s.last_name||''))}\x3c/div>
+                    <div class="font-semibold text-slate-800">${escapeHTML(formatStudentFullName(s))}\x3c/div>
                     <div class="text-xs text-slate-500">${escapeHTML(s.national_id || '-')}\x3c/div>
                   </div>
                 </div>
@@ -833,7 +859,7 @@ function viewStudent(id) {
             <div class="flex items-center gap-4 pb-4 mb-4 border-b border-slate-200">
               ${avatarHTML(s.photo, s.first_name, 80)}
               <div>
-                <div class="text-xl font-bold">${escapeHTML((s.prefix||'') + (s.first_name||'') + ' ' + (s.last_name||''))}\x3c/div>
+                <div class="text-xl font-bold">${escapeHTML(formatStudentFullName(s))}</div>
                 <div class="text-sm text-slate-500">รหัส: ${escapeHTML(s.student_id || '-')}\x3c/div>
                 <div class="mt-1"><span class="status-badge status-active">${({active:'กำลังศึกษา',graduate:'จบการศึกษา',transfer:'ย้าย',inactive:'ไม่ใช้งาน'})[s.status]||s.status}\x3c/span>\x3c/div>
               \x3c/div>
@@ -2313,7 +2339,17 @@ function exportReportCSV() {
  *  IMPORT CSV — Students & Personnel
  * ============================================================ */
 
-function parseCSV(text) {
+function parseCSV(text, delimiter) {
+  if (!text) return [];
+  if (!delimiter) {
+    const firstLine = text.split(/[\r\n]+/)[0] || '';
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semiCount  = (firstLine.match(/;/g) || []).length;
+    const tabCount   = (firstLine.match(/\t/g) || []).length;
+    if (tabCount > commaCount && tabCount > semiCount) delimiter = '\t';
+    else if (semiCount > commaCount) delimiter = ';';
+    else delimiter = ',';
+  }
   const rows = [];
   let insideQuotes = false;
   let currentCell = '';
@@ -2328,7 +2364,7 @@ function parseCSV(text) {
       } else { currentCell += ch; }
     } else {
       if (ch === '"') { insideQuotes = true; }
-      else if (ch === ',') { currentRow.push(currentCell.trim()); currentCell = ''; }
+      else if (ch === delimiter) { currentRow.push(currentCell.trim()); currentCell = ''; }
       else if (ch === '\n' || ch === '\r') {
         if (currentRow.length || currentCell) { currentRow.push(currentCell.trim()); rows.push(currentRow); }
         currentRow = []; currentCell = '';
@@ -2337,7 +2373,6 @@ function parseCSV(text) {
     }
   }
   if (currentRow.length || currentCell) { currentRow.push(currentCell.trim()); rows.push(currentRow); }
-  // Remove empty trailing rows
   while (rows.length && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') rows.pop();
   return rows;
 }
@@ -2345,9 +2380,9 @@ function parseCSV(text) {
 function downloadSampleCSV(type) {
   let content = '';
   if (type === 'students') {
-    content = '\uFEFFprefix,first_name,last_name,national_id,gender,birth_date,blood_type,classroom,academic_year,nationality,religion,parent_name,parent_phone,parent_relation,address,status\n' +
-      'เด็กชาย,สมชาย,ใจดี,1234567890123,male,2010-05-15,A,ม.1/1,2568,ไทย,พุทธ,สมหมาย ใจดี,0812345678,บิดา,123 หมู่ 4 ต.ตัวอย่าง,active\n' +
-      'เด็กหญิง,สมหญิง,รักเรียน,1234567890124,female,2010-08-20,O,ม.1/1,2568,ไทย,พุทธ,สมหญิง รักเรียน,0898765432,มารดา,456 หมู่ 2 ต.ตัวอย่าง,active\n';
+    content = '\uFEFFเลขประจำตัว,คำนำหน้า,ชื่อ,นามสกุล,ชั้น,ปีการศึกษา,เพศ,เลขบัตรประชาชน,ผู้ปกครอง,เบอร์โทรศัพท์\n' +
+      '25680001,เด็กชาย,สมชาย,ใจดี,ม.1/1,2568,ชาย,1234567890123,สมหมาย ใจดี,0812345678\n' +
+      '25680002,เด็กหญิง,สมหญิง,รักเรียน,ม.1/1,2568,หญิง,1234567890124,สมหญิง รักเรียน,0898765432\n';
   } else if (type === 'subjects') {
     content = '\uFEFFsubject_code,subject_name,subject_group,subject_type,credit,hours_per_week,grade_level,semester,academic_year,teacher_name\n' +
       'ว21101,วิทยาศาสตร์พื้นฐาน,วิทยาศาสตร์,basic,1.5,3,ม.1,1,2568,นายมั่นคง หัตถสินธ์\n' +
@@ -2371,61 +2406,204 @@ function downloadSampleCSV(type) {
 
 let _csvImportRecords = [];
 
+function cleanThaiStudentNameClient(rawPrefix, rawFirst, rawLast, rawFull) {
+  let p = (rawPrefix || '').trim();
+  let f = (rawFirst || '').trim();
+  let l = (rawLast || '').trim();
+  const full = (rawFull || '').trim();
+
+  if (!f && full) {
+    const parts = full.replace(/\s+/g, ' ').trim().split(' ');
+    if (parts.length >= 2) {
+      f = parts[0];
+      l = parts.slice(1).join(' ');
+    } else {
+      f = full;
+      l = '-';
+    }
+  }
+
+  const knownPrefixes = [
+    { prefix: 'เด็กชาย', patterns: ['เด็กชาย', 'ด.ช.', 'ด.ช. '] },
+    { prefix: 'เด็กหญิง', patterns: ['เด็กหญิง', 'ด.ญ.', 'ด.ญ. '] },
+    { prefix: 'นาย',     patterns: ['นาย'] },
+    { prefix: 'นางสาว',  patterns: ['นางสาว', 'น.ส.', 'น.ส. '] },
+    { prefix: 'นาง',     patterns: ['นาง'] }
+  ];
+
+  if (p) {
+    for (const kp of knownPrefixes) {
+      if (kp.patterns.some(pat => p === pat || p.startsWith(pat))) {
+        p = kp.prefix;
+        break;
+      }
+    }
+  }
+
+  for (const kp of knownPrefixes) {
+    for (const pat of kp.patterns) {
+      if (f.startsWith(pat)) {
+        f = f.substring(pat.length).trim();
+        if (!p) p = kp.prefix;
+        break;
+      }
+    }
+  }
+
+  while (p && f.startsWith(p)) {
+    f = f.substring(p.length).trim();
+  }
+
+  for (const kp of knownPrefixes) {
+    for (const pat of kp.patterns) {
+      while (f.startsWith(pat)) {
+        f = f.substring(pat.length).trim();
+      }
+    }
+  }
+
+  return { prefix: p, first_name: f, last_name: l };
+}
+
+function extractStudentFromCSVRow(headers, row, defaultClassroom, defaultYear) {
+  const raw = {};
+  headers.forEach((h, i) => {
+    const rawHeader = String(h || '').trim();
+    const cleanKey = rawHeader.toLowerCase().replace(/^\uFEFF/, '').replace(/[\s_\-]+/g, '');
+    raw[cleanKey] = String(row[i] || '').trim();
+    raw[rawHeader] = String(row[i] || '').trim();
+  });
+
+  const getVal = (...keys) => {
+    for (const k of keys) {
+      const cleanKey = k.toLowerCase().replace(/[\s_\-]+/g, '');
+      if (raw[cleanKey] !== undefined && raw[cleanKey] !== '') return raw[cleanKey];
+      if (raw[k] !== undefined && raw[k] !== '') return raw[k];
+    }
+    return '';
+  };
+
+  const rawPrefix   = getVal('prefix', 'คำนำหน้า', 'คำนำหน้านาม', 'คำนำหน้าชื่อ', 'title');
+  const rawFirst    = getVal('first_name', 'firstname', 'first', 'ชื่อ', 'ชื่อจริง');
+  const rawLast     = getVal('last_name', 'lastname', 'last', 'นามสกุล');
+  const rawFull     = getVal('full_name', 'fullname', 'name', 'ชื่อ-นามสกุล', 'ชื่อ - นามสกุล', 'ชื่อ นามสกุล', 'ชื่อและนามสกุล');
+  const studentId   = getVal('student_id', 'studentid', 'id', 'เลขประจำตัว', 'รหัสนักเรียน', 'รหัสประจำตัว', 'รหัส');
+  const nationalId  = getVal('national_id', 'nationalid', 'citizen_id', 'citizenid', 'id_card', 'เลขประจำตัวประชาชน', 'เลขบัตรประชาชน', 'เลขบัตร', 'บัตรประชาชน');
+  let classroom     = getVal('classroom', 'room', 'class', 'grade', 'ชั้น', 'ห้อง', 'ระดับชั้น', 'ชั้นเรียน', 'ชั้น/ห้อง');
+  let academicYear  = getVal('academic_year', 'academicyear', 'year', 'ปีการศึกษา', 'ปี');
+  const rawGender   = getVal('gender', 'sex', 'เพศ');
+  const birthDate   = getVal('birth_date', 'birthdate', 'dob', 'birthday', 'วันเกิด', 'วัน/เดือน/ปีเกิด');
+  const bloodType   = getVal('blood_type', 'bloodtype', 'blood', 'หมู่เลือด', 'กรุ๊ปเลือด');
+  const parentName  = getVal('parent_name', 'parentname', 'parent', 'ผู้ปกครอง', 'ชื่อผู้ปกครอง');
+  const parentPhone = getVal('parent_phone', 'parentphone', 'phone', 'เบอร์ผู้ปกครอง', 'เบอร์โทร', 'เบอร์โทรศัพท์');
+  const parentRel   = getVal('parent_relation', 'parentrelation', 'relation', 'ความสัมพันธ์');
+  const address     = getVal('address', 'ที่อยู่');
+  const status      = getVal('status', 'สถานะ') || 'active';
+
+  if (!classroom && defaultClassroom) classroom = defaultClassroom;
+  if (!academicYear && defaultYear) academicYear = defaultYear;
+
+  const nameObj = cleanThaiStudentNameClient(rawPrefix, rawFirst, rawLast, rawFull);
+
+  let gender = rawGender.toLowerCase().trim();
+  if (gender === 'ชาย' || gender === 'm' || gender === 'male') gender = 'male';
+  else if (gender === 'หญิง' || gender === 'f' || gender === 'female') gender = 'female';
+  else if (!gender) {
+    if (nameObj.prefix === 'เด็กชาย' || nameObj.prefix === 'นาย') gender = 'male';
+    else if (nameObj.prefix === 'เด็กหญิง' || nameObj.prefix === 'นางสาว' || nameObj.prefix === 'นาง') gender = 'female';
+  }
+
+  return {
+    student_id   : studentId,
+    prefix       : nameObj.prefix,
+    first_name   : nameObj.first_name,
+    last_name    : nameObj.last_name,
+    national_id  : nationalId,
+    gender       : gender,
+    birth_date   : birthDate,
+    blood_type   : bloodType,
+    classroom    : classroom,
+    academic_year: academicYear,
+    nationality  : getVal('nationality', 'สัญชาติ') || 'ไทย',
+    religion     : getVal('religion', 'ศาสนา') || 'พุทธ',
+    parent_name  : parentName,
+    parent_phone : parentPhone,
+    parent_relation: parentRel,
+    address      : address,
+    status       : status
+  };
+}
+
 function showImportStudentsCSV() {
   _csvImportRecords = [];
+  const currentYear = APP.dashboardData?.config?.academic_year || String(new Date().getFullYear() + 543);
+  const rooms = (StudentsState.data && StudentsState.data.distinct && StudentsState.data.distinct.classrooms) || [];
+  const roomOptions = rooms.map(r => `<option value="${escapeHTML(r)}">ชั้น ${escapeHTML(r)}\x3c/option>`).join('');
+
   Swal.fire({
-    title: 'นำเข้าข้อมูลนักเรียนจาก CSV',
-    width: 640,
+    title: 'นำเข้าข้อมูลนักเรียนจาก CSV / Excel',
+    width: 680,
     showCancelButton: true,
-    confirmButtonText: '<i class="bx bx-upload">\x3c/i> นำเข้า',
+    confirmButtonText: '<i class="bx bx-upload">\x3c/i> ตรวจสอบและนำเข้า',
     cancelButtonText: 'ยกเลิก',
     showCloseButton: true,
     html: `
       <div style="text-align:left; font-size:14px;">
-        <p class="text-sm text-slate-600 mb-2">
-          ไฟล์ CSV ต้องมีหัวคอลัมน์ตามนี้ (UTF-8):
-        \x3c/p>
-        <code style="display:block; background:#F1F5F9; padding:8px 10px; border-radius:6px; font-size:11px; word-break:break-all;">
-          prefix,first_name,last_name,national_id,gender,birth_date,blood_type,classroom,academic_year,nationality,religion,parent_name,parent_phone,parent_relation,address,status
-        \x3c/code>
-        <div class="flex gap-2 mt-2">
-          <button type="button" class="btn btn-outline" style="flex:1;" onclick="downloadSampleCSV('students')">
-            <i class='bx bx-download'>\x3c/i> ดาวน์โหลดตัวอย่าง
-          \x3c/button>
+        <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg mb-3 text-xs text-blue-900 leading-relaxed">
+          <i class='bx bx-info-circle text-sm text-blue-600 font-bold'>\x3c/i>
+          <strong>รองรับหัวคอลัมน์ทั้งภาษาไทยและอังกฤษ:</strong><br>
+          • <code>คำนำหน้า</code>, <code>ชื่อ</code>, <code>นามสกุล</code> (หรือ <code>ชื่อ-นามสกุล</code> คอลัมน์เดียว)<br>
+          • <code>เลขประจำตัว</code> (student_id), <code>ชั้น</code> (classroom), <code>เพศ</code>, <code>ปีการศึกษา</code>, <code>เลขบัตรประชาชน</code><br>
+          <em>*ระบบจะตัดคำนำหน้าที่ซ้ำ เช่น เด็กชายเด็กชาย และระบุเพศให้อัตโนมัติ</em>
         \x3c/div>
-        <div class="mt-3">
-          <label class="form-label">เลือกไฟล์ CSV\x3c/label>
-          <input type="file" id="csvFileInput" accept=".csv,text/csv" class="form-input"
+
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <label class="form-label text-xs font-semibold text-slate-700">กำหนดชั้นเรียน (กรณีในไฟล์ไม่มีระบุ)\x3c/label>
+            <select id="csv_default_classroom" class="form-input text-xs" onchange="if(window._lastCsvFile) previewStudentsCSV(document.getElementById('csvFileInput'))">
+              <option value="">-- อิงตามไฟล์ CSV --\x3c/option>
+              ${roomOptions}
+            \x3c/select>
+          \x3c/div>
+          <div>
+            <label class="form-label text-xs font-semibold text-slate-700">ปีการศึกษา (กรณีในไฟล์ไม่มีระบุ)\x3c/label>
+            <input type="text" id="csv_default_year" class="form-input text-xs" value="${escapeHTML(currentYear)}" placeholder="เช่น 2568" oninput="if(window._lastCsvFile) previewStudentsCSV(document.getElementById('csvFileInput'))">
+          \x3c/div>
+        \x3c/div>
+
+        <div class="mb-3">
+          <label class="form-label text-xs font-semibold text-slate-700">เลือกไฟล์ CSV (UTF-8)\x3c/label>
+          <input type="file" id="csvFileInput" accept=".csv,text/csv,text/plain" class="form-input text-xs"
                  onchange="previewStudentsCSV(this)">
         \x3c/div>
-        <div id="csvPreviewBox" style="display:none; margin-top:12px;">
+
+        <div class="flex gap-2 mb-3">
+          <button type="button" class="btn btn-outline btn-sm text-xs" style="flex:1;" onclick="downloadSampleCSV('students')">
+            <i class='bx bx-download'>\x3c/i> ดาวน์โหลดไฟล์ตัวอย่าง (CSV)
+          </button>
+        \x3c/div>
+
+        <div id="csvPreviewBox" style="display:none; margin-top:10px;">
           <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-semibold text-slate-700">ตัวอย่างข้อมูล\x3c/span>
-            <span id="csvPreviewCount" class="text-xs text-slate-500">\x3c/span>
+            <span class="text-xs font-semibold text-slate-700">ตัวอย่างข้อมูลหลังตรวจจับ\x3c/span>
+            <span id="csvPreviewCount" class="text-xs text-blue-600 font-bold">\x3c/span>
           \x3c/div>
-          <div style="max-height:260px; overflow:auto; border:1px solid #E2E8F0; border-radius:8px;">
+          <div style="max-height:240px; overflow:auto; border:1px solid #E2E8F0; border-radius:8px;">
             <table class="w-full text-xs" style="border-collapse:collapse;">
               <thead style="position:sticky; top:0; background:#F8FAFC;">
                 <tr>
-                  <th class="px-2 py-1.5 text-left font-semibold border-b" style="min-width:28px;">#\x3c/th>
-                  <th class="px-2 py-1.5 text-left font-semibold border-b">ชื่อ\x3c/th>
-                  <th class="px-2 py-1.5 text-left font-semibold border-b">นามสกุล\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">#\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">รหัส\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">ชื่อ-นามสกุล\x3c/th>
                   <th class="px-2 py-1.5 text-left font-semibold border-b">ชั้น\x3c/th>
-                  <th class="px-2 py-1.5 text-left font-semibold border-b">ปีการศึกษา\x3c/th>
                   <th class="px-2 py-1.5 text-left font-semibold border-b">เพศ\x3c/th>
+                  <th class="px-2 py-1.5 text-left font-semibold border-b">ปี\x3c/th>
                 \x3c/tr>
               \x3c/thead>
               <tbody id="csvPreviewBody">\x3c/tbody>
             \x3c/table>
           \x3c/div>
         \x3c/div>
-        <style>
-          .form-label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:3px; }
-          .form-input { width:100%; padding:7px 10px; border:1.5px solid #E2E8F0; border-radius:8px; font-family:inherit; font-size:13px; background:#F8FAFC; }
-          #csvPreviewBody tr:nth-child(even) { background:#F8FAFC; }
-          #csvPreviewBody td { padding:5px 8px; border-bottom:1px solid #F1F5F9; }
-          #csvPreviewBody tr.warn td { background:#FEF2F2; color:#B91C1C; }
-        \x3c/style>
       \x3c/div>
     `,
     preConfirm: () => {
@@ -2439,37 +2617,63 @@ function showImportStudentsCSV() {
 }
 
 function previewStudentsCSV(input) {
-  const file = input.files[0];
+  const file = input && input.files ? input.files[0] : window._lastCsvFile;
+  if (!file) return;
+  window._lastCsvFile = file;
+
   const box = document.getElementById('csvPreviewBox');
   const body = document.getElementById('csvPreviewBody');
   const count = document.getElementById('csvPreviewCount');
-  if (!file || !body) return;
+  if (!body) return;
+
+  const defClass = (document.getElementById('csv_default_classroom')?.value || '').trim();
+  const defYear  = (document.getElementById('csv_default_year')?.value || '').trim();
+
   const reader = new FileReader();
   reader.onload = e => {
     const rows = parseCSV(e.target.result);
-    if (rows.length < 2) { body.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-3">ไม่พบข้อมูล\x3c/td>\x3c/tr>'; box.style.display='block'; return; }
-    const headers = rows[0].map(h => h.trim().toLowerCase().replace(/^\uFEFF/, ''));
+    if (rows.length < 2) {
+      body.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-3">ไม่พบข้อมูลในไฟล์\x3c/td>\x3c/tr>';
+      box.style.display='block';
+      return;
+    }
+    const headers = rows[0].map(h => h.trim());
     const dataRows = rows.slice(1);
-    const records = dataRows.map((row, idx) => {
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-      return {
-        prefix: obj.prefix || '', first_name: obj.first_name || '', last_name: obj.last_name || '',
-        national_id: obj.national_id || '', gender: obj.gender || '', birth_date: obj.birth_date || '',
-        blood_type: obj.blood_type || '', classroom: obj.classroom || '', academic_year: obj.academic_year || '',
-        nationality: obj.nationality || 'ไทย', religion: obj.religion || 'พุทธ',
-        parent_name: obj.parent_name || '', parent_phone: obj.parent_phone || '',
-        parent_relation: obj.parent_relation || '', address: obj.address || '', status: obj.status || 'active'
-      };
-    }).filter(r => r.first_name && r.last_name);
+
+    const seenInBatch = new Set();
+    const records = [];
+
+    dataRows.forEach(row => {
+      const rec = extractStudentFromCSVRow(headers, row, defClass, defYear);
+      if (rec.first_name && rec.last_name) {
+        // Deduplicate in batch
+        const key = (rec.student_id ? 'id:' + rec.student_id : '') + '_' + rec.first_name + '_' + rec.last_name;
+        if (!seenInBatch.has(key)) {
+          seenInBatch.add(key);
+          records.push(rec);
+        }
+      }
+    });
+
     _csvImportRecords = records;
-    count.textContent = `พบ ${records.length} รายการ`;
+    count.textContent = `พบ ${records.length} รายการ (ไม่ซ้ำ)`;
     const show = records.slice(0, 20);
     body.innerHTML = show.map((r, i) => {
-      const warn = !r.first_name || !r.last_name;
-      return `<tr class="${warn ? 'warn' : ''}"><td class="px-2 py-1.5">${i+1}\x3c/td><td>${escapeHTML(r.first_name)}\x3c/td><td>${escapeHTML(r.last_name)}\x3c/td><td>${escapeHTML(r.classroom)}\x3c/td><td>${escapeHTML(r.academic_year)}\x3c/td><td>${escapeHTML(r.gender)}\x3c/td>\x3c/tr>`;
+      const genderText = r.gender === 'male' ? 'ชาย' : r.gender === 'female' ? 'หญิง' : '-';
+      const fullName = (r.prefix ? r.prefix : '') + r.first_name + ' ' + r.last_name;
+      return `<tr>
+        <td class="px-2 py-1.5 border-b">${i+1}\x3c/td>
+        <td class="px-2 py-1.5 border-b font-mono">${escapeHTML(r.student_id || '(สร้างอัตโนมัติ)')}\x3c/td>
+        <td class="px-2 py-1.5 border-b font-medium text-slate-800">${escapeHTML(fullName)}\x3c/td>
+        <td class="px-2 py-1.5 border-b">${escapeHTML(r.classroom || '-')}\x3c/td>
+        <td class="px-2 py-1.5 border-b">${escapeHTML(genderText)}\x3c/td>
+        <td class="px-2 py-1.5 border-b">${escapeHTML(r.academic_year || '-')}\x3c/td>
+      \x3c/tr>`;
     }).join('') + (records.length > 20 ? `<tr><td colspan="6" class="text-center text-slate-400 py-2">... และอีก ${records.length-20} รายการ\x3c/td>\x3c/tr>` : '');
-    if (!records.length) body.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-3">ไม่พบข้อมูลที่ใช้ได้ (ต้องมีชื่อและนามสกุล)\x3c/td>\x3c/tr>';
+
+    if (!records.length) {
+      body.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-3">ไม่พบข้อมูลที่ใช้ได้ (ต้องมีชื่อและนามสกุล)\x3c/td>\x3c/tr>';
+    }
     box.style.display = 'block';
   };
   reader.readAsText(file);
@@ -2479,25 +2683,63 @@ function confirmImportStudentsCSV(records) {
   Swal.fire({
     icon: 'question',
     title: 'ยืนยันการนำเข้า',
-    text: `นำเข้านักเรียน ${records.length} รายการ?`,
+    text: `นำเข้านักเรียน ${records.length} รายการ? (ระบบจะรวมและไม่สร้างข้อมูลซ้ำ)`,
     showCancelButton: true,
-    confirmButtonText: 'ใช่ นำเข้าเลย',
+    confirmButtonText: '<i class="bx bx-check">\x3c/i> ใช่ นำเข้าเลย',
     cancelButtonText: 'ยกเลิก'
   }).then(c => {
     if (!c.isConfirmed) return;
-    showLoading('กำลังนำเข้า...');
+    showLoading('กำลังนำเข้าและประมวลผลข้อมูล...');
     google.script.run
       .withSuccessHandler(res => {
         hideLoading();
-        if (res.status === 'success') {
+        if (res && res.status === 'success') {
           Swal.fire({ icon:'success', title:'สำเร็จ', text: res.message });
           loadStudents();
         } else {
-          Swal.fire({ icon:'error', title:'ผิดพลาด', text: res.message });
+          Swal.fire({ icon:'error', title:'ผิดพลาด', text: (res && res.message) || 'เกิดข้อผิดพลาดในการนำเข้า' });
         }
       })
       .withFailureHandler(err => { hideLoading(); Swal.fire({ icon:'error', text: err.message || err }); })
       .importStudentsCSV(records, APP.token);
+  });
+}
+
+function cleanStudentDataConfirm() {
+  Swal.fire({
+    title: 'จัดการชื่อและลบข้อมูลซ้ำ?',
+    text: 'ระบบจะตรวจสอบและลบแถวนักเรียนที่ซ้ำกัน และแก้ไขคำนำหน้าที่ซ้ำซ้อน (เช่น เด็กชายเด็กชาย) ให้ถูกต้องโดยอัตโนมัติ',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-check">\x3c/i> ดำเนินการทันที',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#2563EB'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    showLoading('กำลังทำความสะอาดและตรวจสอบข้อมูลนักเรียน...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res && res.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'ทำความสะอาดเรียบร้อย',
+            text: res.message || 'แก้ไขข้อมูลนักเรียนสำเร็จแล้ว'
+          });
+          loadStudents();
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: (res && res.message) || 'ไม่สามารถประมวลผลได้'
+          });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({ icon: 'error', text: err.message || err });
+      })
+      .cleanStudentsData(APP.token);
   });
 }
 

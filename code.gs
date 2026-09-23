@@ -122,7 +122,8 @@ function routeApi(action, params, token) {
       case 'saveStudent': return saveStudent(params.data ? JSON.parse(params.data) : params, token);
       case 'deleteStudent': return deleteStudent(params.id, token);
       case 'importStudents': return importStudents(params, token);
-      case 'importStudentsCSV': return importStudentsCSV(JSON.parse(params.records || '[]'), token);
+      case 'importStudentsCSV': return importStudentsCSV(typeof params.records === 'string' ? JSON.parse(params.records || '[]') : (params.records || []), token);
+      case 'cleanStudentsData': return cleanStudentsData(token);
 
       // ---------- PERSONNEL ----------
       case 'getPersonnel': return getPersonnel(params, token);
@@ -1119,18 +1120,26 @@ function saveStudent(studentData, sessionToken) {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
 
-    if (!studentData || !studentData.first_name || !studentData.last_name) {
+    if (!studentData || (!studentData.first_name && !studentData.name) || !studentData.last_name) {
       return { status:'error', message:'กรุณากรอกชื่อและนามสกุล' };
+    }
+
+    // clean prefix & name
+    const cleanedName = cleanStudentNameServer_(studentData.prefix, studentData.first_name, studentData.last_name);
+    let gender = studentData.gender || '';
+    if (!gender) {
+      if (cleanedName.prefix === 'เด็กชาย' || cleanedName.prefix === 'นาย') gender = 'male';
+      else if (cleanedName.prefix === 'เด็กหญิง' || cleanedName.prefix === 'นางสาว' || cleanedName.prefix === 'นาง') gender = 'female';
     }
 
     // sanitize
     const clean = {
-      prefix       : sanitize(studentData.prefix),
-      first_name   : sanitize(studentData.first_name),
-      last_name    : sanitize(studentData.last_name),
+      prefix       : sanitize(cleanedName.prefix),
+      first_name   : sanitize(cleanedName.first_name),
+      last_name    : sanitize(cleanedName.last_name),
       national_id  : sanitize(studentData.national_id),
       birth_date   : studentData.birth_date || null,
-      gender       : studentData.gender || '',
+      gender       : gender,
       blood_type   : studentData.blood_type || '',
       nationality  : sanitize(studentData.nationality) || 'ไทย',
       religion     : sanitize(studentData.religion)    || 'พุทธ',
@@ -1167,7 +1176,7 @@ function saveStudent(studentData, sessionToken) {
       const now = new Date().toISOString();
       const obj = Object.assign({
         id        : generateId(),
-        student_id: generateStudentId(),
+        student_id: sanitize(studentData.student_id) || generateStudentId(),
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Students', obj);
       return { status:'success', data:obj, message:'เพิ่มนักเรียนสำเร็จ' };
@@ -1176,6 +1185,55 @@ function saveStudent(studentData, sessionToken) {
     logError({ fn:'saveStudent', error:e.message });
     return { status:'error', message:e.message };
   }
+}
+
+function cleanStudentNameServer_(prefix, firstName, lastName) {
+  let p = String(prefix || '').trim();
+  let f = String(firstName || '').trim();
+  let l = String(lastName || '').trim();
+
+  const knownPrefixes = [
+    { prefix: 'เด็กชาย', patterns: ['เด็กชาย', 'ด.ช.', 'ด.ช. '] },
+    { prefix: 'เด็กหญิง', patterns: ['เด็กหญิง', 'ด.ญ.', 'ด.ญ. '] },
+    { prefix: 'นาย',     patterns: ['นาย'] },
+    { prefix: 'นางสาว',  patterns: ['นางสาว', 'น.ส.', 'น.ส. '] },
+    { prefix: 'นาง',     patterns: ['นาง'] }
+  ];
+
+  if (p) {
+    for (const kp of knownPrefixes) {
+      if (kp.patterns.some(pat => p === pat || p.startsWith(pat))) {
+        p = kp.prefix;
+        break;
+      }
+    }
+  }
+
+  // Detect prefix inside first_name
+  for (const kp of knownPrefixes) {
+    for (const pat of kp.patterns) {
+      if (f.startsWith(pat)) {
+        f = f.substring(pat.length).trim();
+        if (!p) p = kp.prefix;
+        break;
+      }
+    }
+  }
+
+  // Strip duplicate prefix repetitions
+  while (p && f.startsWith(p)) {
+    f = f.substring(p.length).trim();
+  }
+
+  for (const kp of knownPrefixes) {
+    for (const pat of kp.patterns) {
+      while (f.startsWith(pat)) {
+        f = f.substring(pat.length).trim();
+      }
+    }
+  }
+
+  return { prefix: p, first_name: f, last_name: l };
 }
 
 function importStudentsCSV(rows, sessionToken) {
@@ -1189,58 +1247,251 @@ function importStudentsCSV(rows, sessionToken) {
 
     const all = readJsonSheet_('Students');
     const now = new Date().toISOString();
-    const inserted = [];
+    const config = getConfig();
+    const defaultYear = String(config.academic_year || (new Date().getFullYear() + 543));
+
+    // Calculate max student ID sequence for running IDs
+    let maxSeq = 0;
+    all.forEach(s => {
+      const sid = String(s.student_id || '');
+      if (sid.startsWith(defaultYear)) {
+        const num = parseInt(sid.slice(defaultYear.length), 10);
+        if (!isNaN(num) && num > maxSeq) maxSeq = num;
+      }
+    });
+
+    // Lookup maps for deduplication and updating
+    const byStudentId = {};
+    const byNationalId = {};
+    const byFullName = {};
+
+    all.forEach(s => {
+      if (s.student_id) byStudentId[String(s.student_id).trim()] = s;
+      if (s.national_id) byNationalId[String(s.national_id).trim()] = s;
+      const fnKey = (String(s.first_name || '').trim() + '_' + String(s.last_name || '').trim()).toLowerCase().replace(/\s+/g, '');
+      if (fnKey) byFullName[fnKey] = s;
+    });
+
+    const batchProcessed = new Set();
+    let insertedCount = 0;
+    let updatedCount = 0;
     const errors = [];
 
     rows.forEach((row, idx) => {
       try {
         if (!row.first_name || !row.last_name) {
-          errors.push('แถว ' + (idx + 1) + ': ไม่มีชื่อ/นามสกุล'); return;
+          const fullName = row.full_name || row.name || '';
+          if (fullName) {
+            const parts = fullName.trim().split(/\s+/);
+            if (parts.length >= 2) {
+              row.first_name = parts[0];
+              row.last_name = parts.slice(1).join(' ');
+            } else {
+              row.first_name = fullName;
+              row.last_name = '-';
+            }
+          }
         }
+
+        if (!row.first_name || !row.last_name) {
+          errors.push('แถว ' + (idx + 1) + ': ไม่มีชื่อ/นามสกุล');
+          return;
+        }
+
+        // Clean names & prefix
+        const cleanedName = cleanStudentNameServer_(row.prefix, row.first_name, row.last_name);
+        const prefix = cleanedName.prefix;
+        const firstName = cleanedName.first_name;
+        const lastName = cleanedName.last_name;
+
+        // Auto gender
+        let gender = (row.gender || '').toLowerCase().trim();
+        if (gender === 'ชาย' || gender === 'm' || gender === 'male') gender = 'male';
+        else if (gender === 'หญิง' || gender === 'f' || gender === 'female') gender = 'female';
+        else if (!gender) {
+          if (prefix === 'เด็กชาย' || prefix === 'นาย') gender = 'male';
+          else if (prefix === 'เด็กหญิง' || prefix === 'นางสาว' || prefix === 'นาง') gender = 'female';
+        }
+
+        const fnKey = (firstName + '_' + lastName).toLowerCase().replace(/\s+/g, '');
+        const sidKey = row.student_id ? String(row.student_id).trim() : '';
+
+        // Prevent duplicate inside the same CSV batch
+        const batchKey = sidKey ? ('id:' + sidKey) : ('fn:' + fnKey);
+        if (batchProcessed.has(batchKey)) {
+          return; // Skip duplicate inside CSV
+        }
+        batchProcessed.add(batchKey);
+
         const clean = {
-          prefix       : sanitize(row.prefix),
-          first_name   : sanitize(row.first_name),
-          last_name    : sanitize(row.last_name),
-          national_id  : sanitize(row.national_id),
-          birth_date   : row.birth_date || null,
-          gender       : row.gender || '',
-          blood_type   : row.blood_type || '',
-          nationality  : sanitize(row.nationality) || 'ไทย',
-          religion     : sanitize(row.religion) || 'พุทธ',
-          photo        : row.photo || '',
-          classroom    : sanitize(row.classroom),
-          academic_year: sanitize(row.academic_year) || getConfig().academic_year,
-          address      : sanitize(row.address),
-          parent_name  : sanitize(row.parent_name),
-          parent_phone : sanitize(row.parent_phone),
+          prefix         : sanitize(prefix),
+          first_name     : sanitize(firstName),
+          last_name      : sanitize(lastName),
+          national_id    : sanitize(row.national_id),
+          birth_date     : row.birth_date || null,
+          gender         : gender,
+          blood_type     : row.blood_type || '',
+          nationality    : sanitize(row.nationality) || 'ไทย',
+          religion       : sanitize(row.religion) || 'พุทธ',
+          photo          : row.photo || '',
+          classroom      : sanitize(row.classroom),
+          academic_year  : sanitize(row.academic_year) || defaultYear,
+          address        : sanitize(row.address),
+          parent_name    : sanitize(row.parent_name),
+          parent_phone   : sanitize(row.parent_phone),
           parent_relation: row.parent_relation || '',
-          status       : row.status || 'active'
+          status         : row.status || 'active'
         };
-        if (clean.national_id) {
-          const dup = all.find(s => s.national_id === clean.national_id);
-          if (dup) { errors.push('แถว ' + (idx + 1) + ': เลขบัตร ' + clean.national_id + ' ซ้ำ'); return; }
+
+        // Check if student already exists in database
+        let existing = null;
+        if (clean.national_id && byNationalId[clean.national_id]) {
+          existing = byNationalId[clean.national_id];
+        } else if (sidKey && byStudentId[sidKey]) {
+          existing = byStudentId[sidKey];
+        } else if (fnKey && byFullName[fnKey]) {
+          existing = byFullName[fnKey];
         }
-        const obj = Object.assign({
-          id        : generateId(),
-          student_id: generateStudentId()
-        }, clean, { created_at: now, updated_at: now });
-        appendJsonRow_('Students', obj);
-        inserted.push(obj);
-        all.push(obj);
+
+        if (existing) {
+          // Update existing student with non-empty fields
+          Object.keys(clean).forEach(k => {
+            if (clean[k] !== undefined && clean[k] !== '') {
+              existing[k] = clean[k];
+            }
+          });
+          existing.updated_at = now;
+          updatedCount++;
+        } else {
+          // Insert new student
+          let assignedStudentId = sidKey;
+          if (!assignedStudentId) {
+            maxSeq++;
+            assignedStudentId = defaultYear + String(maxSeq).padStart(4, '0');
+          }
+          const obj = Object.assign({
+            id        : generateId(),
+            student_id: assignedStudentId
+          }, clean, { created_at: now, updated_at: now });
+
+          all.push(obj);
+          if (obj.student_id) byStudentId[obj.student_id] = obj;
+          if (obj.national_id) byNationalId[obj.national_id] = obj;
+          byFullName[fnKey] = obj;
+          insertedCount++;
+        }
       } catch (e) {
         errors.push('แถว ' + (idx + 1) + ': ' + e.message);
       }
     });
 
+    // Bulk save in one single spreadsheet write!
+    writeJsonSheet_('Students', all);
+
+    let msg = `นำเข้าข้อมูลเรียบร้อย (เพิ่มใหม่ ${insertedCount} คน`;
+    if (updatedCount > 0) msg += `, อัปเดตข้อมูลเดิม ${updatedCount} คน`;
+    msg += ')';
+    if (errors.length) msg += ` มีข้อผิดพลาด ${errors.length} รายการ`;
+
     return {
-      status: inserted.length ? 'success' : 'error',
-      message: 'นำเข้าสำเร็จ ' + inserted.length + ' รายการ' + (errors.length ? ' (ข้อผิดพลาด ' + errors.length + ' รายการ)' : ''),
-      inserted: inserted.length,
+      status: (insertedCount > 0 || updatedCount > 0) ? 'success' : 'error',
+      message: msg,
+      inserted: insertedCount,
+      updated: updatedCount,
       errors: errors
     };
   } catch (e) {
     logError({ fn:'importStudentsCSV', error:e.message });
     return { status:'error', message:e.message };
+  }
+}
+
+function cleanStudentsData(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    const all = readJsonSheet_('Students');
+    if (!all || !all.length) {
+      return { status: 'success', message: 'ไม่มีข้อมูลนักเรียนในระบบ' };
+    }
+
+    let fixedPrefixCount = 0;
+    let fixedGenderCount = 0;
+    const now = new Date().toISOString();
+
+    // 1. Clean each student's prefix, name, and gender
+    all.forEach(s => {
+      const origPrefix = s.prefix || '';
+      const origFirst  = s.first_name || '';
+      const origLast   = s.last_name || '';
+
+      const cleaned = cleanStudentNameServer_(origPrefix, origFirst, origLast);
+      if (cleaned.prefix !== origPrefix || cleaned.first_name !== origFirst) {
+        s.prefix = cleaned.prefix;
+        s.first_name = cleaned.first_name;
+        s.updated_at = now;
+        fixedPrefixCount++;
+      }
+
+      // Auto-fix gender if missing
+      if (!s.gender) {
+        if (s.prefix === 'เด็กชาย' || s.prefix === 'นาย') {
+          s.gender = 'male';
+          s.updated_at = now;
+          fixedGenderCount++;
+        } else if (s.prefix === 'เด็กหญิง' || s.prefix === 'นางสาว' || s.prefix === 'นาง') {
+          s.gender = 'female';
+          s.updated_at = now;
+          fixedGenderCount++;
+        }
+      }
+    });
+
+    // 2. Deduplicate: if multiple students have identical student_id or identical (first_name + last_name)
+    const unique = [];
+    const seen = new Set();
+    let dupCount = 0;
+
+    all.forEach(s => {
+      const sid = String(s.student_id || '').trim();
+      const fnKey = (String(s.first_name || '').trim() + '_' + String(s.last_name || '').trim()).toLowerCase().replace(/\s+/g, '');
+      const key = sid ? ('id:' + sid) : ('fn:' + fnKey);
+
+      if (seen.has(key)) {
+        dupCount++;
+        // Merge any non-empty fields into the existing one
+        const existing = unique.find(u => {
+          if (sid && u.student_id === sid) return true;
+          const uFnKey = (String(u.first_name || '').trim() + '_' + String(u.last_name || '').trim()).toLowerCase().replace(/\s+/g, '');
+          return uFnKey === fnKey;
+        });
+        if (existing) {
+          ['classroom', 'academic_year', 'national_id', 'parent_name', 'parent_phone', 'birth_date', 'photo', 'gender'].forEach(f => {
+            if (!existing[f] && s[f]) existing[f] = s[f];
+          });
+        }
+      } else {
+        seen.add(key);
+        if (fnKey) seen.add('fn:' + fnKey);
+        unique.push(s);
+      }
+    });
+
+    // Write back cleaned list
+    writeJsonSheet_('Students', unique);
+
+    return {
+      status: 'success',
+      message: 'ทำความสะอาดเรียบร้อย: ลบรายการซ้ำ ' + dupCount + ' คน, แก้ไขคำนำหน้า ' + fixedPrefixCount + ' คน' + (fixedGenderCount ? ', กำหนดเพศ ' + fixedGenderCount + ' คน' : ''),
+      duplicates_removed: dupCount,
+      fixed_prefixes: fixedPrefixCount,
+      fixed_genders: fixedGenderCount,
+      total_remaining: unique.length
+    };
+  } catch (e) {
+    logError({ fn: 'cleanStudentsData', error: e.message });
+    return { status: 'error', message: e.message };
   }
 }
 
