@@ -332,6 +332,7 @@ function initializeSheets() {
         school_phone: '',
         school_email: '',
         school_logo: 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN',
+        director_name: 'นายอธิการ สุขศรี',
         qr_code_contact: '',
         folder_id: '',
         academic_year: String(new Date().getFullYear() + 543),
@@ -655,6 +656,10 @@ function getConfig() {
       cfg.school_logo = 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
       changed = true;
     }
+    if (!cfg.director_name || cfg.director_name === 'นายสมหมาย ชัยพันธุ์') {
+      cfg.director_name = 'นายอธิการ สุขศรี';
+      changed = true;
+    }
     if (changed && (cfg.id || arr.length > 0)) {
       saveConfig(cfg);
     }
@@ -945,7 +950,7 @@ function getDashboardDataCore_() {
   const result = {
     status: 'success',
     data: {
-      config: { school_name: config.school_name, school_logo: config.school_logo, academic_year: config.academic_year, semester: config.semester },
+      config: { school_name: config.school_name, school_logo: config.school_logo, academic_year: config.academic_year, semester: config.semester, director_name: config.director_name || 'นายอธิการ สุขศรี' },
       stats: {
         students      : studentsActive,
         personnel     : personnelActive,
@@ -3255,7 +3260,7 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
   </div>
   <div class="sig">
     <div class="sig-line"></div>
-    <div>(.............................................)</div>
+    <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
     <div>ผู้อำนวยการโรงเรียน</div>
   </div>
 </div>
@@ -6405,7 +6410,7 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   </div>
   <div>
     <div class="sig-line"></div>
-    <div>(............................................)</div>
+    <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
     <div>ผู้อำนวยการโรงเรียน</div>
   </div>
 </div>
@@ -6530,7 +6535,7 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
   </div>
   <div>
     <div class="sig-line"></div>
-    <div>(.............................................)</div>
+    <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
     <div>ผู้อำนวยการโรงเรียน</div>
   </div>
 </div>

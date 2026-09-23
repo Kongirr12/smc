@@ -202,6 +202,9 @@ function enterApp() {
         <i class='bx bxs-graduation' id="sidebarLogoIcon" style="display:none;"></i>`;
       }
     }
+    if (config.director_name) {
+      localStorage.setItem('cached_director_name', config.director_name);
+    }
   }
 
   // ผู้ใช้

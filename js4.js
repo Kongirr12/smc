@@ -1623,6 +1623,10 @@ function renderSettingsForm(c) {
               <input type="text" id="set_school_name" class="set-input" value="${escapeHTML(c.school_name||'')}">
             \x3c/div>
             <div class="col-span-12">
+              <label class="set-label">ชื่อผู้อำนวยการโรงเรียน\x3c/label>
+              <input type="text" id="set_director_name" class="set-input" value="${escapeHTML(c.director_name||'นายอธิการ สุขศรี')}">
+            \x3c/div>
+            <div class="col-span-12">
               <label class="set-label">ที่อยู่\x3c/label>
               <input type="text" id="set_school_address" class="set-input" value="${escapeHTML(c.school_address||'')}">
             \x3c/div>
@@ -1777,6 +1781,7 @@ function saveSettings() {
 
   const settings = {
     school_name        : document.getElementById('set_school_name').value,
+    director_name      : (document.getElementById('set_director_name') ? document.getElementById('set_director_name').value.trim() : 'นายอธิการ สุขศรี'),
     school_address     : document.getElementById('set_school_address').value,
     school_district    : document.getElementById('set_school_district').value,
     school_province    : document.getElementById('set_school_province').value,
@@ -2555,7 +2560,7 @@ function printCalendar() {
       </div>
       <div class="sig-box">
         <div class="sig-line">ลงชื่อ............................................................ผู้อนุมัติ</div>
-        <div>(นายสมหมาย ชัยพันธุ์)</div>
+        <div>(นายอธิการ สุขศรี)</div>
         <div>ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
         <div>วันที่ ..... เดือน .................... พ.ศ. ........</div>
       </div>
