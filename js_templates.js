@@ -113,8 +113,55 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['บันทึกข้อความ', 'อนุมัติแผน', 'วิชาการ', 'หัวหน้ากลุ่มสาระ'],
     summary: 'แบบบันทึกข้อความมาตรฐานราชการ เสนอผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร เพื่อขออนุมัติใช้แผนการจัดการเรียนรู้ประจำภาคเรียน',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:24pt; margin-bottom:10pt;">บันทึกข้อความ</div>
-      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษากำแพงเพชร  กลุ่มสาระการเรียนรู้/กลุ่มงาน ............................................  โทร. ..................</p>
+      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม  กลุ่มสาระการเรียนรู้/กลุ่มงาน ............................................  โทร. ..................</p>
       <p class="no-indent"><strong>ที่:</strong> ศธ ................................................................ <strong>วันที่:</strong> ..... เดือน .................... พ.ศ. ............</p>
       <p class="no-indent"><strong>เรื่อง:</strong> ขออนุมัติใช้แผนการจัดการเรียนรู้ ประจำภาคเรียนที่ ..... ปีการศึกษา ............</p>
       <hr style="border:none; border-top:1px solid #000; margin:6pt 0;">
@@ -163,6 +210,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['แก้เกรด', 'สอบแก้ตัว', '0 ร มส', 'วัดผล', 'ทะเบียน'],
     summary: 'เอกสารวัดผลสำหรับการดำเนินการปรับปรุงผลการเรียนของนักเรียน เพื่อส่งฝ่ายวิชาการและงานทะเบียนประมวลผล',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         แบบรายงานผลการสอบแก้ตัว / แก้ไขผลการเรียน (0, ร, มส, มผ)<br>
         โรงเรียนมหาชัยพิทยาคาร ภาคเรียนที่ ..... ปีการศึกษา ............
@@ -223,7 +317,7 @@ const FOUR_DEPT_TEMPLATES = [
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:12pt;">
         รายงานการประเมินตนเองของครูผู้สอน (Self Assessment Report: SAR)<br>
         ปีการศึกษา ............ โรงเรียนมหาชัยพิทยาคาร<br>
-      สำนักงานเขตพื้นที่การศึกษามัธยมศึกษากำแพงเพชร
+      สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม
       </div>
       <p class="no-indent"><strong>ชื่อผู้รายงาน:</strong> .............................................................. <strong>ตำแหน่ง:</strong> ..............................................................</p>
       <p class="no-indent"><strong>กลุ่มสาระการเรียนรู้:</strong> ......................................................... <strong>ฝ่าย/กลุ่มงาน:</strong> ..............................................................</p>
@@ -332,6 +426,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['สอนแทน', 'แลกคาบ', 'ตารางสอน', 'ไปราชการ'],
     summary: 'เอกสารขออนุมัติสอนแทนพร้อมลายมือชื่อผู้สอนแทน เพื่อป้องกันไม่ให้เกิดคาบว่างเมื่อครูติดภารกิจราชการ',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:20pt; margin-bottom:10pt;">
         แบบคำขออนุมัติสอนแทน / แลกเปลี่ยนคาบการสอน<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -378,8 +519,55 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['แข่งขัน', 'ทัศนศึกษา', 'พานักเรียน', 'ยินยอมผู้ปกครอง'],
     summary: 'เอกสารขออนุมัตินำนักเรียนออกนอกสถานศึกษา พร้อมบัญชีรายชื่อนักเรียน ครูผู้ควบคุม และเอกสารยินยอม',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">บันทึกข้อความ</div>
-      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษากำแพงเพชร  กลุ่มสาระการเรียนรู้/กลุ่มงาน ............................................</p>
+      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม  กลุ่มสาระการเรียนรู้/กลุ่มงาน ............................................</p>
       <p class="no-indent"><strong>ที่:</strong> ศธ ................................................................ <strong>วันที่:</strong> ..... เดือน .................... พ.ศ. ............</p>
       <p class="no-indent"><strong>เรื่อง:</strong> ขออนุมัตินำนักเรียนเข้าร่วมกิจกรรม / การแข่งขันภายนอกสถานศึกษา</p>
       <hr style="border:none; border-top:1px solid #000; margin:6pt 0;">
@@ -411,8 +599,55 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['จัดซื้อ', 'จัดจ้าง', 'พัสดุ', 'งบประมาณ', 'ขออนุมัติซื้อ'],
     summary: 'แบบฟอร์มขออนุมัติจัดซื้อ/จัดจ้างพัสดุ พร้อมตารางรายการพัสดุ วงเงินงบประมาณ และระบุความจำเป็นเร่งด่วน',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:24pt; margin-bottom:10pt;">บันทึกข้อความ</div>
-      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษากำแพงเพชร  กลุ่มงาน/ฝ่าย ............................................  โทร. ..................</p>
+      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม  กลุ่มงาน/ฝ่าย ............................................  โทร. ..................</p>
       <p class="no-indent"><strong>ที่:</strong> ศธ ................................................................ <strong>วันที่:</strong> ..... เดือน .................... พ.ศ. ............</p>
       <p class="no-indent"><strong>เรื่อง:</strong> ขออนุมัติจัดซื้อ / จัดจ้างพัสดุ เพื่อใช้ในการปฏิบัติงาน</p>
       <hr style="border:none; border-top:1px solid #000; margin:6pt 0;">
@@ -467,7 +702,7 @@ const FOUR_DEPT_TEMPLATES = [
         ( ) อนุมัติ และมอบหมายเจ้าหน้าที่พัสดุดำเนินการตามระเบียบ<br>
         ( ) ไม่อนุมัติ เนื่องจาก ............................................................................................................<br><br>
         ลงชื่อ..............................................................ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร<br>
-        (............................................)
+        (นายอธิการ สุขศรี)
       </div>
     `
   },
@@ -532,6 +767,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ยืมเงิน', 'สัญญายืม', 'ทดรองราชการ', 'การเงิน'],
     summary: 'สัญญาการยืมเงินทดรองราชการเพื่อดำเนินกิจกรรมโรงเรียน พร้อมระบุข้อผูกพันการส่งหลักฐานและเคลียร์เงินยืมภายในกำหนด',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         สัญญายืมเงินทดรองราชการ<br>
         สัญญาเลขที่ ............ / ............
@@ -567,6 +849,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['เบิกจ่าย', 'เดินทางไปราชการ', 'เบี้ยเลี้ยง', 'ค่าที่พัก', 'แบบ 8708'],
     summary: 'เอกสารขอเบิกจ่ายเงินงบประมาณและค่าใช้จ่ายในการปฏิบัติราชการพร้อมตารางรายละเอียดการจ่ายเงิน',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         ใบเบิกค่าใช้จ่ายในการเดินทางไปราชการ<br>
         ที่ทำการ: โรงเรียนมหาชัยพิทยาคาร
@@ -630,6 +959,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ใบสำคัญรับเงิน', 'วิทยากร', 'ค่าตอบแทน', 'การเงิน'],
     summary: 'เอกสารสำคัญทางบัญชี ใช้เป็นหลักฐานแทนใบเสร็จรับเงินตามระเบียบการเงินภาครัฐ',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         ใบสำคัญรับเงิน (Receipt Voucher)<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -786,6 +1162,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['นักเรียนยากจน', 'CCT', 'ปัจจัยพื้นฐาน', 'เบิกจ่ายทุน'],
     summary: 'เอกสารสำคัญทางบัญชีและการจ่ายเงินเพื่อการศึกษาแก่นักเรียน พร้อมช่องลงนามนักเรียนและผู้ปกครอง',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         หลักฐานการจ่ายเงินอุดหนุนปัจจัยพื้นฐานนักเรียนยากจน / ยากจนพิเศษ (CCT)<br>
         ภาคเรียนที่ ..... ปีการศึกษา ............ โรงเรียนมหาชัยพิทยาคาร
@@ -847,6 +1270,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ใบลา', 'ลาป่วย', 'ลากิจ', 'ลาพักผ่อน', 'งานบุคคล', 'วันลา'],
     summary: 'แบบฟอร์มการขอลาหยุดราชการ พร้อมตารางสถิติวันลาในรอบปีงบประมาณและข้อมูลผู้ปฏิบัติราชการแทน',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:24pt; margin-bottom:10pt;">แบบใบลา</div>
       <p class="no-indent" style="text-align:right;">เขียนที่: โรงเรียนมหาชัยพิทยาคาร<br>วันที่ ..... เดือน .................... พ.ศ. ............</p>
       <p class="no-indent"><strong>เรื่อง:</strong> ขอลา ( ) ป่วย ( ) กิจส่วนตัว ( ) พักผ่อน</p>
@@ -888,7 +1358,7 @@ const FOUR_DEPT_TEMPLATES = [
       <div style="margin-top:15pt; border:1px solid #CBD5E1; padding:8pt;">
         <strong>คำสั่งผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร:</strong> ( ) อนุญาต ( ) ไม่อนุญาต<br><br>
         ลงชื่อ..............................................................ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร<br>
-        (............................................)
+        (นายอธิการ สุขศรี)
       </div>
     `
   },
@@ -902,8 +1372,55 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ไปราชการ', 'อบรม', 'ประชุมสัมมนา', 'พัฒนาตนเอง'],
     summary: 'แบบบันทึกข้อความมาตรฐานราชการ ขออนุมัติไปปฏิบัติหน้าที่ราชการ พร้อมระบุสิทธิ์การขอเบิกจ่ายงบประมาณและการใช้ยานพาหนะ',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:24pt; margin-bottom:10pt;">บันทึกข้อความ</div>
-      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษากำแพงเพชร  กลุ่มงาน/ฝ่าย ............................................  โทร. ..................</p>
+      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม  กลุ่มงาน/ฝ่าย ............................................  โทร. ..................</p>
       <p class="no-indent"><strong>ที่:</strong> ศธ ................................................................ <strong>วันที่:</strong> ..... เดือน .................... พ.ศ. ............</p>
       <p class="no-indent"><strong>เรื่อง:</strong> ขออนุมัติเดินทางไปปฏิบัติราชการ / เข้าร่วมการประชุมสัมมนา</p>
       <hr style="border:none; border-top:1px solid #000; margin:6pt 0;">
@@ -932,6 +1449,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['รายงานไปราชการ', 'ขยายผล', 'อบรมสัมมนา', 'PLC'],
     summary: 'เอกสารรายงานสิ่งที่ได้เรียนรู้จากการไปราชการ ประโยชน์ที่ได้รับ และแนวทางนำมาประยุกต์ใช้ในโรงเรียนมหาชัยพิทยาคาร',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         แบบรายงานผลการเดินทางไปปฏิบัติราชการ / อบรมสัมมนา<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -965,6 +1529,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ว.PA', 'ข้อตกลงพัฒนางาน', 'วิทยฐานะ', 'ประเด็นท้าทาย'],
     summary: 'ฟอร์มข้อตกลง PA มาตรฐาน ก.ค.ศ. แบ่งเป็นส่วนภาระงานตามมาตรฐานตำแหน่ง และส่วนประเด็นท้าทายในการพัฒนาผลลัพธ์การเรียนรู้',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:12pt;">
         แบบข้อตกลงในการพัฒนางาน (PA) สำหรับข้าราชการครูและบุคลากรทางการศึกษา<br>
         ประจำปีงบประมาณ พ.ศ. ............ โรงเรียนมหาชัยพิทยาคาร
@@ -991,8 +1602,8 @@ const FOUR_DEPT_TEMPLATES = [
         </div>
         <div style="text-align:center; width:45%;">
           ลงชื่อ........................................................ผู้รับข้อตกลง<br>
-          (............................................)<br>
-          ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร          ตำแหน่ง ..............................................................<br>
+          (นายอธิการ สุขศรี)<br>
+          ตำแหน่ง ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร<br>
           วันที่ ..... เดือน .................... พ.ศ. ........<br>
 
         </div>
@@ -1009,6 +1620,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['สลับเวร', 'เวรยาม', 'รักษาการณ์', 'งานบุคคล'],
     summary: 'เอกสารขอสับเปลี่ยนเวรรักษาการณ์พร้อมลายมือชื่อผู้ยินยอมเข้าเวรแทน เพื่อความปลอดภัยของสถานศึกษา',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:20pt; margin-bottom:10pt;">
         แบบขออนุมัติสับเปลี่ยนการปฏิบัติหน้าที่เวรรักษาการณ์สถานที่ราชการ<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -1030,7 +1688,7 @@ const FOUR_DEPT_TEMPLATES = [
       <div style="margin-top:20pt; border:1px solid #CBD5E1; padding:8pt;">
         <strong>คำสั่งผู้อำนวยการ:</strong> ( ) อนุมัติ ( ) ไม่อนุมัติ<br><br>
         ลงชื่อ..............................................................ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร<br>
-        (............................................)
+        (นายอธิการ สุขศรี)
       </div>
     `
   },
@@ -1044,6 +1702,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['รับรองเงินเดือน', 'รับรองการทำงาน', 'ธุรกรรม', 'ขอหนังสือรับรอง'],
     summary: 'แบบฟอร์มคำขอหนังสือรับรองเพื่อนำไปใช้ประกอบการติดต่อธนาคาร ศึกษาต่อ หรือทำธุรกรรมทางการเงิน',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         แบบคำร้องขอหนังสือรับรอง (เงินเดือน / การทำงาน)<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -1070,6 +1775,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['มาสาย', 'ชี้แจงมาสาย', 'ลงเวลา', 'ระเบียบวินัย'],
     summary: 'เอกสารชี้แจงเหตุจำเป็นกรณีลงเวลาปฏิบัติงานล่าช้าเพื่อเสนอผู้บริหารพิจารณาบันทึกในประวัติการลงเวลา',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:20pt; margin-bottom:10pt;">
         แบบบันทึกเหตุผลความจำเป็นกรณีมาปฏิบัติราชการสาย<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -1098,6 +1850,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ขอใช้รถ', 'ยานพาหนะ', 'รถตู้โรงเรียน', 'เดินทาง'],
     summary: 'แบบฟอร์มขออนุมัติการใช้ยานพาหนะส่วนกลางของสถานศึกษา พร้อมกำหนดการเดินทาง เส้นทาง และจำนวนผู้โดยสาร',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         แบบขออนุญาตใช้ยานพาหนะของโรงเรียน<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -1117,7 +1916,7 @@ const FOUR_DEPT_TEMPLATES = [
       <div style="margin-top:15pt; border:1px solid #CBD5E1; padding:8pt;">
         <strong>การสั่งการ / อนุญาต:</strong> ( ) อนุญาต มอบหมายพนักงานขับรถ: ....................................................<br><br>
         ลงชื่อ..............................................................ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร<br>
-        (............................................)
+        (นายอธิการ สุขศรี)
       </div>
     `
   },
@@ -1131,6 +1930,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ขอใช้สถานที่', 'ห้องประชุม', 'หอประชุม', 'จองสถานที่'],
     summary: 'แบบฟอร์มจองและขออนุญาตใช้งานสถานที่ราชการ เครื่องเสียง และระบบปรับอากาศสำหรับจัดประชุมหรือกิจกรรม',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         แบบขออนุญาตใช้อาคารสถานที่และห้องประชุม<br>
         โรงเรียนมหาชัยพิทยาคาร
@@ -1246,8 +2092,55 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['ขอความอนุเคราะห์', 'ติดต่อประสานงาน', 'หน่วยงานภายนอก'],
     summary: 'แบบฟอร์มขอความอนุเคราะห์มาตรฐาน สำหรับเสนอผู้อำนวยการเพื่อลงนามในหนังสือราชการภายนอก',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:24pt; margin-bottom:10pt;">บันทึกข้อความ</div>
-      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษากำแพงเพชร  กลุ่มงาน/ฝ่าย ............................................  โทร. ..................</p>
+      <p class="no-indent"><strong>ส่วนราชการ</strong>  โรงเรียนมหาชัยพิทยาคาร  สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม  กลุ่มงาน/ฝ่าย ............................................  โทร. ..................</p>
       <p class="no-indent"><strong>ที่:</strong> ศธ ................................................................ <strong>วันที่:</strong> ..... เดือน .................... พ.ศ. ............</p>
       <p class="no-indent"><strong>เรื่อง:</strong> ขอความอนุเคราะห์ ................................................................................................................</p>
       <hr style="border:none; border-top:1px solid #000; margin:6pt 0;">
@@ -1273,6 +2166,53 @@ const FOUR_DEPT_TEMPLATES = [
     tags: ['อุบัติเหตุ', 'ความปลอดภัย', 'พยาบาล', 'เหตุฉุกเฉิน'],
     summary: 'เอกสารรายงานเหตุการณ์ฉุกเฉิน บันทึกการปฐมพยาบาล หรือการส่งตัวรักษาต่อโรงพยาบาลเพื่อรายงานผู้บริหาร',
     docBody: `
+      <div style="text-align:center; margin-bottom:4pt; line-height:1;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 110" width="78" height="66" style="display:inline-block;">
+          <!-- Crown spires -->
+          <line x1="65" y1="4" x2="65" y2="14" stroke="#6B0000" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="7" x2="60" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="72" y1="7" x2="70" y2="15" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="52" y1="12" x2="56" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="78" y1="12" x2="74" y2="17" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Crown base -->
+          <path d="M53 17 Q65 13 77 17 L75 22 Q65 18 55 22 Z" fill="#6B0000"/>
+          <!-- Head -->
+          <ellipse cx="65" cy="28" rx="13" ry="12" fill="#6B0000"/>
+          <!-- Beak -->
+          <path d="M61 32 L65 29 L69 32 L65 37 Z" fill="#8B6914"/>
+          <!-- Eyes -->
+          <circle cx="58" cy="26" r="3" fill="white"/><circle cx="59" cy="26" r="1.2" fill="#111"/>
+          <circle cx="72" cy="26" r="3" fill="white"/><circle cx="73" cy="26" r="1.2" fill="#111"/>
+          <!-- Neck -->
+          <path d="M57 38 Q65 34 73 38 L72 48 Q65 44 58 48 Z" fill="#6B0000"/>
+          <!-- Body -->
+          <ellipse cx="65" cy="60" rx="11" ry="18" fill="#6B0000"/>
+          <!-- Left wing upper -->
+          <path d="M56 45 C46 38 30 40 10 34 C20 48 40 50 55 52 Z" fill="#6B0000"/>
+          <!-- Left wing lower feathers -->
+          <path d="M55 52 C38 56 20 52 4 58 C8 54 18 50 38 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Right wing upper -->
+          <path d="M74 45 C84 38 100 40 120 34 C110 48 90 50 75 52 Z" fill="#6B0000"/>
+          <!-- Right wing lower feathers -->
+          <path d="M75 52 C92 56 110 52 126 58 C122 54 112 50 92 52 Z" fill="#6B0000" opacity="0.85"/>
+          <!-- Tail feathers -->
+          <line x1="57" y1="77" x2="53" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="61" y1="78" x2="59" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="65" y1="78" x2="65" y2="93" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="69" y1="78" x2="71" y2="92" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="73" y1="77" x2="77" y2="90" stroke="#6B0000" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left leg -->
+          <line x1="58" y1="76" x2="54" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="54" y1="84" x2="48" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="54" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="54" y1="84" x2="59" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <!-- Right leg -->
+          <line x1="72" y1="76" x2="76" y2="84" stroke="#6B0000" stroke-width="2.5"/>
+          <line x1="76" y1="84" x2="82" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="76" y2="90" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+          <line x1="76" y1="84" x2="71" y2="87" stroke="#6B0000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div style="text-align:center; font-weight:bold; font-size:22pt; margin-bottom:10pt;">
         แบบรายงานอุบัติเหตุและเหตุฉุกเฉินในสถานศึกษา<br>
         โรงเรียนมหาชัยพิทยาคาร
