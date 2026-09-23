@@ -1,10 +1,10 @@
 /* ============================================================
  *  MHC Smart School — Service Worker (PWA & Offline Cache)
- *  Version: 2.6.6
+ *  Version: 2.6.7
  *  Strategy: Network-First for App Code, Cache-First for Assets
  * ============================================================ */
 
-const CACHE_NAME = 'mhc-smart-school-v2.6.6';
+const CACHE_NAME = 'mhc-smart-school-v2.6.7';
 
 const PRECACHE_ASSETS = [
   './',
@@ -21,6 +21,7 @@ const PRECACHE_ASSETS = [
   'js_qr_attendance.js',
   'js_line_oa.js',
   'js_manual.js',
+  'js_templates.js',
   'favicon.ico',
   'favicon-32.png',
   'favicon-192.png',

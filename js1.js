@@ -348,6 +348,7 @@ function navigate(page) {
     approvals: 'ระบบอนุมัติ',
     calendar: 'ปฏิทินและข่าวสาร',
     files: 'คลังไฟล์',
+    templates: 'แบบฟอร์มงาน 4 ฝ่าย',
     reports: 'รายงาน',
     users: 'จัดการผู้ใช้งาน',
     settings: 'ตั้งค่าระบบ',
@@ -386,6 +387,7 @@ function navigate(page) {
     case 'approvals': if (typeof renderApprovals === 'function') return renderApprovals(content); break;
     case 'calendar':  if (typeof renderCalendar  === 'function') return renderCalendar(content);  break;
     case 'files':     if (typeof renderFiles     === 'function') return renderFiles(content);     break;
+    case 'templates': if (typeof renderTemplates === 'function') return renderTemplates(content); break;
     case 'reports':   if (typeof renderReports   === 'function') return renderReports(content);   break;
     case 'users':     if (typeof renderUsers     === 'function') return renderUsers(content);     break;
     case 'settings':  if (typeof renderSettings  === 'function') return renderSettings(content);  break;
