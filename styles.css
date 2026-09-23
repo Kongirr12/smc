@@ -1318,3 +1318,20 @@ html.dark-mode .text-warning { color: #FBBF24 !important; }
 html.dark-mode .text-accent { color: #A78BFA !important; }
 html.dark-mode .text-info { color: #38BDF8 !important; }
 html.dark-mode .text-muted { color: #94A3B8 !important; }
+
+/* ─── Attendance Module Dark Mode ─── */
+html.dark-mode .att-status-btn:not(.active) {
+  background: #1A1D25 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #94A3B8 !important;
+}
+html.dark-mode .att-status-btn.active {
+  color: #FFFFFF !important;
+}
+html.dark-mode .att-mobile-row {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark-mode .att-mobile-name {
+  color: #F1F5F9 !important;
+}
+
