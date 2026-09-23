@@ -121,6 +121,8 @@ function routeApi(action, params, token) {
       case 'getStudentById': return getStudentById(params.id, token);
       case 'saveStudent': return saveStudent(params.data ? JSON.parse(params.data) : params, token);
       case 'deleteStudent': return deleteStudent(params.id, token);
+      case 'deleteStudentsBulk': return deleteStudentsBulk(params.ids || params.student_ids || params.data || params, token);
+      case 'deleteStudentsByFilter': return deleteStudentsByFilter(params.filters || params.filterParams || params.data || params, token);
       case 'importStudents': return importStudents(params, token);
       case 'importStudentsCSV': return importStudentsCSV(typeof params.records === 'string' ? JSON.parse(params.records || '[]') : (params.records || []), token);
       case 'cleanStudentsData': return cleanStudentsData(token);
@@ -1500,7 +1502,7 @@ function deleteStudent(id, sessionToken) {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
     const perms = (auth.user && auth.user.permissions) || [];
-    if (!perms.includes('delete')) {
+    if (auth.role !== 'admin' && !perms.includes('delete')) {
       return { status:'error', message:'no_permission', code:403 };
     }
 
@@ -1510,6 +1512,125 @@ function deleteStudent(id, sessionToken) {
       : { status:'error', message:'ไม่พบข้อมูลที่จะลบ' };
   } catch (e) {
     logError({ fn:'deleteStudent', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function deleteStudentsBulk(ids, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    const perms = (auth.user && auth.user.permissions) || [];
+    if (auth.role !== 'admin' && !perms.includes('delete')) {
+      return { status:'error', message:'no_permission', code:403 };
+    }
+
+    let idList = [];
+    if (Array.isArray(ids)) {
+      idList = ids.map(x => String(x).trim()).filter(Boolean);
+    } else if (typeof ids === 'string') {
+      try {
+        const parsed = JSON.parse(ids);
+        if (Array.isArray(parsed)) idList = parsed.map(x => String(x).trim()).filter(Boolean);
+      } catch(e) {
+        idList = ids.split(',').map(x => x.trim()).filter(Boolean);
+      }
+    } else if (ids && typeof ids === 'object') {
+      const candidate = ids.ids || ids.student_ids || ids.data;
+      if (Array.isArray(candidate)) {
+        idList = candidate.map(x => String(x).trim()).filter(Boolean);
+      }
+    }
+
+    if (!idList.length) {
+      return { status:'error', message:'กรุณาระบุรหัสข้อมูลนักเรียนที่ต้องการลบ' };
+    }
+
+    const idSet = new Set(idList);
+    const all = readJsonSheet_('Students');
+    const remaining = all.filter(s => !idSet.has(String(s.id)) && !idSet.has(String(s.student_id)));
+    const deletedCount = all.length - remaining.length;
+
+    if (deletedCount > 0) {
+      writeJsonSheet_('Students', remaining);
+    }
+
+    return {
+      status: 'success',
+      message: 'ลบข้อมูลนักเรียนสำเร็จ ' + deletedCount + ' รายการ',
+      deleted_count: deletedCount
+    };
+  } catch (e) {
+    logError({ fn:'deleteStudentsBulk', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function deleteStudentsByFilter(filterParams, sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    const perms = (auth.user && auth.user.permissions) || [];
+    if (auth.role !== 'admin' && !perms.includes('delete')) {
+      return { status:'error', message:'no_permission', code:403 };
+    }
+
+    let params = filterParams;
+    if (typeof params === 'string') {
+      try { params = JSON.parse(params); } catch(e) { params = {}; }
+    }
+    params = params || {};
+    if (params.filters && typeof params.filters === 'object') {
+      params = params.filters;
+    }
+
+    const classroom = params.classroom ? String(params.classroom).trim() : '';
+    const academic_year = params.academic_year ? String(params.academic_year).trim() : '';
+    const status = params.status ? String(params.status).trim() : '';
+    const gender = params.gender ? String(params.gender).trim() : '';
+    const search = params.search ? String(params.search).trim().toLowerCase() : '';
+
+    // Safety guard: require at least one filter criterion to prevent accidental wipe of all students
+    if (!classroom && !academic_year && !status && !gender && !search) {
+      return { status:'error', message:'เพื่อความปลอดภัย กรุณาระบุเงื่อนไขการกรอง (เช่น ชั้นเรียน หรือ ปีการศึกษา) ก่อนสั่งลบ' };
+    }
+
+    const all = readJsonSheet_('Students');
+    const remaining = [];
+    let deletedCount = 0;
+
+    all.forEach(s => {
+      let matches = true;
+      if (classroom && String(s.classroom || '') !== classroom) matches = false;
+      if (academic_year && String(s.academic_year || '') !== academic_year) matches = false;
+      if (status && String(s.status || '') !== status) matches = false;
+      if (gender && String(s.gender || '') !== gender) matches = false;
+      if (search) {
+        const blob = [
+          s.student_id, s.national_id, s.first_name, s.last_name,
+          s.classroom, s.parent_name, s.parent_phone
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (blob.indexOf(search) === -1) matches = false;
+      }
+
+      if (matches) {
+        deletedCount++;
+      } else {
+        remaining.push(s);
+      }
+    });
+
+    if (deletedCount > 0) {
+      writeJsonSheet_('Students', remaining);
+    }
+
+    return {
+      status: 'success',
+      message: 'ลบข้อมูลนักเรียนตามตัวกรองสำเร็จ ' + deletedCount + ' รายการ',
+      deleted_count: deletedCount
+    };
+  } catch (e) {
+    logError({ fn:'deleteStudentsByFilter', error:e.message });
     return { status:'error', message:e.message };
   }
 }

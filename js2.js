@@ -180,29 +180,51 @@ function renderStudents(container) {
           \x3c/select>
         \x3c/div>
 
+        <!-- Filter Active Bar -->
+        <div id="stFilterActiveBar" class="mb-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl items-center justify-between text-xs text-slate-600 gap-2 shadow-sm transition-all" style="display:none;">
+          <div class="flex items-center gap-2 flex-wrap" id="stFilterSummaryText">
+            <!-- dynamic chips -->
+          \x3c/div>
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-sm btn-light text-xs text-slate-600 hover:text-slate-800" onclick="clearStudentFilters()">
+              <i class='bx bx-x'>\x3c/i> ล้างตัวกรอง
+            \x3c/button>
+            ${APP.role !== 'teacher' ? `
+            <button type="button" id="btnDeleteByFilter" class="btn btn-sm bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-medium flex items-center gap-1 shadow-sm transition" onclick="deleteStudentsByFilterConfirm()" title="ลบข้อมูลนักเรียนทั้งหมดที่ตรงตามเงื่อนไขตัวกรองนี้">
+              <i class='bx bx-trash text-sm'>\x3c/i> ลบตามตัวกรอง
+            \x3c/button>
+            ` : ''}
+          \x3c/div>
+        \x3c/div>
+
         <!-- Batch Action Toolbar -->
         <div id="stBatchBar" class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl items-center justify-between gap-3 shadow-sm transition-all" style="display:${StudentsState.selected && StudentsState.selected.length > 0 ? 'flex' : 'none'};">
           <div class="flex items-center flex-wrap gap-2">
             <span class="inline-flex items-center justify-center min-w-[26px] h-6 px-2 rounded-full bg-blue-600 text-white text-xs font-bold" id="stBatchCount">
               ${StudentsState.selected ? StudentsState.selected.length : 0}
-            </span>
-            <span class="text-sm font-medium text-slate-700">เลือกอยู่ <strong id="stBatchCountText" class="text-blue-700 font-bold">${StudentsState.selected ? StudentsState.selected.length : 0}</strong> คน</span>
+            \x3c/span>
+            <span class="text-sm font-medium text-slate-700">เลือกอยู่ <strong id="stBatchCountText" class="text-blue-700 font-bold">${StudentsState.selected ? StudentsState.selected.length : 0}</strong> คน\x3c/span>
             <button type="button" class="btn btn-sm btn-light text-xs text-slate-500 hover:text-slate-800 ml-1" onclick="clearSelectedStudents()">
               <i class='bx bx-x'>\x3c/i> ยกเลิกการเลือก
-            </button>
+            \x3c/button>
             <span id="stSelectAllMatchingWrap" style="display:none;" class="text-xs text-blue-600">
-              <span class="text-slate-300 mx-1">|</span>
+              <span class="text-slate-300 mx-1">|\x3c/span>
               <button type="button" class="underline hover:text-blue-800 font-medium" onclick="selectAllMatchingStudents()">
-                เลือกทั้งหมด <span id="stTotalMatchingCount">0</span> คนตามตัวกรองนี้
-              </button>
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
+                เลือกทั้งหมด <span id="stTotalMatchingCount">0\x3c/span> คนตามตัวกรองนี้
+              \x3c/button>
+            \x3c/span>
+          \x3c/div>
+          <div class="flex items-center gap-2 flex-wrap">
             <button type="button" class="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-1.5 shadow-sm" onclick="openBatchClassroomModal()">
               <i class='bx bx-transfer text-base'>\x3c/i> กำหนดชั้นเรียนให้นักเรียนที่เลือก
-            </button>
-          </div>
-        </div>
+            \x3c/button>
+            ${APP.role !== 'teacher' ? `
+            <button type="button" class="btn btn-sm bg-red-600 hover:bg-red-700 text-white font-medium flex items-center gap-1.5 shadow-sm" onclick="deleteSelectedStudentsConfirm()">
+              <i class='bx bx-trash text-base'>\x3c/i> ลบที่เลือก (<span id="stBatchDeleteCount">${StudentsState.selected ? StudentsState.selected.length : 0}\x3c/span>)
+            \x3c/button>
+            ` : ''}
+          \x3c/div>
+        \x3c/div>
 
         <div id="stTableArea">
           <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
@@ -284,6 +306,7 @@ function renderStudentsTable(res) {
 
   const area = document.getElementById('stTableArea');
   if (!area) return;
+  updateStudentFilterActiveBar(res);
   if (res.data.length === 0) {
     area.innerHTML = `
       <div class="empty-state">
@@ -446,6 +469,8 @@ function updateStudentBatchBar() {
   }
   if (badge) badge.textContent = count;
   if (countText) countText.textContent = count;
+  const delCount = document.getElementById('stBatchDeleteCount');
+  if (delCount) delCount.textContent = count;
 
   const totalResults = (StudentsState.data && StudentsState.data.total) || 0;
   if (matchWrap && totalMatching) {
@@ -469,6 +494,69 @@ function updateStudentBatchBar() {
       master.indeterminate = false;
     }
   }
+}
+
+function updateStudentFilterActiveBar(res) {
+  const bar = document.getElementById('stFilterActiveBar');
+  const sumWrap = document.getElementById('stFilterSummaryText');
+  if (!bar || !sumWrap) return;
+
+  const cls = StudentsState.classroom;
+  const yr = StudentsState.academic_year;
+  const st = StudentsState.status;
+  const q = StudentsState.search;
+  const hasFilter = Boolean(cls || yr || st || q);
+
+  if (!hasFilter) {
+    bar.style.display = 'none';
+    return;
+  }
+
+  const total = (res && typeof res.total === 'number') ? res.total : ((StudentsState.data && StudentsState.data.total) || 0);
+
+  const chips = [];
+  if (q) chips.push(`<span class="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700">ค้นหา: <strong>${escapeHTML(q)}</strong></span>`);
+  if (cls) chips.push(`<span class="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700">ชั้น: <strong>${escapeHTML(cls)}</strong></span>`);
+  if (yr) chips.push(`<span class="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700">ปีการศึกษา: <strong>${escapeHTML(yr)}</strong></span>`);
+  if (st) {
+    const stLabel = { active:'กำลังศึกษา', graduate:'จบการศึกษา', transfer:'ย้าย', inactive:'ไม่ใช้งาน' }[st] || st;
+    chips.push(`<span class="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700">สถานะ: <strong>${escapeHTML(stLabel)}</strong></span>`);
+  }
+
+  sumWrap.innerHTML = `
+    <span class="font-medium text-slate-500">ตัวกรองปัจจุบัน:</span>
+    ${chips.join(' ')}
+    <span class="text-blue-700 font-semibold ml-1">(พบ ${total} คน)</span>
+  `;
+
+  const btnDel = document.getElementById('btnDeleteByFilter');
+  if (btnDel) {
+    btnDel.innerHTML = `<i class='bx bx-trash text-sm'></i> ลบตามตัวกรอง (${total})`;
+    btnDel.style.display = (APP.role !== 'teacher' && total > 0) ? 'inline-flex' : 'none';
+  }
+
+  bar.style.display = 'flex';
+}
+
+function clearStudentFilters() {
+  StudentsState.search = '';
+  StudentsState.classroom = '';
+  StudentsState.academic_year = '';
+  StudentsState.status = '';
+  StudentsState.page = 1;
+  StudentsState.selected = [];
+
+  const sInput = document.getElementById('stSearch');
+  if (sInput) sInput.value = '';
+  const cSelect = document.getElementById('stClassroom');
+  if (cSelect) cSelect.value = '';
+  const ySelect = document.getElementById('stYear');
+  if (ySelect) ySelect.value = '';
+  const stSelect = document.getElementById('stStatus');
+  if (stSelect) stSelect.value = '';
+
+  updateStudentBatchBar();
+  loadStudents();
 }
 
 function openBatchClassroomModal() {
@@ -909,6 +997,152 @@ function deleteStudent(id) {
       })
       .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
       .deleteStudent(id, APP.token);
+  });
+}
+
+function deleteSelectedStudentsConfirm() {
+  const count = (StudentsState.selected || []).length;
+  if (count === 0) {
+    showToast('warning', 'กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
+    return;
+  }
+
+  Swal.fire({
+    title: `ยืนยันลบนักเรียนที่เลือก?`,
+    html: `
+      <div class="text-left text-sm text-slate-700 space-y-2">
+        <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800">
+          คุณกำลังจะลบข้อมูลนักเรียนที่เลือกจำนวน <strong class="text-red-700 font-bold text-base">${count}</strong> คน
+          <br>ข้อมูลจะถูกลบถาวรออกจากระบบและไม่สามารถกู้คืนได้
+        </div>
+      </div>
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: `ยืนยันลบ (${count} คน)`,
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#DC2626',
+    focusCancel: true
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    showLoading(`กำลังลบข้อมูลนักเรียน ${count} คน...`);
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res && res.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'ลบข้อมูลสำเร็จ',
+            text: res.message || `ลบข้อมูลสำเร็จ ${count} รายการ`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          StudentsState.selected = [];
+          updateStudentBatchBar();
+          loadStudents();
+        } else {
+          Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: (res && res.message) || 'ไม่สามารถลบข้อมูลได้' });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || err });
+      })
+      .deleteStudentsBulk(StudentsState.selected, APP.token);
+  });
+}
+
+function deleteStudentsByFilterConfirm() {
+  const cls = StudentsState.classroom;
+  const yr = StudentsState.academic_year;
+  const st = StudentsState.status;
+  const q = StudentsState.search;
+  const total = (StudentsState.data && typeof StudentsState.data.total === 'number') ? StudentsState.data.total : 0;
+
+  if (!cls && !yr && !st && !q) {
+    Swal.fire({
+      icon: 'info',
+      title: 'กรุณาเลือกตัวกรอง',
+      text: 'กรุณาระบุตัวกรอง (เช่น ชั้นเรียน หรือ ปีการศึกษา) ก่อนสั่งลบตามตัวกรอง เพื่อป้องกันการลบข้อมูลทั้งหมด'
+    });
+    return;
+  }
+
+  if (total === 0) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'ไม่พบนักเรียน',
+      text: 'ไม่มีข้อมูลนักเรียนที่ตรงตามเงื่อนไขตัวกรองในขณะนี้'
+    });
+    return;
+  }
+
+  const stLabel = { active:'กำลังศึกษา', graduate:'จบการศึกษา', transfer:'ย้าย', inactive:'ไม่ใช้งาน' }[st] || st;
+
+  const html = `
+    <div class="text-left text-sm text-slate-700 space-y-3">
+      <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800">
+        <div class="font-bold flex items-center gap-1.5 mb-1">
+          <i class='bx bx-error-circle text-lg text-red-600'></i> คำเตือนสำคัญ
+        </div>
+        <div>ระบบจะลบข้อมูลนักเรียนทั้งหมดที่ตรงตามเงื่อนไขนี้ <strong>ถาวร</strong> ไม่สามารถกู้คืนได้</div>
+      </div>
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+        <div class="font-semibold text-slate-800 mb-1.5">เงื่อนไขตัวกรองที่จะลบ:</div>
+        <ul class="space-y-1 text-slate-600 pl-4 list-disc">
+          ${cls ? `<li>ชั้นเรียน: <strong class="text-slate-900">${escapeHTML(cls)}</strong></li>` : ''}
+          ${yr ? `<li>ปีการศึกษา: <strong class="text-slate-900">${escapeHTML(yr)}</strong></li>` : ''}
+          ${st ? `<li>สถานะ: <strong class="text-slate-900">${escapeHTML(stLabel)}</strong></li>` : ''}
+          ${q ? `<li>คำค้นหา: <strong class="text-slate-900">${escapeHTML(q)}</strong></li>` : ''}
+        </ul>
+        <div class="mt-2.5 pt-2 border-t border-slate-200 flex justify-between items-center text-sm">
+          <span class="font-medium text-slate-700">จำนวนที่จะถูกลบทั้งหมด:</span>
+          <span class="text-red-600 font-bold text-base">${total} คน</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  Swal.fire({
+    title: 'ยืนยันลบนักเรียนตามตัวกรอง?',
+    html: html,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: `ยืนยันลบทั้งหมด (${total} คน)`,
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#DC2626',
+    focusCancel: true
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    showLoading(`กำลังลบข้อมูลนักเรียนตามตัวกรอง ${total} คน...`);
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res && res.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'ลบข้อมูลสำเร็จ',
+            text: res.message || `ลบข้อมูลเรียบร้อยแล้ว`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          StudentsState.selected = [];
+          updateStudentBatchBar();
+          loadStudents();
+        } else {
+          Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: (res && res.message) || 'ไม่สามารถลบข้อมูลได้' });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message || err });
+      })
+      .deleteStudentsByFilter({
+        classroom: cls,
+        academic_year: yr,
+        status: st,
+        search: q
+      }, APP.token);
   });
 }
 
