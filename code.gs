@@ -65,9 +65,36 @@ function doOptions(e) {
 }
 
 function doGet(e) {
-  // Simple API fallback for GET requests
-  return ContentService.createTextOutput(JSON.stringify({ status: 'ok', message: 'Smart School API is running' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  // Keep-alive & Health Check: อุ่นเครื่อง V8 Engine และ Pre-warm Cache อัตโนมัติ
+  try {
+    const cfg = getConfig();
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'ok',
+      message: 'MHC Smart School API is active',
+      school: cfg.school_name || 'โรงเรียนมหาชัยพิทยาคาร',
+      director: cfg.director_name || 'นายอธิการ สุขศรี',
+      version: CONFIG.APP_VERSION,
+      timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'ok',
+      message: 'Smart School API is running',
+      timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * ฟังก์ชันสำหรับตั้ง Time-driven Trigger ภายใน Google Apps Script (รันทุก 10-15 นาที)
+ */
+function keepAliveTrigger() {
+  try {
+    getConfig();
+    console.log('Keep-alive internal ping OK at ' + new Date().toISOString());
+  } catch (e) {
+    console.warn('Keep-alive ping error: ' + e.message);
+  }
 }
 
 function doPost(e) {
