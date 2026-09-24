@@ -5,11 +5,15 @@
   
   **ระบบสารสนเทศเพื่อการบริหารจัดการสถานศึกษาแบบครบวงจร**
   
+  [![Version](https://img.shields.io/badge/Version-v2.7.8%20(Latest)-orange.svg)](version_history/v2.7.8-latest-release.md)
   [![Frontend](https://img.shields.io/badge/Frontend-HTML%20%7C%20CSS%20%7C%20JS-blue.svg)](https://kongirr12.github.io/smc/)
   [![Backend](https://img.shields.io/badge/Backend-Google%20Apps%20Script-green.svg)](https://developers.google.com/apps-script)
   [![Database](https://img.shields.io/badge/Database-Google%20Sheets-109D59.svg)](https://google.com/sheets)
   [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 </div>
+
+> 🚀 **เวอร์ชันพัฒนาล่าสุด (Latest Production Release):** **`v2.7.8`** (อัปเดต 24 กันยายน 2569)  
+> ครบถ้วนทั้งระบบแบบฟอร์มเอกสาร 4 ฝ่าย, การยืนยันชื่อผู้อำนวยการ "นายอธิการ สุขศรี", ผู้จัดทำ "ครูก้องนที อุ่นเจริญ", และการปรับปรุงประสิทธิภาพความเร็วสูงสุด 0.5ms
 
 ---
 

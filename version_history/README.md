@@ -9,6 +9,7 @@
 
 | เวอร์ชัน | วันที่อัปเดต | หัวข้อการปรับปรุงหลัก | ไฟล์เอกสาร |
 | :--- | :--- | :--- | :--- |
+| **v2.7.8** 🔥 *(ล่าสุด)* | 24 ก.ย. 2569 | **เวอร์ชันพัฒนาล่าสุด (Latest Release)**: ศูนย์รวมแบบฟอร์ม 4 ฝ่าย (30 แบบฟอร์ม), ยืนยันชื่อผู้อำนวยการ "นายอธิการ สุขศรี", ผู้จัดทำ "ครูก้องนที อุ่นเจริญ", ปรับประสิทธิภาพความเร็วสูงสุด | [v2.7.8-latest-release.md](./v2.7.8-latest-release.md) |
 | **v2.6.0** | 23 ก.ย. 2569 | ยกระดับความเร็วและความลื่นไหลของระบบแบบก้าวกระโดด (Instant Attendance 0.5ms, PWA Service Worker & Backend Cache) | [v2.6.0-extreme-performance-and-smoothness.md](./v2.6.0-extreme-performance-and-smoothness.md) |
 | **v2.5.2** | 23 ก.ย. 2569 | ตรวจสอบและยกระดับระบบ Dark Mode ทั้งระบบ ให้อ่านง่าย สบายตา คมชัดระดับ WCAG AA | [v2.5.2-darkmode-readability-enhancement.md](./v2.5.2-darkmode-readability-enhancement.md) |
 | **v2.5.1** | 23 ก.ย. 2569 | ปลดล็อกให้บัญชีครูสามารถเช็คชื่อแถวหน้าเสาธง / โฮมรูม ได้เช่นเดียวกับแอดมิน | [v2.5.1-teacher-homeroom-attendance.md](./v2.5.1-teacher-homeroom-attendance.md) |
