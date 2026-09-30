@@ -695,13 +695,19 @@ function renderCalendarGrid() {
   const startDay = first.getDay(); // 0 = Sun
 
   let html = '<div class="cal-grid-header">';
-  ['อา','จ','อ','พ','พฤ','ศ','ส'].forEach(d => html += `<div class="cal-dow">${d}\x3c/div>`);
+  ['อา','จ','อ','พ','พฤ','ศ','ส'].forEach((d, idx) => {
+    const isSun = idx === 0;
+    const isSat = idx === 6;
+    html += `<div class="cal-dow ${isSun ? 'sun' : isSat ? 'sat' : ''}">${d}\x3c/div>`;
+  });
   html += '\x3c/div><div class="cal-grid">';
 
   // ช่องว่างก่อนวันที่ 1
   for (let i = 0; i < startDay; i++) html += '<div class="cal-cell empty">\x3c/div>';
 
-  const todayStr = new Date().toISOString().slice(0,10);
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
     const eventsOnDay = CalendarState.events.filter(e => {
@@ -709,8 +715,9 @@ function renderCalendarGrid() {
       return s <= ds && ds <= en;
     });
     const isToday = ds === todayStr;
-    const isSunday = ((startDay + d - 1) % 7) === 0;
-    const isSaturday = ((startDay + d - 1) % 7) === 6;
+    const dayOfWeek = (startDay + d - 1) % 7;
+    const isSunday = dayOfWeek === 0;
+    const isSaturday = dayOfWeek === 6;
 
     html += `
       <div class="cal-cell ${isToday ? 'today' : ''}" onclick="showDayEvents('${ds}')">
@@ -724,34 +731,90 @@ function renderCalendarGrid() {
         \x3c/div>
       \x3c/div>`;
   }
+
+  // เติมช่องว่างท้ายเดือนให้สมมาตรครบ 7 คอลัมน์
+  const totalCells = startDay + daysInMonth;
+  const trailingEmpty = (7 - (totalCells % 7)) % 7;
+  for (let i = 0; i < trailingEmpty; i++) html += '<div class="cal-cell empty">\x3c/div>';
+
   html += '\x3c/div>';
 
   html += `
     <style>
-      .cal-grid-header, .cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
-      .cal-dow { padding:6px 0; text-align:center; font-size:11px; font-weight:600; color:#64748B; }
+      .cal-grid-header, .cal-grid {
+        display:grid;
+        grid-template-columns:repeat(7, minmax(0, 1fr));
+        gap:4px;
+        width:100%;
+        box-sizing:border-box;
+      }
+      .cal-dow {
+        padding:6px 0;
+        text-align:center;
+        font-size:12px;
+        font-weight:700;
+        color:#64748B;
+        overflow:hidden;
+      }
+      .cal-dow.sun { color:#DC2626; }
+      .cal-dow.sat { color:#D97706; }
       .cal-cell {
-        min-height:80px; background:#F8FAFC; border:1px solid transparent; border-radius:8px;
-        padding:5px; cursor:pointer; transition:all .12s;
-        display:flex; flex-direction:column;
+        min-height:84px;
+        background:#F8FAFC;
+        border:1px solid #F1F5F9;
+        border-radius:8px;
+        padding:5px;
+        cursor:pointer;
+        transition:all .12s;
+        display:flex;
+        flex-direction:column;
+        min-width:0;
+        width:100%;
+        box-sizing:border-box;
+        overflow:hidden;
       }
       .cal-cell:hover { background:#FAF0F2; border-color:#4F46E5; }
-      .cal-cell.empty { background:transparent; cursor:default; }
+      .cal-cell.empty { background:transparent; cursor:default; border-color:transparent; }
       .cal-cell.empty:hover { background:transparent; border-color:transparent; }
       .cal-cell.today { background:#F2D5DA; border-color:#4F46E5; }
-      .cal-date { font-size:13px; font-weight:600; color:#0F172A; margin-bottom:2px; }
+      .cal-date { font-size:13px; font-weight:700; color:#0F172A; margin-bottom:2px; }
       .cal-date.sun { color:#DC2626; }
-      .cal-date.sat { color:#F59E0B; }
+      .cal-date.sat { color:#D97706; }
       .cal-cell.today .cal-date { color:#3730A3; }
-      .cal-events { flex:1; display:flex; flex-direction:column; gap:2px; overflow:hidden; }
-      .cal-event-pill {
-        font-size:10px; padding:1px 6px; border-radius:4px;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4;
+      .cal-events {
+        flex:1;
+        display:flex;
+        flex-direction:column;
+        gap:2px;
+        overflow:hidden;
+        min-width:0;
+        width:100%;
       }
-      .cal-event-more { font-size:10px; color:#64748B; padding:1px 6px; }
+      .cal-event-pill {
+        font-size:10px;
+        padding:1px 6px;
+        border-radius:4px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        line-height:1.4;
+        min-width:0;
+        max-width:100%;
+        width:100%;
+        display:block;
+        box-sizing:border-box;
+      }
+      .cal-event-more {
+        font-size:10px;
+        color:#64748B;
+        padding:1px 6px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
       @media (max-width:768px) {
-        .cal-cell { min-height:60px; }
-        .cal-event-pill { font-size:9px; padding:0 4px; }
+        .cal-cell { min-height:60px; padding:3px; }
+        .cal-event-pill { font-size:9px; padding:0 3px; }
       }
     \x3c/style>
   `;
