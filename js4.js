@@ -1883,7 +1883,7 @@ function openCSVImportModal() {
           <code style="background:#fff; padding:2px 6px; border-radius:4px; display:inline-block; border:1px solid #E2E8F0; margin:4px 0;">
             หัวข้อ,ประเภท,วันเริ่มต้น,วันสิ้นสุด,เวลาเริ่มต้น,เวลาสิ้นสุด,สถานที่,รายละเอียด,ปักหมุด
           </code><br>
-          * <strong>หัวข้อ</strong> และ <strong>วันเริ่มต้น</strong> (YYYY-MM-DD) เป็นฟิลด์จำเป็นต้องมี<br>
+          * <strong>หัวข้อ</strong> และ <strong>วันเริ่มต้น</strong> (รองรับทั้ง ค.ศ. เช่น 2026-09-01 หรือ พ.ศ. เช่น 1/9/2569) เป็นฟิลด์จำเป็นต้องมี<br>
           * ประเภทที่รองรับ: <span class="badge" style="background:#F2D5DA;color:#3730A3;padding:1px 5px;font-size:10px;border-radius:4px;">academic</span> (วิชาการ), <span class="badge" style="background:#DCFCE7;color:#15803D;padding:1px 5px;font-size:10px;border-radius:4px;">activity</span> (กิจกรรม), <span class="badge" style="background:#FEF3C7;color:#B45309;padding:1px 5px;font-size:10px;border-radius:4px;">meeting</span> (ประชุม), <span class="badge" style="background:#FEE2E2;color:#B91C1C;padding:1px 5px;font-size:10px;border-radius:4px;">holiday</span> (วันหยุด), <span class="badge" style="background:#F1F5F9;color:#334155;padding:1px 5px;font-size:10px;border-radius:4px;">general</span> (ทั่วไป)
         </div>
         
@@ -1894,7 +1894,7 @@ function openCSVImportModal() {
 
         <div class="mb-3">
           <label class="form-label">หรือ วางข้อความ CSV ที่นี่</label>
-          <textarea id="csv_text_input" class="form-input" rows="5" placeholder='หัวข้อ,ประเภท,วันเริ่มต้น,วันสิ้นสุด,เวลาเริ่มต้น,เวลาสิ้นสุด,สถานที่,รายละเอียด,ปักหมุด&#10;"สอบกลางภาค","academic","2026-07-06","2026-07-08","08:30","15:30","ห้องสอบ",false' oninput="handleCSVTextChange()"></textarea>
+          <textarea id="csv_text_input" class="form-input" rows="5" placeholder='หัวข้อ,ประเภท,วันเริ่มต้น,วันสิ้นสุด,เวลาเริ่มต้น,เวลาสิ้นสุด,สถานที่,รายละเอียด,ปักหมุด&#10;"สอบกลางภาค","academic","1/9/2569","20/9/2569","08:30","15:30","โรงเรียนมหาชัยพิทยาคาร","รายละเอียด",true' oninput="handleCSVTextChange()"></textarea>
         </div>
 
         <div id="csv_preview_area" style="display:none; max-height:220px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:10px; background:white;">
@@ -2002,8 +2002,56 @@ window.processCSVText = function(text) {
 
 window.parseCSVText = function(text) {
   if (!text) return [];
+
+  // Helper to normalize any date string to YYYY-MM-DD (Christian Era / ค.ศ.)
+  function normalizeDateString(raw) {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+
+    // 1. Matches YYYY-MM-DD or YYYY/MM/DD
+    let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (m) {
+      let year = parseInt(m[1], 10);
+      const month = String(parseInt(m[2], 10)).padStart(2, '0');
+      const day = String(parseInt(m[3], 10)).padStart(2, '0');
+      if (year >= 2400 && year <= 2700) year -= 543;
+      return `${year}-${month}-${day}`;
+    }
+
+    // 2. Matches DD/MM/YYYY or D/M/YYYY or DD-MM-YYYY or D-M-YYYY
+    m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (m) {
+      const day = String(parseInt(m[1], 10)).padStart(2, '0');
+      const month = String(parseInt(m[2], 10)).padStart(2, '0');
+      let year = parseInt(m[3], 10);
+      if (year >= 2400 && year <= 2700) year -= 543;
+      return `${year}-${month}-${day}`;
+    }
+
+    // 3. Fallback: valid date object
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      let y = parsed.getFullYear();
+      if (y >= 2400 && y <= 2700) y -= 543;
+      const mo = String(parsed.getMonth() + 1).padStart(2, '0');
+      const da = String(parsed.getDate()).padStart(2, '0');
+      return `${y}-${mo}-${da}`;
+    }
+    return '';
+  }
+
+  // Auto-detect delimiter: tab, semicolon, or comma
+  const firstLine = text.split(/\r?\n/)[0] || '';
+  let delimiter = ',';
+  const tabs = (firstLine.match(/\t/g) || []).length;
+  const semis = (firstLine.match(/;/g) || []).length;
+  const commas = (firstLine.match(/,/g) || []).length;
+  if (tabs > commas && tabs > semis) delimiter = '\t';
+  else if (semis > commas && semis > tabs) delimiter = ';';
+
   const lines = [];
-  let row = [""];
+  let row = [''];
   let inQuotes = false;
 
   for (let i = 0; i < text.length; i++) {
@@ -2016,27 +2064,24 @@ window.parseCSVText = function(text) {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (c === ',' && !inQuotes) {
-      row.push("");
-    } else if ((c === '\\r' || c === '\\n' || c === '\r' || c === '\n') && !inQuotes) {
+    } else if (c === delimiter && !inQuotes) {
+      row.push('');
+    } else if ((c === '\r' || c === '\n') && !inQuotes) {
       if (c === '\r' && next === '\n') { i++; }
       lines.push(row);
-      row = [""];
+      row = [''];
     } else {
       row[row.length - 1] += c;
     }
   }
-  if (row.length > 1 || row[0] !== "") {
+  if (row.length > 1 || row[0] !== '') {
     lines.push(row);
   }
 
   if (lines.length < 2) return [];
 
   const headers = lines[0].map(h => h.trim().toLowerCase());
-  
-  const getIndex = (keys) => {
-    return headers.findIndex(h => keys.includes(h));
-  };
+  const getIndex = (keys) => headers.findIndex(h => keys.includes(h));
 
   const titleIdx = getIndex(['หัวข้อ', 'title', 'subject']);
   const typeIdx = getIndex(['ประเภท', 'type', 'category']);
@@ -2048,8 +2093,6 @@ window.parseCSVText = function(text) {
   const descIdx = getIndex(['รายละเอียด', 'description', 'desc']);
   const pinIdx = getIndex(['ปักหมุดหน้าหลัก', 'is_pinned', 'pinned', 'pin', 'ปักหมุด']);
 
-  if (titleIdx === -1 || startIdx === -1) return [];
-
   const validTypes = ['academic', 'activity', 'meeting', 'holiday', 'general'];
   const typeMap = {
     'วิชาการ': 'academic',
@@ -2059,32 +2102,65 @@ window.parseCSVText = function(text) {
     'ทั่วไป': 'general'
   };
 
+  const isTypeCell = (val) => {
+    if (!val) return false;
+    const v = val.trim().toLowerCase();
+    return validTypes.includes(v) || Boolean(typeMap[v]);
+  };
+  const isDateCell = (val) => Boolean(normalizeDateString(val));
+
   const events = [];
+
   for (let i = 1; i < lines.length; i++) {
     const r = lines[i];
-    if (r.length <= Math.max(titleIdx, startIdx)) continue;
-    
-    const title = r[titleIdx]?.trim();
-    const start_date = r[startIdx]?.trim();
-    if (!title || !start_date) continue;
+    if (!r || r.length === 0 || (r.length === 1 && !r[0].trim())) continue;
 
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(start_date) && !/^\d{4}-\d{2}-\d{2}$/.test(start_date)) continue;
+    let title = '', type = 'general', start_date = '', end_date = '';
+    let start_time = '', end_time = '', location = '', description = '', is_pinned = false;
 
-    let type = r[typeIdx]?.trim().toLowerCase() || 'general';
-    if (typeMap[type]) {
-      type = typeMap[type];
-    } else if (!validTypes.includes(type)) {
-      type = 'general';
+    // Smart row recovery: Check if row has extra unquoted columns (e.g. title with commas like "แก้ 0,ร,มส")
+    if (r.length > headers.length) {
+      const foundTypeIdx = r.findIndex((val, idx) => idx > 0 && isTypeCell(val) && isDateCell(r[idx + 1]));
+      if (foundTypeIdx !== -1) {
+        title = r.slice(0, foundTypeIdx).join(', ').trim();
+        const rawType = r[foundTypeIdx].trim().toLowerCase();
+        type = typeMap[rawType] || (validTypes.includes(rawType) ? rawType : 'general');
+        start_date = normalizeDateString(r[foundTypeIdx + 1]);
+        end_date = normalizeDateString(r[foundTypeIdx + 2]) || start_date;
+        start_time = r[foundTypeIdx + 3]?.trim() || '';
+        end_time = r[foundTypeIdx + 4]?.trim() || '';
+        location = r[foundTypeIdx + 5]?.trim() || '';
+        
+        const lastVal = r[r.length - 1]?.trim().toLowerCase();
+        is_pinned = lastVal === 'true' || lastVal === 'yes' || lastVal === '1' || lastVal === 'ปักหมุด' || lastVal === 'ใช่';
+        
+        const descParts = r.slice(foundTypeIdx + 6, r.length - 1);
+        description = descParts.join(', ').trim();
+      }
     }
 
-    const end_date = (endIdx !== -1 ? r[endIdx]?.trim() : '') || start_date;
-    const start_time = startTimeIdx !== -1 ? r[startTimeIdx]?.trim() : '';
-    const end_time = endTimeIdx !== -1 ? r[endTimeIdx]?.trim() : '';
-    const location = locationIdx !== -1 ? r[locationIdx]?.trim() : '';
-    const description = descIdx !== -1 ? r[descIdx]?.trim() : '';
-    
-    const pinVal = pinIdx !== -1 ? r[pinIdx]?.trim().toLowerCase() : '';
-    const is_pinned = pinVal === 'true' || pinVal === 'yes' || pinVal === '1' || pinVal === 'ปักหมุด' || pinVal === 'ใช่';
+    // Standard column alignment
+    if (!start_date) {
+      title = (titleIdx !== -1 ? r[titleIdx] : r[0])?.trim() || '';
+      const rawStart = (startIdx !== -1 ? r[startIdx] : r[2])?.trim();
+      start_date = normalizeDateString(rawStart);
+
+      let rawType = (typeIdx !== -1 ? r[typeIdx] : r[1])?.trim().toLowerCase() || 'general';
+      type = typeMap[rawType] || (validTypes.includes(rawType) ? rawType : 'general');
+
+      const rawEnd = (endIdx !== -1 ? r[endIdx] : r[3])?.trim();
+      end_date = normalizeDateString(rawEnd) || start_date;
+
+      start_time = (startTimeIdx !== -1 ? r[startTimeIdx] : r[4])?.trim() || '';
+      end_time = (endTimeIdx !== -1 ? r[endTimeIdx] : r[5])?.trim() || '';
+      location = (locationIdx !== -1 ? r[locationIdx] : r[6])?.trim() || '';
+      description = (descIdx !== -1 ? r[descIdx] : r[7])?.trim() || '';
+
+      const pinVal = (pinIdx !== -1 ? r[pinIdx] : r[8])?.trim().toLowerCase() || '';
+      is_pinned = pinVal === 'true' || pinVal === 'yes' || pinVal === '1' || pinVal === 'ปักหมุด' || pinVal === 'ใช่';
+    }
+
+    if (!title || !start_date) continue;
 
     events.push({
       title,
