@@ -6336,39 +6336,67 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
         <div style="font-size:9px; font-weight:normal; white-space:nowrap;">${escapeHTMLServer_(p.start)}–${escapeHTMLServer_(p.end)}\x3c/div>
       \x3c/th>
     `).join('');
-
     const rows = [1,2,3,4,5].map((d, index) => {
-      const rowCells = periods.map(p => {
+      const rowCells = [];
+      for (let i = 0; i < periods.length; i++) {
+        const p = periods[i];
         if (p.is_break) {
           const text = (p.label && p.label.includes('เสาธง')) ? '' : 'พัก';
-          return `<td style="border:1px solid #000; background:#F1F5F9; text-align:center; font-size:11px; color:#64748B; width:30px; vertical-align:middle;">${text}\x3c/td>`;
+          rowCells.push(`<td style="border:1px solid #000; background:#F1F5F9; text-align:center; font-size:11px; color:#64748B; width:30px; vertical-align:middle;">${text}</td>`);
+          continue;
         }
+        
         const e = grid[d][p.no];
-        if (!e) return '<td style="border:1px solid #000; min-height:60px;">\x3c/td>';
-        return `
-          <td style="border:1px solid #000; padding:0; vertical-align:middle; text-align:center;">
+        if (!e) {
+          rowCells.push('<td style="border:1px solid #000; min-height:60px;"></td>');
+          continue;
+        }
+
+        let colspan = 1;
+        while (i + 1 < periods.length) {
+          const nextP = periods[i + 1];
+          if (nextP.is_break) break;
+          const nextE = grid[d][nextP.no];
+          if (!nextE) break;
+          
+          const isSame = (e.subject_code === nextE.subject_code) && 
+                         (e.subject_name === nextE.subject_name) && 
+                         (e.activity_label === nextE.activity_label) && 
+                         (e.room_name === nextE.room_name) && 
+                         (e.teacher_id === nextE.teacher_id);
+                         
+          if (isSame) {
+            colspan++;
+            i++;
+          } else {
+            break;
+          }
+        }
+
+        const colAttr = colspan > 1 ? ` colspan="${colspan}"` : '';
+        rowCells.push(`
+          <td${colAttr} style="border:1px solid #000; padding:0; vertical-align:middle; text-align:center;">
             <div style="margin:3px; padding:5px 6px; min-height:52px;">
               <div style="font-weight:700; font-size:11px; color:#000; line-height:1.3;">
                 ${e.subject_code ? `<span style="font-size:9px; color:#475569; display:block;">${escapeHTMLServer_(e.subject_code)}</span>` : ''}
                 ${escapeHTMLServer_(e.subject_name || e.activity_label || '')}
-              \x3c/div>
+              </div>
               ${e.activity_label ? '' : `<div style="font-size:10px; color:#000; margin-top:2px; line-height:1.3;">
                 ${escapeHTMLServer_(e.teacher_short || e.teacher_name || '')}
-              \x3c/div>`}
-              ${e.room_name ? `<div style="font-size:9px; color:#000;">${escapeHTMLServer_(e.room_name)}\x3c/div>` : ''}
-            \x3c/div>
-          \x3c/td>`;
-      });
+              </div>`}
+              ${e.room_name ? `<div style="font-size:9px; color:#000;">${escapeHTMLServer_(e.room_name)}</div>` : ''}
+            </div>
+          </td>`);
+      }
       return `
         <tr>
           <td style="background:#FFF; color:#000; padding:4px 8px; border:1px solid #000;
                      white-space:nowrap; font-size:12px; font-weight:bold; text-align:center; width:60px; vertical-align:middle;">
             วัน${dayLabels[index]}
-          \x3c/td>
+          </td>
           ${rowCells.join('')}
-        \x3c/tr>`;
+        </tr>`;
     });
-
     const html = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8">
 <title>ตารางสอน ${escapeHTMLServer_(classroom)}</title>
@@ -6492,17 +6520,46 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
         <div style="font-size:9px; font-weight:normal; white-space:nowrap;">${escapeHTMLServer_(p.start)}–${escapeHTMLServer_(p.end)}\x3c/div>
       \x3c/th>
     `).join('');
-
     const rows = [1,2,3,4,5].map((d, index) => {
-      const rowCells = periods.map(p => {
+      const rowCells = [];
+      for (let i = 0; i < periods.length; i++) {
+        const p = periods[i];
         if (p.is_break) {
           const text = (p.label && p.label.includes('เสาธง')) ? '' : 'พัก';
-          return `<td style="border:1px solid #000; background:#F1F5F9; text-align:center; font-size:11px; color:#64748B; width:30px; vertical-align:middle;">${text}\x3c/td>`;
+          rowCells.push(`<td style="border:1px solid #000; background:#F1F5F9; text-align:center; font-size:11px; color:#64748B; width:30px; vertical-align:middle;">${text}</td>`);
+          continue;
         }
+        
         const e = grid[d][p.no];
-        if (!e) return '<td style="border:1px solid #000; min-height:60px;">\x3c/td>';
-        return `
-          <td style="border:1px solid #000; padding:0; vertical-align:middle; text-align:center;">
+        if (!e) {
+          rowCells.push('<td style="border:1px solid #000; min-height:60px;"></td>');
+          continue;
+        }
+
+        let colspan = 1;
+        while (i + 1 < periods.length) {
+          const nextP = periods[i + 1];
+          if (nextP.is_break) break;
+          const nextE = grid[d][nextP.no];
+          if (!nextE) break;
+          
+          const isSame = (e.subject_code === nextE.subject_code) && 
+                         (e.subject_name === nextE.subject_name) && 
+                         (e.activity_label === nextE.activity_label) && 
+                         (e.room_name === nextE.room_name) && 
+                         (e.classroom === nextE.classroom);
+                         
+          if (isSame) {
+            colspan++;
+            i++;
+          } else {
+            break;
+          }
+        }
+
+        const colAttr = colspan > 1 ? ` colspan="${colspan}"` : '';
+        rowCells.push(`
+          <td${colAttr} style="border:1px solid #000; padding:0; vertical-align:middle; text-align:center;">
             <div style="margin:3px;padding:5px 6px;min-height:52px;">
               <div style="font-weight:700;font-size:11px;color:#000;">
                 ${e.subject_code ? `<span style="font-size:9px; color:#475569; display:block;">${escapeHTMLServer_(e.subject_code)}</span>` : ''}
@@ -6513,18 +6570,17 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
               </div>
               ${e.room_name ? `<div style="font-size:9px;color:#000;">${escapeHTMLServer_(e.room_name)}</div>` : ''}
             </div>
-          </td>`;
-      });
+          </td>`);
+      }
       return `
         <tr>
           <td style="background:#FFF; color:#000; padding:4px 8px; border:1px solid #000;
                      white-space:nowrap; font-size:12px; font-weight:bold; text-align:center; width:60px; vertical-align:middle;">
             วัน${dayLabels[index]}
-          \x3c/td>
+          </td>
           ${rowCells.join('')}
-        \x3c/tr>`;
+        </tr>`;
     });
-
     const html = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8"><title>ตารางสอน ${escapeHTMLServer_(teacherName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
