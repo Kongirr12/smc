@@ -310,14 +310,15 @@ function renderClassView() {
       ${SchedState.classroom ? `
         <div class="flex flex-col md:flex-row gap-4 items-start">
           ${SchedState.dragDropMode ? `
-          <div class="w-full md:w-1/4 bg-slate-50 border border-slate-200 rounded-xl p-3" style="max-height:600px; overflow-y:auto;">
-            <div class="text-sm font-semibold text-slate-700 mb-2">
-              <i class='bx bx-book-open'>\x3c/i> ลากรายวิชา
+          <div id="subjectPaletteBox" class="w-full md:w-1/4 bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm" style="max-height:600px; overflow-y:auto;">
+            <div class="text-sm font-semibold text-slate-700 mb-2 flex items-center justify-between border-b border-slate-200 pb-2">
+              <span class="flex items-center gap-1.5"><i class='bx bx-book-open text-indigo-600'>\x3c/i> ลากรายวิชา\x3c/span>
+              <span class="text-[10px] text-slate-400 font-normal">ลากลงตาราง\x3c/span>
             \x3c/div>
             ${buildSubjectPalette()}
           \x3c/div>
           ` : ''}
-          <div class="${SchedState.dragDropMode ? 'w-full md:w-3/4' : 'w-full'} overflow-x-auto">
+          <div id="schedGridWrapper" class="${SchedState.dragDropMode ? 'w-full md:w-3/4' : 'w-full'} overflow-x-auto">
             ${buildScheduleGrid('class')}
           \x3c/div>
         \x3c/div>
@@ -402,102 +403,301 @@ function buildSubjectPalette() {
       ${displaySubjects.map(s => {
         const color = SUBJECT_COLORS[s.subject_group] || '#64748B';
         const semTag = s.semester ? `เทอม ${escapeHTML(s.semester)}` : 'ทุกเทอม';
+        const placedCount = SchedState.entries.filter(e => 
+          e.classroom === SchedState.classroom && 
+          (String(e.subject_id) === String(s.id) || (s.subject_code && e.subject_code === s.subject_code))
+        ).length;
         return `
-          <div class="entry-card mb-2" draggable="true" ondragstart="onDragSubjectStart(event, '${s.id}')"
+          <div class="entry-card mb-2" draggable="true" 
+               ondragstart="onDragSubjectStart(event, '${s.id}')"
+               ondragend="onDragEndSchedule(event)"
                style="border-color:${color}; background:white; min-height:48px; cursor:grab; transition:all 0.15s ease;"
                title="${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name)} · ${escapeHTML(s.grade_level||'')} (${semTag})">
             <div class="entry-bar" style="background:${color};">\x3c/div>
             <div class="entry-body py-1.5 px-2">
-              <div class="entry-subject font-semibold text-slate-800" style="font-size:12px; line-height:1.2;">
-                ${s.subject_code ? `<span class="font-mono text-slate-500 mr-1">${escapeHTML(s.subject_code)}</span>` : ''}${escapeHTML(s.subject_name)}
+              <div class="flex items-start justify-between gap-1">
+                <div class="entry-subject font-semibold text-slate-800" style="font-size:12px; line-height:1.2;">
+                  ${s.subject_code ? `<span class="font-mono text-slate-500 mr-1">${escapeHTML(s.subject_code)}</span>` : ''}${escapeHTML(s.subject_name)}
+                \x3c/div>
+                ${placedCount > 0 ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200 shrink-0" title="จัดในตารางแล้ว ${placedCount} คาบ">${placedCount} คาบ\x3c/span>` : ''}
               \x3c/div>
               <div class="entry-teacher flex justify-between items-center text-[11px] text-slate-500 mt-1">
-                <span class="truncate max-w-[130px]"><i class='bx bx-user text-slate-400'>\x3c/i> ${escapeHTML(s.teacher_name || 'ไม่ระบุครู')}</span>
+                <span class="truncate max-w-[120px]"><i class='bx bx-user text-slate-400'>\x3c/i> ${escapeHTML(s.teacher_name || 'ไม่ระบุครู')}\x3c/span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">${escapeHTML(s.grade_level || '')}${s.semester ? ` T${s.semester}` : ''}\x3c/span>
               \x3c/div>
             \x3c/div>
           \x3c/div>
         `;
-      }).join('')}
-    \x3c/div>
+      }).join('')}    \x3c/div>
   `;
 }
 
 function onDragSubjectStart(event, subjectId) {
-  event.dataTransfer.setData('subjectId', subjectId);
+  const payload = {
+    source: 'palette',
+    subjectId: subjectId
+  };
+  try {
+    event.dataTransfer.setData('text/plain', JSON.stringify(payload));
+    event.dataTransfer.setData('subjectId', subjectId);
+  } catch(e) {}
   event.dataTransfer.effectAllowed = 'copy';
+  window._draggedScheduleItem = payload;
+  document.body.classList.add('is-dragging-schedule');
+}
+
+function onDragGridEntryStart(event, dayNo, periodNo) {
+  event.stopPropagation();
+  const payload = {
+    source: 'grid',
+    classroom: SchedState.classroom,
+    fromDay: Number(dayNo),
+    fromPeriod: Number(periodNo)
+  };
+  try {
+    event.dataTransfer.setData('text/plain', JSON.stringify(payload));
+  } catch(e) {}
+  event.dataTransfer.effectAllowed = 'move';
+  window._draggedScheduleItem = payload;
+  document.body.classList.add('is-dragging-schedule');
+  const card = event.currentTarget;
+  if (card) {
+    card.classList.add('is-being-dragged');
+    window._draggedCardEl = card;
+  }
+}
+
+function onDragEndSchedule(event) {
+  document.body.classList.remove('is-dragging-schedule');
+  window._draggedScheduleItem = null;
+  if (window._draggedCardEl) {
+    window._draggedCardEl.classList.remove('is-being-dragged');
+    window._draggedCardEl = null;
+  }
+  document.querySelectorAll('.sched-cell.drag-over').forEach(el => {
+    el._dragCounter = 0;
+    el.classList.remove('drag-over');
+  });
+}
+
+function onDragEnterGrid(event) {
+  event.preventDefault();
+  const cell = event.currentTarget;
+  cell._dragCounter = (cell._dragCounter || 0) + 1;
+  cell.classList.add('drag-over');
 }
 
 function onDragOverGrid(event) {
-  event.preventDefault(); // อนุญาตให้วางได้
-  event.dataTransfer.dropEffect = 'copy';
+  event.preventDefault();
+  const isMove = window._draggedScheduleItem && window._draggedScheduleItem.source === 'grid';
+  event.dataTransfer.dropEffect = isMove ? 'move' : 'copy';
   const cell = event.currentTarget;
-  cell.classList.add('drag-over');
+  if (!cell.classList.contains('drag-over')) {
+    cell.classList.add('drag-over');
+  }
 }
 
 function onDragLeaveGrid(event) {
   const cell = event.currentTarget;
-  cell.classList.remove('drag-over');
+  cell._dragCounter = (cell._dragCounter || 1) - 1;
+  if (cell._dragCounter <= 0) {
+    cell._dragCounter = 0;
+    cell.classList.remove('drag-over');
+  }
 }
 
 function onDropGrid(event, dayNo, periodNo) {
   event.preventDefault();
+  event.stopPropagation();
   const cell = event.currentTarget;
+  cell._dragCounter = 0;
   cell.classList.remove('drag-over');
-  
-  const subjectId = event.dataTransfer.getData('subjectId');
-  if (!subjectId) return;
-  
-  const subject = SchedState.subjects.find(s => s.id === subjectId);
-  if (!subject) return;
+  document.body.classList.remove('is-dragging-schedule');
+  if (window._draggedCardEl) {
+    window._draggedCardEl.classList.remove('is-being-dragged');
+    window._draggedCardEl = null;
+  }
 
-  const tIds = subject.teacher_id ? subject.teacher_id.split(',').map(s=>s.trim()).filter(s=>s) : [];
-  let tNames = [], tShorts = [];
-  tIds.forEach(tid => {
-     const t = SchedState.teachers.find(x=>x.id===tid) || {};
-     if(t.name) {
-        tNames.push(t.name);
-        tShorts.push(t.first_name || t.name);
-     }
-  });
+  let payload = null;
+  try {
+    const raw = event.dataTransfer.getData('text/plain');
+    if (raw) payload = JSON.parse(raw);
+  } catch(e) {}
 
-  const teacherName = tNames.length > 0 ? tNames.join(', ') : (subject.teacher_name || '');
-  const teacherShort = tShorts.length > 0 ? tShorts.join(', ') : (subject.teacher_name || '');
+  if (!payload && window._draggedScheduleItem) {
+    payload = window._draggedScheduleItem;
+  }
 
-  const data = {
-    id: 'temp_' + Date.now() + '_' + Math.floor(Math.random()*1000),
-    _kind: 'schedule_entry',
-    classroom: SchedState.classroom,
-    day: dayNo,
-    period_no: periodNo,
-    subject_id: subject.id,
-    subject_name: subject.subject_name || '',
-    subject_code: subject.subject_code || '',
-    subject_group: subject.subject_group || '',
-    teacher_id: subject.teacher_id || '',
-    teacher_name: teacherName,
-    teacher_short: teacherShort,
-    room_id: '',
-    room_name: '',
-    activity_label: '',
-    color: SUBJECT_COLORS[subject.subject_group || ''] || '#64748B',
-    note: '',
-    academic_year: SchedState.academic_year,
-    semester: SchedState.semester
-  };
+  if (!payload) {
+    const sId = event.dataTransfer.getData('subjectId');
+    if (sId) payload = { source: 'palette', subjectId: sId };
+  }
 
-  const idx = SchedState.entries.findIndex(e => e.classroom === SchedState.classroom && Number(e.day) === Number(dayNo) && Number(e.period_no) === Number(periodNo));
-  if (idx >= 0) SchedState.entries.splice(idx, 1);
-  SchedState.entries.push(data);
-  
-  SchedState.isDirty = true;
+  if (!payload) return;
+
+  const targetDay = Number(dayNo);
+  const targetPeriod = Number(periodNo);
+
+  // กรณีที่ 1: ลากย้ายหรือสลับจากช่องเดิมในตาราง
+  if (payload.source === 'grid') {
+    const fromDay = Number(payload.fromDay);
+    const fromPeriod = Number(payload.fromPeriod);
+
+    if (fromDay === targetDay && fromPeriod === targetPeriod) {
+      window._draggedScheduleItem = null;
+      return;
+    }
+
+    const sourceEntry = SchedState.entries.find(e => 
+      e.classroom === SchedState.classroom && 
+      Number(e.day) === fromDay && 
+      Number(e.period_no) === fromPeriod
+    );
+    if (!sourceEntry) {
+      window._draggedScheduleItem = null;
+      return;
+    }
+
+    const targetIdx = SchedState.entries.findIndex(e => 
+      e.classroom === SchedState.classroom && 
+      Number(e.day) === targetDay && 
+      Number(e.period_no) === targetPeriod
+    );
+
+    if (targetIdx >= 0) {
+      // สลับตำแหน่ง 2 ช่อง (SWAP)
+      const targetEntry = SchedState.entries[targetIdx];
+      targetEntry.day = fromDay;
+      targetEntry.period_no = fromPeriod;
+      sourceEntry.day = targetDay;
+      sourceEntry.period_no = targetPeriod;
+      showToast('info', 'สลับคาบสอนเรียบร้อย');
+    } else {
+      // ย้ายตำแหน่งไปยังช่องว่าง (MOVE)
+      sourceEntry.day = targetDay;
+      sourceEntry.period_no = targetPeriod;
+      showToast('info', 'ย้ายคาบสอนเรียบร้อย');
+    }
+
+    sourceEntry.academic_year = sourceEntry.academic_year || SchedState.academic_year;
+    sourceEntry.semester = sourceEntry.semester || SchedState.semester;
+    sourceEntry.classroom = sourceEntry.classroom || SchedState.classroom;
+
+    SchedState.isDirty = true;
+    toggleSaveButton();
+    renderClassViewKeepScroll();
+    window._draggedScheduleItem = null;
+    return;
+  }
+
+  // กรณีที่ 2: ลากวิชาใหม่จาก Sidebar Palette เข้ามาในตาราง
+  if (payload.source === 'palette') {
+    const subjectId = payload.subjectId;
+    if (!subjectId) return;
+
+    const subject = SchedState.subjects.find(s => String(s.id) === String(subjectId));
+    if (!subject) return;
+
+    const tIds = subject.teacher_id ? String(subject.teacher_id).split(',').map(s=>s.trim()).filter(s=>s) : [];
+    let tNames = [], tShorts = [];
+    tIds.forEach(tid => {
+       const t = SchedState.teachers.find(x=>String(x.id)===String(tid)) || {};
+       if(t.name) {
+          tNames.push(t.name);
+          tShorts.push(t.first_name || t.name);
+       }
+    });
+
+    const teacherName = tNames.length > 0 ? tNames.join(', ') : (subject.teacher_name || '');
+    const teacherShort = tShorts.length > 0 ? tShorts.join(', ') : (subject.teacher_name || '');
+
+    const data = {
+      id: 'temp_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+      _kind: 'schedule_entry',
+      classroom: SchedState.classroom,
+      day: targetDay,
+      period_no: targetPeriod,
+      subject_id: subject.id,
+      subject_name: subject.subject_name || '',
+      subject_code: subject.subject_code || '',
+      subject_group: subject.subject_group || '',
+      teacher_id: subject.teacher_id || '',
+      teacher_name: teacherName,
+      teacher_short: teacherShort,
+      room_id: '',
+      room_name: '',
+      activity_label: '',
+      color: SUBJECT_COLORS[subject.subject_group || ''] || '#64748B',
+      note: '',
+      academic_year: SchedState.academic_year,
+      semester: SchedState.semester
+    };
+
+    const idx = SchedState.entries.findIndex(e => e.classroom === SchedState.classroom && Number(e.day) === targetDay && Number(e.period_no) === targetPeriod);
+    if (idx >= 0) SchedState.entries.splice(idx, 1);
+    SchedState.entries.push(data);
+
+    SchedState.isDirty = true;
+    toggleSaveButton();
+    renderClassViewKeepScroll();
+    window._draggedScheduleItem = null;
+  }
+}
+
+function deleteGridEntryInDragMode(event, dayNo, periodNo) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const idx = SchedState.entries.findIndex(e => 
+    e.classroom === SchedState.classroom && 
+    Number(e.day) === Number(dayNo) && 
+    Number(e.period_no) === Number(periodNo)
+  );
+  if (idx >= 0) {
+    SchedState.entries.splice(idx, 1);
+    SchedState.isDirty = true;
+    toggleSaveButton();
+    renderClassViewKeepScroll();
+    showToast('info', 'ลบคาบสอนออกแล้ว');
+  }
+}
+
+function renderClassViewKeepScroll() {
+  const palette = document.getElementById('subjectPaletteBox');
+  const gridWrap = document.getElementById('schedGridWrapper');
+  const palScroll = palette ? palette.scrollTop : 0;
+  const gridScroll = gridWrap ? gridWrap.scrollLeft : 0;
+
   renderClassView();
+
+  const newPalette = document.getElementById('subjectPaletteBox');
+  const newGridWrap = document.getElementById('schedGridWrapper');
+  if (newPalette) newPalette.scrollTop = palScroll;
+  if (newGridWrap) newGridWrap.scrollLeft = gridScroll;
+}
+
+// Global dragend safeguard to clear any stuck hover states
+if (typeof window !== 'undefined' && !window._schedDragEndBound) {
+  window._schedDragEndBound = true;
+  window.addEventListener('dragend', () => {
+    document.body.classList.remove('is-dragging-schedule');
+    window._draggedScheduleItem = null;
+    if (window._draggedCardEl) {
+      window._draggedCardEl.classList.remove('is-being-dragged');
+      window._draggedCardEl = null;
+    }
+    document.querySelectorAll('.sched-cell.drag-over').forEach(el => {
+      el._dragCounter = 0;
+      el.classList.remove('drag-over');
+    });
+  });
 }
 
 function toggleSaveButton() {
   const btn = document.getElementById('btnSaveSchedule');
   if (btn) {
-    btn.style.display = SchedState.isDirty ? '' : 'none';
+    btn.style.display = SchedState.isDirty && SchedState.dragDropMode ? '' : 'none';
   }
 }
 
@@ -690,7 +890,7 @@ function buildScheduleGrid(view) {
       const isDragMode = view === 'class' && SchedState.dragDropMode && canEdit;
       
       const dropHandlers = isDragMode 
-        ? `ondragover="onDragOverGrid(event)" ondragleave="onDragLeaveGrid(event)" ondrop="onDropGrid(event, ${d.no}, ${p.no})"` 
+        ? `ondragenter="onDragEnterGrid(event)" ondragover="onDragOverGrid(event)" ondragleave="onDragLeaveGrid(event)" ondrop="onDropGrid(event, ${d.no}, ${p.no})"` 
         : '';
       
       const clickHandlerEmpty = (!isDragMode && canEdit) ? `onclick="openEntryForm(${d.no},${p.no}, '${view}')"` : '';
@@ -698,8 +898,11 @@ function buildScheduleGrid(view) {
         
       if (isEmpty) {
         return `
-          <td class="sched-cell empty" ${clickHandlerEmpty} ${dropHandlers}>
-            ${(!isDragMode && canEdit) ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : ''}
+          <td class="sched-cell empty ${isDragMode ? 'in-drag-mode' : ''}" ${clickHandlerEmpty} ${dropHandlers}>
+            ${isDragMode 
+              ? `<div class="add-hint drag-hint"><i class='bx bx-plus-circle'>\x3c/i><span class="text-[10px] mt-0.5 font-sans font-medium text-slate-400">วางที่นี่\x3c/span>\x3c/div>`
+              : (canEdit ? `<div class="add-hint"><i class='bx bx-plus'>\x3c/i>\x3c/div>` : '')
+            }
           \x3c/td>`;
       }
       
@@ -711,11 +914,20 @@ function buildScheduleGrid(view) {
            ${e.classroom !== 'กิจกรรม' ? `<div class="entry-teacher">${escapeHTML(e.classroom)}\x3c/div>` : ''}
            ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
+      const dragCardAttrs = isDragMode
+        ? `draggable="true" ondragstart="onDragGridEntryStart(event, ${d.no}, ${p.no})" ondragend="onDragEndSchedule(event)" ondblclick="openEntryForm(${d.no},${p.no}, '${view}')" title="ลากเพื่อย้าย/สลับ หรือดับเบิ้ลคลิกเพื่อแก้ไข"`
+        : '';
+
+      const delBtnHtml = isDragMode
+        ? `<button type="button" class="btn-card-del" title="ลบวิชานี้ออกจากคาบ" onclick="deleteGridEntryInDragMode(event, ${d.no}, ${p.no})"><i class='bx bx-x'>\x3c/i>\x3c/button>`
+        : '';
+
       return `
-        <td class="sched-cell filled" ${clickHandlerFilled} ${dropHandlers}>
-          <div class="entry-card" style="border-color:${e.color}; background:${e.color}18;">
+        <td class="sched-cell filled ${isDragMode ? 'in-drag-mode' : ''}" ${clickHandlerFilled} ${dropHandlers}>
+          <div class="entry-card ${isDragMode ? 'is-draggable' : ''}" ${dragCardAttrs} style="border-color:${e.color}; background:${e.color}18;">
             <div class="entry-bar" style="background:${e.color};">\x3c/div>
             <div class="entry-body">
+              ${delBtnHtml}
               ${cellContent}
             \x3c/div>
           \x3c/div>
@@ -790,7 +1002,52 @@ function buildScheduleGrid(view) {
       .entry-room    { font-size:9px;  color:#94A3B8;  margin-top:1px; display:flex; align-items:center; gap:2px; }
 
       .sched-row:hover .sched-cell.empty { border-color:#CBD5E1; }
-      .sched-cell.drag-over { background:#FEF2F2 !important; border-color:#DC2626 !important; }
+      .sched-cell.empty.in-drag-mode { border:2px dashed #CBD5E1; background:#F8FAFC; }
+      .sched-cell.empty.in-drag-mode:hover { border-color:#6366F1; background:#EEF2FF; }
+      .sched-cell.drag-over {
+        background:#EEF2FF !important;
+        border:2px dashed #4F46E5 !important;
+        box-shadow:inset 0 0 0 2px rgba(79, 70, 229, 0.25) !important;
+      }
+      body.is-dragging-schedule .sched-cell * {
+        pointer-events: none !important;
+      }
+      .sched-cell.in-drag-mode .entry-body {
+        padding-right: 22px;
+      }
+      .entry-card.is-draggable {
+        cursor: grab;
+        user-select: none;
+      }
+      .entry-card.is-draggable:active {
+        cursor: grabbing;
+      }
+      .entry-card.is-being-dragged {
+        opacity: 0.45;
+        transform: scale(0.96);
+      }
+      .drag-hint {
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        height:100%; color:#94A3B8; font-size:16px; user-select:none;
+      }
+      .drag-hint span {
+        font-size:10px; color:#94A3B8; margin-top:2px; font-weight:500;
+      }
+      .sched-cell.empty.in-drag-mode:hover .drag-hint,
+      .sched-cell.empty.in-drag-mode:hover .drag-hint span {
+        color:#4F46E5;
+      }
+      .btn-card-del {
+        position:absolute; top:3px; right:3px;
+        width:18px; height:18px; border-radius:50%;
+        background:rgba(239, 68, 68, 0.85); color:#fff;
+        border:none; display:flex; align-items:center; justify-content:center;
+        font-size:12px; line-height:1; cursor:pointer; z-index:10;
+        opacity:0.8; transition:all .15s ease; padding:0;
+      }
+      .btn-card-del:hover {
+        opacity:1; background:#DC2626; transform:scale(1.15);
+      }
     \x3c/style>
   `;
 }
