@@ -5,7 +5,7 @@
  *  Strategy: Network-First for App Code, Cache-First for Assets
  * ============================================================ */
 
-const CACHE_NAME = 'mhc-smart-school-v2.7.9.2';
+const CACHE_NAME = 'mhc-smart-school-v2.7.9.3';
 
 const PRECACHE_ASSETS = [
   './',

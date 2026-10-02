@@ -293,7 +293,10 @@ function renderClassView() {
         \x3c/button>
         ` : ''}
         <button class="btn btn-light" onclick="printClassSchedule()">
-          <i class='bx bx-printer'>\x3c/i> พิมพ์ตารางสอน
+          <i class='bx bx-printer'>\x3c/i> พิมพ์ห้องนี้
+        \x3c/button>
+        <button class="btn btn-light" onclick="printAllClassSchedules()">
+          <i class='bx bx-printer'>\x3c/i> พิมพ์ทั้งหมด
         \x3c/button>
         <button class="btn btn-light" onclick="exportClassScheduleXLS()">
           <i class='bx bx-download'>\x3c/i> Excel
@@ -757,7 +760,10 @@ function renderTeacherView() {
       <div class="flex-1">\x3c/div>
       ${SchedState.teacher_id ? `
         <button class="btn btn-light" onclick="printTeacherSchedule()">
-          <i class='bx bx-printer'>\x3c/i> พิมพ์ตารางสอน
+          <i class='bx bx-printer'>\x3c/i> พิมพ์คนนี้
+        \x3c/button>
+        <button class="btn btn-light" onclick="printAllTeacherSchedules()">
+          <i class='bx bx-printer'>\x3c/i> พิมพ์ทั้งหมด
         \x3c/button>
       ` : ''}
     \x3c/div>
@@ -1942,4 +1948,29 @@ function clearClassScheduleConfirm() {
       })
       .clearClassroomSchedule(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
   });
+}
+\n
+function printAllClassSchedules() {
+  if (!SchedState.classrooms || SchedState.classrooms.length === 0) return showToast('warning', 'ไม่มีข้อมูลชั้นเรียน');
+  showLoading('กำลังเตรียมเอกสารทั้งหมด (อาจใช้เวลาสักครู่)...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status !== 'success') return showToast('error', res.message);
+      openHTMLDocument(res.html);
+    })
+    .generateAllSchedulesPrintHTML('class', SchedState.classrooms, SchedState.academic_year, SchedState.semester, APP.token);
+}
+
+function printAllTeacherSchedules() {
+  if (!SchedState.teachers || SchedState.teachers.length === 0) return showToast('warning', 'ไม่มีข้อมูลครู');
+  const ids = SchedState.teachers.map(t => t.id);
+  showLoading('กำลังเตรียมเอกสารทั้งหมด (อาจใช้เวลาสักครู่)...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status !== 'success') return showToast('error', res.message);
+      openHTMLDocument(res.html);
+    })
+    .generateAllSchedulesPrintHTML('teacher', ids, SchedState.academic_year, SchedState.semester, APP.token);
 }
