@@ -7533,7 +7533,7 @@ function getUsersAndTeachers(sessionToken) {
       .map(p => ({ id:p.id, name: (p.prefix||'')+(p.first_name||'')+' '+(p.last_name||'') }));
     return { status:'success', users:users, teachers:teachers };
   } catch(e) { return { status:'error', message:e.message }; }
-}\n
+}
 /* ============================================================
  *  PRINT HTML — ตารางสอนพิมพ์ทั้งหมด (Batch Print)
  * ============================================================ */

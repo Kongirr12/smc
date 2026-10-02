@@ -1949,7 +1949,7 @@ function clearClassScheduleConfirm() {
       .clearClassroomSchedule(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
   });
 }
-\n
+
 function printAllClassSchedules() {
   if (!SchedState.classrooms || SchedState.classrooms.length === 0) return showToast('warning', 'ไม่มีข้อมูลชั้นเรียน');
   showLoading('กำลังเตรียมเอกสารทั้งหมด (อาจใช้เวลาสักครู่)...');
