@@ -6271,27 +6271,44 @@ function getTeacherWorkload(academicYear, semester, sessionToken) {
     const sem = String(semester || '1');
 
     const entries  = readJsonSheet_('Schedule').filter(x =>
-      x._kind === 'schedule_entry' && !x.is_homeroom_activity &&
-      String(x.academic_year) === ay && String(x.semester) === sem
+      x._kind === 'schedule_entry' && 
+      String(x.academic_year) === ay && 
+      String(x.semester) === sem
     );
+    
+    // ดึง config ของ periods เพื่อเช็คว่าคาบไหนเป็นโฮมรูมหรือพัก
+    const cfgRes = getPeriodConfig(ay, sem, sessionToken);
+    const periods = cfgRes.data ? cfgRes.data.periods : [];
+    
+    // สร้างชุดของ period_no ที่นับเป็นภาระงาน (ไม่ใช่พัก ไม่ใช่โฮมรูม)
+    const validPeriods = new Set(periods.filter(p => !p.is_break && !p.is_homeroom).map(p => Number(p.no)));
+
     const personnel = readJsonSheet_('Personnel').filter(p => p.type === 'teacher');
     const subjects  = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
     const subMap = {};
     subjects.forEach(s => subMap[s.id] = s);
 
     const result = personnel.map(p => {
-      const myEntries = entries.filter(e => e.teacher_id === p.id);
-      const classrooms = Array.from(new Set(myEntries.map(e => e.classroom)));
+      // ค้นหารายการทั้งหมดของครูที่เกี่ยวข้อง (รวมถึงกรณีมีหลายครูในช่อง teacher_id)
+      const myRawEntries = entries.filter(e => e.teacher_id && e.teacher_id.split(',').map(s=>s.trim()).includes(p.id));
+      
+      // กรองเฉพาะคาบที่นับเป็นภาระงานสอน
+      const myValidEntries = myRawEntries.filter(e => validPeriods.has(Number(e.period_no)));
+      
+      // นับภาระงานโดยดูความไม่ซ้ำของ (day, period_no) เพื่อป้องกันการนับซ้ำกรณีสอนหลายห้องพร้อมกัน
+      const uniquePeriods = new Set(myValidEntries.map(e => `${e.day}_${e.period_no}`));
+      
+      const classrooms = Array.from(new Set(myValidEntries.map(e => e.classroom)));
       const subjects_taught = Array.from(new Set(
-        myEntries.map(e => subMap[e.subject_id] ? subMap[e.subject_id].subject_name : '').filter(Boolean)
+        myValidEntries.map(e => subMap[e.subject_id] ? subMap[e.subject_id].subject_name : e.activity_label).filter(Boolean)
       ));
 
       return {
         teacher_id   : p.id,
         teacher_name : (p.prefix||'')+(p.first_name||'')+' '+(p.last_name||''),
         department   : p.department || '-',
-        periods_total: myEntries.length,     // จำนวนคาบ/สัปดาห์
-        hours_total  : myEntries.length,     // 1 คาบ = ~50 นาที ≈ 1 ชั่วโมง
+        periods_total: uniquePeriods.size,     // จำนวนคาบ/สัปดาห์ แบบไม่ซ้ำซ้อน
+        hours_total  : uniquePeriods.size,     // 1 คาบ = ~50 นาที ≈ 1 ชั่วโมง
         classrooms   : classrooms.sort(),
         subjects_taught: subjects_taught
       };
@@ -6514,8 +6531,16 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
     [1,2,3,4,5].forEach(d => { grid[d] = {}; });
     schedRes.data.forEach(e => { if (grid[e.day]) grid[e.day][e.period_no] = e; });
 
-    // นับภาระงาน
-    const totalPeriods = schedRes.data.filter(e => !e.is_homeroom_activity).length;
+    // นับภาระงาน (นับจากช่องตารางที่ลงข้อมูลจริง เพื่อไม่ให้นับคาบซ้ำ และข้ามคาบโฮมรูม/พัก)
+    let totalPeriods = 0;
+    [1,2,3,4,5].forEach(d => {
+      Object.keys(grid[d]).forEach(pNo => {
+        const p = periods.find(x => Number(x.no) === Number(pNo));
+        if (p && !p.is_break && !p.is_homeroom) {
+          totalPeriods++;
+        }
+      });
+    });
 
     const dayLabels = ['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์'];
 
