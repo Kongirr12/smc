@@ -90,10 +90,14 @@ function doGet(e) {
  */
 function keepAliveTrigger() {
   try {
-    getConfig();
-    console.log('Keep-alive internal ping OK at ' + new Date().toISOString());
+    // Ping CacheService เบาๆ เพื่อรักษาความสดของระบบโดยไม่ต้องเปิด Google Sheets หนักๆ
+    const cached = CacheService.getScriptCache().get('app_config');
+    if (!cached) {
+      getConfig();
+    }
+    console.log('Keep-alive ping OK at ' + new Date().toISOString());
   } catch (e) {
-    console.warn('Keep-alive ping error: ' + e.message);
+    console.warn('Keep-alive ping error: ' + (e && e.message ? e.message : e));
   }
 }
 
@@ -2343,8 +2347,14 @@ function getAttendanceReport(params, sessionToken) {
           const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
           
           let riskCount = 0;
+          const subStuMap = {};
+          subRecords.forEach(a => {
+            if (!subStuMap[a.student_id]) subStuMap[a.student_id] = [];
+            subStuMap[a.student_id].push(a);
+          });
+
           classStudents.forEach(stu => {
-            const stuSubRecs = subRecords.filter(a => a.student_id === stu.id);
+            const stuSubRecs = subStuMap[stu.id] || [];
             if (stuSubRecs.length > 0) {
               const p = _attendanceSummary_(stuSubRecs).attendance_pct;
               if (p < 80) riskCount++;
@@ -2362,8 +2372,14 @@ function getAttendanceReport(params, sessionToken) {
         }).sort((a, b) => (a.subject_code || '').localeCompare(b.subject_code || '', 'th'));
       }
 
+      const listStuMap = {};
+      list.forEach(a => {
+        if (!listStuMap[a.student_id]) listStuMap[a.student_id] = [];
+        listStuMap[a.student_id].push(a);
+      });
+
       const perStudent = classStudents.map(s => {
-        const stu = list.filter(a => a.student_id === s.id);
+        const stu = listStuMap[s.id] || [];
         const stuObj = Object.assign(
           { student_id: s.id, student_code: s.student_id, prefix: s.prefix,
             first_name: s.first_name, last_name: s.last_name, student_number: s.student_number || s.student_no || '' },
@@ -2401,10 +2417,16 @@ function getAttendanceReport(params, sessionToken) {
       const ids = new Set(classStudents.map(s => s.id));
       const ymPref = params.year + '-' + String(params.month).padStart(2, '0');
       const list = attendance.filter(a => ids.has(a.student_id) && a.date.startsWith(ymPref));
+      const listStuMap = {};
+      list.forEach(a => {
+        if (!listStuMap[a.student_id]) listStuMap[a.student_id] = [];
+        listStuMap[a.student_id].push(a);
+      });
+
       const grid = classStudents.map(s => ({
         student_id: s.id, student_code: s.student_id,
         prefix: s.prefix, first_name: s.first_name, last_name: s.last_name,
-        records: list.filter(a => a.student_id === s.id)
+        records: listStuMap[s.id] || []
       }));
       return { status:'success', data:grid, year:params.year, month:params.month };
     }
@@ -4538,16 +4560,26 @@ function generateReport(reportType, params, sessionToken) {
       let students_list = students;
       if (params.classroom) students_list = students.filter(s => s.classroom === params.classroom);
 
+      const attMap = {};
+      filtered.forEach(a => {
+        if (!attMap[a.student_id]) attMap[a.student_id] = { p:0, x:0, l:0, lt:0, total:0 };
+        attMap[a.student_id].total++;
+        if (a.status === 'present') attMap[a.student_id].p++;
+        else if (a.status === 'absent') attMap[a.student_id].x++;
+        else if (a.status === 'leave') attMap[a.student_id].l++;
+        else if (a.status === 'late') attMap[a.student_id].lt++;
+      });
+
       rows = students_list
         .sort((a,b) => String(a.classroom||'').localeCompare(String(b.classroom||''))
                     || String(a.first_name||'').localeCompare(String(b.first_name||''),'th'))
         .map(s => {
-          const arr = filtered.filter(a => a.student_id === s.id);
-          const p = arr.filter(a => a.status === 'present').length;
-          const x = arr.filter(a => a.status === 'absent').length;
-          const l = arr.filter(a => a.status === 'leave').length;
-          const lt = arr.filter(a => a.status === 'late').length;
-          const total = arr.length;
+          const stats = attMap[s.id] || { p:0, x:0, l:0, lt:0, total:0 };
+          const p = stats.p;
+          const x = stats.x;
+          const l = stats.l;
+          const lt = stats.lt;
+          const total = stats.total;
           const pct = total > 0 ? Math.round(((p + lt) / total) * 1000) / 10 : 0;
           return [s.student_id, (s.prefix||'')+(s.first_name||'')+' '+(s.last_name||''),
                   s.classroom, p, x, l, lt, total, pct + '%'];
@@ -4590,11 +4622,17 @@ function generateReport(reportType, params, sessionToken) {
       if (params.classroom) students_list = students.filter(s => s.classroom === params.classroom);
 
       headers = ['รหัส','ชื่อ-นามสกุล','ชั้น','หน่วยกิตรวม','GPA'];
+      const gradeMap = {};
+      grades.forEach(g => {
+        if (!gradeMap[g.student_id]) gradeMap[g.student_id] = [];
+        gradeMap[g.student_id].push(g);
+      });
+
       rows = students_list
         .sort((a,b) => String(a.classroom||'').localeCompare(String(b.classroom||''))
                     || String(a.first_name||'').localeCompare(String(b.first_name||''),'th'))
         .map(s => {
-          let yearGrades = grades.filter(g => g.student_id === s.id);
+          let yearGrades = gradeMap[s.id] || [];
           if (params.academic_year) yearGrades = yearGrades.filter(g => String(g.academic_year) === String(params.academic_year));
           let sumPoints = 0, sumCredits = 0;
           yearGrades.forEach(g => {
@@ -4670,8 +4708,14 @@ function generateReport(reportType, params, sessionToken) {
 
       headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', ...subjectsInfo.map(s => `${s.code} ${s.name} (${s.periods} คาบ)`), 'มา (รวม)', 'ขาด (รวม)', 'ลา (รวม)', 'สาย (รวม)', 'รวมทั้งหมด', '% เข้าเรียนเฉลี่ย', 'สถานะ'];
 
+      const attMap = {};
+      attendance.forEach(a => {
+        if (!attMap[a.student_id]) attMap[a.student_id] = [];
+        attMap[a.student_id].push(a);
+      });
+
       rows = targetStudents.map((s, idx) => {
-        const sAtt = attendance.filter(a => a.student_id === s.id);
+        const sAtt = attMap[s.id] || [];
         const sSum = _attendanceSummary_(sAtt);
         let hasRisk = false;
         const subCols = subjectsInfo.map(sub => {
@@ -4722,8 +4766,14 @@ function generateReport(reportType, params, sessionToken) {
       });
 
       headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', 'มา (วัน)', 'ขาด (วัน)', 'ลา (วัน)', 'มาสาย (วัน)', 'รวม (วัน)', '% การมาแถว'];
+      const attMap = {};
+      attendance.forEach(a => {
+        if (!attMap[a.student_id]) attMap[a.student_id] = [];
+        attMap[a.student_id].push(a);
+      });
+
       rows = targetStudents.map((s, idx) => {
-        const arr = attendance.filter(a => a.student_id === s.id);
+        const arr = attMap[s.id] || [];
         const sum = _attendanceSummary_(arr);
         return [
           idx + 1,
@@ -4748,8 +4798,14 @@ function generateReport(reportType, params, sessionToken) {
 
       headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', 'คะแนนสะสม', 'คะแนนบวก (+)', 'คะแนนลบ (-)', 'จำนวนครั้งที่บันทึก', 'ระดับความเสี่ยง'];
       
+      const behMap = {};
+      records.forEach(b => {
+        if (!behMap[b.student_id]) behMap[b.student_id] = [];
+        behMap[b.student_id].push(b);
+      });
+
       const list = targetStudents.map(s => {
-        const mine = records.filter(b => b.student_id === s.id);
+        const mine = behMap[s.id] || [];
         const total = mine.reduce((sum, b) => sum + Number(b.score || 0), 0);
         const pos = mine.filter(b => b.type === 'positive').reduce((sum, b) => sum + Number(b.score || 0), 0);
         const neg = mine.filter(b => b.type === 'negative').reduce((sum, b) => sum + Number(b.score || 0), 0);
@@ -4818,13 +4874,25 @@ function generateReport(reportType, params, sessionToken) {
 
       headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', 'เบอร์ผู้ปกครอง', '% เวลาเรียน', 'คะแนนพฤติกรรม', 'ประเด็นความเสี่ยง'];
 
+      const attMap = {};
+      attendance.forEach(a => {
+        if (!attMap[a.student_id]) attMap[a.student_id] = [];
+        attMap[a.student_id].push(a);
+      });
+      
+      const behMap = {};
+      behavior.forEach(b => {
+        if (!behMap[b.student_id]) behMap[b.student_id] = [];
+        behMap[b.student_id].push(b);
+      });
+
       const riskList = [];
       targetStudents.forEach(s => {
-        const sAtt = attendance.filter(a => a.student_id === s.id);
+        const sAtt = attMap[s.id] || [];
         const attSum = _attendanceSummary_(sAtt);
         const attPct = attSum.total > 0 ? attSum.attendance_pct : 100;
 
-        const sBhv = behavior.filter(b => b.student_id === s.id);
+        const sBhv = behMap[s.id] || [];
         const bhvScore = sBhv.reduce((sum, b) => sum + Number(b.score || 0), 0);
 
         const risks = [];
@@ -7479,8 +7547,15 @@ function getBehaviorSummary(sessionToken) {
     if (!auth.ok) return auth.response;
     const records  = readJsonSheet_('Behavior');
     const students = readJsonSheet_('Students').filter(s => s.status === 'active');
+    
+    const behMap = {};
+    records.forEach(b => {
+      if (!behMap[b.student_id]) behMap[b.student_id] = [];
+      behMap[b.student_id].push(b);
+    });
+
     const summary  = students.map(s => {
-      const mine  = records.filter(b => b.student_id === s.id);
+      const mine  = behMap[s.id] || [];
       const total = mine.reduce((sum, b) => sum + Number(b.score||0), 0);
       const pos   = mine.filter(b => b.type === 'positive').length;
       const neg   = mine.filter(b => b.type === 'negative').length;
