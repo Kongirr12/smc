@@ -290,6 +290,7 @@ function routeApi(action, params, token) {
       case 'getTeacherWorkload': return getTeacherWorkload(params.academic_year, params.semester, token);
       case 'generateSchedulePrintHTML': return generateSchedulePrintHTML(params.classroom, params.academic_year, params.semester, token);
       case 'generateTeacherScheduleHTML': return generateTeacherScheduleHTML(params.teacher_id, params.academic_year, params.semester, token);
+      case 'generateAllSchedulesPrintHTML': return generateAllSchedulesPrintHTML(params.type, params.ids, params.academic_year, params.semester, token);
       case 'getPeriodConfig': return getPeriodConfig(params.academic_year || params.year, params.semester, token);
       case 'savePeriodConfig': return savePeriodConfig(params, token);
       case 'getRooms': return getRooms(params, token);
@@ -7644,53 +7645,214 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
     
     if (!ids || ids.length === 0) return { status: 'error', message: 'ไม่มีข้อมูลให้พิมพ์' };
     
+    const ay = String(academicYear || getConfig().academic_year);
+    const sem = String(semester || '1');
+    const config = getConfig();
+    const cfgRes = getPeriodConfig(ay, sem, sessionToken);
+    const periods = (cfgRes && cfgRes.data && cfgRes.data.periods) ? cfgRes.data.periods : [];
+    
+    const dayLabels = ['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์'];
+    
+    // Header cells สำหรับคาบเรียนทั้งหมด
+    const headerCells = periods.map(p => `
+      <th style="padding:6px; border:1px solid #000;">
+        <div style="font-size:11px; font-weight:700; white-space:nowrap;">${escapeHTMLServer_(p.label)}</div>
+        <div style="font-size:9px; font-weight:normal; white-space:nowrap;">${escapeHTMLServer_(p.start)}–${escapeHTMLServer_(p.end)}</div>
+      </th>
+    `).join('');
+
+    // ดึงข้อมูลตารางสอนทั้งหมดของเทอมนี้ครั้งเดียว (Batch Query)
+    const allSchedRes = getSchedule({ academic_year: ay, semester: sem, view: 'all' }, sessionToken);
+    const allEntries = (allSchedRes && allSchedRes.status === 'success') ? allSchedRes.data : [];
+
+    // ดึงข้อมูลครูทั้งหมดครั้งเดียว
+    const personnel = readJsonSheet_('Personnel');
+    const perMap = {};
+    personnel.forEach(p => { if (p && p.id) perMap[p.id] = p; });
+
     let combinedBody = '';
-    
-    for (let i = 0; i < ids.length; i++) {
-      let res;
-      if (type === 'class') {
-        res = generateSchedulePrintHTML(ids[i], academicYear, semester, sessionToken);
+    let pageCount = 0;
+
+    for (let idx = 0; idx < ids.length; idx++) {
+      const itemKey = ids[idx];
+      let pageTitle = '';
+      let subHeader = '';
+      let workloadHtml = '';
+      let sigLeftName = '';
+      let sigLeftRole = '';
+      let sigLeftImg = '';
+      let grid = { 1:{}, 2:{}, 3:{}, 4:{}, 5:{} };
+      let itemEntries = [];
+
+      if (type === 'teacher') {
+        const per = perMap[itemKey] || {};
+        const teacherName = per.id ? ((per.prefix||'')+(per.first_name||'')+' '+(per.last_name||'')) : (itemKey || '-');
+        const teacherPos  = per.position || '';
+        pageTitle = `ตารางสอน ${escapeHTMLServer_(teacherName)}`;
+        subHeader = `${escapeHTMLServer_(teacherPos)} | ภาคเรียนที่ ${escapeHTMLServer_(sem)} ปีการศึกษา ${escapeHTMLServer_(ay)}`;
+        sigLeftName = teacherName;
+        sigLeftRole = 'ครูผู้สอน';
+        if (per.signature) sigLeftImg = per.signature;
+
+        itemEntries = allEntries.filter(e => e.teacher_id && e.teacher_id.split(',').map(s=>s.trim()).includes(String(itemKey)));
+        itemEntries.forEach(e => { if (grid[e.day]) grid[e.day][e.period_no] = e; });
+
+        // นับภาระงานสอน
+        let totalPeriods = 0;
+        [1,2,3,4,5].forEach(d => {
+          Object.keys(grid[d]).forEach(pNo => {
+            const p = periods.find(x => Number(x.no) === Number(pNo));
+            if (p && !p.is_break && !p.is_homeroom) {
+              totalPeriods++;
+            }
+          });
+        });
+        workloadHtml = `<div class="workload">ภาระงานสอน: <b>${totalPeriods}</b> คาบ/สัปดาห์</div>`;
+
       } else {
-        res = generateTeacherScheduleHTML(ids[i], academicYear, semester, sessionToken);
+        // type === 'class'
+        const classroom = itemKey;
+        pageTitle = `ตารางเรียน ชั้น ${escapeHTMLServer_(classroom)}`;
+        subHeader = `ภาคเรียนที่ ${escapeHTMLServer_(sem)} ปีการศึกษา ${escapeHTMLServer_(ay)}`;
+        sigLeftName = '';
+        sigLeftRole = 'ครูที่ปรึกษา';
+
+        itemEntries = allEntries.filter(e => String(e.classroom) === String(classroom));
+        itemEntries.forEach(e => { if (grid[e.day]) grid[e.day][e.period_no] = e; });
       }
-      
-      if (res && res.status === 'success') {
-        // Extract inner body content
-        let html = res.html;
-        const bodyStart = html.indexOf('<body>') + 6;
-        const bodyEnd = html.lastIndexOf('</body>');
-        if (bodyStart > 5 && bodyEnd > -1) {
-          let bodyContent = html.substring(bodyStart, bodyEnd);
-          // Remove the "no-print" button from each individual page
-          bodyContent = bodyContent.replace(/<button class="no-print"[^>]*>.*?<\/button>/g, '');
-          
-          if (i > 0) {
-            combinedBody += '\n<div style="page-break-before: always;"></div>\n';
+
+      // สร้างแถวตาราง 5 วัน (จันทร์-ศุกร์)
+      const rows = [1,2,3,4,5].map((d, dayIndex) => {
+        const rowCells = [];
+        for (let i = 0; i < periods.length; i++) {
+          const p = periods[i];
+          if (p.is_break) {
+            const text = (p.label && p.label.includes('เสาธง')) ? '' : 'พัก';
+            rowCells.push(`<td style="border:1px solid #000; background:#F1F5F9; text-align:center; font-size:11px; color:#64748B; width:30px; vertical-align:middle;">${text}</td>`);
+            continue;
           }
-          combinedBody += bodyContent;
+
+          const e = grid[d][p.no];
+          if (!e) {
+            rowCells.push('<td style="border:1px solid #000; min-height:56px;"></td>');
+            continue;
+          }
+
+          let colspan = 1;
+          while (i + 1 < periods.length) {
+            const nextP = periods[i + 1];
+            if (nextP.is_break) break;
+            const nextE = grid[d][nextP.no];
+            if (!nextE) break;
+
+            const isSame = (type === 'teacher')
+              ? ((e.subject_code === nextE.subject_code) && 
+                 (e.subject_name === nextE.subject_name) && 
+                 (e.activity_label === nextE.activity_label) && 
+                 (e.room_name === nextE.room_name) && 
+                 (e.classroom === nextE.classroom))
+              : ((e.subject_code === nextE.subject_code) && 
+                 (e.subject_name === nextE.subject_name) && 
+                 (e.activity_label === nextE.activity_label) && 
+                 (e.room_name === nextE.room_name) && 
+                 (e.teacher_id === nextE.teacher_id));
+
+            if (isSame) {
+              colspan++;
+              i++;
+            } else {
+              break;
+            }
+          }
+
+          const colAttr = colspan > 1 ? ` colspan="${colspan}"` : '';
+          const subInfo = (type === 'teacher')
+            ? (e.classroom !== 'กิจกรรม' ? escapeHTMLServer_(e.classroom) : '')
+            : (e.activity_label ? '' : escapeHTMLServer_(e.teacher_short || e.teacher_name || ''));
+
+          rowCells.push(`
+            <td${colAttr} style="border:1px solid #000; padding:0; vertical-align:middle; text-align:center;">
+              <div style="margin:2px; padding:4px 6px; min-height:50px;">
+                <div style="font-weight:700; font-size:11px; color:#000; line-height:1.25;">
+                  ${e.subject_code ? `<span style="font-size:9px; color:#475569; display:block;">${escapeHTMLServer_(e.subject_code)}</span>` : ''}
+                  ${escapeHTMLServer_(e.subject_name || e.activity_label || '')}
+                </div>
+                ${subInfo ? `<div style="font-size:10px; color:#000; margin-top:2px; line-height:1.2;">${subInfo}</div>` : ''}
+                ${e.room_name ? `<div style="font-size:9px; color:#000;">${escapeHTMLServer_(e.room_name)}</div>` : ''}
+              </div>
+            </td>`);
         }
-      }
+        return `
+          <tr>
+            <td style="background:#FFF; color:#000; padding:4px 8px; border:1px solid #000;
+                       white-space:nowrap; font-size:12px; font-weight:bold; text-align:center; width:60px; vertical-align:middle;">
+              วัน${dayLabels[dayIndex]}
+            </td>
+            ${rowCells.join('')}
+          </tr>`;
+      });
+
+      const pageHtml = `
+        <div class="schedule-page" style="page-break-after:always; break-after:page; padding:8px 0; margin-bottom:12px;">
+          <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:12px; text-align:center;">
+            <img src="${escapeHTMLServer_(config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN')}" alt="Logo" style="width:70px; height:70px; object-fit:contain; margin-bottom:6px;">
+            <div style="font-size:20px; font-weight:800; color:#0F172A; margin-bottom:3px;">${pageTitle}</div>
+            <div style="font-size:15px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
+            <div style="font-size:13px; color:#64748B; margin-top:2px;">${subHeader}</div>
+          </div>
+          ${workloadHtml}
+          <table>
+            <thead>
+              <tr>
+                <th style="width:85px;">วัน / คาบ</th>
+                ${headerCells}
+              </tr>
+            </thead>
+            <tbody>${rows.join('')}</tbody>
+          </table>
+          <div class="sig-row">
+            <div>
+              <div class="sig-line">${sigLeftImg ? `<img src="${escapeHTMLServer_(sigLeftImg)}" style="max-height:36px;">` : ''}</div>
+              <div>(${escapeHTMLServer_(sigLeftName || '......................................................')})</div>
+              <div>${sigLeftRole}</div>
+            </div>
+            <div>
+              <div class="sig-line"></div>
+              <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
+              <div>ผู้อำนวยการโรงเรียน</div>
+            </div>
+          </div>
+        </div>`;
+
+      combinedBody += pageHtml;
+      pageCount++;
     }
-    
+
     if (!combinedBody) {
       return { status: 'error', message: 'ไม่สามารถสร้างข้อมูลพิมพ์ได้' };
     }
-    
-    // Add the print button at the very top of the combined HTML
+
     const finalHtml = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8">
-<title>พิมพ์ตารางสอนทั้งหมด</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>พิมพ์ตาราง${type==='teacher'?'สอนของครู':'เรียน'}ทั้งหมด (${pageCount} หน้า)</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4 landscape; margin: 1cm; }
+  @page { size: A4 landscape; margin: 0.8cm; }
+  * { box-sizing: border-box; }
   body {
     font-family: 'Sarabun', sans-serif;
-    font-size: 12px; color: #0F172A; margin: 0;
+    font-size: 12px; color: #0F172A; margin: 0; padding: 12px;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .header {
-    text-align: center; margin-bottom: 20px;
+  .schedule-page {
+    page-break-after: always;
+    break-after: page;
+  }
+  .schedule-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
   }
   table {
     width: 100%; border-collapse: collapse;
@@ -7703,38 +7865,48 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
   }
   th {
     background: #FFF !important; color: #000 !important; text-align: center;
-    padding: 10px 8px; font-size: 13px; font-weight: 700; border-bottom: 2px solid #000;
+    padding: 8px 6px; font-size: 12px; font-weight: 700; border-bottom: 2px solid #000;
   }
-  td { vertical-align: middle; min-height: 60px; }
-  .signature-row {
-    display: flex; justify-content: space-around;
-    margin-top: 30px; text-align: center; font-size: 11px;
-  }
-  .sig-line { border-bottom: 1px dotted #000; width: 180px; margin: 0 auto 4px; padding-bottom: 24px; }
+  td { vertical-align: middle; min-height: 50px; }
   .sig-row {
     display: flex; justify-content: space-around;
-    margin-top: 30px; text-align: center; font-size: 11px;
+    margin-top: 24px; text-align: center; font-size: 11px;
   }
+  .sig-line { border-bottom: 1px dotted #000; width: 180px; margin: 0 auto 4px; padding-bottom: 20px; min-height: 24px; }
   .workload {
     text-align: right; margin-bottom: 6px; font-size: 11px; color: #475569;
   }
   @media print {
-    .no-print { display: none; }
-    body { font-size: 11px; }
+    .no-print { display: none !important; }
+    body { font-size: 11px; padding: 0; }
+    .schedule-page { min-height: auto; padding: 0; }
   }
-  .no-print {
-    position: fixed; top: 10px; right: 10px;
-    background: #800020; color: white; padding: 8px 16px;
-    border-radius: 8px; cursor: pointer; border: none;
-    font-family: inherit; font-weight: 700; font-size: 13px;
-    z-index: 100;
+  .no-print-bar {
+    position: sticky; top: 0; left: 0; right: 0;
+    background: #1E293B; color: white; padding: 10px 16px;
+    border-radius: 8px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
   }
+  .no-print-btn {
+    background: #800020; color: white; padding: 8px 18px;
+    border-radius: 6px; cursor: pointer; border: none;
+    font-family: inherit; font-weight: 700; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .no-print-btn:hover { background: #990026; }
 </style></head><body>
-<button class="no-print" onclick="window.print()">🖨 พิมพ์ทั้งหมด</button>
+<div class="no-print-bar no-print">
+  <div style="font-weight:700; font-size:14px;">🖨️ รวมทั้งหมด ${pageCount} หน้า (A4 แนวนอน)</div>
+  <button class="no-print-btn" onclick="window.print()">
+    <span>🖨 พิมพ์ / บันทึก PDF ทั้งหมด</span>
+  </button>
+</div>
 ${combinedBody}
 </body></html>`;
     
-    return { status: 'success', html: finalHtml };
+    return { status: 'success', html: finalHtml, count: pageCount };
   } catch (e) {
     logError({ fn:'generateAllSchedulesPrintHTML', error:e.message });
     return { status:'error', message:e.message };

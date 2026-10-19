@@ -5,20 +5,141 @@
 
 
 /* ============================================================
- *  Shared: เปิด HTML ที่ได้จาก backend ในหน้าต่างใหม่
+ *  Shared: เปิด HTML ที่ได้จาก backend (รองรับทั้งมือถือและคอมพิวเตอร์)
  * ============================================================ */
-function openHTMLDocument(html) {
-  const w = window.open('', '_blank');
-  if (!w) {
-    return Swal.fire({
-      icon: 'warning',
-      title: 'Popup ถูกปิด',
-      text: 'กรุณาอนุญาตให้เปิด pop-up จาก URL นี้'
+function showPrintPreviewModal(html, docTitle) {
+  let modal = document.getElementById('printDocModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'printDocModal';
+    modal.className = 'fixed inset-0 z-[99999] bg-slate-900/80 backdrop-blur-sm flex flex-col';
+    modal.innerHTML = `
+      <div class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between shadow-sm gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <i class='bx bx-printer text-indigo-600 text-xl sm:text-2xl flex-shrink-0'></i>
+          <span id="printDocModalTitle" class="text-sm sm:text-base font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
+        </div>
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <button id="btnPrintModalAction" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm">
+            <i class='bx bx-printer text-base'></i>
+            <span>พิมพ์ / PDF</span>
+          </button>
+          <button id="btnOpenNewTabModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="เปิดในแท็บใหม่">
+            <i class='bx bx-export text-base'></i>
+            <span class="hidden sm:inline">เปิดแท็บใหม่</span>
+          </button>
+          <button id="btnDownloadModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="ดาวน์โหลดไฟล์ HTML">
+            <i class='bx bx-download text-base'></i>
+            <span class="hidden sm:inline">ดาวน์โหลด</span>
+          </button>
+          <button id="btnClosePrintModalAction" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg" title="ปิดหน้าต่าง">
+            <i class='bx bx-x text-2xl leading-none'></i>
+          </button>
+        </div>
+      </div>
+      <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex justify-center items-center p-0 sm:p-2">
+        <iframe id="printDocIframe" class="w-full h-full border-0 bg-white sm:rounded-lg sm:shadow-lg"></iframe>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('btnClosePrintModalAction').onclick = () => {
+      modal.style.display = 'none';
+    };
+
+    document.getElementById('btnPrintModalAction').onclick = () => {
+      const iframe = document.getElementById('printDocIframe');
+      if (iframe && iframe.contentWindow) {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (e) {
+          console.warn('Iframe print error', e);
+          window.print();
+        }
+      }
+    };
+
+    document.getElementById('btnOpenNewTabModalAction').onclick = () => {
+      if (modal._currentHtml) {
+        try {
+          const blob = new Blob([modal._currentHtml], { type: 'text/html;charset=utf-8' });
+          const blobUrl = URL.createObjectURL(blob);
+          const w = window.open(blobUrl, '_blank');
+          if (!w) {
+            showToast('warning', 'เบราว์เซอร์บล็อกแท็บใหม่ สามารถกดปุ่มพิมพ์จากหน้านี้ได้ทันที');
+          }
+        } catch (e) {
+          showToast('error', 'ไม่สามารถเปิดแท็บใหม่ได้');
+        }
+      }
+    };
+
+    document.getElementById('btnDownloadModalAction').onclick = () => {
+      if (modal._currentHtml) {
+        try {
+          const blob = new Blob([modal._currentHtml], { type: 'text/html;charset=utf-8' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          const safeTitle = (modal._currentTitle || 'document').replace(/[\\/:*?"<>|]/g, '_');
+          a.download = `${safeTitle}.html`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          showToast('success', 'ดาวน์โหลดไฟล์เรียบร้อย');
+        } catch (e) {
+          showToast('error', 'ไม่สามารถดาวน์โหลดได้');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.style.display !== 'none') {
+        modal.style.display = 'none';
+      }
     });
   }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+
+  modal._currentHtml = html;
+  modal._currentTitle = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
+  const titleEl = document.getElementById('printDocModalTitle');
+  if (titleEl) titleEl.textContent = modal._currentTitle;
+
+  const iframe = document.getElementById('printDocIframe');
+  if (iframe) {
+    iframe.srcdoc = html;
+  }
+
+  modal.style.display = 'flex';
+}
+
+function openHTMLDocument(html, docTitle) {
+  if (!html) return;
+  const title = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
+  // สำหรับมือถือ: แสดงใน In-App Print Preview Modal ทันที
+  // ป้องกันปัญหา Safari/Chrome บนมือถือบล็อก Popup หรือ AirPrint พัง
+  if (isMobile) {
+    showPrintPreviewModal(html, title);
+    return;
+  }
+
+  // สำหรับคอมพิวเตอร์: ลองเปิดหน้าต่างใหม่ก่อน
+  try {
+    const w = window.open('', '_blank');
+    if (w && !w.closed) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      return;
+    }
+  } catch (err) {
+    console.warn('Popup blocked or failed, fallback to preview modal', err);
+  }
+
+  // ถ้าคอมพิวเตอร์โดนบล็อก Popup → เปิดใน Modal เช่นเดียวกัน
+  showPrintPreviewModal(html, title);
 }
 
 

@@ -750,29 +750,31 @@ function renderTeacherView() {
   if (!area) return;
   area.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 mb-4">
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-semibold text-slate-600 whitespace-nowrap">ครูผู้สอน\x3c/span>
-        <select id="schedTeacher" class="sched-select" onchange="onTeacherChange()" style="min-width:240px;">
-          <option value="">เลือกครู\x3c/option>
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <span class="text-sm font-semibold text-slate-600 whitespace-nowrap">ครูผู้สอน:\x3c/span>
+        <select id="schedTeacher" class="sched-select flex-1 sm:flex-initial" onchange="onTeacherChange()" style="min-width:200px;">
+          <option value="">-- เลือกครูเพื่อดูรายบุคคล --\x3c/option>
           ${SchedState.teachers.map(t => `<option value="${t.id}" ${SchedState.teacher_id===t.id?'selected':''}>${escapeHTML(t.name)}\x3c/option>`).join('')}
         \x3c/select>
       \x3c/div>
       <div class="flex-1">\x3c/div>
-      ${SchedState.teacher_id ? `
-        <button class="btn btn-light" onclick="printTeacherSchedule()">
-          <i class='bx bx-printer'>\x3c/i> พิมพ์คนนี้
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+        ${SchedState.teacher_id ? `
+          <button class="btn btn-light flex-1 sm:flex-initial justify-center" onclick="printTeacherSchedule()">
+            <i class='bx bx-printer'>\x3c/i> พิมพ์คนนี้
+          \x3c/button>
+        ` : ''}
+        <button class="btn btn-light flex-1 sm:flex-initial justify-center" onclick="printAllTeacherSchedules()">
+          <i class='bx bx-printer'>\x3c/i> พิมพ์ตารางครูทั้งหมด
         \x3c/button>
-        <button class="btn btn-light" onclick="printAllTeacherSchedules()">
-          <i class='bx bx-printer'>\x3c/i> พิมพ์ทั้งหมด
-        \x3c/button>
-      ` : ''}
+      \x3c/div>
     \x3c/div>
 
     <div id="teacherGridArea">
       ${SchedState.teacher_id ? buildScheduleGrid('teacher') : `
         <div class="empty-state">
           <i class='bx bxs-user-detail'>\x3c/i>
-          เลือกครูเพื่อดูตารางสอนรายบุคคล
+          เลือกครูเพื่อดูตารางสอนรายบุคคล หรือกดปุ่ม <b>"พิมพ์ตารางครูทั้งหมด"</b> ด้านบนเพื่อพิมพ์เอกสารของครูทุกคน
         \x3c/div>`}
     \x3c/div>
     ${schedLegend()}
@@ -1734,7 +1736,11 @@ function printClassSchedule() {
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html);
+      openHTMLDocument(res.html, `ตารางเรียน ชั้น ${SchedState.classroom}`);
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการเตรียมเอกสาร');
     })
     .generateSchedulePrintHTML(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
 }
@@ -1742,11 +1748,17 @@ function printClassSchedule() {
 function printTeacherSchedule() {
   if (!SchedState.teacher_id) return showToast('warning', 'เลือกครูก่อน');
   showLoading('กำลังเตรียมเอกสาร...');
+  const tObj = (SchedState.teachers || []).find(t => t.id === SchedState.teacher_id);
+  const tName = tObj ? tObj.name : '';
   google.script.run
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html);
+      openHTMLDocument(res.html, `ตารางสอน ${tName}`);
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการเตรียมเอกสาร');
     })
     .generateTeacherScheduleHTML(SchedState.teacher_id, SchedState.academic_year, SchedState.semester, APP.token);
 }
@@ -1957,7 +1969,11 @@ function printAllClassSchedules() {
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html);
+      openHTMLDocument(res.html, 'พิมพ์ตารางเรียนทุกห้อง');
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการโหลดตาราง');
     })
     .generateAllSchedulesPrintHTML('class', SchedState.classrooms, SchedState.academic_year, SchedState.semester, APP.token);
 }
@@ -1970,7 +1986,11 @@ function printAllTeacherSchedules() {
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html);
+      openHTMLDocument(res.html, 'พิมพ์ตารางสอนของครูทั้งหมด');
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการโหลดตาราง');
     })
     .generateAllSchedulesPrintHTML('teacher', ids, SchedState.academic_year, SchedState.semester, APP.token);
 }
