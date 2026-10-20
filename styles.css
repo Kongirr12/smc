@@ -1698,6 +1698,39 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     font-size: 11px !important;
   }
 }
+
+/* ─── In-App Print Document Styles ─── */
+#inAppPrintArea {
+  display: none;
+}
+
+@media print {
+  body.is-printing-doc {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.is-printing-doc > *:not(#inAppPrintArea) {
+    display: none !important;
+  }
+  body.is-printing-doc #inAppPrintArea {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    overflow: visible !important;
+  }
+  body.is-printing-doc #inAppPrintArea .no-print,
+  body.is-printing-doc #inAppPrintArea .no-print-bar {
+    display: none !important;
+  }
+}
 html.dark-mode .border-slate-200, html.dark-mode .border-slate-100,
 html.dark-mode .ring-slate-200, html.dark-mode .border-b, html.dark-mode .border {
   border-color: rgba(99,102,241,.12) !important; --tw-ring-color: rgba(99,102,241,.12) !important;

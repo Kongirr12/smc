@@ -10,7 +10,6 @@
 function showPrintPreviewModal(html, docTitle, directUrl) {
   let modal = document.getElementById('printDocModal');
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
   if (!modal) {
     modal = document.createElement('div');
@@ -19,37 +18,30 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     modal.style.paddingTop = 'env(safe-area-inset-top, 0px)';
     modal.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
     modal.innerHTML = `
-      <div class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between shadow-sm gap-2">
-        <div class="flex items-center gap-2 min-w-0">
-          <i class='bx bx-printer text-indigo-600 text-xl sm:text-2xl flex-shrink-0'></i>
-          <span id="printDocModalTitle" class="text-sm sm:text-base font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
+      <div class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 sm:py-3 flex items-center justify-between shadow-sm gap-2">
+        <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <i class='bx bx-printer text-indigo-600 text-lg sm:text-xl flex-shrink-0'></i>
+          <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
         </div>
-        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 flex-wrap justify-end">
-          <a id="btnOpenSafariAction" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm" style="background:#1D4ED8; color:white; display:none;">
-            <i class='bx bx-globe text-base'></i>
-            <span class="hidden sm:inline">เปิดใน </span><span>Safari เพื่อพิมพ์</span>
-          </a>
-          <button id="btnShareModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="แชร์ หรือ สั่งพิมพ์">
-            <i class='bx bx-share-alt text-base'></i>
-            <span class="hidden sm:inline">แชร์ / พิมพ์</span>
-          </button>
-          <button id="btnPrintModalAction" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm">
+        <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+          <button id="btnPrintModalAction" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm rounded-lg" style="background:#4F46E5; color:white;" title="พิมพ์เอกสาร / AirPrint">
             <i class='bx bx-printer text-base'></i>
             <span>พิมพ์</span>
           </button>
-          <button id="btnDownloadModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="ดาวน์โหลดไฟล์ HTML">
+          <button id="btnShareModalAction" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200" title="แชร์ หรือ ส่งไฟล์">
+            <i class='bx bx-share-alt text-base'></i>
+            <span class="hidden sm:inline">แชร์</span>
+          </button>
+          <button id="btnDownloadModalAction" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200" title="ดาวน์โหลดไฟล์">
             <i class='bx bx-download text-base'></i>
             <span class="hidden sm:inline">ดาวน์โหลด</span>
           </button>
-          <button id="btnClosePrintModalAction" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg" title="ปิดหน้าต่าง">
-            <i class='bx bx-x text-2xl leading-none'></i>
+          <a id="btnOpenSafariAction" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-light flex items-center justify-center p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg border border-slate-200" title="เปิดในเบราว์เซอร์ภายนอก" style="display:none;">
+            <i class='bx bx-link-external text-base'></i>
+          </a>
+          <button id="btnClosePrintModalAction" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg border border-slate-200" title="ปิดหน้าต่าง">
+            <i class='bx bx-x text-xl leading-none'></i>
           </button>
-        </div>
-      </div>
-      <div id="printDocIosBanner" style="display:none;" class="bg-blue-50 border-b border-blue-200 px-3 py-2 flex items-center justify-between text-xs text-blue-900">
-        <div class="flex items-center gap-2">
-          <i class='bx bxs-info-circle text-blue-600 text-base flex-shrink-0'></i>
-          <span>📱 <b>สำหรับ iPhone (หน้าจอโฮม):</b> กรุณาแตะปุ่มสีน้ำเงิน <b>"เปิดใน Safari เพื่อพิมพ์"</b> เพื่อใช้ AirPrint หรือบันทึก PDF ครับ</span>
         </div>
       </div>
       <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex justify-center items-center p-0 sm:p-2">
@@ -60,85 +52,79 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
     document.getElementById('btnClosePrintModalAction').onclick = () => {
       modal.style.display = 'none';
+      const printArea = document.getElementById('inAppPrintArea');
+      if (printArea) printArea.innerHTML = '';
+      document.body.classList.remove('is-printing-doc');
+    };
+
+    window.triggerInAppPrint = function() {
+      const iframe = document.getElementById('printDocIframe');
+      let printArea = document.getElementById('inAppPrintArea');
+      if (!printArea) {
+        printArea = document.createElement('div');
+        printArea.id = 'inAppPrintArea';
+        document.body.appendChild(printArea);
+      }
+
+      if (modal && modal._currentHtml) {
+        printArea.innerHTML = modal._currentHtml;
+      }
+
+      document.body.classList.add('is-printing-doc');
+
+      setTimeout(() => {
+        try {
+          if (!isIOS && iframe && iframe.contentWindow) {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+          } else {
+            window.focus();
+            window.print();
+          }
+        } catch (err) {
+          console.warn('In-app print fallback', err);
+          window.focus();
+          window.print();
+        } finally {
+          setTimeout(() => {
+            document.body.classList.remove('is-printing-doc');
+            if (printArea) printArea.innerHTML = '';
+          }, 1500);
+        }
+      }, 150);
     };
 
     document.getElementById('btnPrintModalAction').onclick = () => {
-      // ตรวจสอบว่าเป็น iPhone ที่เปิดผ่านหน้าจอโฮมหรือไม่
-      if (isIOS && isStandalone) {
-        if (modal._currentDirectUrl) {
-          Swal.fire({
-            icon: 'info',
-            title: 'สั่งพิมพ์บน iPhone',
-            html: 'ระบบ iOS บนหน้าจอโฮม (PWA) ปิดกั้นการสั่งพิมพ์ตรง<br><br>กรุณาแตะปุ่ม <b>"เปิดใน Safari"</b> เพื่อสั่งพิมพ์ AirPrint หรือบันทึกเป็น PDF ใน Safari ครับ',
-            confirmButtonText: '🌐 เปิดใน Safari ทันที',
-            showCancelButton: true,
-            cancelButtonText: 'ปิด',
-            confirmButtonColor: '#1D4ED8'
-          }).then(res => {
-            if (res.isConfirmed && modal._currentDirectUrl) {
-              window.open(modal._currentDirectUrl, '_blank');
-            }
-          });
-          return;
-        } else {
-          Swal.fire({
-            icon: 'info',
-            title: 'สั่งพิมพ์บน iPhone',
-            html: 'ระบบ iOS บนหน้าจอโฮม (PWA) ปิดกั้นคำสั่งพิมพ์ตรง<br><br>กรุณาแตะปุ่ม <b>"แชร์ / พิมพ์"</b> ด้านบน เพื่อเลือกพิมพ์ผ่านเมนู AirPrint ของ iPhone หรือบันทึกไฟล์ได้ทันทีครับ',
-            confirmButtonText: '📤 ใช้ปุ่มแชร์ / พิมพ์',
-            showCancelButton: true,
-            cancelButtonText: 'ปิด',
-            confirmButtonColor: '#059669'
-          }).then(res => {
-            if (res.isConfirmed) {
-              const btnShare = document.getElementById('btnShareModalAction');
-              if (btnShare) btnShare.click();
-            }
-          });
-          return;
-        }
-      }
-
-      const iframe = document.getElementById('printDocIframe');
-      if (iframe && iframe.contentWindow) {
-        try {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-        } catch (e) {
-          console.warn('Iframe print error', e);
-          window.print();
-        }
-      }
+      window.triggerInAppPrint();
     };
 
     document.getElementById('btnShareModalAction').onclick = async () => {
       if (!modal._currentHtml) return;
       const safeTitle = (modal._currentTitle || 'เอกสาร').replace(/[\\/:*?"<>|]/g, '_');
       const shareText = `เอกสาร ${modal._currentTitle || ''} โรงเรียนมหาชัยพิทยาคาร`.trim();
-      
-      // ลองแชร์เป็นไฟล์ HTML ผ่าน Web Share API ก่อน (บน iOS จะมีตัวเลือก AirPrint ใน Share Sheet ทันที)
-      try {
-        const file = new File([modal._currentHtml], `${safeTitle}.html`, { type: 'text/html' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: modal._currentTitle || 'เอกสารโรงเรียน',
-            text: shareText
-          });
-          return;
-        }
-      } catch (e) {
-        console.warn('Share file failed, trying URL share', e);
-      }
 
-      // แชร์ผ่าน URL ลิงก์
       if (navigator.share) {
+        try {
+          const file = new File([modal._currentHtml], `${safeTitle}.html`, { type: 'text/html' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: modal._currentTitle || 'เอกสารโรงเรียน',
+              text: shareText
+            });
+            return;
+          }
+        } catch (e) {
+          console.warn('Share file failed, trying URL share', e);
+        }
+
         try {
           await navigator.share({
             title: modal._currentTitle || 'เอกสารโรงเรียน',
             text: shareText,
             url: modal._currentDirectUrl || window.location.href
           });
+          return;
         } catch (err) {
           if (err.name !== 'AbortError') {
             showToast('error', 'ไม่สามารถแชร์ได้');
@@ -147,10 +133,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
       } else if (modal._currentDirectUrl) {
         try {
           navigator.clipboard.writeText(modal._currentDirectUrl);
-          showToast('success', 'คัดลอกลิงก์สำหรับเปิดใน Safari เรียบร้อย');
-        } catch (_) {
-          showToast('info', 'กดปุ่ม "เปิดใน Safari เพื่อพิมพ์" ได้ทันที');
-        }
+          showToast('success', 'คัดลอกลิงก์เรียบร้อย');
+        } catch (_) {}
       }
     };
 
@@ -175,6 +159,9 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modal.style.display !== 'none') {
         modal.style.display = 'none';
+        const printArea = document.getElementById('inAppPrintArea');
+        if (printArea) printArea.innerHTML = '';
+        document.body.classList.remove('is-printing-doc');
       }
     });
   }
@@ -194,11 +181,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     } else {
       btnSafari.style.display = 'none';
     }
-  }
-
-  const iosBanner = document.getElementById('printDocIosBanner');
-  if (iosBanner) {
-    iosBanner.style.display = (isIOS && directUrl) ? 'flex' : 'none';
   }
 
   const iframe = document.getElementById('printDocIframe');

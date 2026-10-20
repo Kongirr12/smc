@@ -7163,15 +7163,22 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
 <title>ตารางสอน ${escapeHTMLServer_(classroom)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4 landscape; margin: 1cm; }
+  @page { size: A4 landscape; margin: 8mm; }
   body {
     font-family: 'Sarabun', sans-serif;
     font-size: 12px; color: #0F172A; margin: 0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+  @media screen {
+    body { min-width: 860px; padding: 12px; background: #F8FAFC; }
+  }
+  @media print {
+    body { min-width: 100% !important; padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    .no-print { display: none !important; }
+  }
   .header {
-    text-align: center; margin-bottom: 20px;
+    text-align: center; margin-bottom: 16px;
   }
   table {
     width: 100%; border-collapse: collapse;
@@ -7184,26 +7191,23 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   }
   th {
     background: #FFF !important; color: #000 !important; text-align: center;
-    padding: 10px 8px; font-size: 13px; font-weight: 700; border-bottom: 2px solid #000;
+    padding: 8px 6px; font-size: 12px; font-weight: 700; border-bottom: 2px solid #000;
   }
-  td { vertical-align: middle; min-height: 60px; }
+  td { vertical-align: middle; min-height: 56px; }
   .signature-row {
     display: flex; justify-content: space-around;
-    margin-top: 30px; text-align: center; font-size: 11px;
+    margin-top: 24px; text-align: center; font-size: 11px;
   }
-  .sig-line { border-bottom: 1px dotted #000; width: 180px; margin: 0 auto 4px; padding-bottom: 24px; }
-  @media print {
-    .no-print { display: none; }
-    body { font-size: 11px; }
-  }
+  .sig-line { border-bottom: 1px dotted #000; width: 180px; margin: 0 auto 4px; padding-bottom: 20px; }
   .no-print {
     position: fixed; top: 10px; right: 10px;
-    background: #800020; color: white; padding: 8px 16px;
+    background: #4F46E5; color: white; padding: 8px 16px;
     border-radius: 8px; cursor: pointer; border: none;
     font-family: inherit; font-weight: 700; font-size: 13px;
+    z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
   }
 </style></head><body>
-<button class="no-print" onclick="window.print()">🖨 พิมพ์</button>
+<button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
 <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
   <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:75px; height:75px; object-fit:contain; margin-bottom:8px;">
   <div style="font-size:22px; font-weight:800; color:#0F172A; margin-bottom:4px;">ตารางเรียน ชั้น ${escapeHTMLServer_(classroom)}</div>
@@ -7354,19 +7358,31 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
 <meta charset="UTF-8"><title>ตารางสอน ${escapeHTMLServer_(teacherName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4 landscape; margin: 1cm; }
+  @page { size: A4 landscape; margin: 8mm; }
   body { font-family:'Sarabun',sans-serif; font-size:12px; color:#0F172A; margin:0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .header { text-align:center; margin-bottom:20px; }
+  @media screen {
+    body { min-width: 860px; padding: 12px; background: #F8FAFC; }
+  }
+  @media print {
+    body { min-width: 100% !important; padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    .no-print { display: none !important; }
+  }
+  .header { text-align:center; margin-bottom:16px; }
   .workload { text-align:right; font-size:11px; color:#64748B; margin-bottom:6px; }
   table { width:100%; border-collapse:collapse; border:2px solid #000; table-layout:fixed; }
   th,td { border:1px solid #000; vertical-align:top; }
-  th { background:#FFF !important; color:#000 !important; text-align:center; padding:10px 8px; font-size:13px; font-weight:700; border-bottom:2px solid #000; }
-  .sig-row { display:flex; justify-content:space-around; margin-top:30px; text-align:center; font-size:11px; }
-  .sig-line { border-bottom:1px dotted #000; width:180px; margin:0 auto 4px; padding-bottom:24px; }
-  @media print { .no-print { display:none; } }
-  .no-print { position:fixed; top:10px; right:10px; background:#800020; color:white; padding:8px 16px; border-radius:8px; cursor:pointer; border:none; font-family:inherit; font-weight:700; }
+  th { background:#FFF !important; color:#000 !important; text-align:center; padding:8px 6px; font-size:12px; font-weight:700; border-bottom:2px solid #000; }
+  .sig-row { display:flex; justify-content:space-around; margin-top:24px; text-align:center; font-size:11px; }
+  .sig-line { border-bottom:1px dotted #000; width:180px; margin:0 auto 4px; padding-bottom:20px; }
+  .no-print {
+    position:fixed; top:10px; right:10px;
+    background:#4F46E5; color:white; padding:8px 16px;
+    border-radius:8px; cursor:pointer; border:none;
+    font-family:inherit; font-weight:700; font-size:13px;
+    z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
 </style></head><body>
-<button class="no-print" onclick="window.print()">🖨 พิมพ์</button>
+<button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
 <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
   <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:75px; height:75px; object-fit:contain; margin-bottom:8px;">
   <div style="font-size:22px; font-weight:800; color:#0F172A; margin-bottom:4px;">ตารางสอน ${escapeHTMLServer_(teacherName)}</div>
@@ -8822,13 +8838,21 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
 <title>พิมพ์ตาราง${type==='teacher'?'สอนของครู':'เรียน'}ทั้งหมด (${pageCount} หน้า)</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4 landscape; margin: 0.8cm; }
+  @page { size: A4 landscape; margin: 8mm; }
   * { box-sizing: border-box; }
   body {
     font-family: 'Sarabun', sans-serif;
-    font-size: 12px; color: #0F172A; margin: 0; padding: 12px;
+    font-size: 12px; color: #0F172A; margin: 0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  @media screen {
+    body { min-width: 860px; padding: 12px; background: #F8FAFC; }
+  }
+  @media print {
+    body { min-width: 100% !important; padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    .no-print, .no-print-bar { display: none !important; }
+    .schedule-page { min-height: auto; padding: 0; }
   }
   .schedule-page {
     page-break-after: always;
@@ -8860,11 +8884,6 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
   .workload {
     text-align: right; margin-bottom: 6px; font-size: 11px; color: #475569;
   }
-  @media print {
-    .no-print { display: none !important; }
-    body { font-size: 11px; padding: 0; }
-    .schedule-page { min-height: auto; padding: 0; }
-  }
   .no-print-bar {
     position: sticky; top: 0; left: 0; right: 0;
     background: #1E293B; color: white; padding: 10px 16px;
@@ -8874,16 +8893,16 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
     z-index: 1000;
   }
   .no-print-btn {
-    background: #800020; color: white; padding: 8px 18px;
+    background: #4F46E5; color: white; padding: 8px 18px;
     border-radius: 6px; cursor: pointer; border: none;
-    font-family: inherit; font-weight: 700; font-size: 14px;
+    font-family: inherit; font-weight: 700; font-size: 13px;
     display: inline-flex; align-items: center; gap: 6px;
   }
-  .no-print-btn:hover { background: #990026; }
+  .no-print-btn:hover { background: #4338CA; }
 </style></head><body>
 <div class="no-print-bar no-print">
-  <div style="font-weight:700; font-size:14px;">🖨️ รวมทั้งหมด ${pageCount} หน้า (A4 แนวนอน)</div>
-  <button class="no-print-btn" onclick="window.print()">
+  <div style="font-weight:700; font-size:13px;">🖨️ รวมทั้งหมด ${pageCount} หน้า (A4 แนวนอน)</div>
+  <button class="no-print-btn" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
     <span>🖨 พิมพ์ / บันทึก PDF ทั้งหมด</span>
   </button>
 </div>
