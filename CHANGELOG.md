@@ -3,7 +3,17 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v2.9.9] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.0.0] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🚀 เพิ่มฟีเจอร์และปรับปรุงหลัก (Major Updates)
+- **ปรับแต่งโทนสีไอคอนโลโก้ดั้งเดิม (Refined Original Logo Color Palette):**
+  - คงรูปทรงสัญลักษณ์ Squircle และตราสัญลักษณ์ตัว "S" ดั้งเดิมที่คุ้นเคย
+  - ปรับลดความฉูดฉาดของเฉดสีนีออน/ชมพู/ฟ้าสว่างเดิม เปลี่ยนมาใช้การไล่เฉดสี **Deep Royal Indigo & Slate Navy** (`#3730A3` ถึง `#312E81` และ `#1E1B4B`) ที่สุขุม ภูมิฐาน เรียบหรู และกลมกลืนกับธีมเว็บไซต์ระดับองค์กร
+  - ผลิตและส่งออกชุดไอคอนใหม่ครบทุกขนาด (`favicon.png`, `app-icon.jpg`, `apple-touch-icon.png`, `favicon-512.png`, `favicon-192.png`, `favicon-32.png`, `favicon.ico`)
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.0.0` เพื่อเคลียร์แคชไอคอนและสไตล์ทั่วทั้งระบบ
+
+---
+
+## [v2.9.9] - 2026-10-21
 ### 🚀 เพิ่มฟีเจอร์และปรับปรุงหลัก (Major Updates)
 - **ชุดไอคอนแอปใหม่ธีม Dark Obsidian Aurora (App Icon Revamp):**
   - ออกแบบไอคอนแอปพลิเคชันความละเอียดสูง (1024x1024, 512x512, 192x192, 180x180, 32x32, favicon.ico) ในโทนสีเดียวกับหน้าเว็บ (Midnight Obsidian `#0B0F19` ผสานแสงเรืองรอง Aurora Indigo & Violet) พร้อมตราโรงเรียนมหาชัยพิทยาคารตรงกลางและป้าย "MHC SMART SCHOOL"
