@@ -493,6 +493,25 @@ function renderDashboard(container) {
         </div>
       </div>
 
+      <!-- Scope Switcher: วันนี้ / รายเดือน / ตลอดภาคเรียน -->
+      <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div class="att-scope-container">
+          <button class="att-scope-pill active" id="attScope_daily" onclick="switchAttendanceDashboardPeriod('daily')">
+            <i class="bx bx-calendar"></i> ประจำวัน (วันนี้)
+          </button>
+          <button class="att-scope-pill" id="attScope_monthly" onclick="switchAttendanceDashboardPeriod('monthly')">
+            <i class="bx bx-calendar-event"></i> สรุปรายเดือน
+          </button>
+          <button class="att-scope-pill" id="attScope_semester" onclick="switchAttendanceDashboardPeriod('semester')">
+            <i class="bx bx-calendar-star"></i> สรุปตลอดภาคเรียน
+          </button>
+        </div>
+        <div id="attDashPeriodWrap" class="flex items-center gap-2" style="display:none;">
+          <select id="attDashPeriodSelect" onchange="onAttDashPeriodChange()" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs bg-white font-semibold text-slate-700">
+          </select>
+        </div>
+      </div>
+
       <!-- 4 KPI Attendance Cards -->
       <div class="att-kpi-grid">
         <div class="att-kpi-card">
@@ -784,6 +803,283 @@ function renderDashboardData(d) {
     updateNotificationsUI(d.unread_notifications);
   }
 }
+
+window.switchAttendanceDashboardPeriod = function(scope, prefix) {
+  const p = prefix || '';
+  const getId = id => p ? (p + '_' + id) : id;
+
+  const btnDaily = document.getElementById(getId('attScope_daily'));
+  const btnMonthly = document.getElementById(getId('attScope_monthly'));
+  const btnSemester = document.getElementById(getId('attScope_semester'));
+  const periodWrap = document.getElementById(getId('attDashPeriodWrap'));
+  const periodSel  = document.getElementById(getId('attDashPeriodSelect'));
+
+  if (btnDaily) btnDaily.classList.toggle('active', scope === 'daily');
+  if (btnMonthly) btnMonthly.classList.toggle('active', scope === 'monthly');
+  if (btnSemester) btnSemester.classList.toggle('active', scope === 'semester');
+
+  if (scope === 'daily') {
+    if (periodWrap) periodWrap.style.display = 'none';
+    const titleEl = document.querySelector(p ? '#attOverview h2' : '.att-dash-section h2');
+    if (titleEl) titleEl.innerHTML = '<i class="bx bxs-check-shield text-indigo-600 mr-1.5"></i> แดชบอร์ดสรุปยอดการเข้าเรียนประจำวัน';
+    const subEl = document.querySelector(p ? '#attOverview p' : '.att-dash-section p');
+    if (subEl) subEl.innerHTML = 'สถิติการมาเรียน เช็คชื่อหน้าเสาธง/โฮมรูม ประจำวันที่ <span id="' + getId('attTodayLabel') + '" class="font-semibold text-slate-700">—</span>';
+
+    if (APP.dashboardData && APP.dashboardData.attendance_dashboard) {
+      renderAttendanceDashboardPanel(APP.dashboardData.attendance_dashboard, p);
+    }
+    if (APP.dashboardData && APP.dashboardData.week_chart) {
+      updateAttendanceTrendChart(APP.dashboardData.week_chart, p);
+    }
+  } else if (scope === 'monthly') {
+    if (periodWrap) periodWrap.style.display = '';
+    const titleEl = document.querySelector(p ? '#attOverview h2' : '.att-dash-section h2');
+    if (titleEl) titleEl.innerHTML = '<i class="bx bxs-check-shield text-indigo-600 mr-1.5"></i> แดชบอร์ดสรุปยอดการเข้าเรียนประจำเดือน';
+
+    const loadMonthly = () => {
+      const ym = periodSel?.value || new Date().toISOString().slice(0, 7);
+      const parts = ym.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const mLabel = periodSel?.options[periodSel.selectedIndex]?.text || '';
+      const subEl = document.querySelector(p ? '#attOverview p' : '.att-dash-section p');
+      if (subEl) subEl.innerHTML = 'สถิติการมาเรียนและเช็คแถวหน้าเสาธง ประจำเดือน <span class="font-semibold text-indigo-700">' + mLabel + '</span>';
+
+      showToast('info', 'กำลังโหลดสถิติประจำเดือน ' + mLabel + '...');
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'success') {
+            applyPeriodSummaryToDashboard(res, p, 'monthly');
+          }
+        })
+        .getAttendanceReport({ scope: 'monthly', month: m, year: y, report_type: 'homeroom' }, APP.token);
+    };
+
+    if (window.AttendanceState?.filterOptions?.months && periodSel) {
+      periodSel.innerHTML = window.AttendanceState.filterOptions.months.map(m => '<option value="' + m.ym + '">' + escapeHTML(m.label) + '</option>').join('');
+      loadMonthly();
+    } else {
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'success' && res.data) {
+            if (!window.AttendanceState) window.AttendanceState = {};
+            window.AttendanceState.filterOptions = res.data;
+            if (periodSel) {
+              periodSel.innerHTML = res.data.months.map(m => '<option value="' + m.ym + '">' + escapeHTML(m.label) + '</option>').join('');
+            }
+            loadMonthly();
+          }
+        })
+        .getAttendanceFilterOptions(APP.token);
+    }
+  } else if (scope === 'semester') {
+    if (periodWrap) periodWrap.style.display = '';
+    const titleEl = document.querySelector(p ? '#attOverview h2' : '.att-dash-section h2');
+    if (titleEl) titleEl.innerHTML = '<i class="bx bxs-check-shield text-indigo-600 mr-1.5"></i> แดชบอร์ดสรุปยอดการเข้าเรียนตลอดภาคเรียน';
+
+    const loadSemester = () => {
+      const sem = periodSel?.value || '1';
+      const ay = APP.dashboardData?.config?.academic_year || '2569';
+      const semLabel = periodSel?.options[periodSel.selectedIndex]?.text || ('ภาคเรียนที่ ' + sem + '/' + ay);
+      const subEl = document.querySelector(p ? '#attOverview p' : '.att-dash-section p');
+      if (subEl) subEl.innerHTML = 'สถิติการมาเรียนและเช็คแถวหน้าเสาธง <span class="font-semibold text-indigo-700">' + semLabel + '</span>';
+
+      showToast('info', 'กำลังโหลดสถิติตลอด ' + semLabel + '...');
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'success') {
+            applyPeriodSummaryToDashboard(res, p, 'semester');
+          }
+        })
+        .getAttendanceReport({ scope: 'semester', semester: sem, academic_year: ay, report_type: 'homeroom' }, APP.token);
+    };
+
+    if (window.AttendanceState?.filterOptions?.semesters && periodSel) {
+      periodSel.innerHTML = window.AttendanceState.filterOptions.semesters.map(s => '<option value="' + s.id + '">' + escapeHTML(s.label) + '</option>').join('');
+      loadSemester();
+    } else {
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'success' && res.data) {
+            if (!window.AttendanceState) window.AttendanceState = {};
+            window.AttendanceState.filterOptions = res.data;
+            if (periodSel) {
+              periodSel.innerHTML = res.data.semesters.map(s => '<option value="' + s.id + '">' + escapeHTML(s.label) + '</option>').join('');
+            }
+            loadSemester();
+          }
+        })
+        .getAttendanceFilterOptions(APP.token);
+    }
+  }
+};
+
+window.onAttDashPeriodChange = function(prefix) {
+  const p = prefix || '';
+  const getId = id => p ? (p + '_' + id) : id;
+  const btnMonthly = document.getElementById(getId('attScope_monthly'));
+  const isMonthly = btnMonthly && btnMonthly.classList.contains('active');
+  switchAttendanceDashboardPeriod(isMonthly ? 'monthly' : 'semester', p);
+};
+
+window.applyPeriodSummaryToDashboard = function(res, prefix, scopeType) {
+  const p = prefix || '';
+  const getId = id => p ? (p + '_' + id) : id;
+  const sum = res.summary || {};
+
+  const setElTxt = (id, val) => {
+    const el = document.getElementById(getId(id));
+    if (el) el.textContent = val;
+  };
+
+  const rate = typeof sum.attendance_pct === 'number' ? sum.attendance_pct : 0;
+  setElTxt('attRateNum', rate.toFixed(1) + '%');
+  const badgeEl = document.getElementById(getId('attRateBadge'));
+  if (badgeEl) {
+    badgeEl.className = 'att-kpi-badge ' + (rate >= 95 ? 'att-badge-green' : (rate >= 90 ? 'att-badge-amber' : 'att-badge-rose'));
+    badgeEl.textContent = rate >= 95 ? 'ปกติ' : (rate >= 90 ? 'ควรเฝ้าระวัง' : 'ต่ำกว่าเกณฑ์');
+  }
+
+  const total = sum.total || 0;
+  const present = sum.present || 0;
+  const presentPct = total > 0 ? Math.round((present / total) * 100) : 0;
+  setElTxt('attPresentPct', presentPct + '%');
+  setElTxt('attPresentNum', formatNumber(present) + ' คน-วัน');
+  setElTxt('attPresentSub', 'เช็คชื่อเข้าแถวหน้าเสาธงสะสม');
+
+  setElTxt('attLateNum', formatNumber(sum.late || 0) + ' คน-วัน');
+  setElTxt('attAbsentNum', formatNumber((sum.absent || 0) + (sum.leave || 0)) + ' คน-วัน');
+  setElTxt('attAbsentSub', 'ขาด ' + formatNumber(sum.absent || 0) + ' / ลา ' + formatNumber(sum.leave || 0) + ' คน-วัน');
+
+  const queueArea = document.getElementById(getId('classroomQueueArea'));
+  if (queueArea) {
+    const classrooms = res.classrooms || [];
+    if (classrooms.length === 0) {
+      queueArea.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">ไม่พบข้อมูลห้องเรียน</div>';
+    } else {
+      queueArea.innerHTML = classrooms.map(rm => {
+        const rateCls = rm.attendance_pct >= 95 ? 'room-chip-submitted' : (rm.attendance_pct >= 90 ? 'room-chip-pending' : 'risk-pill-absent');
+        return `
+          <div class="room-queue-item is-submitted" onclick="goToClassAttendance('${escapeHTML(rm.classroom)}')">
+            <div class="room-queue-left">
+              <div class="room-queue-name">ชั้น ${escapeHTML(rm.classroom)}</div>
+              <div class="room-queue-teacher">${escapeHTML(rm.teacher || 'ครูประจำชั้น')} • มา ${rm.present} • สาย ${rm.late} • ลา ${rm.leave} • ขาด ${rm.absent}</div>
+            </div>
+            <div class="room-queue-right">
+              <span class="room-chip ${rateCls}">${rm.attendance_pct.toFixed(1)}%</span>
+              <i class="bx bx-chevron-right text-slate-400"></i>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  const riskBody = document.getElementById(getId('riskStudentsTableBody'));
+  const riskBadge = document.getElementById(getId('riskCountBadge'));
+  if (riskBody) {
+    const risks = res.risk_students || [];
+    if (riskBadge) {
+      riskBadge.textContent = 'พบ ' + risks.length + ' คน (ขาดเรียนสะสมสูงสุด)';
+    }
+    if (risks.length === 0) {
+      riskBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-emerald-600 font-medium text-xs"><i class="bx bx-check-shield text-base mr-1"></i> ไม่มีนักเรียนในกลุ่มเฝ้าระวัง</td></tr>';
+    } else {
+      riskBody.innerHTML = risks.map(s => {
+        const phoneLink = (s.parent_phone && s.parent_phone !== '-' && s.parent_phone !== '—')
+          ? `<a href="tel:${escapeHTML(s.parent_phone)}" class="text-indigo-600 font-semibold hover:underline inline-flex items-center gap-1 text-xs"><i class="bx bxs-phone-call text-sm"></i> ${escapeHTML(s.parent_phone)}</a>`
+          : '<span class="text-slate-400 text-xs">-</span>';
+
+        return `
+          <tr>
+            <td>
+              <div class="font-semibold text-slate-800">${escapeHTML((s.prefix || '') + (s.first_name || '') + ' ' + (s.last_name || ''))}</div>
+            </td>
+            <td class="text-slate-500 font-mono text-xs">${escapeHTML(s.student_code || s.id)}</td>
+            <td style="text-align:center;"><span class="font-medium text-slate-700">ชั้น ${escapeHTML(s.classroom)}</span></td>
+            <td style="text-align:center;">
+              <span class="inline-flex items-center justify-center font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full text-xs border border-rose-200">
+                ${s.absent} วัน
+              </span>
+            </td>
+            <td style="text-align:center;">
+              <span class="inline-block px-2 py-0.5 rounded text-xs font-bold ${s.attendance_pct >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${s.attendance_pct.toFixed(1)}%
+              </span>
+            </td>
+            <td style="text-align:center;">${phoneLink}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  if (scopeType === 'semester' && res.months && res.months.length > 0) {
+    updateAttendanceTrendChart(res.months.map(m => ({ label: m.label, pct: m.attendance_pct })), p, 'บาร์ / แท่ง');
+  } else if (scopeType === 'monthly' && res.dates && res.dates.length > 0) {
+    const dateCounts = {};
+    res.dates.forEach(d => dateCounts[d] = { present: 0, total: 0 });
+    res.data.forEach(s => {
+      if (s.dates) {
+        Object.keys(s.dates).forEach(d => {
+          if (dateCounts[d]) {
+            dateCounts[d].total++;
+            if (s.dates[d] === 'present' || s.dates[d] === 'late') dateCounts[d].present++;
+          }
+        });
+      }
+    });
+    const trendData = res.dates.map(d => {
+      const b = dateCounts[d];
+      const pt = b && b.total > 0 ? Math.round((b.present / b.total) * 100) : 0;
+      return { label: parseInt(d.slice(8, 10), 10), pct: pt };
+    });
+    updateAttendanceTrendChart(trendData, p, 'เส้น');
+  }
+};
+
+window.updateAttendanceTrendChart = function(chartData, prefix, type) {
+  const p = prefix || '';
+  const canvasId = p ? (p + '_chartAttendance') : 'chartAttendance';
+  const ctx = document.getElementById(canvasId) || document.getElementById('chartAttendance');
+  if (!ctx) return;
+
+  const chartKey = p ? (p + '_attendance') : 'attendance';
+  if (APP.charts && APP.charts[chartKey]) {
+    try { APP.charts[chartKey].destroy(); } catch (_) {}
+    delete APP.charts[chartKey];
+  }
+  const isDark = document.documentElement.classList.contains('dark-mode');
+
+  if (!APP.charts) APP.charts = {};
+  APP.charts[chartKey] = new Chart(ctx, {
+    type: (type === 'บาร์ / แท่ง') ? 'bar' : 'line',
+    data: {
+      labels: chartData.map(x => x.label),
+      datasets: [{
+        label: 'อัตราการเข้าเรียน (%)',
+        data: chartData.map(x => x.pct),
+        borderColor: '#4F46E5',
+        backgroundColor: (type === 'บาร์ / แท่ง') ? 'rgba(79,70,229,.7)' : 'rgba(79,70,229,.15)',
+        borderRadius: (type === 'บาร์ / แท่ง') ? 6 : 0,
+        fill: (type !== 'บาร์ / แท่ง'),
+        tension: 0.35,
+        pointBackgroundColor: '#3730A3',
+        pointRadius: 3,
+        borderWidth: 2.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 0, max: 100, ticks: { color: isDark ? '#94A3B8' : '#64748B', stepSize: 25, callback: v => v + '%' }, grid: { color: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' } },
+        x: { ticks: { color: isDark ? '#94A3B8' : '#64748B' }, grid: { display: false } }
+      }
+    }
+  });
+};
 
 window.goToClassAttendance = function(className) {
   if (typeof AttendanceState !== 'undefined') {

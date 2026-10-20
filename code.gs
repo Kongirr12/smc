@@ -393,6 +393,7 @@ function routeApi(action, params, token) {
       case 'getAttendanceReport': return getAttendanceReport(params, token);
       case 'getAttendanceByStudent': return getAttendanceByStudent(params.student_id, token);
       case 'exportAttendance': return exportAttendance(params, token);
+      case 'getAttendanceFilterOptions': return getAttendanceFilterOptions(token);
 
       // ---------- BEHAVIOR ----------
       case 'getBehaviorSummary': return getBehaviorSummary(token);
@@ -2565,15 +2566,114 @@ function saveAttendanceBulk(payload, sessionToken) {
  * Mode 'class'   : รายห้อง ในช่วงเวลา (สรุป)
  * Mode 'monthly' : รายห้อง รายเดือน (calendar grid)
  */
+function getAttendanceFilterOptions(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+
+    const config = getConfig();
+    const currentAY = String(config.academic_year || '2569');
+    const currentSem = String(config.semester || '1');
+
+    const attendance = readJsonSheet_('Attendance');
+    const seenYM = new Set();
+    attendance.forEach(a => {
+      if (a.date && a.date.length >= 7) {
+        seenYM.add(a.date.slice(0, 7));
+      }
+    });
+
+    const now = new Date();
+    const curYM = now.toISOString().slice(0, 7);
+    seenYM.add(curYM);
+
+    // Guaranteed months for current academic year & semester
+    const ayNum = Number(currentAY) > 2400 ? Number(currentAY) - 543 : Number(currentAY || now.getFullYear());
+    const sem1Months = [5, 6, 7, 8, 9, 10];
+    const sem2Months = [11, 12, 1, 2, 3];
+    const semMonths = currentSem === '2' ? sem2Months : sem1Months;
+    semMonths.forEach(m => {
+      const y = (currentSem === '2' && m <= 3) ? (ayNum + 1) : ayNum;
+      seenYM.add(y + '-' + String(m).padStart(2, '0'));
+    });
+
+    const THAI_MONTHS = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+    const sortedYM = Array.from(seenYM).sort().reverse();
+    const months = sortedYM.map(ym => {
+      const parts = ym.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const thYear = y + 543;
+      return {
+        ym: ym,
+        year: y,
+        month: m,
+        th_year: thYear,
+        label: (THAI_MONTHS[m] || ym) + ' ' + thYear
+      };
+    });
+
+    const semesters = [
+      { id: '1', label: 'ภาคเรียนที่ 1/' + currentAY + ' (พ.ค. - ต.ค.)', academic_year: currentAY },
+      { id: '2', label: 'ภาคเรียนที่ 2/' + currentAY + ' (พ.ย. - มี.ค.)', academic_year: currentAY }
+    ];
+
+    const students = readJsonSheet_('Students');
+    const classList = Array.from(new Set(students.map(s => s.classroom).filter(Boolean))).sort((a,b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+
+    return {
+      status: 'success',
+      data: {
+        current_academic_year: currentAY,
+        current_semester: currentSem,
+        current_ym: curYM,
+        months: months,
+        semesters: semesters,
+        classrooms: classList
+      }
+    };
+  } catch (e) {
+    logError({ fn:'getAttendanceFilterOptions', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
 function getAttendanceReport(params, sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
 
     params = params || {};
-    const mode  = params.mode || 'class';
-    const start = params.start_date;
-    const end   = params.end_date;
+    const mode = params.mode || 'class';
+    const scope = params.scope || (params.month ? 'monthly' : (params.semester ? 'semester' : (params.start_date ? 'custom' : 'monthly')));
+    const config = getConfig();
+
+    let start = params.start_date;
+    let end   = params.end_date;
+
+    const THAI_MONTHS = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const THAI_MONTHS_FULL = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+    // 1. Calculate Date Bounds by Scope
+    if (scope === 'monthly' || mode === 'monthly') {
+      const y = Number(params.year) > 2400 ? Number(params.year) - 543 : Number(params.year || new Date().getFullYear());
+      const m = Number(params.month || (new Date().getMonth() + 1));
+      start = y + '-' + String(m).padStart(2, '0') + '-01';
+      const lastDay = new Date(y, m, 0).getDate();
+      end = y + '-' + String(m).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+    } else if (scope === 'semester' || mode === 'semester') {
+      const sem = String(params.semester || config.semester || '1');
+      const ayStr = String(params.academic_year || config.academic_year || '2569');
+      const ay = Number(ayStr) > 2400 ? Number(ayStr) - 543 : Number(ayStr || new Date().getFullYear());
+      if (sem === '2') {
+        start = ay + '-11-01';
+        end = (ay + 1) + '-04-30';
+      } else {
+        start = ay + '-05-01';
+        end = ay + '-10-31';
+      }
+    }
 
     let attendance = readJsonSheet_('Attendance');
     if (start) attendance = attendance.filter(a => a.date >= start);
@@ -2581,6 +2681,7 @@ function getAttendanceReport(params, sessionToken) {
 
     const students = readJsonSheet_('Students');
 
+    // Single student mode
     if (mode === 'student') {
       if (!params.student_id) return { status:'error', message:'กรุณาเลือกนักเรียน' };
       const list = attendance
@@ -2590,147 +2691,254 @@ function getAttendanceReport(params, sessionToken) {
       return { status:'success', data:list, summary:summary };
     }
 
-    if (mode === 'class') {
-      if (!params.classroom) return { status:'error', message:'กรุณาเลือกชั้นเรียน' };
-      
-      const rtype = params.report_type || 'homeroom';
-      if (rtype === 'homeroom') {
-        attendance = attendance.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
-      } else if (rtype === 'all_subjects') {
-        attendance = attendance.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
-      } else {
-        // Specific subject id
-        attendance = attendance.filter(a => a.subject_id === rtype);
-      }
+    // Filter by report_type
+    const rtype = params.report_type || 'homeroom';
+    if (rtype === 'homeroom') {
+      attendance = attendance.filter(a => a.period === 'homeroom' || (!a.subject_id && !a.period));
+    } else if (rtype === 'all_subjects') {
+      attendance = attendance.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
+    } else {
+      attendance = attendance.filter(a => String(a.subject_id) === String(rtype));
+    }
 
-      const classStudents = students
-        .filter(s => String(s.classroom) === String(params.classroom))
-        .sort((a, b) => {
-          const na = Number(a.student_number || a.student_no || 0);
-          const nb = Number(b.student_number || b.student_no || 0);
-          if (na && nb) return na - nb;
-          return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
-        });
-      const ids = new Set(classStudents.map(s => s.id));
-      const list = attendance.filter(a => ids.has(a.student_id));
+    // Filter students
+    const activeStudents = students.filter(s => s.status !== 'inactive' && s.status !== 'graduate' && s.status !== 'transfer');
+    let classStudents = activeStudents;
+    const reqCls = params.classroom && params.classroom !== 'all' ? String(params.classroom).trim() : '';
+    if (reqCls) {
+      classStudents = activeStudents.filter(s => String(s.classroom).trim() === reqCls);
+    }
 
-      let subjectsInfo = [];
-      if (rtype === 'all_subjects') {
-        const allSubjects = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
-        const subjectMap = new Map();
-        allSubjects.forEach(s => subjectMap.set(String(s.id), s));
+    classStudents.sort((a, b) => {
+      const ca = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
+      if (ca !== 0) return ca;
+      const na = Number(a.student_number || a.student_no || 0);
+      const nb = Number(b.student_number || b.student_no || 0);
+      if (na && nb) return na - nb;
+      return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+    });
 
-        const subjectIdSet = new Set(list.map(a => String(a.subject_id)).filter(Boolean));
-        
-        try {
-          const scheduleEntries = readJsonSheet_('Schedule').filter(x => 
-            x._kind === 'entry' && String(x.classroom || '').trim() === String(params.classroom || '').trim()
-          );
-          scheduleEntries.forEach(e => {
-            if (e.subject_id) subjectIdSet.add(String(e.subject_id));
-          });
-        } catch (_) {}
+    const stuIds = new Set(classStudents.map(s => s.id));
+    const relevantAttendance = attendance.filter(a => stuIds.has(a.student_id));
 
-        if (subjectIdSet.size === 0) {
-          allSubjects.forEach(s => {
-            if (s.grade_level && String(params.classroom).includes(String(s.grade_level))) {
-              subjectIdSet.add(String(s.id));
-            }
-          });
-        }
+    // Handle all_subjects special case
+    let subjectsInfo = [];
+    if (rtype === 'all_subjects') {
+      const allSubjects = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
+      const subjectMap = new Map();
+      allSubjects.forEach(s => subjectMap.set(String(s.id), s));
+      const subjectIdSet = new Set(relevantAttendance.map(a => String(a.subject_id)).filter(Boolean));
 
-        subjectsInfo = Array.from(subjectIdSet).map(subId => {
-          const sObj = subjectMap.get(subId) || {};
-          const subRecords = list.filter(a => String(a.subject_id) === subId);
-          const subSum = _attendanceSummary_(subRecords);
-          const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
-          
-          let riskCount = 0;
-          const subStuMap = {};
-          subRecords.forEach(a => {
-            if (!subStuMap[a.student_id]) subStuMap[a.student_id] = [];
-            subStuMap[a.student_id].push(a);
-          });
-
-          classStudents.forEach(stu => {
-            const stuSubRecs = subStuMap[stu.id] || [];
-            if (stuSubRecs.length > 0) {
-              const p = _attendanceSummary_(stuSubRecs).attendance_pct;
-              if (p < 80) riskCount++;
-            }
-          });
-
-          return {
-            id: subId,
-            subject_code: sObj.subject_code || subId,
-            subject_name: sObj.subject_name || sObj.subject_code || subId,
-            periods_count: periodKeys.size,
-            summary: subSum,
-            risk_count: riskCount
-          };
-        }).sort((a, b) => (a.subject_code || '').localeCompare(b.subject_code || '', 'th'));
-      }
-
-      const listStuMap = {};
-      list.forEach(a => {
-        if (!listStuMap[a.student_id]) listStuMap[a.student_id] = [];
-        listStuMap[a.student_id].push(a);
-      });
-
-      const perStudent = classStudents.map(s => {
-        const stu = listStuMap[s.id] || [];
-        const stuObj = Object.assign(
-          { student_id: s.id, student_code: s.student_id, prefix: s.prefix,
-            first_name: s.first_name, last_name: s.last_name, student_number: s.student_number || s.student_no || '' },
-          _attendanceSummary_(stu)
+      try {
+        const scheduleEntries = readJsonSheet_('Schedule').filter(x => 
+          x._kind === 'entry' && (!reqCls || String(x.classroom || '').trim() === reqCls)
         );
+        scheduleEntries.forEach(e => {
+          if (e.subject_id) subjectIdSet.add(String(e.subject_id));
+        });
+      } catch (_) {}
 
-        if (rtype === 'all_subjects') {
-          stuObj.by_subject = {};
-          subjectsInfo.forEach(sub => {
-            const subStu = stu.filter(a => String(a.subject_id) === sub.id);
-            stuObj.by_subject[sub.id] = _attendanceSummary_(subStu);
-          });
-        }
-
-        return stuObj;
-      });
-      
-      const total = _attendanceSummary_(list);
-      return { 
-        status: 'success', 
-        data: perStudent, 
-        summary: total,
-        subjects: subjectsInfo,
-        report_type: rtype
-      };
-    }
-
-    if (mode === 'monthly') {
-      if (!params.classroom || !params.year || !params.month) {
-        return { status:'error', message:'ข้อมูลไม่ครบ' };
+      if (subjectIdSet.size === 0 && reqCls) {
+        allSubjects.forEach(s => {
+          if (s.grade_level && String(reqCls).includes(String(s.grade_level))) {
+            subjectIdSet.add(String(s.id));
+          }
+        });
       }
-      const classStudents = students
-        .filter(s => String(s.classroom) === String(params.classroom))
-        .sort((a, b) => String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th'));
-      const ids = new Set(classStudents.map(s => s.id));
-      const ymPref = params.year + '-' + String(params.month).padStart(2, '0');
-      const list = attendance.filter(a => ids.has(a.student_id) && a.date.startsWith(ymPref));
-      const listStuMap = {};
-      list.forEach(a => {
-        if (!listStuMap[a.student_id]) listStuMap[a.student_id] = [];
-        listStuMap[a.student_id].push(a);
-      });
 
-      const grid = classStudents.map(s => ({
-        student_id: s.id, student_code: s.student_id,
-        prefix: s.prefix, first_name: s.first_name, last_name: s.last_name,
-        records: listStuMap[s.id] || []
-      }));
-      return { status:'success', data:grid, year:params.year, month:params.month };
+      subjectsInfo = Array.from(subjectIdSet).map(subId => {
+        const sObj = subjectMap.get(subId) || {};
+        const subRecords = relevantAttendance.filter(a => String(a.subject_id) === subId);
+        const subSum = _attendanceSummary_(subRecords);
+        const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
+        let riskCount = 0;
+        const subStuMap = {};
+        subRecords.forEach(a => {
+          if (!subStuMap[a.student_id]) subStuMap[a.student_id] = [];
+          subStuMap[a.student_id].push(a);
+        });
+        classStudents.forEach(stu => {
+          const stuSubRecs = subStuMap[stu.id] || [];
+          if (stuSubRecs.length > 0) {
+            const p = _attendanceSummary_(stuSubRecs).attendance_pct;
+            if (p < 80) riskCount++;
+          }
+        });
+        return {
+          id: subId,
+          subject_code: sObj.subject_code || subId,
+          subject_name: sObj.subject_name || sObj.subject_code || subId,
+          periods_count: periodKeys.size,
+          summary: subSum,
+          risk_count: riskCount
+        };
+      }).sort((a, b) => (a.subject_code || '').localeCompare(b.subject_code || '', 'th'));
     }
 
-    return { status:'error', message:'mode ไม่ถูกต้อง' };
+    // High performance Hash Map indexing
+    const attByStu = {};
+    const attByMonth = {};
+    const datesSet = new Set();
+
+    relevantAttendance.forEach(a => {
+      datesSet.add(a.date);
+      const ym = a.date.slice(0, 7);
+
+      if (!attByStu[a.student_id]) {
+        attByStu[a.student_id] = { present: 0, late: 0, absent: 0, leave: 0, total: 0, by_month: {}, dates: {}, records: [] };
+      }
+      const sBucket = attByStu[a.student_id];
+      if (sBucket.hasOwnProperty(a.status)) sBucket[a.status]++;
+      sBucket.total++;
+      sBucket.dates[a.date] = a.status;
+      sBucket.records.push(a);
+
+      if (!sBucket.by_month[ym]) {
+        sBucket.by_month[ym] = { present: 0, late: 0, absent: 0, leave: 0, total: 0 };
+      }
+      if (sBucket.by_month[ym].hasOwnProperty(a.status)) sBucket.by_month[ym][a.status]++;
+      sBucket.by_month[ym].total++;
+
+      if (!attByMonth[ym]) {
+        attByMonth[ym] = { ym: ym, present: 0, late: 0, absent: 0, leave: 0, total: 0, dates: new Set() };
+      }
+      if (attByMonth[ym].hasOwnProperty(a.status)) attByMonth[ym][a.status]++;
+      attByMonth[ym].total++;
+      attByMonth[ym].dates.add(a.date);
+    });
+
+    // Classroom summary
+    const classroomsList = readJsonSheet_('Classrooms');
+    const classTeacherMap = {};
+    classroomsList.forEach(c => {
+      if (c.name) classTeacherMap[c.name] = c.teacher_name || '';
+    });
+
+    const classSummaryMap = {};
+    classStudents.forEach(s => {
+      const cls = s.classroom || 'ไม่ระบุห้อง';
+      if (!classSummaryMap[cls]) {
+        classSummaryMap[cls] = {
+          classroom: cls,
+          teacher: classTeacherMap[cls] || 'ครูประจำชั้น',
+          students_count: 0,
+          present: 0, late: 0, absent: 0, leave: 0, total: 0
+        };
+      }
+      classSummaryMap[cls].students_count++;
+      const sData = attByStu[s.id];
+      if (sData) {
+        classSummaryMap[cls].present += sData.present;
+        classSummaryMap[cls].late += sData.late;
+        classSummaryMap[cls].absent += sData.absent;
+        classSummaryMap[cls].leave += sData.leave;
+        classSummaryMap[cls].total += sData.total;
+      }
+    });
+
+    const classroomSummary = Object.values(classSummaryMap).map(c => {
+      c.attendance_pct = c.total > 0 ? Math.round(((c.present + c.late) / c.total) * 1000) / 10 : 0;
+      return c;
+    }).sort((a, b) => String(a.classroom).localeCompare(String(b.classroom), 'th', { numeric: true }));
+
+    // Students list formatted
+    const studentRows = classStudents.map(s => {
+      const sData = attByStu[s.id] || { present: 0, late: 0, absent: 0, leave: 0, total: 0, by_month: {}, dates: {}, records: [] };
+      const pct = sData.total > 0 ? Math.round(((sData.present + sData.late) / sData.total) * 1000) / 10 : 0;
+
+      const byMonthFormatted = {};
+      Object.keys(sData.by_month).forEach(ym => {
+        const bm = sData.by_month[ym];
+        byMonthFormatted[ym] = {
+          present: bm.present,
+          late: bm.late,
+          absent: bm.absent,
+          leave: bm.leave,
+          total: bm.total,
+          attendance_pct: bm.total > 0 ? Math.round(((bm.present + bm.late) / bm.total) * 1000) / 10 : 0
+        };
+      });
+
+      const stuObj = {
+        id: s.id,
+        student_id: s.id,
+        student_code: s.student_id || s.id,
+        student_number: s.student_number || s.student_no || '',
+        prefix: s.prefix || '',
+        first_name: s.first_name || '',
+        last_name: s.last_name || '',
+        classroom: s.classroom || '',
+        parent_phone: s.parent_phone || s.phone || '',
+        present: sData.present,
+        late: sData.late,
+        absent: sData.absent,
+        leave: sData.leave,
+        total: sData.total,
+        attendance_pct: pct,
+        is_risk: pct < 80,
+        by_month: byMonthFormatted,
+        dates: sData.dates,
+        records: sData.records
+      };
+
+      if (rtype === 'all_subjects') {
+        stuObj.by_subject = {};
+        subjectsInfo.forEach(sub => {
+          const subStu = (sData.records || []).filter(a => String(a.subject_id) === sub.id);
+          stuObj.by_subject[sub.id] = _attendanceSummary_(subStu);
+        });
+      }
+
+      return stuObj;
+    });
+
+    const monthlyList = Object.keys(attByMonth).sort().map(ym => {
+      const b = attByMonth[ym];
+      const mNum = parseInt(ym.slice(5, 7), 10);
+      const yCE = parseInt(ym.slice(0, 4), 10);
+      const yBE = yCE + 543;
+      const pct = b.total > 0 ? Math.round(((b.present + b.late) / b.total) * 1000) / 10 : 0;
+      return {
+        ym: ym,
+        month: mNum,
+        year: yCE,
+        th_year: yBE,
+        label: (THAI_MONTHS[mNum] || ym) + ' ' + String(yBE).slice(2),
+        full_label: (THAI_MONTHS_FULL[mNum] || ym) + ' ' + yBE,
+        total_days: b.dates.size,
+        present: b.present,
+        late: b.late,
+        absent: b.absent,
+        leave: b.leave,
+        total: b.total,
+        attendance_pct: pct
+      };
+    });
+
+    const riskStudents = studentRows
+      .filter(s => s.absent >= 2 || s.attendance_pct < 80)
+      .sort((a, b) => b.absent - a.absent)
+      .slice(0, 20);
+
+    const overallSummary = _attendanceSummary_(relevantAttendance);
+    overallSummary.active_days = datesSet.size;
+    overallSummary.students_count = studentRows.length;
+
+    return {
+      status: 'success',
+      data: studentRows,
+      summary: overallSummary,
+      classrooms: classroomSummary,
+      months: monthlyList,
+      dates: Array.from(datesSet).sort(),
+      risk_students: riskStudents,
+      subjects: subjectsInfo,
+      scope: scope,
+      report_type: rtype,
+      start_date: start,
+      end_date: end,
+      classroom: reqCls || 'all'
+    };
 
   } catch (e) {
     logError({ fn:'getAttendanceReport', error:e.message });
