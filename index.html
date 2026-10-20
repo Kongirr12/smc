@@ -365,7 +365,7 @@
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.7.9">
+  <link rel="stylesheet" href="styles.css?v=2.7.9.5">
 </head>
 <body>
 
@@ -591,6 +591,9 @@
         </button>
         <div class="page-title" id="pageTitle">หน้าหลัก</div>
         <div class="actions">
+          <button class="icon-btn" onclick="forceAppUpdate()" title="อัปเดต / รีเฟรชระบบ" id="btnRefreshApp">
+            <i class='bx bx-refresh text-xl'></i>
+          </button>
           <button class="icon-btn" onclick="toggleDarkMode()" title="โหมดมืด" id="btnDarkMode">
             <i class='bx bx-moon'></i>
           </button>
@@ -633,21 +636,44 @@
 
 
   <!-- ================== Scripts ================== -->
-  <script src="js1.js?v=2.7.9.1"></script>
-  <script src="js2.js?v=2.7.9.1"></script>
-  <script src="js3.js?v=2.7.9.4"></script>
-  <script src="js4.js?v=2.7.9.1"></script>
-  <script src="js_schedule.js?v=2.7.9.4"></script>
-  <script src="js_classroom.js?v=2.7.9.1"></script>
-  <script src="js_behavior.js?v=2.7.9.1"></script>
-  <script src="js_student_card.js?v=2.7.9.1"></script>
-  <script src="js_qr_attendance.js?v=2.7.9.1"></script>
-  <script src="js_line_oa.js?v=2.7.9.1"></script>
-  <script src="js_manual.js?v=2.7.9.1"></script>
-  <script src="js_templates.js?v=2.7.9.1"></script>
+  <script src="js1.js?v=2.7.9.5"></script>
+  <script src="js2.js?v=2.7.9.5"></script>
+  <script src="js3.js?v=2.7.9.5"></script>
+  <script src="js4.js?v=2.7.9.5"></script>
+  <script src="js_schedule.js?v=2.7.9.5"></script>
+  <script src="js_classroom.js?v=2.7.9.5"></script>
+  <script src="js_behavior.js?v=2.7.9.5"></script>
+  <script src="js_student_card.js?v=2.7.9.5"></script>
+  <script src="js_qr_attendance.js?v=2.7.9.5"></script>
+  <script src="js_line_oa.js?v=2.7.9.5"></script>
+  <script src="js_manual.js?v=2.7.9.5"></script>
+  <script src="js_templates.js?v=2.7.9.5"></script>
  
-  <!-- PWA Service Worker Registration -->
+  <!-- PWA Service Worker Registration & Force Update -->
   <script>
+    window.forceAppUpdate = function() {
+      Swal.fire({
+        title: 'กำลังอัปเดตระบบ',
+        text: 'กำลังล้างแคชและโหลดข้อมูลล่าสุดสำหรับ iPhone / PWA...',
+        icon: 'info',
+        showConfirmButton: false,
+        timer: 1600
+      }).then(() => {
+        try {
+          if ('caches' in window) {
+            caches.keys().then(names => Promise.all(names.map(name => caches.delete(name))));
+          }
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(r => r.unregister());
+            });
+          }
+          sessionStorage.clear();
+        } catch (_) {}
+        window.location.reload(true);
+      });
+    };
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')

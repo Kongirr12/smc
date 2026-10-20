@@ -1731,36 +1731,94 @@ function savePeriodConfig() {
  * ============================================================ */
 function printClassSchedule() {
   if (!SchedState.classroom) return showToast('warning', 'เลือกห้องเรียนก่อน');
-  showLoading('กำลังเตรียมเอกสาร...');
-  google.script.run
-    .withSuccessHandler(res => {
-      hideLoading();
-      if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html, `ตารางเรียน ชั้น ${SchedState.classroom}`);
-    })
-    .withFailureHandler(err => {
-      hideLoading();
-      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการเตรียมเอกสาร');
-    })
-    .generateSchedulePrintHTML(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
+  const directUrl = `${GAS_URL}?action=printSchedule&classroom=${encodeURIComponent(SchedState.classroom||'')}&academic_year=${encodeURIComponent(SchedState.academic_year||'')}&semester=${encodeURIComponent(SchedState.semester||'1')}&token=${encodeURIComponent(APP.token||'')}`;
+  const isIOSStandalone = (window.navigator.standalone === true) || (window.matchMedia('(display-mode: standalone)').matches && /iPad|iPhone|iPod/.test(navigator.userAgent));
+
+  if (isIOSStandalone) {
+    Swal.fire({
+      icon: 'question',
+      title: 'พิมพ์ตารางเรียน (iPhone)',
+      html: `ต้องการ <b>เปิดใน Safari เพื่อสั่งพิมพ์ (AirPrint)</b> หรือ <b>ดูตัวอย่างในแอป</b> ก่อนครับ?`,
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: '🌐 เปิดใน Safari เพื่อพิมพ์',
+      denyButtonText: '👁️ ดูตัวอย่างก่อน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#1D4ED8',
+      denyButtonColor: '#4F46E5'
+    }).then(choice => {
+      if (choice.isConfirmed) {
+        window.open(directUrl, '_blank');
+      } else if (choice.isDenied) {
+        doFetch();
+      }
+    });
+    return;
+  }
+
+  doFetch();
+
+  function doFetch() {
+    showLoading('กำลังเตรียมเอกสาร...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status !== 'success') return showToast('error', res.message);
+        openHTMLDocument(res.html, `ตารางเรียน ชั้น ${SchedState.classroom}`, directUrl);
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการเตรียมเอกสาร');
+      })
+      .generateSchedulePrintHTML(SchedState.classroom, SchedState.academic_year, SchedState.semester, APP.token);
+  }
 }
 
 function printTeacherSchedule() {
   if (!SchedState.teacher_id) return showToast('warning', 'เลือกครูก่อน');
-  showLoading('กำลังเตรียมเอกสาร...');
   const tObj = (SchedState.teachers || []).find(t => t.id === SchedState.teacher_id);
   const tName = tObj ? tObj.name : '';
-  google.script.run
-    .withSuccessHandler(res => {
-      hideLoading();
-      if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html, `ตารางสอน ${tName}`);
-    })
-    .withFailureHandler(err => {
-      hideLoading();
-      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการเตรียมเอกสาร');
-    })
-    .generateTeacherScheduleHTML(SchedState.teacher_id, SchedState.academic_year, SchedState.semester, APP.token);
+  const directUrl = `${GAS_URL}?action=printTeacherSchedule&teacher_id=${encodeURIComponent(SchedState.teacher_id||'')}&academic_year=${encodeURIComponent(SchedState.academic_year||'')}&semester=${encodeURIComponent(SchedState.semester||'1')}&token=${encodeURIComponent(APP.token||'')}`;
+  const isIOSStandalone = (window.navigator.standalone === true) || (window.matchMedia('(display-mode: standalone)').matches && /iPad|iPhone|iPod/.test(navigator.userAgent));
+
+  if (isIOSStandalone) {
+    Swal.fire({
+      icon: 'question',
+      title: 'พิมพ์ตารางสอน (iPhone)',
+      html: `ต้องการ <b>เปิดใน Safari เพื่อสั่งพิมพ์ (AirPrint)</b> หรือ <b>ดูตัวอย่างในแอป</b> ก่อนครับ?`,
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: '🌐 เปิดใน Safari เพื่อพิมพ์',
+      denyButtonText: '👁️ ดูตัวอย่างก่อน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#1D4ED8',
+      denyButtonColor: '#4F46E5'
+    }).then(choice => {
+      if (choice.isConfirmed) {
+        window.open(directUrl, '_blank');
+      } else if (choice.isDenied) {
+        doFetch();
+      }
+    });
+    return;
+  }
+
+  doFetch();
+
+  function doFetch() {
+    showLoading('กำลังเตรียมเอกสาร...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status !== 'success') return showToast('error', res.message);
+        openHTMLDocument(res.html, `ตารางสอน ${tName}`, directUrl);
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการเตรียมเอกสาร');
+      })
+      .generateTeacherScheduleHTML(SchedState.teacher_id, SchedState.academic_year, SchedState.semester, APP.token);
+  }
 }
 
 
@@ -1964,33 +2022,91 @@ function clearClassScheduleConfirm() {
 
 function printAllClassSchedules() {
   if (!SchedState.classrooms || SchedState.classrooms.length === 0) return showToast('warning', 'ไม่มีข้อมูลชั้นเรียน');
-  showLoading('กำลังเตรียมเอกสารทั้งหมด (อาจใช้เวลาสักครู่)...');
-  google.script.run
-    .withSuccessHandler(res => {
-      hideLoading();
-      if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html, 'พิมพ์ตารางเรียนทุกห้อง');
-    })
-    .withFailureHandler(err => {
-      hideLoading();
-      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการโหลดตาราง');
-    })
-    .generateAllSchedulesPrintHTML('class', SchedState.classrooms, SchedState.academic_year, SchedState.semester, APP.token);
+  const directUrl = `${GAS_URL}?action=printAllSchedules&type=class&academic_year=${encodeURIComponent(SchedState.academic_year||'')}&semester=${encodeURIComponent(SchedState.semester||'1')}&token=${encodeURIComponent(APP.token||'')}`;
+  const isIOSStandalone = (window.navigator.standalone === true) || (window.matchMedia('(display-mode: standalone)').matches && /iPad|iPhone|iPod/.test(navigator.userAgent));
+
+  if (isIOSStandalone) {
+    Swal.fire({
+      icon: 'question',
+      title: 'พิมพ์ตารางเรียนทุกห้อง (iPhone)',
+      html: `คุณกำลังเปิดผ่านหน้าจอโฮมของ iPhone (PWA)<br><br>ต้องการ <b>เปิดใน Safari เพื่อสั่งพิมพ์ (AirPrint)</b> หรือ <b>ดูตัวอย่างในแอป</b> ก่อนครับ?`,
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: '🌐 เปิดใน Safari เพื่อพิมพ์',
+      denyButtonText: '👁️ ดูตัวอย่างก่อน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#1D4ED8',
+      denyButtonColor: '#4F46E5'
+    }).then(choice => {
+      if (choice.isConfirmed) {
+        window.open(directUrl, '_blank');
+      } else if (choice.isDenied) {
+        doFetch();
+      }
+    });
+    return;
+  }
+
+  doFetch();
+
+  function doFetch() {
+    showLoading('กำลังเตรียมเอกสารทั้งหมด (อาจใช้เวลาสักครู่)...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status !== 'success') return showToast('error', res.message);
+        openHTMLDocument(res.html, 'พิมพ์ตารางเรียนทุกห้อง', directUrl);
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการโหลดตาราง');
+      })
+      .generateAllSchedulesPrintHTML('class', SchedState.classrooms, SchedState.academic_year, SchedState.semester, APP.token);
+  }
 }
 
 function printAllTeacherSchedules() {
   if (!SchedState.teachers || SchedState.teachers.length === 0) return showToast('warning', 'ไม่มีข้อมูลครู');
   const ids = SchedState.teachers.map(t => t.id);
-  showLoading('กำลังเตรียมเอกสารทั้งหมด (อาจใช้เวลาสักครู่)...');
-  google.script.run
-    .withSuccessHandler(res => {
-      hideLoading();
-      if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html, 'พิมพ์ตารางสอนของครูทั้งหมด');
-    })
-    .withFailureHandler(err => {
-      hideLoading();
-      showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการโหลดตาราง');
-    })
-    .generateAllSchedulesPrintHTML('teacher', ids, SchedState.academic_year, SchedState.semester, APP.token);
+  const directUrl = `${GAS_URL}?action=printAllSchedules&type=teacher&academic_year=${encodeURIComponent(SchedState.academic_year||'')}&semester=${encodeURIComponent(SchedState.semester||'1')}&token=${encodeURIComponent(APP.token||'')}`;
+  const isIOSStandalone = (window.navigator.standalone === true) || (window.matchMedia('(display-mode: standalone)').matches && /iPad|iPhone|iPod/.test(navigator.userAgent));
+
+  if (isIOSStandalone) {
+    Swal.fire({
+      icon: 'question',
+      title: 'พิมพ์ตารางสอนครูทั้งหมด (iPhone)',
+      html: `คุณกำลังเปิดผ่านหน้าจอโฮมของ iPhone (PWA)<br><br>ระบบ iOS ไม่อนุญาตให้พิมพ์ตรงจากหน้าจอโฮม<br>ต้องการ <b>เปิดใน Safari เพื่อสั่งพิมพ์ (AirPrint)</b> หรือ <b>ดูตัวอย่างในแอป</b> ก่อนครับ?`,
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: '🌐 เปิดใน Safari เพื่อพิมพ์',
+      denyButtonText: '👁️ ดูตัวอย่างก่อน',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#1D4ED8',
+      denyButtonColor: '#4F46E5'
+    }).then(choice => {
+      if (choice.isConfirmed) {
+        window.open(directUrl, '_blank');
+      } else if (choice.isDenied) {
+        doFetch();
+      }
+    });
+    return;
+  }
+
+  doFetch();
+
+  function doFetch() {
+    showLoading('กำลังเตรียมเอกสารทั้งหมด (อาจใช้เวลาสักครู่)...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status !== 'success') return showToast('error', res.message);
+        openHTMLDocument(res.html, 'พิมพ์ตารางสอนของครูทั้งหมด', directUrl);
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', (err && err.message) || 'เกิดข้อผิดพลาดในการโหลดตาราง');
+      })
+      .generateAllSchedulesPrintHTML('teacher', ids, SchedState.academic_year, SchedState.semester, APP.token);
+  }
 }

@@ -65,6 +65,103 @@ function doOptions(e) {
 }
 
 function doGet(e) {
+  e = e || {};
+  const params = e.parameter || {};
+  const action = params.action;
+
+  // 1. รองรับการเปิดพิมพ์โดยตรงในเบราว์เซอร์ Safari (แก้ปัญหา iOS PWA หน้าจอโฮมสั่งพิมพ์ตรงไม่ได้)
+  if (action === 'printAllSchedules') {
+    try {
+      const type = params.type || 'teacher';
+      const ay = params.academic_year || params.year || '';
+      const sem = params.semester || params.sem || '1';
+      const token = params.token || '';
+      let ids = [];
+      if (params.ids) {
+        try { ids = JSON.parse(params.ids); } catch(_) { ids = String(params.ids).split(',').map(s=>s.trim()).filter(Boolean); }
+      }
+      if (!ids || ids.length === 0) {
+        if (type === 'teacher') {
+          const per = readJsonSheet_('Personnel').filter(p => p.status !== 'inactive' && p.type === 'teacher');
+          ids = per.map(p => p.id);
+        } else {
+          const stu = readJsonSheet_('Students').filter(s => s.status === 'active');
+          ids = Array.from(new Set(stu.map(s => s.classroom).filter(Boolean))).sort();
+        }
+      }
+
+      if (token) {
+        const auth = _requireAuth_(token);
+        if (!auth.ok) {
+          return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:40px; color:#EF4444;"><h3>เซสชันหมดอายุ กรุณาเข้าสู่ระบบในแอปใหม่อีกครั้ง</h3></div>')
+            .setTitle('เซสชันหมดอายุ');
+        }
+      }
+
+      const res = generateAllSchedulesPrintHTML(type, ids, ay, sem, token);
+      if (res && res.status === 'success' && res.html) {
+        return HtmlService.createHtmlOutput(res.html)
+          .setTitle(type === 'teacher' ? 'พิมพ์ตารางสอนครูทั้งหมด' : 'พิมพ์ตารางเรียนทั้งหมด')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      } else {
+        return ContentService.createTextOutput((res && res.message) || 'ไม่สามารถสร้างตารางพิมพ์ได้');
+      }
+    } catch(err) {
+      return ContentService.createTextOutput('Error: ' + err.message);
+    }
+  }
+
+  if (action === 'printTeacherSchedule') {
+    try {
+      const teacherId = params.teacher_id || params.id || '';
+      const ay = params.academic_year || params.year || '';
+      const sem = params.semester || params.sem || '1';
+      const token = params.token || '';
+      if (token) {
+        const auth = _requireAuth_(token);
+        if (!auth.ok) {
+          return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:40px; color:#EF4444;"><h3>เซสชันหมดอายุ กรุณาเข้าสู่ระบบในแอปใหม่อีกครั้ง</h3></div>')
+            .setTitle('เซสชันหมดอายุ');
+        }
+      }
+      const res = generateTeacherScheduleHTML(teacherId, ay, sem, token);
+      if (res && res.status === 'success' && res.html) {
+        return HtmlService.createHtmlOutput(res.html)
+          .setTitle('พิมพ์ตารางสอนรายบุคคล')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      }
+    } catch(err) {
+      return ContentService.createTextOutput('Error: ' + err.message);
+    }
+  }
+
+  if (action === 'printSchedule') {
+    try {
+      const classroom = params.classroom || '';
+      const ay = params.academic_year || params.year || '';
+      const sem = params.semester || params.sem || '1';
+      const token = params.token || '';
+      if (token) {
+        const auth = _requireAuth_(token);
+        if (!auth.ok) {
+          return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:40px; color:#EF4444;"><h3>เซสชันหมดอายุ กรุณาเข้าสู่ระบบในแอปใหม่อีกครั้ง</h3></div>')
+            .setTitle('เซสชันหมดอายุ');
+        }
+      }
+      const res = generateSchedulePrintHTML(classroom, ay, sem, token);
+      if (res && res.status === 'success' && res.html) {
+        return HtmlService.createHtmlOutput(res.html)
+          .setTitle('พิมพ์ตารางเรียน ' + classroom)
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      }
+    } catch(err) {
+      return ContentService.createTextOutput('Error: ' + err.message);
+    }
+  }
+
   // Keep-alive & Health Check: อุ่นเครื่อง V8 Engine และ Pre-warm Cache อัตโนมัติ
   try {
     const cfg = getConfig();

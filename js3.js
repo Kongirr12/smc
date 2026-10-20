@@ -7,8 +7,11 @@
 /* ============================================================
  *  Shared: เปิด HTML ที่ได้จาก backend (รองรับทั้งมือถือและคอมพิวเตอร์)
  * ============================================================ */
-function showPrintPreviewModal(html, docTitle) {
+function showPrintPreviewModal(html, docTitle, directUrl) {
   let modal = document.getElementById('printDocModal');
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'printDocModal';
@@ -19,14 +22,18 @@ function showPrintPreviewModal(html, docTitle) {
           <i class='bx bx-printer text-indigo-600 text-xl sm:text-2xl flex-shrink-0'></i>
           <span id="printDocModalTitle" class="text-sm sm:text-base font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
         </div>
-        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 flex-wrap justify-end">
+          <a id="btnOpenSafariAction" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm" style="background:#1D4ED8; color:white; display:none;">
+            <i class='bx bx-globe text-base'></i>
+            <span>เปิดใน Safari เพื่อพิมพ์</span>
+          </a>
+          <button id="btnShareModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="แชร์ หรือ สั่งพิมพ์">
+            <i class='bx bx-share-alt text-base'></i>
+            <span class="hidden sm:inline">แชร์ / พิมพ์</span>
+          </button>
           <button id="btnPrintModalAction" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm">
             <i class='bx bx-printer text-base'></i>
-            <span>พิมพ์ / PDF</span>
-          </button>
-          <button id="btnOpenNewTabModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="เปิดในแท็บใหม่">
-            <i class='bx bx-export text-base'></i>
-            <span class="hidden sm:inline">เปิดแท็บใหม่</span>
+            <span>พิมพ์</span>
           </button>
           <button id="btnDownloadModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="ดาวน์โหลดไฟล์ HTML">
             <i class='bx bx-download text-base'></i>
@@ -35,6 +42,12 @@ function showPrintPreviewModal(html, docTitle) {
           <button id="btnClosePrintModalAction" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg" title="ปิดหน้าต่าง">
             <i class='bx bx-x text-2xl leading-none'></i>
           </button>
+        </div>
+      </div>
+      <div id="printDocIosBanner" style="display:none;" class="bg-blue-50 border-b border-blue-200 px-3 py-2 flex items-center justify-between text-xs text-blue-900">
+        <div class="flex items-center gap-2">
+          <i class='bx bxs-info-circle text-blue-600 text-base flex-shrink-0'></i>
+          <span>📱 <b>สำหรับ iPhone (หน้าจอโฮม):</b> กรุณาแตะปุ่มสีน้ำเงิน <b>"เปิดใน Safari เพื่อพิมพ์"</b> เพื่อใช้ AirPrint หรือบันทึก PDF ครับ</span>
         </div>
       </div>
       <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex justify-center items-center p-0 sm:p-2">
@@ -48,6 +61,25 @@ function showPrintPreviewModal(html, docTitle) {
     };
 
     document.getElementById('btnPrintModalAction').onclick = () => {
+      // ตรวจสอบว่าเป็น iPhone ที่เปิดผ่านหน้าจอโฮมหรือไม่
+      if (isIOS && isStandalone) {
+        if (modal._currentDirectUrl) {
+          Swal.fire({
+            icon: 'info',
+            title: 'สั่งพิมพ์บน iPhone',
+            html: 'ระบบ iOS บนหน้าจอโฮม (PWA) ปิดกั้นการสั่งพิมพ์ตรง<br><br>กรุณาแตะปุ่ม <b>"เปิดใน Safari"</b> เพื่อสั่งพิมพ์ AirPrint หรือบันทึกเป็น PDF ใน Safari ครับ',
+            confirmButtonText: '🌐 เปิดใน Safari ทันที',
+            showCancelButton: true,
+            cancelButtonText: 'ปิด'
+          }).then(res => {
+            if (res.isConfirmed && modal._currentDirectUrl) {
+              window.open(modal._currentDirectUrl, '_blank');
+            }
+          });
+          return;
+        }
+      }
+
       const iframe = document.getElementById('printDocIframe');
       if (iframe && iframe.contentWindow) {
         try {
@@ -60,17 +92,44 @@ function showPrintPreviewModal(html, docTitle) {
       }
     };
 
-    document.getElementById('btnOpenNewTabModalAction').onclick = () => {
-      if (modal._currentHtml) {
+    document.getElementById('btnShareModalAction').onclick = async () => {
+      if (!modal._currentHtml) return;
+      const safeTitle = (modal._currentTitle || 'ตารางสอน').replace(/[\\/:*?"<>|]/g, '_');
+      
+      // ลองแชร์เป็นไฟล์ HTML ผ่าน Web Share API ก่อน
+      try {
+        const file = new File([modal._currentHtml], `${safeTitle}.html`, { type: 'text/html' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: modal._currentTitle,
+            text: 'เอกสารตารางสอน โรงเรียนมหาชัยพิทยาคาร'
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('Share file failed, trying URL share', e);
+      }
+
+      // แชร์ผ่าน URL ลิงก์
+      if (navigator.share) {
         try {
-          const blob = new Blob([modal._currentHtml], { type: 'text/html;charset=utf-8' });
-          const blobUrl = URL.createObjectURL(blob);
-          const w = window.open(blobUrl, '_blank');
-          if (!w) {
-            showToast('warning', 'เบราว์เซอร์บล็อกแท็บใหม่ สามารถกดปุ่มพิมพ์จากหน้านี้ได้ทันที');
+          await navigator.share({
+            title: modal._currentTitle,
+            text: 'ตารางสอน โรงเรียนมหาชัยพิทยาคาร',
+            url: modal._currentDirectUrl || window.location.href
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            showToast('error', 'ไม่สามารถแชร์ได้');
           }
-        } catch (e) {
-          showToast('error', 'ไม่สามารถเปิดแท็บใหม่ได้');
+        }
+      } else if (modal._currentDirectUrl) {
+        try {
+          navigator.clipboard.writeText(modal._currentDirectUrl);
+          showToast('success', 'คัดลอกลิงก์สำหรับเปิดใน Safari เรียบร้อย');
+        } catch (_) {
+          showToast('info', 'กดปุ่ม "เปิดใน Safari เพื่อพิมพ์" ได้ทันที');
         }
       }
     };
@@ -102,8 +161,25 @@ function showPrintPreviewModal(html, docTitle) {
 
   modal._currentHtml = html;
   modal._currentTitle = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
+  modal._currentDirectUrl = directUrl || '';
+
   const titleEl = document.getElementById('printDocModalTitle');
   if (titleEl) titleEl.textContent = modal._currentTitle;
+
+  const btnSafari = document.getElementById('btnOpenSafariAction');
+  if (btnSafari) {
+    if (directUrl) {
+      btnSafari.href = directUrl;
+      btnSafari.style.display = 'inline-flex';
+    } else {
+      btnSafari.style.display = 'none';
+    }
+  }
+
+  const iosBanner = document.getElementById('printDocIosBanner');
+  if (iosBanner) {
+    iosBanner.style.display = (isIOS && directUrl) ? 'flex' : 'none';
+  }
 
   const iframe = document.getElementById('printDocIframe');
   if (iframe) {
@@ -113,7 +189,7 @@ function showPrintPreviewModal(html, docTitle) {
   modal.style.display = 'flex';
 }
 
-function openHTMLDocument(html, docTitle) {
+function openHTMLDocument(html, docTitle, directUrl) {
   if (!html) return;
   const title = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
@@ -121,7 +197,7 @@ function openHTMLDocument(html, docTitle) {
   // สำหรับมือถือ: แสดงใน In-App Print Preview Modal ทันที
   // ป้องกันปัญหา Safari/Chrome บนมือถือบล็อก Popup หรือ AirPrint พัง
   if (isMobile) {
-    showPrintPreviewModal(html, title);
+    showPrintPreviewModal(html, title, directUrl);
     return;
   }
 
@@ -139,7 +215,7 @@ function openHTMLDocument(html, docTitle) {
   }
 
   // ถ้าคอมพิวเตอร์โดนบล็อก Popup → เปิดใน Modal เช่นเดียวกัน
-  showPrintPreviewModal(html, title);
+  showPrintPreviewModal(html, title, directUrl);
 }
 
 
