@@ -2679,6 +2679,19 @@ function getAttendanceFilterOptions(sessionToken) {
     const students = readJsonSheet_('Students');
     const classList = Array.from(new Set(students.map(s => s.classroom).filter(Boolean))).sort((a,b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
 
+    const allSubjects = readJsonSheet_('Academic')
+      .filter(x => x._kind === 'subject')
+      .map(s => ({
+        id: s.id,
+        subject_code: s.subject_code || '',
+        subject_name: s.subject_name || '',
+        grade_level: s.grade_level || '',
+        teacher_name: s.teacher_name || '',
+        semester: s.semester || '',
+        academic_year: s.academic_year || ''
+      }))
+      .sort((a, b) => (a.subject_code || '').localeCompare(b.subject_code || '', 'th'));
+
     return {
       status: 'success',
       data: {
@@ -2687,7 +2700,8 @@ function getAttendanceFilterOptions(sessionToken) {
         current_ym: curYM,
         months: months,
         semesters: semesters,
-        classrooms: classList
+        classrooms: classList,
+        subjects: allSubjects
       }
     };
   } catch (e) {
@@ -2758,6 +2772,12 @@ function getAttendanceReport(params, sessionToken) {
       attendance = attendance.filter(a => a.period !== 'homeroom' && (a.subject_id || a.period));
     } else {
       attendance = attendance.filter(a => String(a.subject_id) === String(rtype));
+    }
+
+    let targetSubject = null;
+    if (rtype !== 'homeroom' && rtype !== 'all_subjects') {
+      const allSubjs = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
+      targetSubject = allSubjs.find(s => String(s.id) === String(rtype)) || null;
     }
 
     // Filter students
@@ -2992,6 +3012,7 @@ function getAttendanceReport(params, sessionToken) {
       dates: Array.from(datesSet).sort(),
       risk_students: riskStudents,
       subjects: subjectsInfo,
+      target_subject: targetSubject,
       scope: scope,
       report_type: rtype,
       start_date: start,

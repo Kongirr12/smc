@@ -2713,7 +2713,7 @@ function renderAttendanceReport() {
       <!-- Classroom -->
       <div>
         <label class="text-[11px] font-bold text-slate-500 mb-1 block">ระดับชั้นเรียน</label>
-        <select id="rptClassroom" onchange="updateReportSubjects()" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
+        <select id="rptClassroom" onchange="updateReportSubjects(); loadAttendanceReport();" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
           <option value="">ทุกระดับชั้น (ทั้งโรงเรียน)</option>
           ${AttendanceState.classrooms.map(cls => `<option value="${escapeHTML(cls)}" ${AttendanceState.classroom===cls?'selected':''}>ชั้น ${escapeHTML(cls)}</option>`).join('')}
         </select>
@@ -2724,8 +2724,8 @@ function renderAttendanceReport() {
         <label class="text-[11px] font-bold text-slate-500 mb-1 block">ประเภทการเช็คชื่อ</label>
         <select id="rptType" onchange="onReportTypeChange()" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
           <option value="homeroom">🚩 เช็คแถวหน้าเสาธง / โฮมรูม</option>
-          <option value="all_subjects">📚 เวลาเรียนทุกรายวิชา (Matrix)</option>
-          <optgroup label="แยกตามรายวิชา" id="rptSubjectGroup"></optgroup>
+          <option value="all_subjects">📚 สรุปภาพรวมทุกรายวิชา (All Subjects Matrix)</option>
+          <optgroup label="📖 แยกตามรายวิชา" id="rptSubjectGroup"></optgroup>
         </select>
       </div>
 
@@ -2799,14 +2799,20 @@ function renderAttendanceReport() {
           if (sSel && res.data.semesters && res.data.semesters.length > 0) {
             sSel.innerHTML = res.data.semesters.map(s => `<option value="${s.id}">${escapeHTML(s.label)}</option>`).join('');
           }
+          updateReportSubjects();
           loadAttendanceReport();
         } else {
+          updateReportSubjects();
           loadAttendanceReport();
         }
       })
-      .withFailureHandler(() => loadAttendanceReport())
+      .withFailureHandler(() => {
+        updateReportSubjects();
+        loadAttendanceReport();
+      })
       .getAttendanceFilterOptions(APP.token);
   } else {
+    updateReportSubjects();
     loadAttendanceReport();
   }
 }
@@ -2858,40 +2864,44 @@ function onReportTypeChange() {
   const t = document.getElementById('rptType')?.value;
   const vWrap = document.getElementById('viewToggleWrap');
   if (vWrap) {
-    vWrap.style.display = (AttendanceState.reportScope === 'monthly' && t === 'homeroom') ? '' : 'none';
+    vWrap.style.display = (AttendanceState.reportScope === 'monthly' && t !== 'all_subjects') ? '' : 'none';
   }
+  loadAttendanceReport();
 }
 
 function updateReportSubjects() {
-  const cls = document.getElementById('rptClassroom')?.value;
+  const cls = document.getElementById('rptClassroom')?.value || '';
   const grp = document.getElementById('rptSubjectGroup');
   if (!grp) return;
-  grp.innerHTML = '';
-  if (!cls) return;
 
-  const schedCache = AttendanceState.scheduleCache || [];
-  const schedSubjects = [];
-  if (schedCache.length > 0 && AttendanceState.classroom === cls) {
-    schedCache.forEach(e => {
-      if (e.subject_id && !schedSubjects.some(x => x.id === e.subject_id)) {
-        schedSubjects.push({ id: e.subject_id, subject_name: e.subject_name || e.subject_id, subject_code: e.subject_code || '' });
-      }
+  const subjectsList = (AttendanceState.filterOptions && AttendanceState.filterOptions.subjects && AttendanceState.filterOptions.subjects.length > 0)
+    ? AttendanceState.filterOptions.subjects
+    : (AttendanceState.subjects || []);
+
+  let filtered = subjectsList;
+  if (cls) {
+    const clsClean = cls.replace(/^ชั้น\s*/, '').trim(); // e.g. "ม.1/1"
+    const gradePrefix = clsClean.split('/')[0].trim();   // e.g. "ม.1"
+
+    filtered = subjectsList.filter(s => {
+      const gl = String(s.grade_level || '').trim();
+      if (!gl) return true; // วิชาที่เปิดกว้าง
+      const glClean = gl.replace(/^ชั้น\s*/, '').trim();
+      const glPrefix = glClean.split('/')[0].trim();
+      return glClean === clsClean || glPrefix === gradePrefix || clsClean.startsWith(glClean) || glClean.startsWith(gradePrefix);
     });
   }
 
-  let fallbackSubjects = (AttendanceState.subjects || []).filter(s => {
-    const gl = String(s.grade_level || '');
-    return gl === String(cls) || gl.includes(cls) || String(cls).includes(gl);
-  });
-
-  const finalSubjects = schedSubjects.length > 0 ? schedSubjects : fallbackSubjects;
-
-  if (finalSubjects.length === 0) {
-    grp.innerHTML = '<option value="" disabled>ไม่พบรายวิชาในชั้นนี้</option>';
+  if (filtered.length === 0) {
+    grp.innerHTML = '<option value="" disabled>-- ไม่พบรายวิชาในระดับชั้นนี้ --</option>';
   } else {
-    grp.innerHTML = finalSubjects.map(s => 
-      `<option value="${escapeHTML(s.id)}">${escapeHTML(s.subject_name)}${s.subject_code ? ' (' + escapeHTML(s.subject_code) + ')' : ''}</option>`
-    ).join('');
+    grp.innerHTML = filtered.map(s => {
+      const code = s.subject_code ? (escapeHTML(s.subject_code) + ' ') : '';
+      const name = escapeHTML(s.subject_name || s.id);
+      const teacher = s.teacher_name ? (' - ' + escapeHTML(s.teacher_name)) : '';
+      const gl = (!cls && s.grade_level) ? (' [' + escapeHTML(s.grade_level) + ']') : '';
+      return `<option value="${escapeHTML(s.id)}">${code}${name}${gl}${teacher}</option>`;
+    }).join('');
   }
 }
 
@@ -2950,38 +2960,59 @@ function renderAttendanceReportData(res) {
   if (!res.data || res.data.length === 0) {
     area.innerHTML = `
       <div class="empty-state">
-        <i class='bx bx-info-circle'></i>
+        <i class='bx bx-info-circle'>\x3c/i>
         ไม่พบข้อมูลในช่วงเวลานี้
-      </div>`;
+      \x3c/div>`;
     return;
   }
 
   const scope = res.scope || AttendanceState.reportScope || 'monthly';
   const rptType = res.report_type || 'homeroom';
   const classroom = res.classroom && res.classroom !== 'all' ? ('ชั้น ' + res.classroom) : 'ทุกระดับชั้น (ทั้งโรงเรียน)';
+  const targetSub = res.target_subject;
+  const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');
 
   let titleText = 'รายงานการเข้าเรียน';
   let dateDesc = '';
+  const mOpt = document.getElementById('rptMonth');
+  const mLabel = mOpt?.options[mOpt.selectedIndex]?.text || '';
+  const sem = res.semester || document.getElementById('rptSemester')?.value || '1';
+  const ay = res.academic_year || '2569';
 
-  if (scope === 'monthly') {
-    const mOpt = document.getElementById('rptMonth');
-    const mLabel = mOpt?.options[mOpt.selectedIndex]?.text || '';
-    titleText = (rptType === 'homeroom')
-      ? ('รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ประจำเดือน ' + mLabel)
-      : ('รายงานเวลาเรียน ประจำเดือน ' + mLabel);
-    dateDesc = 'บันทึกการเช็คชื่อทั้งหมด ' + (res.summary?.active_days || 0) + ' วันทำการ | นักเรียน ' + res.data.length + ' คน';
-  } else if (scope === 'semester') {
-    const sem = res.semester || document.getElementById('rptSemester')?.value || '1';
-    const ay = res.academic_year || '2569';
-    titleText = (rptType === 'homeroom')
-      ? ('รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ภาคเรียนที่ ' + sem + '/' + ay)
-      : ('รายงานเวลาเรียน ภาคเรียนที่ ' + sem + '/' + ay);
-    dateDesc = 'บันทึกการเช็คชื่อสะสม ' + (res.summary?.active_days || 0) + ' วันทำการ | นักเรียน ' + res.data.length + ' คน';
+  if (isSubjectMode) {
+    const sName = targetSub ? ((targetSub.subject_code ? targetSub.subject_code + ' ' : '') + targetSub.subject_name) : ('รายวิชา ' + rptType);
+    if (scope === 'monthly') {
+      titleText = 'รายงานเวลาเรียน วิชา ' + sName + ' ประจำเดือน ' + mLabel;
+    } else if (scope === 'semester') {
+      titleText = 'รายงานเวลาเรียน วิชา ' + sName + ' ภาคเรียนที่ ' + sem + '/' + ay;
+    } else {
+      titleText = 'รายงานเวลาเรียน วิชา ' + sName;
+    }
+    const teacherStr = targetSub?.teacher_name ? ('ครูผู้สอน: ' + targetSub.teacher_name + ' | ') : '';
+    dateDesc = teacherStr + classroom + ' | วันทำการเช็คชื่อ ' + (res.summary?.active_days || 0) + ' วัน (' + (res.summary?.total || 0) + ' คาบ) | นักเรียน ' + res.data.length + ' คน';
+  } else if (rptType === 'all_subjects') {
+    if (scope === 'monthly') {
+      titleText = 'รายงานเวลาเรียนภาพรวมทุกรายวิชา ประจำเดือน ' + mLabel;
+    } else if (scope === 'semester') {
+      titleText = 'รายงานเวลาเรียนภาพรวมทุกรายวิชา ภาคเรียนที่ ' + sem + '/' + ay;
+    } else {
+      titleText = 'รายงานเวลาเรียนภาพรวมทุกรายวิชา';
+    }
+    dateDesc = classroom + ' | บันทึกการเช็คชื่อทั้งหมด ' + (res.summary?.active_days || 0) + ' วัน | นักเรียน ' + res.data.length + ' คน';
   } else {
-    titleText = (rptType === 'homeroom') ? 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง' : 'รายงานเวลาเรียน';
-    dateDesc = res.start_date && res.end_date
-      ? ('ข้อมูลระหว่างวันที่ ' + formatThaiDate(new Date(res.start_date + 'T00:00:00')) + ' ถึง ' + formatThaiDate(new Date(res.end_date + 'T00:00:00')))
-      : '';
+    // homeroom
+    if (scope === 'monthly') {
+      titleText = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ประจำเดือน ' + mLabel;
+      dateDesc = 'บันทึกการเช็คชื่อทั้งหมด ' + (res.summary?.active_days || 0) + ' วันทำการ | นักเรียน ' + res.data.length + ' คน';
+    } else if (scope === 'semester') {
+      titleText = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ภาคเรียนที่ ' + sem + '/' + ay;
+      dateDesc = 'บันทึกการเช็คชื่อสะสม ' + (res.summary?.active_days || 0) + ' วันทำการ | นักเรียน ' + res.data.length + ' คน';
+    } else {
+      titleText = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง';
+      dateDesc = res.start_date && res.end_date
+        ? ('ข้อมูลระหว่างวันที่ ' + formatThaiDate(new Date(res.start_date + 'T00:00:00')) + ' ถึง ' + formatThaiDate(new Date(res.end_date + 'T00:00:00')))
+        : '';
+    }
   }
 
   // 1. Metric Cards
@@ -2989,16 +3020,17 @@ function renderAttendanceReportData(res) {
   const rate = typeof sum.attendance_pct === 'number' ? sum.attendance_pct : 0;
   const rateBadge = rate >= 95 ? 'att-badge-green' : (rate >= 90 ? 'att-badge-amber' : 'att-badge-rose');
   const rateText  = rate >= 95 ? 'ปกติ' : (rate >= 90 ? 'ควรเฝ้าระวัง' : 'ต่ำกว่าเกณฑ์');
+  const unitLabel = isSubjectMode ? 'คาบ' : 'คน-วัน';
 
   const metricCardsHtml = `
     <div class="att-kpi-grid mb-4">
       <div class="att-kpi-card">
         <div class="att-kpi-top">
-          <span class="att-kpi-label">อัตราการมาเรียนเฉลี่ย</span>
+          <span class="att-kpi-label">${isSubjectMode ? 'เวลาเรียนเฉลี่ยในวิชานี้' : 'อัตราการมาเรียนเฉลี่ย'}</span>
           <span class="att-kpi-badge ${rateBadge}">${rateText}</span>
         </div>
         <div class="att-kpi-num">${rate.toFixed(1)}%</div>
-        <div class="att-kpi-sub">เกณฑ์สถานศึกษา ≥ 95.0%</div>
+        <div class="att-kpi-sub">${isSubjectMode ? 'เกณฑ์เวลาเรียนผ่านชั้น ≥ 80.0%' : 'เกณฑ์สถานศึกษา ≥ 95.0%'}</div>
       </div>
 
       <div class="att-kpi-card">
@@ -3006,8 +3038,8 @@ function renderAttendanceReportData(res) {
           <span class="att-kpi-label">มาเรียนปกติ</span>
           <span class="att-kpi-badge att-badge-green">มาเรียน</span>
         </div>
-        <div class="att-kpi-num text-emerald-600">${formatNumber(sum.present || 0)} <span class="text-xs font-normal text-slate-500">คน-วัน</span></div>
-        <div class="att-kpi-sub">เช็คชื่อเข้าชั้นเรียน / หน้าเสาธง</div>
+        <div class="att-kpi-num text-emerald-600">${formatNumber(sum.present || 0)} <span class="text-xs font-normal text-slate-500">${unitLabel}</span></div>
+        <div class="att-kpi-sub">${isSubjectMode ? 'บันทึกเข้าชั้นเรียนตามเวลา' : 'เช็คชื่อเข้าชั้นเรียน / หน้าเสาธง'}</div>
       </div>
 
       <div class="att-kpi-card">
@@ -3015,7 +3047,7 @@ function renderAttendanceReportData(res) {
           <span class="att-kpi-label">มาสาย</span>
           <span class="att-kpi-badge att-badge-amber">สาย</span>
         </div>
-        <div class="att-kpi-num text-amber-600">${formatNumber(sum.late || 0)} <span class="text-xs font-normal text-slate-500">คน-วัน</span></div>
+        <div class="att-kpi-num text-amber-600">${formatNumber(sum.late || 0)} <span class="text-xs font-normal text-slate-500">${unitLabel}</span></div>
         <div class="att-kpi-sub">บันทึกเวลามาสาย</div>
       </div>
 
@@ -3024,11 +3056,22 @@ function renderAttendanceReportData(res) {
           <span class="att-kpi-label">ขาดเรียน / ลา</span>
           <span class="att-kpi-badge att-badge-rose">ขาด/ลา</span>
         </div>
-        <div class="att-kpi-num text-rose-600">${formatNumber((sum.absent || 0) + (sum.leave || 0))} <span class="text-xs font-normal text-slate-500">คน-วัน</span></div>
-        <div class="att-kpi-sub">ขาด ${formatNumber(sum.absent || 0)} / ลา ${formatNumber(sum.leave || 0)} คน-วัน</div>
+        <div class="att-kpi-num text-rose-600">${formatNumber((sum.absent || 0) + (sum.leave || 0))} <span class="text-xs font-normal text-slate-500">${unitLabel}</span></div>
+        <div class="att-kpi-sub">ขาด ${formatNumber(sum.absent || 0)} / ลา ${formatNumber(sum.leave || 0)} ${unitLabel}</div>
       </div>
     </div>
   `;
+
+  // Notice if no records yet
+  let noticeHtml = '';
+  if (sum.total === 0) {
+    noticeHtml = `
+      <div class="p-3.5 mb-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+        <i class='bx bx-info-circle text-lg text-amber-600 flex-shrink-0'>\x3c/i>
+        <span>ยังไม่พบประวัติการเช็คชื่อสำหรับช่วงเวลานี้ (สามารถเข้าสู่แท็บ <b>"บันทึกรายวัน"</b> ด้านบน เพื่อเริ่มบันทึกเวลาเรียนได้ทันที)</span>
+      </div>
+    `;
+  }
 
   // 2. Classroom Comparison Table (if multiple rooms or whole school)
   let classroomTableHtml = '';
@@ -3038,7 +3081,7 @@ function renderAttendanceReportData(res) {
         <div class="page-card-body">
           <div class="flex items-center justify-between mb-3">
             <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-              <i class="bx bxs-school text-indigo-600"></i> สรุปสถิติแยกตามระดับชั้นเรียน (${res.classrooms.length} ห้อง)
+              <i class="bx bxs-school text-indigo-600">\x3c/i> สรุปสถิติแยกตามระดับชั้นเรียน (${res.classrooms.length} ห้อง)
             </h4>
           </div>
           <div style="overflow-x:auto;">
@@ -3082,10 +3125,10 @@ function renderAttendanceReportData(res) {
     `;
   }
 
-  // 3. Monthly Matrix View vs Summary Table
+  // 3. Main Content
   let mainContentHtml = '';
 
-  if (scope === 'monthly' && AttendanceState.reportView === 'matrix' && rptType === 'homeroom') {
+  if (scope === 'monthly' && AttendanceState.reportView === 'matrix' && (rptType === 'homeroom' || isSubjectMode)) {
     // Daily Matrix (Day 1 - 31) View
     const ym = document.getElementById('rptMonth')?.value || res.start_date?.slice(0, 7) || new Date().toISOString().slice(0, 7);
     const parts = ym.split('-');
@@ -3108,7 +3151,7 @@ function renderAttendanceReportData(res) {
           <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bx-calendar-check text-indigo-600"></i> แบบบันทึกเวลาเรียนและเช็คแถวรายวัน (ปพ.5)
+                <i class="bx bx-calendar-check text-indigo-600">\x3c/i> ${isSubjectMode ? 'แบบบันทึกเวลาเรียนรายวิชาประจำวัน (ปพ.5)' : 'แบบบันทึกเวลาเรียนและเช็คแถวรายวัน (ปพ.5)'}
               </h4>
               <p class="text-xs text-slate-500 m-0 mt-0.5">แสดงสัญลักษณ์: <b class="text-emerald-600">✓</b> มาเรียน | <b class="text-rose-600">ข</b> ขาด | <b class="text-amber-600">ล</b> ลา | <b class="text-indigo-600">ส</b> สาย</p>
             </div>
@@ -3157,8 +3200,8 @@ function renderAttendanceReportData(res) {
                     <td class="text-blue-700 font-bold">${r.late}</td>
                     <td class="font-bold">${r.total}</td>
                     <td>
-                      <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${r.attendance_pct >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
-                        ${r.attendance_pct.toFixed(0)}%
+                      <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${r.total === 0 ? 'bg-slate-100 text-slate-500' : (r.attendance_pct >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800')}">
+                        ${r.total === 0 ? '-' : r.attendance_pct.toFixed(0) + '%'}
                       </span>
                     </td>
                   </tr>
@@ -3169,7 +3212,79 @@ function renderAttendanceReportData(res) {
         </div>
       </div>
     `;
-  } else if (scope === 'semester' && rptType === 'homeroom' && res.months && res.months.length > 0) {
+  } else if (rptType === 'all_subjects' && res.subjects && res.subjects.length > 0) {
+    // All Subjects Matrix Table
+    mainContentHtml = `
+      <div class="page-card">
+        <div class="page-card-body">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
+                <i class="bx bxs-book-content text-indigo-600">\x3c/i> ตารางเวลาเรียนเปรียบเทียบทุกรายวิชา (${res.subjects.length} วิชา)
+              </h4>
+              <p class="text-xs text-slate-500 m-0 mt-0.5">แสดงร้อยละเวลาเรียนของนักเรียนแต่ละคนในแต่ละรายวิชา</p>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="risk-table">
+              <thead>
+                <tr>
+                  <th style="width:40px; text-align:center;">ที่</th>
+                  <th style="width:75px; text-align:center;">รหัสนักเรียน</th>
+                  <th style="min-width:140px;">ชื่อ - นามสกุล</th>
+                  <th style="width:75px; text-align:center;">ระดับชั้น</th>
+                  ${res.subjects.map(s => `
+                    <th style="min-width:75px; text-align:center;" title="${escapeHTML(s.subject_name)} (${s.periods_count} คาบ)">
+                      <div class="text-[11px] font-bold">${escapeHTML(s.subject_code || s.subject_name)}</div>
+                      <div class="text-[10px] text-slate-400 font-normal">${s.periods_count} คาบ</div>
+                    </th>
+                  `).join('')}
+                  <th style="width:85px; text-align:center;">% รวมทุกวิชา</th>
+                  <th style="width:80px; text-align:center;">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${res.data.map((r, idx) => {
+                  const bad = r.total > 0 && r.attendance_pct < 80;
+                  return `
+                    <tr>
+                      <td style="text-align:center;" class="text-slate-400 font-medium">${idx + 1}</td>
+                      <td style="text-align:center;" class="font-mono text-xs text-slate-600">${escapeHTML(r.student_code || '-')}</td>
+                      <td class="font-semibold text-slate-800 white-space-nowrap">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+                      <td style="text-align:center;" class="text-slate-600 text-xs">ชั้น ${escapeHTML(r.classroom)}</td>
+                      ${res.subjects.map(s => {
+                        const subData = r.by_subject ? r.by_subject[s.id] : null;
+                        if (!subData || subData.total === 0) {
+                          return '<td style="text-align:center;" class="text-slate-300">-</td>';
+                        }
+                        const p = subData.attendance_pct || 0;
+                        const low = p < 80;
+                        return `
+                          <td style="text-align:center;">
+                            <span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${low ? 'bg-rose-100 text-rose-800' : 'bg-emerald-50 text-emerald-700'}" title="มา ${subData.present}, ขาด ${subData.absent}, ลา ${subData.leave}">
+                              ${p.toFixed(0)}%
+                            </span>
+                          </td>
+                        `;
+                      }).join('')}
+                      <td style="text-align:center;">
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold ${r.total === 0 ? 'bg-slate-100 text-slate-500' : (bad ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white')}">
+                          ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
+                        </span>
+                      </td>
+                      <td style="text-align:center;">
+                        ${r.total === 0 ? '<span class="text-xs text-slate-400">-</span>' : (bad ? '<span class="status-pill status-absent">เสี่ยง มส.</span>' : '<span class="status-pill status-present">ปกติ</span>')}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (scope === 'semester' && res.months && res.months.length > 0 && !isSubjectMode) {
     // Semester View with Monthly Breakdown Columns
     mainContentHtml = `
       <div class="page-card">
@@ -3177,7 +3292,7 @@ function renderAttendanceReportData(res) {
           <div class="flex items-center justify-between mb-3">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bx-calendar-star text-indigo-600"></i> ตารางสรุปเวลาเรียนรายบุคคลแยกตามรายเดือนตลอดภาคเรียน
+                <i class="bx bx-calendar-star text-indigo-600">\x3c/i> ตารางสรุปเวลาเรียนรายบุคคลแยกตามรายเดือนตลอดภาคเรียน
               </h4>
               <p class="text-xs text-slate-500 m-0 mt-0.5">สรุปร้อยละเวลาเรียนของแต่ละเดือน และยอดสะสมตลอดทั้งภาคเรียน</p>
             </div>
@@ -3200,7 +3315,7 @@ function renderAttendanceReportData(res) {
               </thead>
               <tbody>
                 ${res.data.map((r, idx) => {
-                  const isRisk = (r.attendance_pct < 80);
+                  const isRisk = (r.total > 0 && r.attendance_pct < 80);
                   return `
                     <tr>
                       <td style="text-align:center;" class="text-slate-400 font-medium">${idx + 1}</td>
@@ -3224,14 +3339,16 @@ function renderAttendanceReportData(res) {
                       }).join('')}
                       <td style="text-align:center;" class="font-bold text-slate-700">${r.total}</td>
                       <td style="text-align:center;">
-                        <span class="inline-block px-2 py-0.5 rounded text-xs font-extrabold ${isRisk ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white'}">
-                          ${r.attendance_pct.toFixed(1)}%
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-extrabold ${r.total === 0 ? 'bg-slate-100 text-slate-500' : (isRisk ? 'bg-red-500 text-white' : 'bg-emerald-600 text-white')}">
+                          ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
                         </span>
                       </td>
                       <td style="text-align:center;">
-                        ${isRisk 
-                          ? '<span class="status-pill status-absent">เสี่ยง มส.</span>'
-                          : '<span class="status-pill status-present">ปกติ</span>'
+                        ${r.total === 0 
+                          ? '<span class="text-xs text-slate-400">-</span>'
+                          : (isRisk 
+                            ? '<span class="status-pill status-absent">เสี่ยง มส.</span>'
+                            : '<span class="status-pill status-present">ปกติ</span>')
                         }
                       </td>
                     </tr>
@@ -3244,16 +3361,17 @@ function renderAttendanceReportData(res) {
       </div>
     `;
   } else {
-    // Default Student Summary Table
+    // Default Student Summary Table (supports both individual subject and general attendance)
+    const countUnit = isSubjectMode ? 'คาบ' : 'วัน';
     mainContentHtml = `
       <div class="page-card">
         <div class="page-card-body">
           <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bx-list-check text-indigo-600"></i> ตารางสรุปเวลาเรียนรายบุคคล (${res.data.length} คน)
+                <i class="bx bx-list-check text-indigo-600">\x3c/i> ${isSubjectMode ? 'ตารางสรุปเวลาเรียนรายวิชารายบุคคล' : 'ตารางสรุปเวลาเรียนรายบุคคล'} (${res.data.length} คน)
               </h4>
-              <p class="text-xs text-slate-500 m-0 mt-0.5">สรุปจำนวนวันมา ขาด ลา มาสาย และคิดเป็นร้อยละเวลาเรียน</p>
+              <p class="text-xs text-slate-500 m-0 mt-0.5">สรุปจำนวน${countUnit}มา ขาด ลา มาสาย และคิดเป็นร้อยละเวลาเรียนของวิชานี้</p>
             </div>
           </div>
           <div style="overflow-x:auto;">
@@ -3264,18 +3382,18 @@ function renderAttendanceReportData(res) {
                   <th style="width:80px; text-align:center;">รหัสนักเรียน</th>
                   <th>ชื่อ - นามสกุล</th>
                   <th style="width:80px; text-align:center;">ระดับชั้น</th>
-                  <th style="width:60px; text-align:center;" class="text-emerald-700">มา</th>
-                  <th style="width:60px; text-align:center;" class="text-rose-700">ขาด</th>
-                  <th style="width:60px; text-align:center;" class="text-amber-700">ลา</th>
-                  <th style="width:60px; text-align:center;" class="text-blue-700">มาสาย</th>
-                  <th style="width:65px; text-align:center;">รวมวัน</th>
+                  <th style="width:65px; text-align:center;" class="text-emerald-700">มา (${countUnit})</th>
+                  <th style="width:65px; text-align:center;" class="text-rose-700">ขาด (${countUnit})</th>
+                  <th style="width:65px; text-align:center;" class="text-amber-700">ลา (${countUnit})</th>
+                  <th style="width:65px; text-align:center;" class="text-blue-700">สาย (${countUnit})</th>
+                  <th style="width:75px; text-align:center;">รวม${countUnit}</th>
                   <th style="width:85px; text-align:center;">% เข้าเรียน</th>
-                  <th style="width:80px; text-align:center;">สถานะ</th>
+                  <th style="width:85px; text-align:center;">สถานะ</th>
                 </tr>
               </thead>
               <tbody>
                 ${res.data.map((r, idx) => {
-                  const bad = r.attendance_pct < 80;
+                  const bad = r.total > 0 && r.attendance_pct < 80;
                   return `
                     <tr>
                       <td style="text-align:center;" class="text-slate-400 font-medium">${idx + 1}</td>
@@ -3288,14 +3406,16 @@ function renderAttendanceReportData(res) {
                       <td style="text-align:center;" class="text-blue-600 font-semibold">${r.late}</td>
                       <td style="text-align:center;" class="font-bold text-slate-700">${r.total}</td>
                       <td style="text-align:center;">
-                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold ${bad ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
-                          ${r.attendance_pct.toFixed(1)}%
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold ${r.total === 0 ? 'bg-slate-100 text-slate-500' : (bad ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200')}">
+                          ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
                         </span>
                       </td>
                       <td style="text-align:center;">
-                        ${bad 
-                          ? '<span class="status-pill status-absent">เสี่ยง มส.</span>'
-                          : '<span class="status-pill status-present">ปกติ</span>'
+                        ${r.total === 0 
+                          ? '<span class="text-xs text-slate-400 font-medium">ยังไม่มีข้อมูล</span>'
+                          : (bad 
+                            ? '<span class="status-pill status-absent">เสี่ยง มส.</span>'
+                            : '<span class="status-pill status-present">ปกติ</span>')
                         }
                       </td>
                     </tr>
@@ -3315,9 +3435,10 @@ function renderAttendanceReportData(res) {
       <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div>
           <h3 class="text-lg font-bold text-slate-900 m-0">${escapeHTML(titleText)}</h3>
-          <p class="text-xs text-slate-500 m-0 mt-0.5">${escapeHTML(classroom)} | ${escapeHTML(dateDesc)}</p>
+          <p class="text-xs text-slate-500 m-0 mt-0.5">${escapeHTML(dateDesc)}</p>
         </div>
       </div>
+      ${noticeHtml}
       ${metricCardsHtml}
       ${classroomTableHtml}
       ${mainContentHtml}
@@ -3343,12 +3464,27 @@ function printAttendanceReport() {
   let reportTitle = 'รายงานการเข้าเรียน';
   let subTitle = (classroom && classroom !== 'all' ? ('ระดับชั้น ' + classroom) : 'ทุกระดับชั้น (ภาพรวมทั้งโรงเรียน)');
 
-  if (scope === 'monthly') {
-    reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ประจำเดือน ' + mLabel;
-  } else if (scope === 'semester') {
-    reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ภาคเรียนที่ ' + sem + '/' + ay;
+  const targetSub = res.target_subject;
+  const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');
+
+  if (isSubjectMode) {
+    const sName = targetSub ? ((targetSub.subject_code ? targetSub.subject_code + ' ' : '') + targetSub.subject_name) : ('รายวิชา ' + rptType);
+    reportTitle = 'รายงานเวลาเรียน วิชา ' + sName;
+    if (targetSub?.teacher_name) subTitle = 'ครูผู้สอน: ' + targetSub.teacher_name + ' | ' + subTitle;
+    if (scope === 'monthly') reportTitle += ' ประจำเดือน ' + mLabel;
+    else if (scope === 'semester') reportTitle += ' ภาคเรียนที่ ' + sem + '/' + ay;
+  } else if (rptType === 'all_subjects') {
+    reportTitle = 'รายงานเวลาเรียนภาพรวมทุกรายวิชา';
+    if (scope === 'monthly') reportTitle += ' ประจำเดือน ' + mLabel;
+    else if (scope === 'semester') reportTitle += ' ภาคเรียนที่ ' + sem + '/' + ay;
   } else {
-    reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง';
+    if (scope === 'monthly') {
+      reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ประจำเดือน ' + mLabel;
+    } else if (scope === 'semester') {
+      reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ภาคเรียนที่ ' + sem + '/' + ay;
+    } else {
+      reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง';
+    }
   }
 
   const isLandscape = (scope === 'semester' || (scope === 'monthly' && AttendanceState.reportView === 'matrix'));
