@@ -474,33 +474,154 @@ function renderDashboard(container) {
       \x3c/div>
     \x3c/div>
 
-    <div class="dash-row">
-      <div class="dash-card">
-        <h3>
-          <i class='bx bx-bar-chart-alt-2 text-primary mr-1' >\x3c/i> สถิติการเข้าเรียนรายสัปดาห์
-          <a href="#" onclick="event.preventDefault(); navigate('attendance');">ดูทั้งหมด <i class='bx bx-chevron-right'>\x3c/i>\x3c/a>
-        \x3c/h3>
-        <div class="chart-box"><canvas id="chartAttendance">\x3c/canvas>\x3c/div>
-      \x3c/div>
+    <!-- Attendance Command Center Dashboard -->
+    <div class="att-dash-section">
+      <div class="att-section-header">
+        <div class="att-section-title">
+          <div>
+            <h2><i class="bx bxs-check-shield text-indigo-600 mr-1.5"></i> แดชบอร์ดสรุปยอดการเข้าเรียนประจำวัน</h2>
+            <p>สถิติการมาเรียน เช็คชื่อหน้าเสาธง/โฮมรูม ประจำวันที่ <span id="attTodayLabel" class="font-semibold text-slate-700">—</span></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button class="btn btn-blue flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3" onclick="navigate('attendance')">
+            <i class="bx bx-edit-alt"></i> บันทึกการเข้าเรียน
+          </button>
+          <button class="btn btn-light flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3" onclick="navigate('attendance'); setTimeout(()=>{ if(typeof switchAttendanceTab==='function') switchAttendanceTab('report'); }, 150);">
+            <i class="bx bx-bar-chart-alt-2"></i> รายงานสรุป
+          </button>
+        </div>
+      </div>
 
+      <!-- 4 KPI Attendance Cards -->
+      <div class="att-kpi-grid">
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">อัตราการมาเรียนเฉลี่ย</span>
+            <span class="att-kpi-badge att-badge-green" id="attRateBadge">ปกติ</span>
+          </div>
+          <div class="att-kpi-num" id="attRateNum">—%</div>
+          <div class="att-kpi-sub">เป้าหมายสถานศึกษา ≥ 95.0%</div>
+        </div>
+
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">มาเรียนตามเวลาปกติ</span>
+            <span class="att-kpi-badge att-badge-green" id="attPresentPct">—%</span>
+          </div>
+          <div class="att-kpi-num text-emerald-600" id="attPresentNum">— คน</div>
+          <div class="att-kpi-sub" id="attPresentSub">จากนักเรียนทั้งหมด — คน</div>
+        </div>
+
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">มาสาย (หลัง 08:15 น.)</span>
+            <span class="att-kpi-badge att-badge-amber">สาย</span>
+          </div>
+          <div class="att-kpi-num text-amber-600" id="attLateNum">— คน</div>
+          <div class="att-kpi-sub">บันทึกเวลามาสายหน้าเสาธง</div>
+        </div>
+
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">ขาดเรียน / ลา</span>
+            <span class="att-kpi-badge att-badge-rose">ขาด / ลา</span>
+          </div>
+          <div class="att-kpi-num text-rose-600" id="attAbsentNum">— คน</div>
+          <div class="att-kpi-sub" id="attAbsentSub">มีใบลา / ขาดเรียน</div>
+        </div>
+      </div>
+
+      <!-- Split Row: 7-Day Chart & Classroom Queue -->
+      <div class="att-split-grid">
+        <!-- Left: Trend Chart -->
+        <div class="dash-card mb-0">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-base font-bold text-slate-800 m-0">
+                <i class="bx bx-trending-up text-primary mr-1"></i> แนวโน้มการมาเรียน 7 วันทำการ
+              </h3>
+              <p class="text-xs text-slate-500 m-0 mt-0.5">เปรียบเทียบร้อยละการมาเรียนย้อนหลัง</p>
+            </div>
+            <a href="#" onclick="event.preventDefault(); navigate('attendance');" class="text-xs text-indigo-600 font-semibold hover:underline">
+              ดูทั้งหมด <i class="bx bx-chevron-right"></i>
+            </a>
+          </div>
+          <div class="chart-box" style="height:220px;"><canvas id="chartAttendance"></canvas></div>
+        </div>
+
+        <!-- Right: Classroom Queue -->
+        <div class="dash-card mb-0 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-base font-bold text-slate-800 m-0">
+                <i class="bx bxs-school text-primary mr-1"></i> สถานะการส่งยอดรายห้อง
+              </h3>
+              <p class="text-xs text-slate-500 m-0 mt-0.5">ห้องที่ยังไม่ส่งยอดจัดเรียงไว้ด้านบนสุด</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="room-chip room-chip-pending" id="chipPendingCount">รอส่ง: 0</span>
+              <span class="room-chip room-chip-submitted" id="chipSubmittedCount">ส่งแล้ว: 0</span>
+            </div>
+          </div>
+          <div class="room-queue-container flex-1" id="classroomQueueArea">
+            <div class="text-center py-8 text-slate-400 text-xs"><i class="bx bx-loader-alt bx-spin text-lg"></i> กำลังโหลด...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Card: Risk Students Table -->
+      <div class="page-card mt-4 mb-0">
+        <div class="page-card-body">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div>
+              <div class="text-base font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="bx bxs-error-circle text-rose-500 text-lg"></i> รายชื่อนักเรียนกลุ่มเฝ้าระวัง (ขาดเรียนสะสม)
+              </div>
+              <div class="text-xs text-slate-500">ระบบติดตามและประสานงานผู้ปกครองอย่างใกล้ชิด</div>
+            </div>
+            <span class="text-xs text-slate-500 font-medium" id="riskCountBadge">แสดงสูงสุด 10 อันดับแรก</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="risk-table">
+              <thead>
+                <tr>
+                  <th>นักเรียน</th>
+                  <th style="width:110px;">รหัส</th>
+                  <th style="width:90px; text-align:center;">ห้องเรียน</th>
+                  <th style="width:100px; text-align:center;">ขาดสะสม</th>
+                  <th style="width:110px; text-align:center;">สถานะวันนี้</th>
+                  <th style="width:140px; text-align:center;">ติดต่อผู้ปกครอง</th>
+                </tr>
+              </thead>
+              <tbody id="riskStudentsTableBody">
+                <tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">กำลังตรวจสอบข้อมูล...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rest of Dashboard: Finance & Announcements -->
+    <div class="dash-row mt-4">
       <div class="dash-card">
-        <h3><i class='bx bxs-megaphone text-primary mr-1' >\x3c/i> ประกาศล่าสุด\x3c/h3>
+        <h3><i class="bx bxs-megaphone text-primary mr-1"></i> ประกาศและกิจกรรมล่าสุด</h3>
         <div class="announce-list" id="announceList">
-          <div class="empty-state"><i class='bx bx-loader-alt bx-spin'>\x3c/i>กำลังโหลด...\x3c/div>
-        \x3c/div>
-      \x3c/div>
+          <div class="empty-state"><i class="bx bx-loader-alt bx-spin"></i>กำลังโหลด...</div>
+        </div>
+      </div>
 
       <div class="dash-card">
-        <h3><i class='bx bx-wallet text-primary mr-1' >\x3c/i> สรุปรายรับ - รายจ่าย\x3c/h3>
-        <div class="chart-box" style="height:170px;"><canvas id="chartFinance">\x3c/canvas>\x3c/div>
+        <h3><i class="bx bx-wallet text-primary mr-1"></i> สรุปรายรับ - รายจ่าย</h3>
+        <div class="chart-box" style="height:170px;"><canvas id="chartFinance"></canvas></div>
         <div class="text-center mt-2">
-          <div class="text-xs text-slate-500">คงเหลือสุทธิ\x3c/div>
-          <div class="text-lg font-bold text-blue-600" id="netBalance">฿0\x3c/div>
-        \x3c/div>
-      \x3c/div>
-    \x3c/div>
+          <div class="text-xs text-slate-500">คงเหลือสุทธิ</div>
+          <div class="text-lg font-bold text-blue-600" id="netBalance">฿0</div>
+        </div>
+      </div>
+    </div>
   `;
-
   // วันที่ภาษาไทย
   document.getElementById('todayLabel').textContent = formatThaiDate(new Date());
 
@@ -549,6 +670,11 @@ function renderDashboardData(d) {
   setTxt('statPersonnel', formatNumber(d.stats.personnel));
   setTxt('statAttendance', (d.stats.attendance_pct ? d.stats.attendance_pct.toFixed(1) : '0') + '%');
   setTxt('statBalance', formatMoney(d.stats.balance));
+
+  // Attendance Command Center Panel
+  if (d.attendance_dashboard) {
+    renderAttendanceDashboardPanel(d.attendance_dashboard);
+  }
 
   const isDarkTheme = document.documentElement.classList.contains('dark-mode');
   const chartGridColor = isDarkTheme ? 'rgba(255,255,255,0.06)' : '#F1F5F9';
@@ -656,6 +782,157 @@ function renderDashboardData(d) {
   // แจ้งเตือน (Notifications)
   if (d.unread_notifications !== undefined) {
     updateNotificationsUI(d.unread_notifications);
+  }
+}
+
+window.goToClassAttendance = function(className) {
+  if (typeof AttendanceState !== 'undefined') {
+    AttendanceState.mode = 'class';
+    AttendanceState.classroom = className;
+    AttendanceState.tab = 'record';
+  }
+  navigate('attendance');
+  setTimeout(() => {
+    if (typeof switchAttendanceTab === 'function') {
+      switchAttendanceTab('record');
+    }
+    const classEl = document.getElementById('attClassroom');
+    if (classEl) {
+      classEl.value = className;
+      if (typeof onAttClassroomChange === 'function') {
+        onAttClassroomChange();
+      }
+    }
+  }, 250);
+};
+
+function renderAttendanceDashboardPanel(attDash, prefix) {
+  if (!attDash) return;
+  const p = prefix || '';
+  const getId = id => p ? (p + '_' + id) : id;
+
+  const setElTxt = (id, val) => {
+    const el = document.getElementById(getId(id));
+    if (el) el.textContent = val;
+  };
+
+  // วันที่
+  const todayDate = attDash.today ? new Date(attDash.today + 'T00:00:00') : new Date();
+  setElTxt('attTodayLabel', formatThaiDate(todayDate));
+
+  // อัตราการมาเรียนเฉลี่ย
+  const rate = typeof attDash.attendance_rate === 'number' ? attDash.attendance_rate : 0;
+  setElTxt('attRateNum', rate.toFixed(1) + '%');
+
+  const badgeEl = document.getElementById(getId('attRateBadge'));
+  if (badgeEl) {
+    badgeEl.className = 'att-kpi-badge ' + (rate >= 95 ? 'att-badge-green' : (rate >= 90 ? 'att-badge-amber' : 'att-badge-rose'));
+    badgeEl.textContent = rate >= 95 ? 'ปกติ' : (rate >= 90 ? 'ควรเฝ้าระวัง' : 'ต่ำกว่าเกณฑ์');
+  }
+
+  // มาเรียนตามเวลาปกติ
+  const total = attDash.total_students || 0;
+  const present = attDash.present_today || 0;
+  const presentPct = total > 0 ? Math.round((present / total) * 100) : 0;
+  setElTxt('attPresentPct', presentPct + '%');
+  setElTxt('attPresentNum', formatNumber(present) + ' คน');
+  setElTxt('attPresentSub', 'จากนักเรียนทั้งหมด ' + formatNumber(total) + ' คน');
+
+  // มาสาย
+  const late = attDash.late_today || 0;
+  setElTxt('attLateNum', formatNumber(late) + ' คน');
+
+  // ขาดเรียน / ลา
+  const absent = attDash.absent_today || 0;
+  const leave = attDash.leave_today || 0;
+  setElTxt('attAbsentNum', formatNumber(absent + leave) + ' คน');
+  setElTxt('attAbsentSub', 'ขาด ' + formatNumber(absent) + ' / ลา ' + formatNumber(leave) + ' คน');
+
+  // ชิปสถานะห้องเรียน
+  const pendingCount = attDash.pending_rooms !== undefined ? attDash.pending_rooms : 0;
+  const submittedCount = attDash.submitted_rooms !== undefined ? attDash.submitted_rooms : 0;
+  setElTxt('chipPendingCount', 'รอส่ง: ' + pendingCount);
+  setElTxt('chipSubmittedCount', 'ส่งแล้ว: ' + submittedCount);
+
+  // สถานะการส่งยอดรายห้อง
+  const queueArea = document.getElementById(getId('classroomQueueArea'));
+  if (queueArea) {
+    const queue = attDash.classroom_queue || [];
+    if (queue.length === 0) {
+      queueArea.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">ไม่พบข้อมูลห้องเรียน</div>';
+    } else {
+      queueArea.innerHTML = queue.map(rm => {
+        const isPending = !!rm.isPending;
+        const statusBadge = isPending
+          ? '<span class="room-chip room-chip-pending"><i class="bx bx-time-five"></i> รอส่ง</span>'
+          : '<span class="room-chip room-chip-submitted"><i class="bx bx-check"></i> ' + rm.rate + '%</span>';
+        const teacher = rm.teacher ? escapeHTML(rm.teacher) : 'ครูประจำชั้น';
+        const statsSub = isPending
+          ? ('ทั้งหมด ' + rm.total + ' คน')
+          : ('มา ' + rm.present + (rm.late ? ' • สาย ' + rm.late : '') + (rm.leave ? ' • ลา ' + rm.leave : '') + (rm.absent ? ' • ขาด ' + rm.absent : ''));
+        return `
+          <div class="room-queue-item ${isPending ? 'is-pending' : 'is-submitted'}" onclick="goToClassAttendance('${escapeHTML(rm.name)}')">
+            <div class="room-queue-left">
+              <div class="room-queue-name">ชั้น ${escapeHTML(rm.name)}</div>
+              <div class="room-queue-teacher">${teacher} • ${statsSub}</div>
+            </div>
+            <div class="room-queue-right">
+              ${statusBadge}
+              <i class="bx bx-chevron-right text-slate-400"></i>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // รายชื่อนักเรียนกลุ่มเฝ้าระวัง
+  const riskBody = document.getElementById(getId('riskStudentsTableBody'));
+  const riskBadge = document.getElementById(getId('riskCountBadge'));
+  if (riskBody) {
+    const risks = attDash.risk_students || [];
+    if (riskBadge) {
+      riskBadge.textContent = risks.length > 0 ? ('พบ ' + risks.length + ' คน (ขาดเรียนสะสม ≥ 2 ครั้ง)') : 'สถานะปกติ';
+    }
+    if (risks.length === 0) {
+      riskBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-emerald-600 font-medium text-xs"><i class="bx bx-check-shield text-base mr-1"></i> ไม่มีนักเรียนในกลุ่มเฝ้าระวัง (ขาดเรียนสะสมน้อยกว่า 2 ครั้ง)</td></tr>';
+    } else {
+      riskBody.innerHTML = risks.map(s => {
+        let statusBadge = '';
+        if (s.today_status === 'present') {
+          statusBadge = '<span class="risk-pill risk-pill-present"><i class="bx bx-check"></i> มาเรียน</span>';
+        } else if (s.today_status === 'late') {
+          statusBadge = '<span class="risk-pill risk-pill-late"><i class="bx bx-time"></i> มาสาย</span>';
+        } else if (s.today_status === 'absent') {
+          statusBadge = '<span class="risk-pill risk-pill-absent"><i class="bx bx-x"></i> ขาดเรียน</span>';
+        } else if (s.today_status === 'leave') {
+          statusBadge = '<span class="risk-pill risk-pill-leave"><i class="bx bx-file-blank"></i> ลา</span>';
+        } else {
+          statusBadge = '<span class="risk-pill risk-pill-pending"><i class="bx bx-time-five"></i> รอเช็คชื่อ</span>';
+        }
+
+        const phoneLink = (s.parent_phone && s.parent_phone !== '-' && s.parent_phone !== '—')
+          ? `<a href="tel:${escapeHTML(s.parent_phone)}" class="text-indigo-600 font-semibold hover:underline inline-flex items-center gap-1 text-xs"><i class="bx bxs-phone-call text-sm"></i> ${escapeHTML(s.parent_phone)}</a>`
+          : '<span class="text-slate-400 text-xs">-</span>';
+
+        return `
+          <tr>
+            <td>
+              <div class="font-semibold text-slate-800">${escapeHTML(s.name)}</div>
+            </td>
+            <td class="text-slate-500 font-mono text-xs">${escapeHTML(s.id)}</td>
+            <td style="text-align:center;"><span class="font-medium text-slate-700">${escapeHTML(s.classroom)}</span></td>
+            <td style="text-align:center;">
+              <span class="inline-flex items-center justify-center font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full text-xs border border-rose-200">
+                ${s.absent_count} ครั้ง
+              </span>
+            </td>
+            <td style="text-align:center;">${statusBadge}</td>
+            <td style="text-align:center;">${phoneLink}</td>
+          </tr>
+        `;
+      }).join('');
+    }
   }
 }
 

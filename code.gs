@@ -1133,6 +1133,114 @@ function getDashboardDataCore_() {
   const todayBucket = attendByDate[today];
   const attendancePct = todayBucket && todayBucket.total > 0 ? Math.round((todayBucket.present / todayBucket.total) * 1000) / 10 : 0;
 
+  // ── Attendance Dashboard Data ──
+  const activeStudents = students.filter(s => s.status !== 'inactive' && s.status !== 'graduate' && s.status !== 'transfer');
+  const totalStudents = activeStudents.length;
+
+  const stuMap = {};
+  activeStudents.forEach(s => {
+    if (s.id) stuMap[s.id] = s;
+    if (s.student_id) stuMap[s.student_id] = s;
+  });
+
+  // สถานะการเข้าเรียนวันนี้
+  let presentToday = 0, lateToday = 0, absentToday = 0, leaveToday = 0;
+  const todayRecordsByStu = {};
+  attendance.forEach(a => {
+    if (a.date === today) {
+      if (!todayRecordsByStu[a.student_id] || a.period === 'homeroom') {
+        todayRecordsByStu[a.student_id] = a.status;
+      }
+    }
+  });
+
+  Object.values(todayRecordsByStu).forEach(st => {
+    if (st === 'present') presentToday++;
+    else if (st === 'late') lateToday++;
+    else if (st === 'absent') absentToday++;
+    else if (st === 'leave') leaveToday++;
+  });
+
+  const recordedTotalToday = presentToday + lateToday + absentToday + leaveToday;
+  const attendanceRateToday = recordedTotalToday > 0 
+    ? Math.round(((presentToday + lateToday) / recordedTotalToday) * 1000) / 10 
+    : 0;
+
+  // สถานะการส่งยอดรายห้องเรียน (Classroom Queue)
+  const classroomsList = readJsonSheet_('Classrooms');
+  const classMap = {};
+  activeStudents.forEach(s => {
+    const cls = s.classroom || 'ไม่ระบุห้อง';
+    if (!classMap[cls]) {
+      classMap[cls] = { name: cls, teacher: '', total: 0, present: 0, late: 0, absent: 0, leave: 0, hasRecord: false };
+    }
+    classMap[cls].total++;
+    const stToday = todayRecordsByStu[s.id] || todayRecordsByStu[s.student_id];
+    if (stToday) {
+      classMap[cls].hasRecord = true;
+      if (stToday === 'present') classMap[cls].present++;
+      else if (stToday === 'late') classMap[cls].late++;
+      else if (stToday === 'absent') classMap[cls].absent++;
+      else if (stToday === 'leave') classMap[cls].leave++;
+    }
+  });
+
+  classroomsList.forEach(c => {
+    if (classMap[c.name]) {
+      classMap[c.name].teacher = c.teacher_name || '';
+    }
+  });
+
+  const classroomQueue = Object.values(classMap).map(c => {
+    const isPending = !c.hasRecord;
+    const rate = c.total > 0 && c.hasRecord ? Math.round(((c.present + c.late) / c.total) * 100) : 0;
+    return {
+      name: c.name,
+      teacher: c.teacher || 'ครูประจำชั้น',
+      total: c.total,
+      present: c.present,
+      late: c.late,
+      absent: c.absent,
+      leave: c.leave,
+      isPending: isPending,
+      rate: rate
+    };
+  });
+
+  classroomQueue.sort((a, b) => {
+    if (a.isPending !== b.isPending) return a.isPending ? -1 : 1;
+    return String(a.name).localeCompare(String(b.name), 'th', { numeric: true });
+  });
+
+  // นักเรียนกลุ่มเฝ้าระวัง (ขาดเรียนสะสม)
+  const absentCountByStu = {};
+  attendance.forEach(a => {
+    if (a.status === 'absent') {
+      absentCountByStu[a.student_id] = (absentCountByStu[a.student_id] || 0) + 1;
+    }
+  });
+
+  const riskStudents = [];
+  Object.keys(absentCountByStu).forEach(sid => {
+    const count = absentCountByStu[sid];
+    if (count >= 2) {
+      const s = stuMap[sid];
+      if (s) {
+        riskStudents.push({
+          id: s.student_id || s.id,
+          name: ((s.prefix || '') + s.first_name + ' ' + s.last_name).trim(),
+          classroom: s.classroom || '-',
+          absent_count: count,
+          today_status: todayRecordsByStu[s.id] || todayRecordsByStu[s.student_id] || 'pending',
+          parent_phone: s.parent_phone || s.phone || '-'
+        });
+      }
+    }
+  });
+
+  riskStudents.sort((a, b) => b.absent_count - a.absent_count);
+  const topRiskStudents = riskStudents.slice(0, 10);
+
   // การเงิน
   let income = 0, expense = 0;
   finance.forEach(f => {
@@ -1173,7 +1281,20 @@ function getDashboardDataCore_() {
       finance: { income: income, expense: expense, balance: balance },
       week_chart   : weekChart,
       announcements: announcements,
-      pending_approvals: pendingApprovals
+      pending_approvals: pendingApprovals,
+      attendance_dashboard: {
+        today           : today,
+        total_students  : totalStudents,
+        present_today   : presentToday,
+        late_today      : lateToday,
+        absent_today    : absentToday,
+        leave_today     : leaveToday,
+        attendance_rate : attendanceRateToday,
+        pending_rooms   : classroomQueue.filter(c => c.isPending).length,
+        submitted_rooms : classroomQueue.filter(c => !c.isPending).length,
+        classroom_queue : classroomQueue,
+        risk_students   : topRiskStudents
+      }
     }
   };
 

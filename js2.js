@@ -1775,24 +1775,30 @@ const AttendanceState = {
 };
 
 function renderAttendance(container) {
+  const currentTab = AttendanceState.tab || 'record';
+
   container.innerHTML = `
     ${pageHeader('การเข้าเรียน', 'bxs-check-square', '')}
 
     <div class="page-card">
       <div class="page-card-body">
-        <div class="tab-pill" style="max-width:400px;">
-          <button id="tabRecord" class="active" onclick="switchAttendanceTab('record')">
-            <i class='bx bx-edit-alt'>\x3c/i> บันทึกรายวัน
-          \x3c/button>
-          <button id="tabReport" onclick="switchAttendanceTab('report')">
-            <i class='bx bx-bar-chart-alt-2'>\x3c/i> รายงาน
-          \x3c/button>
-        \x3c/div>
+        <div class="tab-pill" style="max-width:540px;">
+          <button id="tabAttOverview" class="${currentTab==='overview'?'active':''}" onclick="switchAttendanceTab('overview')">
+            <i class='bx bx-pie-chart-alt-2'></i> ภาพรวมแดชบอร์ด
+          </button>
+          <button id="tabRecord" class="${currentTab==='record'?'active':''}" onclick="switchAttendanceTab('record')">
+            <i class='bx bx-edit-alt'></i> บันทึกรายวัน
+          </button>
+          <button id="tabReport" class="${currentTab==='report'?'active':''}" onclick="switchAttendanceTab('report')">
+            <i class='bx bx-bar-chart-alt-2'></i> รายงาน
+          </button>
+        </div>
 
-        <div id="attRecord" class="mt-4">\x3c/div>
-        <div id="attReport" class="mt-4" style="display:none;">\x3c/div>
-      \x3c/div>
-    \x3c/div>
+        <div id="attOverview" class="mt-4" style="${currentTab==='overview'?'':'display:none;'}"></div>
+        <div id="attRecord" class="mt-4" style="${currentTab==='record'?'':'display:none;'}"></div>
+        <div id="attReport" class="mt-4" style="${currentTab==='report'?'':'display:none;'}"></div>
+      </div>
+    </div>
   `;
 
   // ตั้งค่า mode เริ่มต้น: หากยังไม่ได้เลือก ให้เริ่มต้นที่หน้าเสาธง/โฮมรูม หรือคงค่าเดิมที่เลือกไว้
@@ -1801,7 +1807,17 @@ function renderAttendance(container) {
   }
 
   let loaded = 0;
-  const checkReady = () => { if (++loaded >= 3) renderAttendanceRecord(); };
+  const checkReady = () => {
+    if (++loaded >= 3) {
+      if (AttendanceState.tab === 'overview') {
+        renderAttendanceOverviewTab();
+      } else if (AttendanceState.tab === 'report') {
+        renderAttendanceReport();
+      } else {
+        renderAttendanceRecord();
+      }
+    }
+  };
 
   google.script.run
     .withSuccessHandler(res => {
@@ -1832,12 +1848,221 @@ function renderAttendance(container) {
 
 function switchAttendanceTab(tab) {
   AttendanceState.tab = tab;
-  document.getElementById('tabRecord').classList.toggle('active', tab === 'record');
-  document.getElementById('tabReport').classList.toggle('active', tab === 'report');
-  document.getElementById('attRecord').style.display = (tab === 'record') ? '' : 'none';
-  document.getElementById('attReport').style.display = (tab === 'report') ? '' : 'none';
-  if (tab === 'record') renderAttendanceRecord();
-  else                  renderAttendanceReport();
+  const tOver = document.getElementById('tabAttOverview');
+  const tRec = document.getElementById('tabRecord');
+  const tRep = document.getElementById('tabReport');
+  if (tOver) tOver.classList.toggle('active', tab === 'overview');
+  if (tRec) tRec.classList.toggle('active', tab === 'record');
+  if (tRep) tRep.classList.toggle('active', tab === 'report');
+
+  const elOver = document.getElementById('attOverview');
+  const elRec = document.getElementById('attRecord');
+  const elRep = document.getElementById('attReport');
+  if (elOver) elOver.style.display = (tab === 'overview') ? '' : 'none';
+  if (elRec) elRec.style.display = (tab === 'record') ? '' : 'none';
+  if (elRep) elRep.style.display = (tab === 'report') ? '' : 'none';
+
+  if (tab === 'overview') {
+    renderAttendanceOverviewTab();
+  } else if (tab === 'record') {
+    renderAttendanceRecord();
+  } else {
+    renderAttendanceReport();
+  }
+}
+
+function renderAttendanceOverviewTab() {
+  const container = document.getElementById('attOverview');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="att-dash-section mb-0">
+      <div class="att-section-header">
+        <div class="att-section-title">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-800"><i class="bx bxs-check-shield text-indigo-600 mr-1.5"></i> ภาพรวมการเข้าเรียนประจำวัน</h2>
+            <p class="text-xs text-slate-500">สถิติเช็คชื่อหน้าเสาธง/โฮมรูม ประจำวันที่ <span id="attMod_attTodayLabel" class="font-semibold text-slate-700">—</span></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-blue flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3" onclick="switchAttendanceTab('record')">
+            <i class="bx bx-edit-alt"></i> ไปที่หน้าบันทึกรายวัน
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 KPI Attendance Cards -->
+      <div class="att-kpi-grid">
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">อัตราการมาเรียนเฉลี่ย</span>
+            <span class="att-kpi-badge att-badge-green" id="attMod_attRateBadge">ปกติ</span>
+          </div>
+          <div class="att-kpi-num" id="attMod_attRateNum">—%</div>
+          <div class="att-kpi-sub">เป้าหมายสถานศึกษา ≥ 95.0%</div>
+        </div>
+
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">มาเรียนตามเวลาปกติ</span>
+            <span class="att-kpi-badge att-badge-green" id="attMod_attPresentPct">—%</span>
+          </div>
+          <div class="att-kpi-num text-emerald-600" id="attMod_attPresentNum">— คน</div>
+          <div class="att-kpi-sub" id="attMod_attPresentSub">จากนักเรียนทั้งหมด — คน</div>
+        </div>
+
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">มาสาย (หลัง 08:15 น.)</span>
+            <span class="att-kpi-badge att-badge-amber">สาย</span>
+          </div>
+          <div class="att-kpi-num text-amber-600" id="attMod_attLateNum">— คน</div>
+          <div class="att-kpi-sub">บันทึกเวลามาสายหน้าเสาธง</div>
+        </div>
+
+        <div class="att-kpi-card">
+          <div class="att-kpi-top">
+            <span class="att-kpi-label">ขาดเรียน / ลา</span>
+            <span class="att-kpi-badge att-badge-rose">ขาด / ลา</span>
+          </div>
+          <div class="att-kpi-num text-rose-600" id="attMod_attAbsentNum">— คน</div>
+          <div class="att-kpi-sub" id="attMod_attAbsentSub">มีใบลา / ขาดเรียน</div>
+        </div>
+      </div>
+
+      <!-- Split Row: 7-Day Chart & Classroom Queue -->
+      <div class="att-split-grid">
+        <!-- Left: Trend Chart -->
+        <div class="dash-card mb-0">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-base font-bold text-slate-800 m-0">
+                <i class="bx bx-trending-up text-primary mr-1"></i> แนวโน้มการมาเรียน 7 วันทำการ
+              </h3>
+              <p class="text-xs text-slate-500 m-0 mt-0.5">เปรียบเทียบร้อยละการมาเรียนย้อนหลัง</p>
+            </div>
+          </div>
+          <div class="chart-box" style="height:220px;"><canvas id="chartAttendanceMod"></canvas></div>
+        </div>
+
+        <!-- Right: Classroom Queue -->
+        <div class="dash-card mb-0 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-base font-bold text-slate-800 m-0">
+                <i class="bx bxs-school text-primary mr-1"></i> สถานะการส่งยอดรายห้อง
+              </h3>
+              <p class="text-xs text-slate-500 m-0 mt-0.5">คลิกเพื่อเข้าบันทึกรายห้องทันที</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="room-chip room-chip-pending" id="attMod_chipPendingCount">รอส่ง: 0</span>
+              <span class="room-chip room-chip-submitted" id="attMod_chipSubmittedCount">ส่งแล้ว: 0</span>
+            </div>
+          </div>
+          <div class="room-queue-container flex-1" id="attMod_classroomQueueArea">
+            <div class="text-center py-8 text-slate-400 text-xs"><i class="bx bx-loader-alt bx-spin text-lg"></i> กำลังโหลด...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Card: Risk Students Table -->
+      <div class="page-card mt-4 mb-0">
+        <div class="page-card-body">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div>
+              <div class="text-base font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="bx bxs-error-circle text-rose-500 text-lg"></i> รายชื่อนักเรียนกลุ่มเฝ้าระวัง (ขาดเรียนสะสม)
+              </div>
+              <div class="text-xs text-slate-500">ระบบติดตามและประสานงานผู้ปกครองอย่างใกล้ชิด</div>
+            </div>
+            <span class="text-xs text-slate-500 font-medium" id="attMod_riskCountBadge">แสดงสูงสุด 10 อันดับแรก</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="risk-table">
+              <thead>
+                <tr>
+                  <th>นักเรียน</th>
+                  <th style="width:110px;">รหัส</th>
+                  <th style="width:90px; text-align:center;">ห้องเรียน</th>
+                  <th style="width:100px; text-align:center;">ขาดสะสม</th>
+                  <th style="width:110px; text-align:center;">สถานะวันนี้</th>
+                  <th style="width:140px; text-align:center;">ติดต่อผู้ปกครอง</th>
+                </tr>
+              </thead>
+              <tbody id="attMod_riskStudentsTableBody">
+                <tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">กำลังตรวจสอบข้อมูล...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const renderData = d => {
+    if (d && d.attendance_dashboard) {
+      if (typeof renderAttendanceDashboardPanel === 'function') {
+        renderAttendanceDashboardPanel(d.attendance_dashboard, 'attMod');
+      }
+    }
+    const ctx = document.getElementById('chartAttendanceMod');
+    if (ctx && d && d.week_chart) {
+      if (APP.charts && APP.charts.attendanceMod) {
+        try { APP.charts.attendanceMod.destroy(); } catch (_) {}
+        delete APP.charts.attendanceMod;
+      }
+      const isDark = document.documentElement.classList.contains('dark-mode');
+      if (!APP.charts) APP.charts = {};
+      APP.charts.attendanceMod = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: d.week_chart.map(x => x.label),
+          datasets: [{
+            label: 'อัตราการเข้าเรียน (%)',
+            data: d.week_chart.map(x => x.pct),
+            borderColor: '#4F46E5',
+            backgroundColor: 'rgba(79,70,229,.15)',
+            fill: true, tension: 0.4,
+            pointBackgroundColor: '#3730A3', pointRadius: 4,
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 100, ticks: { color: isDark ? '#94A3B8' : '#64748B', stepSize: 25, callback: v => v + '%' }, grid: { color: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' } },
+            x: { ticks: { color: isDark ? '#94A3B8' : '#64748B' }, grid: { display: false } }
+          }
+        }
+      });
+    }
+  };
+
+  if (APP.dashboardData) {
+    renderData(APP.dashboardData);
+    if (!APP._dashboardTs || Date.now() - APP._dashboardTs > 30000) {
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.status === 'success' && res.data) {
+            APP.dashboardData = res.data;
+            APP._dashboardTs = Date.now();
+            renderData(res.data);
+          }
+        })
+        .getDashboardData(APP.token);
+    }
+  } else {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res.status === 'success' && res.data) {
+          APP.dashboardData = res.data;
+          APP._dashboardTs = Date.now();
+          renderData(res.data);
+        }
+      })
+      .getDashboardData(APP.token);
+  }
 }
 
 function renderAttendanceRecord() {
