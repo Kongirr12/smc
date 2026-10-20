@@ -1893,6 +1893,9 @@ function renderAttendanceOverviewTab() {
           </div>
         </div>
         <div class="flex items-center gap-2">
+          <button class="btn btn-light border border-slate-200 flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3 hover:bg-slate-50" onclick="printAttendanceDashboardOverview()" title="พิมพ์รายงานสรุปภาพรวม A4">
+            <i class="bx bx-printer text-indigo-600"></i> พิมพ์สรุปภาพรวม
+          </button>
           <button class="btn btn-blue flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3" onclick="switchAttendanceTab('record')">
             <i class="bx bx-edit-alt"></i> ไปที่หน้าบันทึกรายวัน
           </button>
@@ -2416,7 +2419,12 @@ function renderAttendanceList() {
 
   area.innerHTML = `
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <div class="text-xs sm:text-sm font-bold text-slate-800">รายชื่อนักเรียน</div>
+      <div class="flex items-center gap-2">
+        <div class="text-xs sm:text-sm font-bold text-slate-800">รายชื่อนักเรียน</div>
+        <button type="button" class="btn btn-light border border-slate-200 text-xs px-2.5 py-1 hover:bg-slate-50 inline-flex items-center gap-1 cursor-pointer" onclick="printDailyAttendanceRecord()" title="พิมพ์ใบเช็คชื่อประจำวัน A4">
+          <i class="bx bx-printer text-indigo-600"></i> พิมพ์ใบเช็คชื่อ
+        </button>
+      </div>
       <div class="flex items-center gap-1.5">
         <span class="text-[10px] sm:text-xs font-semibold text-slate-500">เช็คด่วนทั้งหมด:</span>
         <button class="btn btn-light text-emerald-600 border-emerald-200 hover:bg-emerald-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('present')">มา</button>
@@ -2493,9 +2501,14 @@ function renderAttendanceList() {
           <span>รวม</span> <b>${AttendanceState.records.length}</b>
         </div>
       </div>
-      <button class="btn btn-blue" onclick="saveAttendance()" style="padding:6px 16px; font-size:13px; box-shadow: 0 2px 8px rgba(128, 0, 32, 0.2);">
-        <i class='bx bx-save'></i> บันทึก
-      </button>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn btn-light border border-slate-200 text-xs sm:text-sm px-3 py-1.5 hover:bg-slate-50 inline-flex items-center gap-1.5 cursor-pointer" onclick="printDailyAttendanceRecord()" title="พิมพ์แบบบันทึกการเช็คชื่อประจำวัน A4">
+          <i class="bx bx-printer text-indigo-600"></i> พิมพ์ใบเช็คชื่อ
+        </button>
+        <button class="btn btn-blue" onclick="saveAttendance()" style="padding:6px 16px; font-size:13px; box-shadow: 0 2px 8px rgba(128, 0, 32, 0.2);">
+          <i class='bx bx-save'></i> บันทึก
+        </button>
+      </div>
     </div>
 
     <style>
@@ -3543,6 +3556,327 @@ function renderAttendanceReportData(res) {
   `;
 }
 
+function printAttendanceDashboardOverview() {
+  const d = APP.dashboardData;
+  const config = d?.config || {};
+  const ay = config.academic_year || '2569';
+  const sem = config.semester || '1';
+
+  const todayLabel = document.getElementById('attMod_attTodayLabel')?.textContent || formatThaiDate(new Date());
+  const rateNum = document.getElementById('attMod_attRateNum')?.textContent || '—%';
+  const presentNum = document.getElementById('attMod_attPresentNum')?.textContent || '0 คน';
+  const lateNum = document.getElementById('attMod_attLateNum')?.textContent || '0 คน';
+  const absentNum = document.getElementById('attMod_attAbsentNum')?.textContent || '0 คน';
+  const pendingChip = document.getElementById('attMod_chipPendingCount')?.textContent || '';
+  const submittedChip = document.getElementById('attMod_chipSubmittedCount')?.textContent || '';
+
+  const docTitle = 'รายงานสรุปภาพรวมการเข้าเรียนประจำวัน';
+  const subTitle = `ข้อมูลประจำวันที่ ${todayLabel} | ภาคเรียนที่ ${sem}/${ay}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHTML(docTitle)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 10mm 10mm 12mm 10mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 11px; color: #0F172A; margin: 0; padding: 0; }
+    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .header { text-align: center; margin-top: 10px; margin-bottom: 12px; }
+    .logo { width: 55px; height: 55px; object-fit: contain; margin: 0 auto 4px auto; display: block; }
+    .title { font-size: 13.5pt; font-weight: bold; margin: 0; color: #1E293B; }
+    .subtitle { font-size: 10.5pt; color: #334155; margin: 3px 0 0 0; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
+    .kpi-box { background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 12px; text-align: center; }
+    .kpi-title { font-size: 9.5pt; color: #64748B; font-weight: bold; margin-bottom: 3px; }
+    .kpi-val { font-size: 15pt; font-weight: 800; }
+    .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-box { text-align: center; min-width: 220px; font-size: 10pt; }
+    .sig-line { margin-top: 6px; color: #334155; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; }
+      @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <strong style="font-size:13px;">ตัวอย่างก่อนพิมพ์: ${escapeHTML(docTitle)}</strong>
+      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="window.print()" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+        🖨 พิมพ์เอกสาร / บันทึก PDF
+      </button>
+      <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
+        ปิด
+      </button>
+    </div>
+  </div>
+
+  <div class="header">
+    <img src="https://img5.pic.in.th/file/secure-sv1/141088-removebg-preview.png" class="logo" alt="ตราโรงเรียน">
+    <div class="title">${escapeHTML(docTitle)}</div>
+    <div class="subtitle">${escapeHTML(subTitle)}</div>
+    <div style="font-size:9.5pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-box">
+      <div class="kpi-title">อัตราการมาเรียนเฉลี่ย</div>
+      <div class="kpi-val" style="color:#2563EB;">${escapeHTML(rateNum)}</div>
+      <div style="font-size:8pt; color:#64748B; margin-top:2px;">เกณฑ์สถานศึกษา ≥ 95%</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-title">มาเรียนตามปกติ</div>
+      <div class="kpi-val" style="color:#15803D;">${escapeHTML(presentNum)}</div>
+      <div style="font-size:8pt; color:#64748B; margin-top:2px;">เช็คชื่อเข้าชั้นเรียน / หน้าเสาธง</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-title">มาสาย</div>
+      <div class="kpi-val" style="color:#B45309;">${escapeHTML(lateNum)}</div>
+      <div style="font-size:8pt; color:#64748B; margin-top:2px;">บันทึกเวลามาสาย</div>
+    </div>
+    <div class="kpi-box">
+      <div class="kpi-title">ขาดเรียน / ลา</div>
+      <div class="kpi-val" style="color:#B91C1C;">${escapeHTML(absentNum)}</div>
+      <div style="font-size:8pt; color:#64748B; margin-top:2px;">ขาดและมีใบลา</div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px; background:#F8FAFC; border:1px solid #CBD5E1; padding:10px 14px; border-radius:6px; font-size:9.5pt; display:flex; justify-content:space-between; align-items:center;">
+    <div><b>สถานะการส่งยอดเช็คชื่อหน้าเสาธง:</b> ${escapeHTML(submittedChip)} | ${escapeHTML(pendingChip)}</div>
+    <div style="color:#64748B; font-size:9pt;">ข้อมูลระบบบริหารจัดการ MHC Smart School</div>
+  </div>
+
+  <div class="signatures">
+    <div class="sig-box">
+      <div>ลงชื่อ .............................................................. ผู้สรุปรายงาน</div>
+      <div class="sig-line">( .............................................................. )</div>
+      <div class="sig-line">ตำแหน่ง หัวหน้างานระดับชั้น / ผู้รับผิดชอบ</div>
+      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+    </div>
+    <div class="sig-box">
+      <div>ทราบ / อนุมัติ</div>
+      <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+      <div class="sig-line">( นายอธิการ สุขศรี )</div>
+      <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
+    <span>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')} เวลา ${new Date().toLocaleTimeString('th-TH')} น.</span>
+  </div>
+
+  <script>
+    function autoPrint() {
+      setTimeout(function() {
+        try { window.focus(); window.print(); } catch(e){}
+      }, 400);
+    }
+    if (document.readyState === 'complete') autoPrint();
+    else window.addEventListener('load', autoPrint);
+  </script>
+</body>
+</html>`;
+
+  if (typeof openHTMLDocument === 'function') {
+    openHTMLDocument(html, docTitle);
+  } else {
+    window.print();
+  }
+}
+
+function printDailyAttendanceRecord() {
+  if (!AttendanceState.records || AttendanceState.records.length === 0) {
+    return showToast('warning', 'กรุณาเลือกชั้นเรียนและวันที่ให้มีรายชื่อนักเรียนก่อนพิมพ์');
+  }
+
+  const dateStr = AttendanceState.date || new Date().toISOString().slice(0, 10);
+  const parts = dateStr.split('-');
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  const dt = new Date(y, m - 1, d);
+  const thDays = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+  const thMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const dateThaiFull = `${thDays[dt.getDay()]}ที่ ${d} ${thMonths[m]} พ.ศ. ${y > 2400 ? y : y + 543}`;
+
+  const mode = AttendanceState.mode;
+  const isSubject = (mode === 'subject');
+  const classroom = AttendanceState.classroom || '';
+  
+  let docTitle = isSubject ? 'แบบบันทึกการเข้าเรียนรายวิชาประจำวัน' : 'แบบบันทึกการเช็คแถวหน้าเสาธงและโฮมรูมประจำวัน';
+  let subTitle = '';
+  
+  if (isSubject) {
+    const subjects = AttendanceState.subjects || [];
+    const sub = subjects.find(s => s.id === AttendanceState.subject_id);
+    const sName = sub ? ((sub.subject_code ? sub.subject_code + ' ' : '') + sub.subject_name) : 'รายวิชา';
+    const teacher = sub?.teacher_name || '';
+    const checkedPeriods = Array.from(document.querySelectorAll('input[name="att_period"]:checked')).map(cb => cb.value).join(', ');
+    const periodStr = checkedPeriods ? (`คาบที่ ${checkedPeriods}`) : '';
+    subTitle = `วิชา: ${sName} | ${periodStr ? periodStr + ' | ' : ''}${teacher ? 'ครูผู้สอน: ' + teacher + ' | ' : ''}ชั้น ${classroom}`;
+  } else {
+    subTitle = `ระดับชั้น: ชั้น ${classroom || '-'} | เช็คแถวหน้าเสาธงและกิจกรรมโฮมรูม`;
+  }
+
+  // Count statuses
+  let pCnt = 0, aCnt = 0, lCnt = 0, ltCnt = 0, unCnt = 0;
+  AttendanceState.records.forEach(r => {
+    if (r.status === 'present') pCnt++;
+    else if (r.status === 'absent') aCnt++;
+    else if (r.status === 'leave') lCnt++;
+    else if (r.status === 'late') ltCnt++;
+    else unCnt++;
+  });
+  const total = AttendanceState.records.length;
+  const checkedTotal = pCnt + aCnt + lCnt + ltCnt;
+  const pct = checkedTotal > 0 ? (((pCnt + ltCnt) / checkedTotal) * 100).toFixed(1) : '-';
+
+  const rowsHtml = AttendanceState.records.map((r, idx) => {
+    let stText = '<span style="color:#94A3B8;">[ &nbsp; ] ยังไม่ระบุ</span>';
+    if (r.status === 'present') stText = '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>';
+    else if (r.status === 'absent') stText = '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>';
+    else if (r.status === 'leave') stText = '<span style="color:#B45309; font-weight:bold;">∆ ลา</span>';
+    else if (r.status === 'late') stText = '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
+
+    return `
+      <tr>
+        <td style="text-align:center;">${r.student_number || (idx + 1)}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; padding-left:8px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+        <td style="text-align:center;">${escapeHTML(r.classroom || classroom || '-')}</td>
+        <td style="text-align:center;">${stText}</td>
+        <td style="text-align:center; color:#94A3B8; font-size:9pt;">..................................................</td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHTML(docTitle)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 10mm 10mm 12mm 10mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 11px; color: #0F172A; margin: 0; padding: 0; }
+    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .header { text-align: center; margin-top: 10px; margin-bottom: 12px; }
+    .logo { width: 55px; height: 55px; object-fit: contain; margin: 0 auto 4px auto; display: block; }
+    .title { font-size: 13.5pt; font-weight: bold; margin: 0; color: #1E293B; }
+    .subtitle { font-size: 10.5pt; color: #334155; margin: 3px 0 0 0; }
+    .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 6px 12px; border-radius: 6px; margin: 10px 0; font-size: 9.5pt; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10pt; }
+    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 5px; text-align: center; font-weight: bold; }
+    td { border: 1px solid #CBD5E1; padding: 5px 6px; }
+    tr:nth-child(even) { background: #FAFAFA; }
+    .signatures { margin-top: 25px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-box { text-align: center; min-width: 220px; font-size: 10pt; }
+    .sig-line { margin-top: 6px; color: #334155; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; }
+      @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <strong style="font-size:13px;">ตัวอย่างก่อนพิมพ์: ${escapeHTML(docTitle)}</strong>
+      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="window.print()" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+        🖨 พิมพ์เอกสาร / บันทึก PDF
+      </button>
+      <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
+        ปิด
+      </button>
+    </div>
+  </div>
+
+  <div class="header">
+    <img src="https://img5.pic.in.th/file/secure-sv1/141088-removebg-preview.png" class="logo" alt="ตราโรงเรียน">
+    <div class="title">${escapeHTML(docTitle)}</div>
+    <div class="subtitle">${escapeHTML(subTitle)}</div>
+    <div style="font-size:9.5pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร | ประจำ${escapeHTML(dateThaiFull)}</div>
+  </div>
+
+  <div class="summary-bar">
+    <div><b>นักเรียนทั้งหมด:</b> ${total} คน</div>
+    <div style="color:#15803D;"><b>มา:</b> ${pCnt} คน</div>
+    <div style="color:#B91C1C;"><b>ขาด:</b> ${aCnt} คน</div>
+    <div style="color:#B45309;"><b>ลา:</b> ${lCnt} คน</div>
+    <div style="color:#1D4ED8;"><b>สาย:</b> ${ltCnt} คน</div>
+    <div><b>ร้อยละการเข้าเรียน:</b> ${pct}%</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:45px;">เลขที่</th>
+        <th style="width:85px;">รหัสนักเรียน</th>
+        <th>ชื่อ - นามสกุล</th>
+        <th style="width:80px;">ระดับชั้น</th>
+        <th style="width:110px;">สถานะการมาเรียน</th>
+        <th style="width:150px;">หมายเหตุ / ลายมือชื่อ</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <div class="signatures">
+    <div class="sig-box">
+      <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
+      <div class="sig-line">( .............................................................. )</div>
+      <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
+      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+    </div>
+    <div class="sig-box">
+      <div>ทราบ / อนุมัติ</div>
+      <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+      <div class="sig-line">( นายอธิการ สุขศรี )</div>
+      <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
+    <span>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')} เวลา ${new Date().toLocaleTimeString('th-TH')} น.</span>
+  </div>
+
+  <script>
+    function autoPrint() {
+      setTimeout(function() {
+        try { window.focus(); window.print(); } catch(e){}
+      }, 400);
+    }
+    if (document.readyState === 'complete') autoPrint();
+    else window.addEventListener('load', autoPrint);
+  </script>
+</body>
+</html>`;
+
+  if (typeof openHTMLDocument === 'function') {
+    openHTMLDocument(html, docTitle);
+  } else {
+    window.print();
+  }
+}
+
 function printAttendanceReport() {
   const last = AttendanceState.reportLastData;
   if (!last || !last.res || !last.res.data) {
@@ -3567,51 +3901,242 @@ function printAttendanceReport() {
   const sem = res.semester || '1';
   const ay = res.academic_year || '2569';
 
+  const targetSub = res.target_subject;
+  const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');
+  const isMatrixMode = (scope === 'monthly' && AttendanceState.reportView === 'matrix' && (rptType === 'homeroom' || isSubjectMode));
+  const isSemesterMode = (scope === 'semester' && res.months && res.months.length > 0 && !isSubjectMode);
+  const isAllSubjectsMode = (rptType === 'all_subjects' && res.subjects && res.subjects.length > 0);
+
+  const isLandscape = (isMatrixMode || isSemesterMode || isAllSubjectsMode);
+
   let reportTitle = 'รายงานการเข้าเรียน';
   let subTitle = activeRoom
     ? ('ระดับชั้น ' + activeRoom + ` (${printStudents.length} คน)`)
     : (classroom && classroom !== 'all' ? ('ระดับชั้น ' + classroom + ` (${printStudents.length} คน)`) : `ทุกระดับชั้น (ภาพรวมทั้งโรงเรียน ${printStudents.length} คน)`);
 
-  const targetSub = res.target_subject;
-  const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');
-
   if (isSubjectMode) {
     const sName = targetSub ? ((targetSub.subject_code ? targetSub.subject_code + ' ' : '') + targetSub.subject_name) : ('รายวิชา ' + rptType);
-    reportTitle = 'รายงานเวลาเรียน วิชา ' + sName;
+    reportTitle = (isMatrixMode ? 'แบบบันทึกเวลาเรียนรายวิชาประจำวัน (ปพ.5) ' : 'รายงานเวลาเรียน ') + 'วิชา ' + sName;
     if (targetSub?.teacher_name) subTitle = 'ครูผู้สอน: ' + targetSub.teacher_name + ' | ' + subTitle;
     if (scope === 'monthly') reportTitle += ' ประจำเดือน ' + mLabel;
     else if (scope === 'semester') reportTitle += ' ภาคเรียนที่ ' + sem + '/' + ay;
-  } else if (rptType === 'all_subjects') {
-    reportTitle = 'รายงานเวลาเรียนภาพรวมทุกรายวิชา';
+  } else if (isAllSubjectsMode) {
+    reportTitle = 'รายงานเวลาเรียนเปรียบเทียบทุกรายวิชา';
     if (scope === 'monthly') reportTitle += ' ประจำเดือน ' + mLabel;
     else if (scope === 'semester') reportTitle += ' ภาคเรียนที่ ' + sem + '/' + ay;
   } else {
-    if (scope === 'monthly') {
+    if (isMatrixMode) {
+      reportTitle = 'แบบบันทึกเวลาเรียนและเช็คแถวรายวัน (ปพ.5) ประจำเดือน ' + mLabel;
+    } else if (isSemesterMode) {
+      reportTitle = 'แบบสรุปเวลาเรียนรายบุคคลแยกตามรายเดือนตลอดภาคเรียนที่ ' + sem + '/' + ay;
+    } else if (scope === 'monthly') {
       reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ประจำเดือน ' + mLabel;
-    } else if (scope === 'semester') {
-      reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง ภาคเรียนที่ ' + sem + '/' + ay;
     } else {
       reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง';
     }
   }
 
-  const isLandscape = (scope === 'semester' || (scope === 'monthly' && AttendanceState.reportView === 'matrix'));
+  // Generate Table based on Mode
+  let tableHeaderHtml = '';
+  let tableBodyHtml = '';
+  let extraLegendHtml = '';
 
-  const rowsHtml = printStudents.map((r, idx) => `
-    <tr>
-      <td style="text-align:center;">${idx + 1}</td>
-      <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
-      <td style="text-align:left; font-weight:600; padding-left:6px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-      <td style="text-align:center;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
-      <td style="text-align:center; color:#15803D;">${r.present}</td>
-      <td style="text-align:center; color:#B91C1C;">${r.absent}</td>
-      <td style="text-align:center; color:#B45309;">${r.leave}</td>
-      <td style="text-align:center; color:#1D4ED8;">${r.late}</td>
-      <td style="text-align:center; font-weight:700;">${r.total}</td>
-      <td style="text-align:center; font-weight:700;">${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}</td>
-      <td style="text-align:center; font-weight:600; ${r.total === 0 ? 'color:#64748B;' : (r.attendance_pct < 80 ? 'color:#B91C1C;' : 'color:#15803D;')}">${r.total === 0 ? 'ยังไม่มีข้อมูล' : (r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ')}</td>
-    </tr>
-  `).join('');
+  if (isMatrixMode) {
+    // 1. Matrix View (Day 1 - 31)
+    const ym = document.getElementById('rptMonth')?.value || res.start_date?.slice(0, 7) || new Date().toISOString().slice(0, 7);
+    const parts = ym.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const dayHeaders = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(year, month - 1, d);
+      const dayOfWeek = dt.getDay();
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+      const thDay = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][dayOfWeek];
+      dayHeaders.push({ day: d, isWeekend: isWeekend, thDay: thDay, ds: ym + '-' + String(d).padStart(2, '0') });
+    }
+
+    tableHeaderHtml = `
+      <tr>
+        <th style="width:26px;">ที่</th>
+        <th style="width:65px;">เลขประจำตัว</th>
+        <th style="min-width:125px; text-align:left;">ชื่อ - นามสกุล</th>
+        ${dayHeaders.map(h => `
+          <th style="width:19px; padding:2px 1px; ${h.isWeekend ? 'background:#F1F5F9; color:#94A3B8;' : ''}">
+            <div style="font-size:8px;">${h.thDay}</div>
+            <div style="font-size:9.5px; font-weight:800;">${h.day}</div>
+          </th>
+        `).join('')}
+        <th style="width:28px; color:#15803D;">มา</th>
+        <th style="width:28px; color:#B91C1C;">ขาด</th>
+        <th style="width:28px; color:#B45309;">ลา</th>
+        <th style="width:28px; color:#1D4ED8;">สาย</th>
+        <th style="width:30px;">รวม</th>
+        <th style="width:40px;">%</th>
+      </tr>
+    `;
+
+    tableBodyHtml = printStudents.map((r, idx) => `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:9pt;">${escapeHTML(r.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; white-space:nowrap; padding-left:4px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+        ${dayHeaders.map(h => {
+          const st = r.dates ? r.dates[h.ds] : null;
+          if (!st) return `<td style="text-align:center; color:#CBD5E1; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">-</td>`;
+          if (st === 'present') return `<td style="text-align:center; color:#15803D; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">✓</td>`;
+          if (st === 'absent')  return `<td style="text-align:center; color:#B91C1C; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">ข</td>`;
+          if (st === 'leave')   return `<td style="text-align:center; color:#B45309; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">ล</td>`;
+          if (st === 'late')    return `<td style="text-align:center; color:#1D4ED8; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">ส</td>`;
+          return `<td style="text-align:center; color:#CBD5E1; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">-</td>`;
+        }).join('')}
+        <td style="text-align:center; font-weight:bold; color:#15803D;">${r.present}</td>
+        <td style="text-align:center; font-weight:bold; color:#B91C1C;">${r.absent}</td>
+        <td style="text-align:center; font-weight:bold; color:#B45309;">${r.leave}</td>
+        <td style="text-align:center; font-weight:bold; color:#1D4ED8;">${r.late}</td>
+        <td style="text-align:center; font-weight:bold;">${r.total}</td>
+        <td style="text-align:center; font-weight:bold; ${r.total > 0 && r.attendance_pct < 80 ? 'color:#B91C1C;' : ''}">
+          ${r.total === 0 ? '-' : r.attendance_pct.toFixed(0) + '%'}
+        </td>
+      </tr>
+    `).join('');
+
+    extraLegendHtml = `
+      <div style="margin-top:6px; font-size:8.5pt; color:#475569; display:flex; justify-content:space-between; align-items:center;">
+        <div><b>คำอธิบายสัญลักษณ์:</b> <span style="color:#15803D; font-weight:bold;">✓</span> มาเรียน &nbsp;|&nbsp; <span style="color:#B91C1C; font-weight:bold;">ข</span> ขาดเรียน &nbsp;|&nbsp; <span style="color:#B45309; font-weight:bold;">ล</span> ลากิจ/ลาป่วย &nbsp;|&nbsp; <span style="color:#1D4ED8; font-weight:bold;">ส</span> มาสาย &nbsp;|&nbsp; แถบสีเทา = วันหยุดสุดสัปดาห์</div>
+        <div>เกณฑ์เวลาเรียนผ่านชั้น ≥ 80.0%</div>
+      </div>
+    `;
+
+  } else if (isSemesterMode) {
+    // 2. Semester Monthly Breakdown
+    tableHeaderHtml = `
+      <tr>
+        <th style="width:35px;">ที่</th>
+        <th style="width:75px;">รหัสนักเรียน</th>
+        <th style="min-width:140px; text-align:left;">ชื่อ - นามสกุล</th>
+        <th style="width:75px;">ระดับชั้น</th>
+        ${res.months.map(m => `
+          <th style="min-width:65px; text-align:center;">${escapeHTML(m.label)}</th>
+        `).join('')}
+        <th style="width:75px; text-align:center;">รวม (วัน)</th>
+        <th style="width:85px; text-align:center;">% ตลอดเทอม</th>
+        <th style="width:80px; text-align:center;">ผลประเมิน</th>
+      </tr>
+    `;
+
+    tableBodyHtml = printStudents.map((r, idx) => {
+      const isRisk = (r.total > 0 && r.attendance_pct < 80);
+      return `
+        <tr>
+          <td style="text-align:center;">${idx + 1}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          ${res.months.map(m => {
+            const mData = r.by_month ? r.by_month[m.ym] : null;
+            if (!mData || mData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
+            const p = mData.attendance_pct || 0;
+            return `<td style="text-align:center; font-weight:bold; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
+          }).join('')}
+          <td style="text-align:center; font-weight:bold;">${r.total}</td>
+          <td style="text-align:center; font-weight:bold; ${isRisk ? 'color:#B91C1C;' : 'color:#15803D;'}">
+            ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
+          </td>
+          <td style="text-align:center; font-weight:bold; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
+            ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (isRisk ? 'เสี่ยง มส.' : 'ปกติ')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } else if (isAllSubjectsMode) {
+    // 3. All Subjects Matrix
+    tableHeaderHtml = `
+      <tr>
+        <th style="width:35px;">ที่</th>
+        <th style="width:75px;">รหัสนักเรียน</th>
+        <th style="min-width:140px; text-align:left;">ชื่อ - นามสกุล</th>
+        <th style="width:75px;">ระดับชั้น</th>
+        ${res.subjects.map(s => `
+          <th style="min-width:70px; text-align:center;">
+            <div>${escapeHTML(s.subject_code || s.subject_name)}</div>
+            <div style="font-size:8pt; font-weight:normal; color:#64748B;">${s.periods_count} คาบ</div>
+          </th>
+        `).join('')}
+        <th style="width:85px; text-align:center;">% รวมทุกวิชา</th>
+        <th style="width:80px; text-align:center;">ผลประเมิน</th>
+      </tr>
+    `;
+
+    tableBodyHtml = printStudents.map((r, idx) => {
+      const bad = r.total > 0 && r.attendance_pct < 80;
+      return `
+        <tr>
+          <td style="text-align:center;">${idx + 1}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          ${res.subjects.map(s => {
+            const subData = r.by_subject ? r.by_subject[s.id] : null;
+            if (!subData || subData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
+            const p = subData.attendance_pct || 0;
+            return `<td style="text-align:center; font-weight:bold; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
+          }).join('')}
+          <td style="text-align:center; font-weight:bold; ${bad ? 'color:#B91C1C;' : 'color:#15803D;'}">
+            ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
+          </td>
+          <td style="text-align:center; font-weight:bold; ${r.total === 0 ? 'color:#64748B;' : (bad ? 'color:#B91C1C;' : 'color:#15803D;')}">
+            ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (bad ? 'เสี่ยง มส.' : 'ปกติ')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } else {
+    // 4. Default Summary View
+    const countUnit = isSubjectMode ? 'คาบ' : 'วัน';
+    tableHeaderHtml = `
+      <tr>
+        <th style="width:35px;">ที่</th>
+        <th style="width:80px;">รหัสนักเรียน</th>
+        <th style="min-width:140px; text-align:left;">ชื่อ - นามสกุล</th>
+        <th style="width:75px;">ระดับชั้น</th>
+        <th style="width:55px; color:#15803D;">มา (${countUnit})</th>
+        <th style="width:55px; color:#B91C1C;">ขาด (${countUnit})</th>
+        <th style="width:55px; color:#B45309;">ลา (${countUnit})</th>
+        <th style="width:55px; color:#1D4ED8;">สาย (${countUnit})</th>
+        <th style="width:60px;">รวม</th>
+        <th style="width:70px;">% เข้าเรียน</th>
+        <th style="width:75px;">ผลประเมิน</th>
+      </tr>
+    `;
+
+    tableBodyHtml = printStudents.map((r, idx) => {
+      const isRisk = (r.total > 0 && r.attendance_pct < 80);
+      return `
+        <tr>
+          <td style="text-align:center;">${idx + 1}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding-left:6px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          <td style="text-align:center; color:#15803D; font-weight:bold;">${r.present}</td>
+          <td style="text-align:center; color:#B91C1C; font-weight:bold;">${r.absent}</td>
+          <td style="text-align:center; color:#B45309; font-weight:bold;">${r.leave}</td>
+          <td style="text-align:center; color:#1D4ED8; font-weight:bold;">${r.late}</td>
+          <td style="text-align:center; font-weight:bold;">${r.total}</td>
+          <td style="text-align:center; font-weight:bold; ${isRisk ? 'color:#B91C1C;' : 'color:#15803D;'}">
+            ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
+          </td>
+          <td style="text-align:center; font-weight:bold; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
+            ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (isRisk ? 'เสี่ยง มส.' : 'ปกติ')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="th">
@@ -3621,31 +4146,58 @@ function printAttendanceReport() {
   <style>
     @page {
       size: A4 ${isLandscape ? 'landscape' : 'portrait'};
-      margin: 10mm 10mm 12mm 10mm;
+      margin: 8mm 8mm 10mm 8mm;
     }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 11px; color: #0F172A; margin: 0; padding: 0; }
-    .header { text-align: center; margin-bottom: 12px; }
-    .logo { width: 55px; height: 55px; object-fit: contain; margin: 0 auto 4px auto; display: block; }
-    .title { font-size: 13.5pt; font-weight: bold; margin: 0; }
-    .subtitle { font-size: 10.5pt; color: #334155; margin: 2px 0 0 0; }
-    .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 6px 12px; border-radius: 6px; margin: 10px 0; font-size: 9.5pt; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10pt; }
-    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 5px; text-align: center; }
-    td { border: 1px solid #CBD5E1; padding: 4px 6px; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: ${isMatrixMode ? '9px' : '10.5px'}; color: #0F172A; margin: 0; padding: 0; }
+    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .header { text-align: center; margin-top: 6px; margin-bottom: 10px; }
+    .logo { width: 50px; height: 50px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
+    .title { font-size: ${isMatrixMode ? '12.5pt' : '13.5pt'}; font-weight: bold; margin: 0; color: #1E293B; }
+    .subtitle { font-size: ${isMatrixMode ? '9.5pt' : '10pt'}; color: #334155; margin: 2px 0 0 0; }
+    .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 5px 10px; border-radius: 6px; margin: 8px 0; font-size: 9pt; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: ${isMatrixMode ? '8.5pt' : '9.5pt'}; }
+    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode ? '3px 1px' : '4px 5px'}; text-align: center; font-weight: bold; }
+    td { border: 1px solid #CBD5E1; padding: ${isMatrixMode ? '2.5px 2px' : '3.5px 5px'}; }
     tr:nth-child(even) { background: #FAFAFA; }
-    .signatures { margin-top: 30px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-box { text-align: center; min-width: 220px; font-size: 10pt; }
-    .sig-line { margin-top: 6px; color: #334155; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
+    .signatures { margin-top: 24px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-box { text-align: center; min-width: 200px; font-size: 9.5pt; }
+    .sig-line { margin-top: 5px; color: #334155; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 3px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      .signatures { page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
+  <div class="no-print">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <strong style="font-size:13px;">ตัวอย่างก่อนพิมพ์: ${escapeHTML(reportTitle)}</strong>
+      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">
+        A4 ${isLandscape ? 'แนวนอน (Landscape)' : 'แนวตั้ง (Portrait)'}
+      </span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="window.print()" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+        🖨 พิมพ์เอกสาร / บันทึก PDF
+      </button>
+      <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
+        ปิด
+      </button>
+    </div>
+  </div>
+
   <div class="header">
     <img src="https://img5.pic.in.th/file/secure-sv1/141088-removebg-preview.png" class="logo" alt="ตราโรงเรียน">
     <div class="title">${escapeHTML(reportTitle)}</div>
     <div class="subtitle">${escapeHTML(subTitle)}</div>
-    <div style="font-size:9.5pt; color:#64748B; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
+    <div style="font-size:9pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
   </div>
 
   <div class="summary-bar">
@@ -3656,30 +4208,20 @@ function printAttendanceReport() {
 
   <table>
     <thead>
-      <tr>
-        <th style="width:35px;">ที่</th>
-        <th style="width:80px;">รหัสนักเรียน</th>
-        <th>ชื่อ - นามสกุล</th>
-        <th style="width:75px;">ระดับชั้น</th>
-        <th style="width:55px;">มา</th>
-        <th style="width:55px;">ขาด</th>
-        <th style="width:55px;">ลา</th>
-        <th style="width:55px;">สาย</th>
-        <th style="width:60px;">รวม</th>
-        <th style="width:70px;">% เข้าเรียน</th>
-        <th style="width:75px;">ผลประเมิน</th>
-      </tr>
+      ${tableHeaderHtml}
     </thead>
     <tbody>
-      ${rowsHtml}
+      ${tableBodyHtml}
     </tbody>
   </table>
+
+  ${extraLegendHtml}
 
   <div class="signatures">
     <div class="sig-box">
       <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
       <div class="sig-line">( .............................................................. )</div>
-      <div class="sig-line">ตำแหน่ง ครูประจำชั้น / ครูผู้สอน</div>
+      <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
       <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
     </div>
     <div class="sig-box">
@@ -3695,6 +4237,16 @@ function printAttendanceReport() {
     <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
     <span>พิมพ์เมื่อ: ${printTimestamp}</span>
   </div>
+
+  <script>
+    function autoPrint() {
+      setTimeout(function() {
+        try { window.focus(); window.print(); } catch(e){}
+      }, 400);
+    }
+    if (document.readyState === 'complete') autoPrint();
+    else window.addEventListener('load', autoPrint);
+  </script>
 </body>
 </html>`;
 
