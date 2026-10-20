@@ -44,11 +44,14 @@ function renderStudentCard(container) {
           <button onclick="triggerCardPrint()" style="padding:10px 20px;background:#3730A3;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
             <i class='bx bx-printer'></i> พิมพ์
           </button>
-          <button onclick="openCardsInSafari()" id="btnCardSafari" style="padding:10px 16px;background:#4F46E5;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
-            <i class='bx bx-globe'></i> เปิดใน Safari
+          <button onclick="downloadCardsPdf()" style="padding:10px 16px;background:#059669;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" title="ดาวน์โหลดไฟล์ PDF A4">
+            <i class='bx bxs-file-pdf'></i> บันทึกบัตร PDF
           </button>
-          <button onclick="shareCards()" style="padding:10px 16px;background:#059669;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
-            <i class='bx bx-share-alt'></i> แชร์ / พิมพ์ AirPrint
+          <button onclick="shareCardsPdf()" style="padding:10px 16px;background:#4F46E5;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;" title="แชร์ไฟล์ PDF ทาง LINE หรือพิมพ์ AirPrint">
+            <i class='bx bx-share-alt'></i> แชร์ไฟล์ PDF
+          </button>
+          <button onclick="openCardsInSafari()" id="btnCardSafari" style="padding:10px 16px;background:#334155;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+            <i class='bx bx-globe'></i> Safari
           </button>
           <button onclick="closePrintOverlay()" style="padding:10px 20px;background:#F1F5F9;color:#334155;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">
             ✕ ปิด
@@ -323,41 +326,41 @@ function triggerCardPrint() {
   if (isIOS && isStandalone) {
     if (typeof Swal !== 'undefined') {
       Swal.fire({
-        title: '<div class="flex items-center justify-center gap-2 text-indigo-700 text-base sm:text-lg font-bold"><i class="bx bx-printer text-2xl"></i> การพิมพ์บน iPhone (หน้าจอโฮม)</div>',
+        title: '<div class="flex items-center justify-center gap-2 text-indigo-700 text-base sm:text-lg font-bold"><i class="bx bxs-file-pdf text-2xl text-red-600"></i> การพิมพ์บัตรนักเรียน (PDF)</div>',
         html: `
           <div class="text-left text-sm text-slate-600 space-y-3 pt-1">
-            <p class="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-              <i class="bx bx-info-circle mr-1 text-sm align-middle text-amber-600"></i>
-              iOS ปิดกั้นคำสั่งพิมพ์ตรงเมื่อเปิดจากหน้าจอโฮม กรุณาเลือกวิธีพิมพ์ด้านล่างนี้ครับ:
+            <p class="text-xs text-indigo-900 bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-200 leading-relaxed font-medium">
+              <i class="bx bx-check-circle mr-1 text-base align-middle text-indigo-600"></i>
+              ระบบจัดทำบัตรนักเรียน PDF ขนาด A4 (8 บัตร/แผ่น) พร้อมบาร์โค้ดและภาพถ่าย:
             </p>
             <div class="space-y-2">
-              <button id="swalCardAirPrint" type="button" class="w-full text-left p-3 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+              <button id="swalCardDownloadPdf" type="button" class="w-full text-left p-3 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+                <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
+                  <i class="bx bxs-file-pdf"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-emerald-950 text-xs sm:text-sm">ดาวน์โหลดบัตรเป็นไฟล์ PDF (แนะนำ)</div>
+                  <div class="text-[11px] text-emerald-700 truncate">สร้างไฟล์ .pdf ขนาด A4 แผ่นละ 8 บัตร บันทึกเก็บไว้ในเครื่อง</div>
+                </div>
+              </button>
+              
+              <button id="swalCardSharePdf" type="button" class="w-full text-left p-3 rounded-xl border border-indigo-200 bg-indigo-50/90 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
                 <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
                   <i class="bx bx-share-alt"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ / พิมพ์ AirPrint (แนะนำ)</div>
-                  <div class="text-[11px] text-indigo-700 truncate">เปิดเมนู iOS แล้วแตะ "พิมพ์" (AirPrint) หรือส่ง LINE</div>
+                  <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ไฟล์ PDF / พิมพ์ AirPrint</div>
+                  <div class="text-[11px] text-indigo-700 truncate">ส่งไฟล์ PDF ไปยัง LINE หรือเลือกพิมพ์ AirPrint บน iOS</div>
                 </div>
               </button>
-              
-              <button id="swalCardSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+
+              <button id="swalCardSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-200 bg-blue-50/90 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
                 <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
                   <i class="bx bx-globe"></i>
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="font-bold text-blue-950 text-xs sm:text-sm">เปิดใน Safari เพื่อสั่งพิมพ์</div>
                   <div class="text-[11px] text-blue-700 truncate">เปิดหน้าเอกสารใน Safari และเรียกคำสั่งพิมพ์ให้อัตโนมัติ</div>
-                </div>
-              </button>
-
-              <button id="swalCardDownload" type="button" class="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition cursor-pointer">
-                <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center text-lg flex-shrink-0">
-                  <i class="bx bx-download"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-slate-800 text-xs sm:text-sm">บันทึกเป็นไฟล์เอกสาร (HTML)</div>
-                  <div class="text-[10px] text-slate-500">บันทึกเก็บไว้ในแอปไฟล์ (Files) เพื่อดูหรือพิมพ์ภายหลัง</div>
                 </div>
               </button>
             </div>
@@ -372,13 +375,13 @@ function triggerCardPrint() {
           cancelButton: 'text-xs px-4 py-2 rounded-lg'
         },
         didOpen: () => {
-          const bAirPrint = document.getElementById('swalCardAirPrint');
+          const bDownload = document.getElementById('swalCardDownloadPdf');
+          const bShare = document.getElementById('swalCardSharePdf');
           const bSafari = document.getElementById('swalCardSafari');
-          const bDownload = document.getElementById('swalCardDownload');
 
-          if (bAirPrint) bAirPrint.onclick = () => { Swal.close(); shareCards(); };
+          if (bDownload) bDownload.onclick = () => { Swal.close(); downloadCardsPdf(); };
+          if (bShare) bShare.onclick = () => { Swal.close(); shareCardsPdf(); };
           if (bSafari) bSafari.onclick = () => { Swal.close(); openCardsInSafari(); };
-          if (bDownload) bDownload.onclick = () => { Swal.close(); downloadCardsHtml(); };
         }
       });
       return;
@@ -403,15 +406,16 @@ async function openCardsInSafari() {
   if (typeof openInExternalSafari === 'function') {
     openInExternalSafari('', fullHtml, 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร');
   } else {
-    shareCards();
+    downloadCardsPdf();
   }
 }
 
-function downloadCardsHtml() {
+async function downloadCardsPdf() {
   const fullHtml = generateCardsFullHtml();
   if (!fullHtml) return;
-  if (typeof downloadHtmlDocument === 'function') {
-    downloadHtmlDocument(fullHtml, 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร');
+
+  if (typeof downloadPdfDocument === 'function') {
+    await downloadPdfDocument(fullHtml, 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร');
   } else {
     try {
       const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
@@ -425,33 +429,17 @@ function downloadCardsHtml() {
   }
 }
 
-async function shareCards() {
+async function shareCardsPdf() {
   const fullHtml = generateCardsFullHtml();
   if (!fullHtml) return;
 
-  try {
-    const file = new File([fullHtml], 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร.html', { type: 'text/html;charset=utf-8' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        files: [file],
-        title: 'บัตรนักเรียน โรงเรียนมหาชัยพิทยาคาร',
-        text: 'บัตรนักเรียน โรงเรียนมหาชัยพิทยาคาร'
-      });
-      return;
-    }
-  } catch (e) {
-    if (e.name === 'AbortError') return;
-    console.warn('Share file failed', e);
-  }
-
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: 'บัตรนักเรียน โรงเรียนมหาชัยพิทยาคาร',
-        url: window.location.href
-      });
-    } catch (_) {}
+  if (typeof sharePdfDocument === 'function') {
+    await sharePdfDocument(fullHtml, 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร');
   } else {
-    downloadCardsHtml();
+    downloadCardsPdf();
   }
 }
+
+// Aliases for backward compatibility
+function downloadCardsHtml() { downloadCardsPdf(); }
+function shareCards() { shareCardsPdf(); }

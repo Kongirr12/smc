@@ -25,49 +25,140 @@ function getSafePrintTitle(title) {
   return (title || 'เอกสาร').replace(/[\\/:*?"<>|]/g, '_').trim();
 }
 
-function downloadHtmlDocument(html, title) {
-  if (!html) return;
+/**
+ * แปลงเอกสาร HTML เป็นไฟล์ PDF ขนาด A4 คมชัดสูง รองรับภาษาไทย Sarabun และสไตล์ครบถ้วน
+ * @param {string} html - โค้ด HTML ของเอกสาร
+ * @param {string} title - ชื่อเอกสาร
+ * @param {'download'|'share'|'blob'|'open'} action - สิ่งที่ต้องการทำกับไฟล์ PDF
+ * @returns {Promise<Blob|boolean|null>}
+ */
+async function generatePdfFromHtml(html, title, action = 'download') {
+  if (!html) return null;
+  const safeTitle = getSafePrintTitle(title);
+  const isLandscape = html.includes('A4 landscape') || html.includes('แนวนอน') || html.includes('landscape');
+
+  showLoading('กำลังจัดเตรียมไฟล์ PDF...');
+
+  // Parse HTML
+  let parsedContent = '';
   try {
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${getSafePrintTitle(title)}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
-    showToast('success', 'ดาวน์โหลดไฟล์เอกสารเรียบร้อย');
-  } catch (e) {
-    showToast('error', 'ไม่สามารถดาวน์โหลดได้');
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Extract all styles
+    const styles = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(s => s.outerHTML)
+      .join('\n');
+
+    // Clean out controls
+    doc.querySelectorAll('.no-print, .no-print-bar, button, script').forEach(el => el.remove());
+
+    const bodyHtml = doc.body ? doc.body.innerHTML : html;
+    parsedContent = styles + bodyHtml;
+  } catch (_) {
+    parsedContent = html;
+  }
+
+  // Create temporary container offscreen
+  const container = document.createElement('div');
+  container.id = 'tempPdfRenderContainer';
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = isLandscape ? '297mm' : '210mm';
+  container.style.minHeight = isLandscape ? '210mm' : '297mm';
+  container.style.boxSizing = 'border-box';
+  container.style.background = '#FFFFFF';
+  container.style.color = '#0F172A';
+  container.style.zIndex = '-9999';
+  container.innerHTML = parsedContent;
+
+  document.body.appendChild(container);
+
+  // Configure html2pdf options
+  const opt = {
+    margin: [6, 6, 6, 6],
+    filename: `${safeTitle}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollY: 0
+    },
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: isLandscape ? 'landscape' : 'portrait'
+    },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  try {
+    if (typeof html2pdf === 'undefined') {
+      // Dynamic fallback if script not yet initialized
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'html2pdf.bundle.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    if (action === 'download') {
+      await html2pdf().set(opt).from(container).save();
+      hideLoading();
+      showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
+      return true;
+    } else if (action === 'share' || action === 'blob' || action === 'open') {
+      const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob');
+      hideLoading();
+      return pdfBlob;
+    }
+  } catch (err) {
+    console.error('PDF Generation Error:', err);
+    hideLoading();
+    showToast('error', 'เกิดข้อผิดพลาดในการสร้าง PDF');
+    return null;
+  } finally {
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
   }
 }
 
-async function shareDocument(html, title) {
+async function downloadPdfDocument(html, title) {
+  return await generatePdfFromHtml(html, title, 'download');
+}
+
+async function sharePdfDocument(html, title) {
   if (!html) return;
   const safeTitle = getSafePrintTitle(title);
-  const shareText = `เอกสาร ${title || ''} โรงเรียนมหาชัยพิทยาคาร`.trim();
+  const pdfBlob = await generatePdfFromHtml(html, title, 'blob');
+  if (!pdfBlob) return;
 
   if (navigator.share) {
     try {
-      const file = new File([html], `${safeTitle}.html`, { type: 'text/html;charset=utf-8' });
+      const file = new File([pdfBlob], `${safeTitle}.pdf`, { type: 'application/pdf' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: title || 'เอกสารโรงเรียนมหาชัยพิทยาคาร',
-          text: shareText
+          title: `${title} (PDF)`,
+          text: `เอกสาร PDF: ${title} โรงเรียนมหาชัยพิทยาคาร`
         });
         return;
       }
     } catch (e) {
       if (e.name === 'AbortError') return;
-      console.warn('Share file fallback to text/url share', e);
+      console.warn('Share PDF fallback', e);
     }
 
     try {
       const modal = document.getElementById('printDocModal');
       await navigator.share({
-        title: title || 'เอกสารโรงเรียนมหาชัยพิทยาคาร',
-        text: shareText,
+        title: `${title} (PDF)`,
+        text: `เอกสาร PDF ${title} โรงเรียนมหาชัยพิทยาคาร`,
         url: (modal && modal._currentDirectUrl) || window.location.href
       });
       return;
@@ -76,7 +167,36 @@ async function shareDocument(html, title) {
       showToast('error', 'ไม่สามารถเปิดเมนูแชร์ได้');
     }
   } else {
-    downloadHtmlDocument(html, title);
+    // If Web Share not supported, download PDF directly
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeTitle}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1500);
+    showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
+  }
+}
+
+async function openPdfPreview(html, title) {
+  if (!html) return;
+  const safeTitle = getSafePrintTitle(title);
+  const pdfBlob = await generatePdfFromHtml(html, title, 'blob');
+  if (!pdfBlob) return;
+
+  const url = URL.createObjectURL(pdfBlob);
+  const w = window.open(url, '_blank');
+  if (!w) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeTitle}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 1500);
   }
 }
 
@@ -154,36 +274,46 @@ async function openInExternalSafari(directUrl, html, title) {
       if (a.parentNode) a.parentNode.removeChild(a);
     }, 150);
   } else {
-    shareDocument(html, title);
+    sharePdfDocument(html, title);
   }
 }
 
 function showIOSPrintOptionsModal(html, title, directUrl) {
   if (typeof Swal === 'undefined') {
-    shareDocument(html, title);
+    downloadPdfDocument(html, title);
     return;
   }
 
   Swal.fire({
-    title: '<div class="flex items-center justify-center gap-2 text-indigo-700 text-base sm:text-lg font-bold"><i class="bx bx-printer text-2xl"></i> การพิมพ์บน iPhone (หน้าจอโฮม)</div>',
+    title: '<div class="flex items-center justify-center gap-2 text-indigo-700 text-base sm:text-lg font-bold"><i class="bx bxs-file-pdf text-2xl text-red-600"></i> การพิมพ์และส่งออก PDF (iPhone)</div>',
     html: `
       <div class="text-left text-sm text-slate-600 space-y-3 pt-1">
-        <p class="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 leading-relaxed">
-          <i class="bx bx-info-circle mr-1 text-sm align-middle text-amber-600"></i>
-          iOS ปิดกั้นคำสั่งพิมพ์ตรงเมื่อเปิดจากหน้าจอโฮม กรุณาเลือกวิธีพิมพ์ที่สะดวกด้านล่างนี้ครับ:
+        <p class="text-xs text-indigo-900 bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-200 leading-relaxed font-medium">
+          <i class="bx bx-check-circle mr-1 text-base align-middle text-indigo-600"></i>
+          ระบบจัดทำเอกสาร PDF ขนาด A4 คมชัดสูง พร้อมตราโรงเรียนและลายมือชื่อ:
         </p>
         <div class="space-y-2">
-          <button id="swalBtnAirPrint" type="button" class="w-full text-left p-3 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+          <button id="swalBtnDownloadPdf" type="button" class="w-full text-left p-3 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+            <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
+              <i class="bx bxs-file-pdf"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-emerald-950 text-xs sm:text-sm">ดาวน์โหลดไฟล์ PDF (แนะนำ)</div>
+              <div class="text-[11px] text-emerald-700 truncate">สร้างไฟล์ .pdf ขนาด A4 บันทึกเก็บไว้ในแอปไฟล์หรืออุปกรณ์</div>
+            </div>
+          </button>
+          
+          <button id="swalBtnSharePdf" type="button" class="w-full text-left p-3 rounded-xl border border-indigo-200 bg-indigo-50/90 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
             <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
               <i class="bx bx-share-alt"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ / พิมพ์ AirPrint (แนะนำ)</div>
-              <div class="text-[11px] text-indigo-700 truncate">เปิดเมนู iOS แล้วแตะ "พิมพ์" (AirPrint) หรือส่ง LINE</div>
+              <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ไฟล์ PDF / พิมพ์ AirPrint</div>
+              <div class="text-[11px] text-indigo-700 truncate">เปิดเมนู iOS ส่งไฟล์ PDF ทาง LINE หรือเลือกพิมพ์ AirPrint</div>
             </div>
           </button>
-          
-          <button id="swalBtnSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+
+          <button id="swalBtnSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-200 bg-blue-50/90 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
             <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
               <i class="bx bx-globe"></i>
             </div>
@@ -193,13 +323,13 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
             </div>
           </button>
 
-          <button id="swalBtnDownload" type="button" class="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center text-lg flex-shrink-0">
-              <i class="bx bx-download"></i>
+          <button id="swalBtnPreviewPdf" type="button" class="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition cursor-pointer">
+            <div class="w-9 h-9 rounded-lg bg-slate-700 text-white flex items-center justify-center text-lg flex-shrink-0">
+              <i class="bx bx-show"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-semibold text-slate-800 text-xs sm:text-sm">บันทึกเป็นไฟล์เอกสาร (HTML)</div>
-              <div class="text-[10px] text-slate-500">บันทึกเก็บไว้ในแอปไฟล์ (Files) เพื่อดูหรือพิมพ์ภายหลัง</div>
+              <div class="font-semibold text-slate-800 text-xs sm:text-sm">เปิดดูไฟล์ PDF เต็มจอ</div>
+              <div class="text-[10px] text-slate-500">เปิดดูในโปรแกรมอ่าน PDF ของ iPhone</div>
             </div>
           </button>
         </div>
@@ -214,14 +344,21 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
       cancelButton: 'text-xs px-4 py-2 rounded-lg'
     },
     didOpen: () => {
-      const bAirPrint = document.getElementById('swalBtnAirPrint');
+      const bDownload = document.getElementById('swalBtnDownloadPdf');
+      const bShare = document.getElementById('swalBtnSharePdf');
       const bSafari = document.getElementById('swalBtnSafari');
-      const bDownload = document.getElementById('swalBtnDownload');
+      const bPreview = document.getElementById('swalBtnPreviewPdf');
 
-      if (bAirPrint) {
-        bAirPrint.onclick = () => {
+      if (bDownload) {
+        bDownload.onclick = () => {
           Swal.close();
-          shareDocument(html, title);
+          downloadPdfDocument(html, title);
+        };
+      }
+      if (bShare) {
+        bShare.onclick = () => {
+          Swal.close();
+          sharePdfDocument(html, title);
         };
       }
       if (bSafari) {
@@ -230,10 +367,10 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
           openInExternalSafari(directUrl, html, title);
         };
       }
-      if (bDownload) {
-        bDownload.onclick = () => {
+      if (bPreview) {
+        bPreview.onclick = () => {
           Swal.close();
-          downloadHtmlDocument(html, title);
+          openPdfPreview(html, title);
         };
       }
     }
@@ -306,17 +443,17 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             <i class='bx bx-printer text-base'></i>
             <span>พิมพ์</span>
           </button>
+          <button id="btnDownloadModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="ดาวน์โหลดไฟล์ PDF ขนาด A4">
+            <i class='bx bxs-file-pdf text-base text-red-600'></i>
+            <span class="hidden sm:inline">บันทึก PDF</span>
+          </button>
+          <button id="btnShareModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="แชร์ไฟล์ PDF / ส่ง LINE">
+            <i class='bx bx-share-alt text-base text-indigo-600'></i>
+            <span class="hidden sm:inline">แชร์ PDF</span>
+          </button>
           <button id="btnOpenSafariAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100" title="เปิดใน Safari เพื่อสั่งพิมพ์" style="display:none;">
             <i class='bx bx-globe text-base'></i>
             <span class="hidden sm:inline">Safari</span>
-          </button>
-          <button id="btnShareModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="แชร์ หรือ ส่งไฟล์">
-            <i class='bx bx-share-alt text-base'></i>
-            <span class="hidden sm:inline">แชร์</span>
-          </button>
-          <button id="btnDownloadModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="ดาวน์โหลดไฟล์">
-            <i class='bx bx-download text-base'></i>
-            <span class="hidden sm:inline">ดาวน์โหลด</span>
           </button>
           <button id="btnClosePrintModalAction" type="button" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="ปิดหน้าต่าง">
             <i class='bx bx-x text-xl leading-none'></i>
@@ -342,16 +479,16 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
       window.triggerInAppPrint();
     };
 
-    document.getElementById('btnOpenSafariAction').onclick = () => {
-      openInExternalSafari(modal._currentDirectUrl, modal._currentHtml, modal._currentTitle);
+    document.getElementById('btnDownloadModalAction').onclick = () => {
+      downloadPdfDocument(modal._currentHtml, modal._currentTitle);
     };
 
     document.getElementById('btnShareModalAction').onclick = () => {
-      shareDocument(modal._currentHtml, modal._currentTitle);
+      sharePdfDocument(modal._currentHtml, modal._currentTitle);
     };
 
-    document.getElementById('btnDownloadModalAction').onclick = () => {
-      downloadHtmlDocument(modal._currentHtml, modal._currentTitle);
+    document.getElementById('btnOpenSafariAction').onclick = () => {
+      openInExternalSafari(modal._currentDirectUrl, modal._currentHtml, modal._currentTitle);
     };
 
     document.addEventListener('keydown', (e) => {
