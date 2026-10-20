@@ -70,10 +70,27 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             html: 'ระบบ iOS บนหน้าจอโฮม (PWA) ปิดกั้นการสั่งพิมพ์ตรง<br><br>กรุณาแตะปุ่ม <b>"เปิดใน Safari"</b> เพื่อสั่งพิมพ์ AirPrint หรือบันทึกเป็น PDF ใน Safari ครับ',
             confirmButtonText: '🌐 เปิดใน Safari ทันที',
             showCancelButton: true,
-            cancelButtonText: 'ปิด'
+            cancelButtonText: 'ปิด',
+            confirmButtonColor: '#1D4ED8'
           }).then(res => {
             if (res.isConfirmed && modal._currentDirectUrl) {
               window.open(modal._currentDirectUrl, '_blank');
+            }
+          });
+          return;
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: 'สั่งพิมพ์บน iPhone',
+            html: 'ระบบ iOS บนหน้าจอโฮม (PWA) ปิดกั้นคำสั่งพิมพ์ตรง<br><br>กรุณาแตะปุ่ม <b>"แชร์ / พิมพ์"</b> ด้านบน เพื่อเลือกพิมพ์ผ่านเมนู AirPrint ของ iPhone หรือบันทึกไฟล์ได้ทันทีครับ',
+            confirmButtonText: '📤 ใช้ปุ่มแชร์ / พิมพ์',
+            showCancelButton: true,
+            cancelButtonText: 'ปิด',
+            confirmButtonColor: '#059669'
+          }).then(res => {
+            if (res.isConfirmed) {
+              const btnShare = document.getElementById('btnShareModalAction');
+              if (btnShare) btnShare.click();
             }
           });
           return;
@@ -94,16 +111,17 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
     document.getElementById('btnShareModalAction').onclick = async () => {
       if (!modal._currentHtml) return;
-      const safeTitle = (modal._currentTitle || 'ตารางสอน').replace(/[\\/:*?"<>|]/g, '_');
+      const safeTitle = (modal._currentTitle || 'เอกสาร').replace(/[\\/:*?"<>|]/g, '_');
+      const shareText = `เอกสาร ${modal._currentTitle || ''} โรงเรียนมหาชัยพิทยาคาร`.trim();
       
-      // ลองแชร์เป็นไฟล์ HTML ผ่าน Web Share API ก่อน
+      // ลองแชร์เป็นไฟล์ HTML ผ่าน Web Share API ก่อน (บน iOS จะมีตัวเลือก AirPrint ใน Share Sheet ทันที)
       try {
         const file = new File([modal._currentHtml], `${safeTitle}.html`, { type: 'text/html' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: modal._currentTitle,
-            text: 'เอกสารตารางสอน โรงเรียนมหาชัยพิทยาคาร'
+            title: modal._currentTitle || 'เอกสารโรงเรียน',
+            text: shareText
           });
           return;
         }
@@ -115,8 +133,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
       if (navigator.share) {
         try {
           await navigator.share({
-            title: modal._currentTitle,
-            text: 'ตารางสอน โรงเรียนมหาชัยพิทยาคาร',
+            title: modal._currentTitle || 'เอกสารโรงเรียน',
+            text: shareText,
             url: modal._currentDirectUrl || window.location.href
           });
         } catch (err) {
@@ -1395,13 +1413,15 @@ function printPP5() {
   const year = AcademicState.currentSubjectYear || document.getElementById('grYear')?.value || '';
   const sem  = AcademicState.currentSubjectSem || document.getElementById('grSem')?.value || '';
   const classroom = document.getElementById('grClassroom') ? document.getElementById('grClassroom').value : '';
+  const subjName = AcademicState.currentSubject.name || AcademicState.currentSubject.code || '';
+  const directUrl = `${GAS_URL}?action=printPP5&subject_id=${encodeURIComponent(AcademicState.currentSubject.id)}&year=${encodeURIComponent(year)}&sem=${encodeURIComponent(sem)}&classroom=${encodeURIComponent(classroom)}&token=${encodeURIComponent(APP.token)}`;
 
   showLoading('กำลังเตรียมเอกสาร...');
   google.script.run
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html);
+      openHTMLDocument(res.html, `แบบบันทึกผลการเรียน ปพ.5 - ${subjName}`, directUrl);
     })
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
     .generatePP5HTML(AcademicState.currentSubject.id, APP.token, year, sem, classroom);
@@ -1558,14 +1578,16 @@ function viewGPA(studentId) {
 }
 
 function printPP6(studentId) {
-  const year = document.getElementById('gpaYear').value || '';
-  const sem  = document.getElementById('gpaSem').value || '';
+  const year = document.getElementById('gpaYear')?.value || '';
+  const sem  = document.getElementById('gpaSem')?.value || '';
+  const directUrl = `${GAS_URL}?action=printPP6&student_id=${encodeURIComponent(studentId)}&year=${encodeURIComponent(year)}&sem=${encodeURIComponent(sem)}&token=${encodeURIComponent(APP.token)}`;
+
   showLoading('กำลังเตรียมเอกสาร...');
   google.script.run
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html);
+      openHTMLDocument(res.html, 'แบบรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล ปพ.6', directUrl);
     })
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
     .generatePP6HTML(studentId, sem, year, APP.token);
@@ -1914,12 +1936,13 @@ function deleteTransactionConfirm(id) {
 }
 
 function printReceipt(transactionId) {
+  const directUrl = `${GAS_URL}?action=printReceipt&transaction_id=${encodeURIComponent(transactionId)}&token=${encodeURIComponent(APP.token)}`;
   showLoading('กำลังเตรียมใบเสร็จ...');
   google.script.run
     .withSuccessHandler(res => {
       hideLoading();
       if (res.status !== 'success') return showToast('error', res.message);
-      openHTMLDocument(res.html);
+      openHTMLDocument(res.html, 'ใบเสร็จรับเงิน', directUrl);
     })
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
     .generateReceiptHTML(transactionId, APP.token);

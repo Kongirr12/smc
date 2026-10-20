@@ -2902,7 +2902,11 @@ function printAttendanceReport() {
 
   const last = AttendanceState.reportLastData;
   if (!last || !last.res || !last.res.data) {
-    window.print();
+    if (typeof openHTMLDocument === 'function') {
+      openHTMLDocument(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>รายงานการเข้าเรียน</title><style>body{font-family:'Sarabun',sans-serif;padding:20px;}</style></head><body>${area.innerHTML}</body></html>`, 'รายงานการเข้าเรียน');
+    } else {
+      window.print();
+    }
     return;
   }
 
@@ -3446,29 +3450,34 @@ function printAttendanceReport() {
 </html>`;
   }
 
-  let iframe = document.getElementById('attPrintIframe');
-  if (!iframe) {
-    iframe = document.createElement('iframe');
-    iframe.id = 'attPrintIframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    iframe.style.zIndex = '-9999';
-    document.body.appendChild(iframe);
+  const docTitle = `รายงาน${typeText || 'การเข้าเรียน'} - ${classroom || 'ภาพรวม'}`;
+  if (typeof openHTMLDocument === 'function') {
+    openHTMLDocument(html, docTitle);
+  } else {
+    let iframe = document.getElementById('attPrintIframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'attPrintIframe';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      iframe.style.zIndex = '-9999';
+      document.body.appendChild(iframe);
+    }
+
+    const iDoc = iframe.contentWindow.document;
+    iDoc.open();
+    iDoc.write(html);
+    iDoc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }, 250);
   }
-
-  const iDoc = iframe.contentWindow.document;
-  iDoc.open();
-  iDoc.write(html);
-  iDoc.close();
-
-  setTimeout(() => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-  }, 250);
 }
 
 function exportReportCSV() {

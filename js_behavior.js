@@ -95,7 +95,7 @@ function renderBhvSummary() {
 
   el.innerHTML = `
     <!-- Stats row -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+    <div class="bhv-stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:20px;">
       ${bhvStat('bxs-group','#4F46E5',data.length,'นักเรียนทั้งหมด')}
       ${bhvStat('bx-shield-x','#DC2626',high,'เสี่ยงสูง')}
       ${bhvStat('bx-error','#F59E0B',med,'เสี่ยงปานกลาง')}
@@ -330,11 +330,11 @@ function openBehaviorForm(preStudentId) {
               ${(BHV.presets.positive||[]).map(p => `
                 <div onclick="selectBhvPreset('${escapeHTML(p.code)}','${escapeHTML(p.label)}',${p.score})"
                      style="padding:6px 10px;margin-bottom:4px;border-radius:8px;cursor:pointer;
-                            border:1.5px solid #E2E8F0;font-size:12px;transition:all .15s;"
+                            border:1.5px solid #E2E8F0;font-size:12px;transition:all .15s;display:flex;justify-content:space-between;align-items:center;"
                      onmouseover="this.style.background='#DCFCE7';this.style.borderColor='#10B981'"
                      onmouseout="if(this.dataset.sel!='1'){this.style.background='';this.style.borderColor='#E2E8F0'}"
                      id="preset_${escapeHTML(p.code)}" data-sel="0">
-                  ${escapeHTML(p.label)} <span style="float:right;color:#10B981;font-weight:700;">+${p.score}</span>
+                  <span>${escapeHTML(p.label)}</span> <span style="color:#10B981;font-weight:700;flex-shrink:0;margin-left:4px;">+${p.score}</span>
                 </div>`).join('')}
             </div>
             <!-- Negative -->
@@ -343,11 +343,11 @@ function openBehaviorForm(preStudentId) {
               ${(BHV.presets.negative||[]).map(p => `
                 <div onclick="selectBhvPreset('${escapeHTML(p.code)}','${escapeHTML(p.label)}',${p.score})"
                      style="padding:6px 10px;margin-bottom:4px;border-radius:8px;cursor:pointer;
-                            border:1.5px solid #E2E8F0;font-size:12px;transition:all .15s;"
+                            border:1.5px solid #E2E8F0;font-size:12px;transition:all .15s;display:flex;justify-content:space-between;align-items:center;"
                      onmouseover="this.style.background='#FEE2E2';this.style.borderColor='#DC2626'"
                      onmouseout="if(this.dataset.sel!='1'){this.style.background='';this.style.borderColor='#E2E8F0'}"
                      id="preset_${escapeHTML(p.code)}" data-sel="0">
-                  ${escapeHTML(p.label)} <span style="float:right;color:#DC2626;font-weight:700;">${p.score}</span>
+                  <span>${escapeHTML(p.label)}</span> <span style="color:#DC2626;font-weight:700;flex-shrink:0;margin-left:4px;">${p.score}</span>
                 </div>`).join('')}
             </div>
           </div>

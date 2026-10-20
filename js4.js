@@ -2723,7 +2723,7 @@ function printCalendar() {
 </html>`;
 
   if (typeof openHTMLDocument === 'function') {
-    openHTMLDocument(html);
+    openHTMLDocument(html, `ปฏิทินกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}`);
   } else {
     const w = window.open('', '_blank');
     if (w) {

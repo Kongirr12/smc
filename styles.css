@@ -928,6 +928,16 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; color: var(--t
   overscroll-behavior-x: contain;
 }
 
+@media (max-width: 768px) {
+  .page-card-body > table,
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* ─── Sidebar Backdrop ──────────────────────────────────────── */
 #sidebarBackdrop {
   display: none; position: fixed; inset: 0; z-index: 35;

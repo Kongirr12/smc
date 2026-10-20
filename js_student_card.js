@@ -40,11 +40,14 @@ function renderStudentCard(container) {
     <!-- Print Overlay -->
     <div id="cardPrintOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:white;overflow:auto;padding:20px;">
       <div style="max-width:900px;margin:0 auto;">
-        <div style="display:flex;gap:10px;margin-bottom:16px;">
-          <button onclick="window.print()" style="padding:10px 20px;background:#3730A3;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;">
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+          <button onclick="triggerCardPrint()" style="padding:10px 20px;background:#3730A3;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
             <i class='bx bx-printer'></i> พิมพ์
           </button>
-          <button onclick="closePrintOverlay()" style="padding:10px 20px;background:#F1F5F9;border:none;border-radius:8px;cursor:pointer;font-size:14px;">
+          <button onclick="shareCards()" style="padding:10px 16px;background:#059669;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+            <i class='bx bx-share-alt'></i> แชร์ / พิมพ์ AirPrint
+          </button>
+          <button onclick="closePrintOverlay()" style="padding:10px 20px;background:#F1F5F9;color:#334155;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;">
             ✕ ปิด
           </button>
         </div>
@@ -261,4 +264,80 @@ function closePrintOverlay() {
   document.body.classList.remove('printing-cards');
   const o = document.getElementById('cardPrintOverlay');
   if (o) o.style.display = 'none';
+}
+
+function triggerCardPrint() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+  if (isIOS && isStandalone) {
+    Swal.fire({
+      icon: 'info',
+      title: 'การพิมพ์บน iPhone (หน้าจอโฮม)',
+      html: 'iOS บนหน้าจอโฮม ปิดกั้นการสั่งพิมพ์ตรง<br><br>กรุณาแตะปุ่ม <b>"แชร์ / พิมพ์ AirPrint"</b> เพื่อเลือกพิมพ์ผ่านเมนู iOS หรือบันทึกบัตรได้ทันทีครับ',
+      showCancelButton: true,
+      confirmButtonText: '📤 แชร์ / พิมพ์ AirPrint',
+      cancelButtonText: 'ปิด',
+      confirmButtonColor: '#059669'
+    }).then(res => {
+      if (res.isConfirmed) {
+        shareCards();
+      }
+    });
+    return;
+  }
+  window.print();
+}
+
+async function shareCards() {
+  const area = document.getElementById('cardPrintArea');
+  if (!area) return;
+  const cardsHtml = area.innerHTML;
+  const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>บัตรนักเรียน - โรงเรียนมหาชัยพิทยาคาร</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 10px; background: white; }
+    .card-wrap { display: flex; flex-wrap: wrap; gap: 6mm; justify-content: center; }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none !important; }
+      .card-wrap { display: grid !important; grid-template-columns: repeat(2, 85.6mm) !important; gap: 6mm !important; }
+      @page { size: A4 portrait; margin: 10mm 12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card-wrap">${cardsHtml}</div>
+</body>
+</html>`;
+
+  try {
+    const file = new File([fullHtml], 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร.html', { type: 'text/html' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: 'บัตรนักเรียน โรงเรียนมหาชัยพิทยาคาร',
+        text: 'บัตรนักเรียน โรงเรียนมหาชัยพิทยาคาร'
+      });
+      return;
+    }
+  } catch (e) {
+    console.warn('Share file failed', e);
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'บัตรนักเรียน โรงเรียนมหาชัยพิทยาคาร',
+        url: window.location.href
+      });
+    } catch (_) {}
+  } else {
+    showToast('info', 'สามารถกดปุ่มพิมพ์ หรือแคปหน้าจอบัตรได้ทันที');
+  }
 }

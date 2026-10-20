@@ -8,7 +8,7 @@ function renderQRAttendance(container) {
 
   var html = '';
   html += pageHeader('เช็คชื่อ QR / บาร์โค้ด', 'bx-qr-scan', '');
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;margin:0 auto;">';
+  html += '<div class="qra-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;max-width:900px;margin:0 auto;">';
 
   /* scanner panel */
   html += '<div class="page-card"><div class="page-card-body">';
@@ -51,7 +51,7 @@ function renderQRAttendance(container) {
   html += '</div></div>';
 
   html += '</div>';
-  html += '<style>#qraReader video{width:100%!important;border-radius:12px;}.qra-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:6px;font-size:13px;}.qra-ok{background:#DCFCE7;}.qra-dup{background:#FEF3C7;}.qra-err{background:#FEE2E2;}</style>';
+  html += '<style>#qraReader video{width:100%!important;border-radius:12px;}.qra-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:6px;font-size:13px;}.qra-ok{background:#DCFCE7;}.qra-dup{background:#FEF3C7;}.qra-err{background:#FEE2E2;}@media(max-width:640px){.qra-grid{grid-template-columns:1fr!important;}}</style>';
 
   container.innerHTML = html;
 }

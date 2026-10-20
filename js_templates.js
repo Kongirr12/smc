@@ -3853,7 +3853,7 @@ function previewTemplatePrint(templateId) {
 </html>`;
 
   if (typeof openHTMLDocument === 'function') {
-    openHTMLDocument(html);
+    openHTMLDocument(html, t.title || 'เอกสารราชการ');
   } else {
     const w = window.open('', '_blank');
     if (w) {

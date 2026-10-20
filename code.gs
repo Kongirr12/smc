@@ -162,6 +162,86 @@ function doGet(e) {
     }
   }
 
+  if (action === 'printPP5') {
+    try {
+      const subjectId = params.subject_id || params.id || '';
+      const ay = params.academic_year || params.year || '';
+      const sem = params.semester || params.sem || '';
+      const classroom = params.classroom || '';
+      const token = params.token || '';
+      if (token) {
+        const auth = _requireAuth_(token);
+        if (!auth.ok) {
+          return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:40px; color:#EF4444;"><h3>เซสชันหมดอายุ กรุณาเข้าสู่ระบบในแอปใหม่อีกครั้ง</h3></div>')
+            .setTitle('เซสชันหมดอายุ');
+        }
+      }
+      const res = generatePP5HTML(subjectId, token, ay, sem, classroom);
+      if (res && res.status === 'success' && res.html) {
+        return HtmlService.createHtmlOutput(res.html)
+          .setTitle('แบบบันทึกผลการเรียน ปพ.5')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      } else {
+        return ContentService.createTextOutput((res && res.message) || 'ไม่พบข้อมูล ปพ.5');
+      }
+    } catch(err) {
+      return ContentService.createTextOutput('Error: ' + err.message);
+    }
+  }
+
+  if (action === 'printPP6') {
+    try {
+      const studentId = params.student_id || params.id || '';
+      const ay = params.academic_year || params.year || '';
+      const sem = params.semester || params.sem || '';
+      const token = params.token || '';
+      if (token) {
+        const auth = _requireAuth_(token);
+        if (!auth.ok) {
+          return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:40px; color:#EF4444;"><h3>เซสชันหมดอายุ กรุณาเข้าสู่ระบบในแอปใหม่อีกครั้ง</h3></div>')
+            .setTitle('เซสชันหมดอายุ');
+        }
+      }
+      const res = generatePP6HTML(studentId, sem, ay, token);
+      if (res && res.status === 'success' && res.html) {
+        return HtmlService.createHtmlOutput(res.html)
+          .setTitle('แบบรายงาน ปพ.6')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      } else {
+        return ContentService.createTextOutput((res && res.message) || 'ไม่พบข้อมูล ปพ.6');
+      }
+    } catch(err) {
+      return ContentService.createTextOutput('Error: ' + err.message);
+    }
+  }
+
+  if (action === 'printReceipt') {
+    try {
+      const transactionId = params.transaction_id || params.id || '';
+      const token = params.token || '';
+      if (token) {
+        const auth = _requireAuth_(token);
+        if (!auth.ok) {
+          return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:40px; color:#EF4444;"><h3>เซสชันหมดอายุ กรุณาเข้าสู่ระบบในแอปใหม่อีกครั้ง</h3></div>')
+            .setTitle('เซสชันหมดอายุ');
+        }
+      }
+      const res = generateReceiptHTML(transactionId, token);
+      if (res && res.status === 'success' && res.html) {
+        return HtmlService.createHtmlOutput(res.html)
+          .setTitle('ใบเสร็จรับเงิน')
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+          .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+      } else {
+        return ContentService.createTextOutput((res && res.message) || 'ไม่พบข้อมูลใบเสร็จ');
+      }
+    } catch(err) {
+      return ContentService.createTextOutput('Error: ' + err.message);
+    }
+  }
+
   // Keep-alive & Health Check: อุ่นเครื่อง V8 Engine และ Pre-warm Cache อัตโนมัติ
   try {
     const cfg = getConfig();
