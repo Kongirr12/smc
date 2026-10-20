@@ -412,11 +412,11 @@ window.triggerInAppPrint = function() {
   const modal = document.getElementById('printDocModal');
   const html = modal && modal._currentHtml;
   const title = (modal && modal._currentTitle) || 'เอกสาร';
-  const directUrl = modal && modal._currentDirectUrl;
 
   const env = getPrintEnv();
   if (env.isIOSStandalone) {
-    showIOSPrintOptionsModal(html, title, directUrl);
+    // บน iPhone หน้าจอโฮม: เปิดแชร์ไฟล์ PDF เข้าเมนูระบบ iOS ทันที (พร้อมปุ่ม AirPrint และ LINE)
+    sharePdfDocument(html, title);
   } else {
     triggerDirectInAppPrint(html);
   }
@@ -433,27 +433,19 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     modal.style.paddingTop = 'env(safe-area-inset-top, 0px)';
     modal.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
     modal.innerHTML = `
-      <div class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 sm:py-3 flex items-center justify-between shadow-sm gap-2 flex-shrink-0">
+      <div class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between shadow-xs gap-2 flex-shrink-0">
         <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <i class='bx bx-printer text-indigo-600 text-lg sm:text-xl flex-shrink-0'></i>
+          <i class='bx bxs-file-pdf text-red-600 text-lg sm:text-xl flex-shrink-0'></i>
           <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
         </div>
-        <div class="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-          <button id="btnPrintModalAction" type="button" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm rounded-lg" style="background:#4F46E5; color:white;" title="พิมพ์เอกสาร / AirPrint">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <button id="btnDownloadModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition" title="ดาวน์โหลดไฟล์ PDF ขนาด A4">
+            <i class='bx bxs-file-pdf text-base text-red-600'></i>
+            <span>บันทึก PDF</span>
+          </button>
+          <button id="btnPrintModalAction" type="button" class="btn btn-primary flex items-center gap-1 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm rounded-lg" style="background:#4F46E5; color:white;" title="พิมพ์เอกสาร / AirPrint">
             <i class='bx bx-printer text-base'></i>
             <span>พิมพ์</span>
-          </button>
-          <button id="btnDownloadModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="ดาวน์โหลดไฟล์ PDF ขนาด A4">
-            <i class='bx bxs-file-pdf text-base text-red-600'></i>
-            <span class="hidden sm:inline">บันทึก PDF</span>
-          </button>
-          <button id="btnShareModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="แชร์ไฟล์ PDF / ส่ง LINE">
-            <i class='bx bx-share-alt text-base text-indigo-600'></i>
-            <span class="hidden sm:inline">แชร์ PDF</span>
-          </button>
-          <button id="btnOpenSafariAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 py-1.5 text-xs sm:text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100" title="เปิดใน Safari เพื่อสั่งพิมพ์" style="display:none;">
-            <i class='bx bx-globe text-base'></i>
-            <span class="hidden sm:inline">Safari</span>
           </button>
           <button id="btnClosePrintModalAction" type="button" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="ปิดหน้าต่าง">
             <i class='bx bx-x text-xl leading-none'></i>
@@ -483,14 +475,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
       downloadPdfDocument(modal._currentHtml, modal._currentTitle);
     };
 
-    document.getElementById('btnShareModalAction').onclick = () => {
-      sharePdfDocument(modal._currentHtml, modal._currentTitle);
-    };
-
-    document.getElementById('btnOpenSafariAction').onclick = () => {
-      openInExternalSafari(modal._currentDirectUrl, modal._currentHtml, modal._currentTitle);
-    };
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modal.style.display !== 'none') {
         closeHandler();
@@ -505,29 +489,19 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   const titleEl = document.getElementById('printDocModalTitle');
   if (titleEl) titleEl.textContent = modal._currentTitle;
 
-  const btnSafari = document.getElementById('btnOpenSafariAction');
-  if (btnSafari) {
-    // Show Safari button on iOS or if directUrl is present
-    if (env.isIOS || directUrl) {
-      btnSafari.style.display = 'inline-flex';
-    } else {
-      btnSafari.style.display = 'none';
-    }
-  }
-
-  // If directUrl is not provided, start background caching so Safari button is ready instantly
-  if (!modal._currentDirectUrl && html) {
-    prepareDirectPrintUrl(html, modal._currentTitle).then(url => {
-      if (url && modal) {
-        modal._currentDirectUrl = url;
-        if (btnSafari) btnSafari.style.display = 'inline-flex';
-      }
-    });
-  }
-
   const iframe = document.getElementById('printDocIframe');
   if (iframe) {
-    iframe.srcdoc = html;
+    // ซ่อนแถบเครื่องมือสีดำซ้ำซ้อนภายใน iframe เพื่อความสะอาด สวยงาม ดูเป็นทางการ
+    const cleanOverride = `
+      <style id="cleanPreviewOverride">
+        .no-print, .no-print-bar { display: none !important; }
+        body { background: #FFFFFF !important; padding: 0 !important; }
+        .print-page-wrapper { margin: 8px auto !important; box-shadow: none !important; padding: 12px 14px !important; }
+      </style>
+    `;
+    iframe.srcdoc = html.includes('</head>')
+      ? html.replace('</head>', cleanOverride + '</head>')
+      : cleanOverride + html;
   }
 
   modal.style.display = 'flex';

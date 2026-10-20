@@ -3816,12 +3816,12 @@ function printDailyAttendanceRecord() {
 
     return `
       <tr>
-        <td style="text-align:center;">${r.student_number || (idx + 1)}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:9pt;">${escapeHTML(r.student_code || '-')}</td>
-        <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-        <td style="text-align:center; white-space:nowrap;">${escapeHTML(r.classroom || classroom || '-')}</td>
-        <td style="text-align:center; white-space:nowrap;">${stText}</td>
-        <td style="text-align:center; color:#94A3B8; font-size:8pt;">........................................</td>
+        <td style="text-align:center; padding:4px 2px;">${r.student_number || (idx + 1)}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; padding:4px 6px; word-break:break-word;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+        <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.classroom || classroom || '-')}</td>
+        <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${stText}</td>
+        <td style="text-align:center; color:#94A3B8; font-size:8pt; padding:4px 2px;">..........................</td>
       </tr>
     `;
   }).join('');
@@ -3836,15 +3836,15 @@ function printDailyAttendanceRecord() {
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9.5pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .print-page-wrapper { max-width: 195mm; margin: 15px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; }
+    .print-page-wrapper { max-width: 195mm; width: 100%; margin: 12px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; overflow-x: auto; box-sizing: border-box; }
     .header { text-align: center; margin-bottom: 10px; }
     .logo { width: 50px; height: 50px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
     .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; }
     .subtitle { font-size: 9.5pt; color: #334155; margin: 2px 0 0 0; }
     .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 5px 10px; border-radius: 6px; margin: 8px 0; font-size: 9pt; }
-    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 9pt; table-layout: fixed; }
-    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 4px; text-align: center; font-weight: bold; }
-    td { border: 1px solid #CBD5E1; padding: 3px 5px; line-height: 1.25; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 9pt; table-layout: auto; }
+    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 5px 3px; text-align: center; font-weight: bold; font-size: 8.5pt; }
+    td { border: 1px solid #CBD5E1; padding: 4px 4px; line-height: 1.3; font-size: 8.5pt; vertical-align: middle; }
     tr:nth-child(even) { background: #FAFAFA; }
     .signatures { margin-top: 24px; display: flex; justify-content: space-between; page-break-inside: avoid; }
     .sig-box { text-align: center; min-width: 200px; font-size: 9pt; }
@@ -3897,12 +3897,12 @@ function printDailyAttendanceRecord() {
     <table>
       <thead>
         <tr>
-          <th style="width:36px;">เลขที่</th>
-          <th style="width:68px;">รหัสนักเรียน</th>
-          <th style="text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
-          <th style="width:70px;">ระดับชั้น</th>
-          <th style="width:90px;">สถานะ</th>
-          <th style="width:130px;">หมายเหตุ / ลายมือชื่อ</th>
+          <th style="width:7%; text-align:center;">เลขที่</th>
+          <th style="width:14%; text-align:center;">รหัสนักเรียน</th>
+          <th style="width:35%; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
+          <th style="width:12%; text-align:center;">ระดับชั้น</th>
+          <th style="width:14%; text-align:center;">สถานะ</th>
+          <th style="width:18%; text-align:center;">หมายเหตุ / ลายมือชื่อ</th>
         </tr>
       </thead>
       <tbody>
@@ -4268,18 +4268,21 @@ function printAttendanceReport() {
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
     .print-page-wrapper {
       max-width: ${isLandscape ? '280mm' : '196mm'};
+      width: 100%;
       margin: 15px auto;
       padding: 8mm 10mm;
       background: #ffffff;
       box-shadow: 0 4px 15px rgba(0,0,0,0.06);
       border-radius: 4px;
+      overflow-x: auto;
+      box-sizing: border-box;
     }
     .header { text-align: center; margin-bottom: 8px; }
     .logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
     .title { font-size: ${isMatrixMode ? '12pt' : '13pt'}; font-weight: bold; margin: 0; color: #1E293B; }
     .subtitle { font-size: 9pt; color: #334155; margin: 2px 0 0 0; }
     .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 4px 8px; border-radius: 4px; margin: 6px 0; font-size: 8.5pt; }
-    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: ${isMatrixMode || isAllSubjectsMode ? '7.5pt' : '8.5pt'}; table-layout: ${isAllSubjectsMode || isSemesterMode ? 'auto' : 'fixed'}; }
+    table { width: 100%; min-width: ${isLandscape ? '740px' : '580px'}; border-collapse: collapse; margin-top: 4px; font-size: ${isMatrixMode || isAllSubjectsMode ? '7.5pt' : '8.5pt'}; table-layout: ${isAllSubjectsMode || isSemesterMode ? 'auto' : 'fixed'}; }
     th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '3px 2px'}; text-align: center; font-weight: bold; }
     td { border: 1px solid #CBD5E1; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '2.5px 3px'}; line-height: 1.25; }
     tr:nth-child(even) { background: #FAFAFA; }
