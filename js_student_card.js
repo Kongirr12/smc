@@ -44,6 +44,9 @@ function renderStudentCard(container) {
           <button onclick="triggerCardPrint()" style="padding:10px 20px;background:#3730A3;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
             <i class='bx bx-printer'></i> พิมพ์
           </button>
+          <button onclick="openCardsInSafari()" id="btnCardSafari" style="padding:10px 16px;background:#4F46E5;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+            <i class='bx bx-globe'></i> เปิดใน Safari
+          </button>
           <button onclick="shareCards()" style="padding:10px 16px;background:#059669;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
             <i class='bx bx-share-alt'></i> แชร์ / พิมพ์ AirPrint
           </button>
@@ -266,34 +269,11 @@ function closePrintOverlay() {
   if (o) o.style.display = 'none';
 }
 
-function triggerCardPrint() {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-
-  if (isIOS && isStandalone) {
-    Swal.fire({
-      icon: 'info',
-      title: 'การพิมพ์บน iPhone (หน้าจอโฮม)',
-      html: 'iOS บนหน้าจอโฮม ปิดกั้นการสั่งพิมพ์ตรง<br><br>กรุณาแตะปุ่ม <b>"แชร์ / พิมพ์ AirPrint"</b> เพื่อเลือกพิมพ์ผ่านเมนู iOS หรือบันทึกบัตรได้ทันทีครับ',
-      showCancelButton: true,
-      confirmButtonText: '📤 แชร์ / พิมพ์ AirPrint',
-      cancelButtonText: 'ปิด',
-      confirmButtonColor: '#059669'
-    }).then(res => {
-      if (res.isConfirmed) {
-        shareCards();
-      }
-    });
-    return;
-  }
-  window.print();
-}
-
-async function shareCards() {
+function generateCardsFullHtml() {
   const area = document.getElementById('cardPrintArea');
-  if (!area) return;
+  if (!area) return '';
   const cardsHtml = area.innerHTML;
-  const fullHtml = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -301,10 +281,12 @@ async function shareCards() {
   <title>บัตรนักเรียน - โรงเรียนมหาชัยพิทยาคาร</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 10px; background: white; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 15px; background: white; }
     .card-wrap { display: flex; flex-wrap: wrap; gap: 6mm; justify-content: center; }
+    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; margin-bottom: 15px; border-radius: 8px; }
     @media print {
-      body { padding: 0; }
+      body { padding: 0 !important; }
       .no-print { display: none !important; }
       .card-wrap { display: grid !important; grid-template-columns: repeat(2, 85.6mm) !important; gap: 6mm !important; }
       @page { size: A4 portrait; margin: 10mm 12mm; }
@@ -312,12 +294,143 @@ async function shareCards() {
   </style>
 </head>
 <body>
+  <div class="no-print">
+    <div style="font-weight:bold;font-size:13px;">บัตรนักเรียน - โรงเรียนมหาชัยพิทยาคาร</div>
+    <button onclick="window.print()" style="background:#4F46E5;color:white;border:none;padding:6px 14px;border-radius:6px;font-weight:bold;cursor:pointer;font-size:12px;">🖨 พิมพ์</button>
+  </div>
   <div class="card-wrap">${cardsHtml}</div>
+  <script>
+    if (window.self === window.top) {
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try { window.focus(); window.print(); } catch (_) {}
+        }, 400);
+      });
+    }
+  </script>
 </body>
 </html>`;
+}
+
+function triggerCardPrint() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.navigator.standalone === true ||
+    (window.matchMedia && (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches
+    ));
+
+  if (isIOS && isStandalone) {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: '<div class="flex items-center justify-center gap-2 text-indigo-700 text-base sm:text-lg font-bold"><i class="bx bx-printer text-2xl"></i> การพิมพ์บน iPhone (หน้าจอโฮม)</div>',
+        html: `
+          <div class="text-left text-sm text-slate-600 space-y-3 pt-1">
+            <p class="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+              <i class="bx bx-info-circle mr-1 text-sm align-middle text-amber-600"></i>
+              iOS ปิดกั้นคำสั่งพิมพ์ตรงเมื่อเปิดจากหน้าจอโฮม กรุณาเลือกวิธีพิมพ์ด้านล่างนี้ครับ:
+            </p>
+            <div class="space-y-2">
+              <button id="swalCardAirPrint" type="button" class="w-full text-left p-3 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+                <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                  <i class="bx bx-share-alt"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ / พิมพ์ AirPrint (แนะนำ)</div>
+                  <div class="text-[11px] text-indigo-700 truncate">เปิดเมนู iOS แล้วแตะ "พิมพ์" (AirPrint) หรือส่ง LINE</div>
+                </div>
+              </button>
+              
+              <button id="swalCardSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+                <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                  <i class="bx bx-globe"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-blue-950 text-xs sm:text-sm">เปิดใน Safari เพื่อสั่งพิมพ์</div>
+                  <div class="text-[11px] text-blue-700 truncate">เปิดหน้าเอกสารใน Safari และเรียกคำสั่งพิมพ์ให้อัตโนมัติ</div>
+                </div>
+              </button>
+
+              <button id="swalCardDownload" type="button" class="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition cursor-pointer">
+                <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center text-lg flex-shrink-0">
+                  <i class="bx bx-download"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-slate-800 text-xs sm:text-sm">บันทึกเป็นไฟล์เอกสาร (HTML)</div>
+                  <div class="text-[10px] text-slate-500">บันทึกเก็บไว้ในแอปไฟล์ (Files) เพื่อดูหรือพิมพ์ภายหลัง</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        `,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: 'ปิดหน้าต่าง',
+        cancelButtonColor: '#64748B',
+        customClass: {
+          popup: 'rounded-2xl max-w-sm sm:max-w-md',
+          cancelButton: 'text-xs px-4 py-2 rounded-lg'
+        },
+        didOpen: () => {
+          const bAirPrint = document.getElementById('swalCardAirPrint');
+          const bSafari = document.getElementById('swalCardSafari');
+          const bDownload = document.getElementById('swalCardDownload');
+
+          if (bAirPrint) bAirPrint.onclick = () => { Swal.close(); shareCards(); };
+          if (bSafari) bSafari.onclick = () => { Swal.close(); openCardsInSafari(); };
+          if (bDownload) bDownload.onclick = () => { Swal.close(); downloadCardsHtml(); };
+        }
+      });
+      return;
+    }
+  }
+
+  // Android & Desktop: Direct window.print with proper class
+  document.body.classList.add('printing-cards');
+  const cleanup = () => {
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(() => {
+    window.print();
+  }, 150);
+}
+
+async function openCardsInSafari() {
+  const fullHtml = generateCardsFullHtml();
+  if (!fullHtml) return;
+
+  if (typeof openInExternalSafari === 'function') {
+    openInExternalSafari('', fullHtml, 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร');
+  } else {
+    shareCards();
+  }
+}
+
+function downloadCardsHtml() {
+  const fullHtml = generateCardsFullHtml();
+  if (!fullHtml) return;
+  if (typeof downloadHtmlDocument === 'function') {
+    downloadHtmlDocument(fullHtml, 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร');
+  } else {
+    try {
+      const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (_) {}
+  }
+}
+
+async function shareCards() {
+  const fullHtml = generateCardsFullHtml();
+  if (!fullHtml) return;
 
   try {
-    const file = new File([fullHtml], 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร.html', { type: 'text/html' });
+    const file = new File([fullHtml], 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร.html', { type: 'text/html;charset=utf-8' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
@@ -327,6 +440,7 @@ async function shareCards() {
       return;
     }
   } catch (e) {
+    if (e.name === 'AbortError') return;
     console.warn('Share file failed', e);
   }
 
@@ -338,6 +452,6 @@ async function shareCards() {
       });
     } catch (_) {}
   } else {
-    showToast('info', 'สามารถกดปุ่มพิมพ์ หรือแคปหน้าจอบัตรได้ทันที');
+    downloadCardsHtml();
   }
 }

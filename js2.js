@@ -3671,7 +3671,7 @@ function printAttendanceDashboardOverview() {
       <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
     </div>
     <div style="display:flex; gap:8px;">
-      <button onclick="window.print()" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+      <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
         🖨 พิมพ์เอกสาร / บันทึก PDF
       </button>
       <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
@@ -3739,13 +3739,13 @@ function printAttendanceDashboardOverview() {
   </div>
 
   <script>
-    function autoPrint() {
-      setTimeout(function() {
-        try { window.focus(); window.print(); } catch(e){}
-      }, 400);
+    if (window.self === window.top) {
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try { window.focus(); window.print(); } catch(e){}
+        }, 400);
+      });
     }
-    if (document.readyState === 'complete') autoPrint();
-    else window.addEventListener('load', autoPrint);
   </script>
 </body>
 </html>`;
@@ -3868,7 +3868,7 @@ function printDailyAttendanceRecord() {
       <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
     </div>
     <div style="display:flex; gap:8px;">
-      <button onclick="window.print()" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+      <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
         🖨 พิมพ์เอกสาร / บันทึก PDF
       </button>
       <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
@@ -3933,13 +3933,13 @@ function printDailyAttendanceRecord() {
   </div>
 
   <script>
-    function autoPrint() {
-      setTimeout(function() {
-        try { window.focus(); window.print(); } catch(e){}
-      }, 400);
+    if (window.self === window.top) {
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try { window.focus(); window.print(); } catch(e){}
+        }, 400);
+      });
     }
-    if (document.readyState === 'complete') autoPrint();
-    else window.addEventListener('load', autoPrint);
   </script>
 </body>
 </html>`;
@@ -4307,7 +4307,7 @@ function printAttendanceReport() {
       </span>
     </div>
     <div style="display:flex; gap:8px;">
-      <button onclick="window.print()" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+      <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
         🖨 พิมพ์เอกสาร / บันทึก PDF
       </button>
       <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
@@ -4364,13 +4364,13 @@ function printAttendanceReport() {
   </div>
 
   <script>
-    function autoPrint() {
-      setTimeout(function() {
-        try { window.focus(); window.print(); } catch(e){}
-      }, 400);
+    if (window.self === window.top) {
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try { window.focus(); window.print(); } catch(e){}
+        }, 400);
+      });
     }
-    if (document.readyState === 'complete') autoPrint();
-    else window.addEventListener('load', autoPrint);
   </script>
 </body>
 </html>`;

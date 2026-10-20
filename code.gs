@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '2.7.9',
+  APP_VERSION    : '3.0.6',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -242,6 +242,25 @@ function doGet(e) {
     }
   }
 
+  // รองรับการเปิดพิมพ์เอกสารทั่วไปที่แคชไว้ (สำหรับ Safari/iOS Standalone และเบราว์เซอร์มือถือ)
+  if (action === 'printDoc' || action === 'printCached') {
+    try {
+      const id = params.id || '';
+      if (!id) return ContentService.createTextOutput('Missing document ID');
+      const html = _getCacheChunks_('pdoc_' + id);
+      if (!html) {
+        return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:50px; color:#64748B;"><h3>เอกสารนี้หมดอายุแล้ว (เกิน 30 นาที)</h3><p>กรุณากลับไปที่แอป MHC Smart School แล้วกดพิมพ์ใหม่อีกครั้ง</p></div>')
+          .setTitle('เอกสารหมดอายุ');
+      }
+      return HtmlService.createHtmlOutput(html)
+        .setTitle(params.title || 'พิมพ์เอกสาร - โรงเรียนมหาชัยพิทยาคาร')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    } catch(err) {
+      return ContentService.createTextOutput('Error: ' + err.message);
+    }
+  }
+
   // Keep-alive & Health Check: อุ่นเครื่อง V8 Engine และ Pre-warm Cache อัตโนมัติ
   try {
     const cfg = getConfig();
@@ -419,6 +438,7 @@ function routeApi(action, params, token) {
       case 'getDocuments': return getDocuments(params, token);
       case 'saveDocument': return saveDocument(params, token);
       case 'deleteDocument': return deleteDocument(params.id, token);
+      case 'saveTemporaryPrintDoc': return saveTemporaryPrintDoc(params.html, params.title, token);
 
       // ---------- APPROVALS ----------
       case 'getApprovals': return getApprovals(params, token);
@@ -4426,6 +4446,26 @@ function renderReceiptTemplate_(config, tx, student) {
 </div>
 
 </body></html>`;
+}
+
+/**
+ * บันทึก HTML เอกสารชั่วคราวเพื่อเปิดในเบราว์เซอร์ Safari (แก้ปัญหา iOS Standalone/Home Screen)
+ */
+function saveTemporaryPrintDoc(html, title, sessionToken) {
+  try {
+    if (!html) return { status: 'error', message: 'No HTML provided' };
+    const id = Utilities.getUuid().substring(0, 10);
+    _setCacheChunks_('pdoc_' + id, html);
+    let gasUrl = '';
+    try { gasUrl = ScriptApp.getService().getUrl(); } catch(_) {}
+    return {
+      status: 'success',
+      id: id,
+      url: `${gasUrl}?action=printDoc&id=${encodeURIComponent(id)}&title=${encodeURIComponent(title || 'พิมพ์เอกสาร')}`
+    };
+  } catch(e) {
+    return { status: 'error', message: e.message };
+  }
 }
 
 /**

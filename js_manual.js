@@ -10,7 +10,7 @@ function renderManual(container) {
         <h1><i class='bx bxs-book-reader text-primary' >\x3c/i> คู่มือการใช้งาน\x3c/h1>
         <div class="sub" style="line-height:1.6;">
           <i class='bx bx-info-circle'>\x3c/i> MHC Smart School — โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม<br>
-          <span style="font-size:12px; color:#64748b;">ผู้อำนวยการโรงเรียน: <b>นายอธิการ สุขศรี</b> • พัฒนาระบบโดย: <b>ครูก้องนที อุ่นเจริญ</b> • เวอร์ชัน <b>v3.0.5</b></span>
+          <span style="font-size:12px; color:#64748b;">ผู้อำนวยการโรงเรียน: <b>นายอธิการ สุขศรี</b> • พัฒนาระบบโดย: <b>ครูก้องนที อุ่นเจริญ</b> • เวอร์ชัน <b>v3.0.6</b></span>
         \x3c/div>
       \x3c/div>
     \x3c/div>
@@ -569,7 +569,7 @@ function manualContent() {
 
       <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">การพิมพ์ตารางสอน (Print Schedule)\x3c/h3>
       <div class="man-tip"><i class='bx bx-printer'>\x3c/i>
-        <b>พิมพ์ได้เลยบนมือถือโดยไม่ออกจากแอป:</b> รองรับทั้งโทรศัพท์มือถือ iPhone และ Android โดยเมื่อกดปุ่ม "🖨️ พิมพ์" ระบบจะเปิดหน้าต่าง In-App Print Preview จำลองกระดาษ A4 สวยงาม พร้อมปุ่มสั่งพิมพ์ AirPrint / Save PDF ได้ทันที
+        <b>พิมพ์ได้เลยบนมือถือและหน้าจอโฮม (PWA):</b> รองรับทั้งโทรศัพท์มือถือ iPhone (iOS) และ Android ทั้งผ่านเบราว์เซอร์และไอคอนหน้าจอโฮม (ที่คั่นหน้า PWA) โดยระบบมี In-App Print Preview, ปุ่ม AirPrint, แชร์เอกสาร และปุ่มเปิดใน Safari สำหรับ iPhone หน้าจอโฮมให้สั่งพิมพ์ได้อย่างราบรื่น 100%
       \x3c/div>
       <div class="man-step">
         <div class="num">1\x3c/div>

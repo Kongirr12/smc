@@ -2695,7 +2695,7 @@ function printCalendar() {
         <strong>ตัวอย่างก่อนพิมพ์: ปฏิทินวิชาการและกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}</strong>
         <span style="font-size:11px; opacity:0.8; margin-left:8px;">(กระดาษ A4 แนวนอน)</span>
       </div>
-      <button class="btn-print" onclick="window.print()">
+      <button class="btn-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
         🖨 พิมพ์ / บันทึกเป็น PDF
       </button>
     </div>
@@ -2771,11 +2771,13 @@ function printCalendar() {
   </div>
 
   <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        window.print();
-      }, 350);
-    });
+    if (window.self === window.top) {
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try { window.focus(); window.print(); } catch (_) {}
+        }, 350);
+      });
+    }
   </script>
 </body>
 </html>`;

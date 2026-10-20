@@ -3827,7 +3827,7 @@ function previewTemplatePrint(templateId) {
       <span style="font-size:12px; opacity:0.8; margin-left:8px;">(กระดาษ A4)</span>
     </div>
     <div style="display:flex; gap:8px;">
-      <button class="btn-print" onclick="window.print()">
+      <button class="btn-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
         🖨 พิมพ์ / บันทึกเป็น PDF
       </button>
     </div>
@@ -3843,11 +3843,13 @@ function previewTemplatePrint(templateId) {
   </div>
 
   <script>
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        window.print();
-      }, 400);
-    });
+    if (window.self === window.top) {
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          try { window.focus(); window.print(); } catch (_) {}
+        }, 400);
+      });
+    }
   </script>
 </body>
 </html>`;
