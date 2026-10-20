@@ -3334,8 +3334,12 @@ function renderAttendanceReportData(res) {
         </div>
       </div>
     `;
-  } else if (rptType === 'all_subjects' && res.subjects && res.subjects.length > 0) {
+  } else if (rptType === 'all_subjects') {
     // All Subjects Matrix Table
+    const activeSubjects = (res.subjects && res.subjects.length > 0)
+      ? res.subjects
+      : (AttendanceState.filterOptions?.subjects || []);
+
     mainContentHtml = `
       <div id="reportStudentTableCard" class="page-card overflow-hidden">
         ${roomSelectorHtml}
@@ -3343,7 +3347,7 @@ function renderAttendanceReportData(res) {
           <div class="flex items-center justify-between mb-3">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bxs-book-content text-indigo-600">\x3c/i> ตารางเวลาเรียนเปรียบเทียบทุกรายวิชา (${res.subjects.length} วิชา) ${activeRoom ? ('ชั้น ' + escapeHTML(activeRoom) + ' ') : ''}(${displayStudents.length} คน)
+                <i class="bx bxs-book-content text-indigo-600">\x3c/i> ตารางเวลาเรียนเปรียบเทียบทุกรายวิชา (${activeSubjects.length} วิชา) ${activeRoom ? ('ชั้น ' + escapeHTML(activeRoom) + ' ') : ''}(${displayStudents.length} คน)
               </h4>
               <p class="text-xs text-slate-500 m-0 mt-0.5">แสดงร้อยละเวลาเรียนของนักเรียนแต่ละคนในแต่ละรายวิชา</p>
             </div>
@@ -3356,10 +3360,10 @@ function renderAttendanceReportData(res) {
                   <th style="width:75px; text-align:center;">รหัสนักเรียน</th>
                   <th style="min-width:140px;">ชื่อ - นามสกุล</th>
                   <th style="width:75px; text-align:center;">ระดับชั้น</th>
-                  ${res.subjects.map(s => `
-                    <th style="min-width:75px; text-align:center;" title="${escapeHTML(s.subject_name)} (${s.periods_count} คาบ)">
+                  ${activeSubjects.map(s => `
+                    <th style="min-width:75px; text-align:center;" title="${escapeHTML(s.subject_name)} (${s.periods_count || 0} คาบ)">
                       <div class="text-[11px] font-bold">${escapeHTML(s.subject_code || s.subject_name)}</div>
-                      <div class="text-[10px] text-slate-400 font-normal">${s.periods_count} คาบ</div>
+                      <div class="text-[10px] text-slate-400 font-normal">${s.periods_count || 0} คาบ</div>
                     </th>
                   `).join('')}
                   <th style="width:85px; text-align:center;">% รวมทุกวิชา</th>
@@ -3368,7 +3372,7 @@ function renderAttendanceReportData(res) {
               </thead>
               <tbody>
                 ${displayStudents.length === 0 ? `
-                  <tr><td colspan="${res.subjects.length + 6}" class="text-center py-6 text-slate-400">ไม่พบข้อมูลนักเรียนในห้องนี้</td></tr>
+                  <tr><td colspan="${activeSubjects.length + 6}" class="text-center py-6 text-slate-400">ไม่พบข้อมูลนักเรียนในห้องนี้</td></tr>
                 ` : displayStudents.map((r, idx) => {
                   const bad = r.total > 0 && r.attendance_pct < 80;
                   return `
@@ -3377,7 +3381,7 @@ function renderAttendanceReportData(res) {
                       <td style="text-align:center;" class="font-mono text-xs text-slate-600">${escapeHTML(r.student_code || '-')}</td>
                       <td class="font-semibold text-slate-800 white-space-nowrap">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
                       <td style="text-align:center;" class="text-slate-600 text-xs">ชั้น ${escapeHTML(r.classroom)}</td>
-                      ${res.subjects.map(s => {
+                      ${activeSubjects.map(s => {
                         const subData = r.by_subject ? r.by_subject[s.id] : null;
                         if (!subData || subData.total === 0) {
                           return '<td style="text-align:center;" class="text-slate-300">-</td>';
@@ -3945,8 +3949,12 @@ function printAttendanceReport() {
   const targetSub = res.target_subject;
   const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');
   const isMatrixMode = (scope === 'monthly' && AttendanceState.reportView === 'matrix' && (rptType === 'homeroom' || isSubjectMode));
-  const isSemesterMode = (scope === 'semester' && res.months && res.months.length > 0 && !isSubjectMode);
-  const isAllSubjectsMode = (rptType === 'all_subjects' && res.subjects && res.subjects.length > 0);
+  const isAllSubjectsMode = (rptType === 'all_subjects');
+  const isSemesterMode = (scope === 'semester' && res.months && res.months.length > 0 && !isSubjectMode && !isAllSubjectsMode);
+
+  const printSubjects = (res.subjects && res.subjects.length > 0)
+    ? res.subjects
+    : (AttendanceState.filterOptions?.subjects || []);
 
   const isLandscape = (isMatrixMode || isSemesterMode || isAllSubjectsMode);
 
@@ -4101,10 +4109,10 @@ function printAttendanceReport() {
         <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
         <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
         <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
-        ${res.subjects.map(s => `
+        ${printSubjects.map(s => `
           <th style="min-width:38px; padding:2px 1px; text-align:center;">
             <div style="font-size:7pt; font-weight:bold; white-space:nowrap; line-height:1.1;">${escapeHTML(s.subject_code || s.subject_name)}</div>
-            <div style="font-size:6.5pt; font-weight:normal; color:#64748B;">${s.periods_count} คาบ</div>
+            <div style="font-size:6.5pt; font-weight:normal; color:#64748B;">${s.periods_count || 0} คาบ</div>
           </th>
         `).join('')}
         <th style="width:55px; min-width:50px; text-align:center; font-size:7.5pt; padding:2px 1px;">% รวม</th>
@@ -4120,7 +4128,7 @@ function printAttendanceReport() {
           <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
           <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
           <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
-          ${res.subjects.map(s => {
+          ${printSubjects.map(s => {
             const subData = r.by_subject ? r.by_subject[s.id] : null;
             if (!subData || subData.total === 0) return '<td style="text-align:center; color:#94A3B8; font-size:7.5pt;">-</td>';
             const p = subData.attendance_pct || 0;
@@ -4395,6 +4403,28 @@ function exportReportCSV() {
     ]);
 
     filename = `รายงานเช็คแถวรายวันปพ5_${mLabel}${roomTag}.xls`;
+  } else if (rptType === 'all_subjects') {
+    const exportSubs = (res.subjects && res.subjects.length > 0)
+      ? res.subjects
+      : (AttendanceState.filterOptions?.subjects || []);
+    headers = [
+      'ที่', 'รหัสนักเรียน', 'ชื่อ - สกุล', 'ชั้น',
+      ...exportSubs.map(s => (s.subject_code || s.subject_name)),
+      '% รวมทุกวิชา', 'การประเมิน'
+    ];
+    rows = exportStudents.map((r, i) => [
+      i + 1,
+      r.student_code || '',
+      (r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''),
+      r.classroom || '',
+      ...exportSubs.map(s => {
+        const subData = r.by_subject ? r.by_subject[s.id] : null;
+        return subData && subData.total > 0 ? (subData.attendance_pct.toFixed(0) + '%') : '-';
+      }),
+      r.total === 0 ? '-' : (r.attendance_pct.toFixed(1) + '%'),
+      r.total === 0 ? 'ยังไม่มีข้อมูล' : (r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ')
+    ]);
+    filename = `รายงานเวลาเรียนทุกรายวิชา_${sem}_${ay}${roomTag}.xls`;
   } else if (scope === 'semester' && res.months && res.months.length > 0) {
     headers = [
       'ที่', 'รหัสนักเรียน', 'ชื่อ - สกุล', 'ชั้น',

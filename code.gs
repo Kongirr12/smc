@@ -2828,19 +2828,47 @@ function getAttendanceReport(params, sessionToken) {
 
       try {
         const scheduleEntries = readJsonSheet_('Schedule').filter(x => 
-          x._kind === 'entry' && (!reqCls || String(x.classroom || '').trim() === reqCls)
+          (x._kind === 'schedule_entry' || x._kind === 'entry') && (!reqCls || String(x.classroom || '').trim() === reqCls)
         );
         scheduleEntries.forEach(e => {
           if (e.subject_id) subjectIdSet.add(String(e.subject_id));
         });
       } catch (_) {}
 
-      if (subjectIdSet.size === 0 && reqCls) {
+      // Ensure all registered subjects for this semester/grade are included
+      if (subjectIdSet.size === 0) {
+        const sem = String(params.semester || config.semester || '1');
+        const ayStr = String(params.academic_year || config.academic_year || '2569');
+
         allSubjects.forEach(s => {
-          if (s.grade_level && String(reqCls).includes(String(s.grade_level))) {
-            subjectIdSet.add(String(s.id));
+          const semMatch = !s.semester || String(s.semester) === sem;
+          const ayMatch = !s.academic_year || String(s.academic_year) === ayStr;
+          if (reqCls) {
+            if (s.grade_level && String(reqCls).includes(String(s.grade_level)) && semMatch && ayMatch) {
+              subjectIdSet.add(String(s.id));
+            }
+          } else {
+            if (semMatch && ayMatch) {
+              subjectIdSet.add(String(s.id));
+            }
           }
         });
+
+        if (subjectIdSet.size === 0) {
+          allSubjects.forEach(s => {
+            if (reqCls) {
+              if (s.grade_level && String(reqCls).includes(String(s.grade_level))) {
+                subjectIdSet.add(String(s.id));
+              }
+            } else {
+              subjectIdSet.add(String(s.id));
+            }
+          });
+        }
+
+        if (subjectIdSet.size === 0) {
+          allSubjects.forEach(s => subjectIdSet.add(String(s.id)));
+        }
       }
 
       subjectsInfo = Array.from(subjectIdSet).map(subId => {
@@ -2865,7 +2893,7 @@ function getAttendanceReport(params, sessionToken) {
           id: subId,
           subject_code: sObj.subject_code || subId,
           subject_name: sObj.subject_name || sObj.subject_code || subId,
-          periods_count: periodKeys.size,
+          periods_count: periodKeys.size || Number(sObj.periods || sObj.periods_per_week || 0),
           summary: subSum,
           risk_count: riskCount
         };
