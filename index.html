@@ -365,7 +365,7 @@
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.9.5">
+  <link rel="stylesheet" href="styles.css?v=2.9.6">
 </head>
 <body>
 
@@ -378,11 +378,11 @@
   </div>
 
 
-  <!-- ================== Login Screen (Enterprise Full-Screen Portal) ================== -->
-  <div id="loginScreen" class="fixed inset-0 z-50 flex flex-col md:flex-row w-full min-h-screen overflow-y-auto bg-slate-950 select-none">
+  <!-- ================== Login Screen (Enterprise Full-Screen Portal & Mobile-Optimized) ================== -->
+  <div id="loginScreen" class="fixed inset-0 z-50 flex flex-col md:flex-row w-full min-h-screen overflow-y-auto bg-slate-950 select-none items-center md:items-stretch justify-center md:justify-start" style="padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom)); padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));">
     
-    <!-- LEFT PANEL: Brand & Smart Campus Showcase (Full-Screen on Desktop) -->
-    <div class="w-full md:w-7/12 lg:w-3/5 min-h-[440px] md:min-h-screen p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border-b md:border-b-0 md:border-r border-slate-800/80">
+    <!-- LEFT PANEL: Desktop-Only Brand & Smart Campus Showcase (Hidden on Mobile) -->
+    <div class="hidden md:flex md:w-7/12 lg:w-3/5 min-h-screen p-8 lg:p-14 flex-col justify-between relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border-r border-slate-800/80">
       
       <!-- Ambient Lighting Blobs -->
       <div class="absolute -top-32 -left-32 w-[460px] h-[460px] rounded-full bg-indigo-600/20 blur-[100px] pointer-events-none"></div>
@@ -401,15 +401,15 @@
           </div>
         </div>
 
-        <!-- Reduced Compact Live Clock (User requested: "และลดขนาดเวลาครับ") -->
+        <!-- Reduced Compact Live Clock -->
         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-mono font-medium shadow-xs">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span id="loginClockText">--:--:-- น.</span>
         </div>
       </div>
 
-      <!-- Center Hero Showcase (NO Director Name - User requested: "เอาชื่อผู้อำนวยการออกครับ") -->
-      <div class="relative z-10 my-8 md:my-auto max-w-xl">
+      <!-- Center Hero Showcase (Desktop only) -->
+      <div class="relative z-10 my-auto max-w-xl">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-3">
           <i class='bx bxs-school text-amber-300'></i>
           <span>ระบบบริหารจัดการสถานศึกษาอัจฉริยะ (Smart School Cloud)</span>
@@ -467,26 +467,33 @@
       </div>
     </div>
 
-    <!-- RIGHT PANEL: Ultra-Clean Executive Login Form -->
-    <div class="w-full md:w-5/12 lg:w-2/5 min-h-[500px] md:min-h-screen p-6 sm:p-10 lg:p-14 flex flex-col justify-center bg-white dark:bg-slate-900 transition-colors">
-      <div class="w-full max-w-sm mx-auto">
+    <!-- RIGHT PANEL: Executive Login Form (Adaptive Card on Mobile, Full-Height on Desktop) -->
+    <div class="w-full md:w-5/12 lg:w-2/5 min-h-0 md:min-h-screen p-0 sm:p-4 md:p-8 lg:p-14 flex flex-col justify-center items-center md:items-stretch bg-transparent md:bg-white md:dark:bg-slate-900 transition-colors my-auto md:my-0">
+      
+      <div class="w-full max-w-sm mx-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl md:bg-transparent md:dark:bg-transparent p-6 sm:p-8 md:p-0 rounded-[28px] md:rounded-none shadow-2xl md:shadow-none border border-white/20 dark:border-slate-800/80 md:border-none">
         
         <!-- Mobile Header (Visible only on mobile screens) -->
-        <div class="md:hidden flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/50 dark:border-indigo-800/50 p-2 flex items-center justify-center shadow-xs">
+        <div class="md:hidden flex flex-col items-center text-center mb-5">
+          <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/50 dark:border-indigo-800/50 p-2.5 flex items-center justify-center shadow-sm mb-3">
             <img id="loginLogoImageMobile" src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" class="max-w-full max-h-full object-contain" alt="Logo">
           </div>
-          <div class="flex-1">
-            <div class="font-extrabold text-base text-slate-900 dark:text-white" id="loginSchoolNameMobile">โรงเรียนมหาชัยพิทยาคาร</div>
-            <div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">MHC Smart School</div>
-          </div>
-          <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono">
+          
+          <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 text-xs font-semibold mb-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="loginClockTextMobile">--:-- น.</span>
+            <span id="loginSchoolNameMobile">โรงเรียนมหาชัยพิทยาคาร</span>
           </div>
+
+          <div class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono mb-3">
+            <i class='bx bx-time-five text-xs'></i>
+            <span id="loginClockTextMobile">--:--:-- น.</span>
+          </div>
+
+          <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">เข้าสู่ระบบ</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">MHC Smart School</p>
         </div>
 
-        <div class="mb-6">
+        <!-- Desktop Header (Hidden on mobile to prevent duplicate titles) -->
+        <div class="hidden md:block mb-6">
           <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">เข้าสู่ระบบ</h2>
           <p class="mt-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">กรอกชื่อผู้ใช้งาน หรือรหัสประจำตัว เพื่อเข้าใช้งานระบบ</p>
         </div>
@@ -549,7 +556,7 @@
               <i class='bx bx-code-alt text-indigo-500'></i>
               <span>พัฒนาระบบโดย <b>ครูก้องนที อุ่นเจริญ</b></span>
               <span class="text-slate-300 dark:text-slate-700">•</span>
-              <span class="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v2.9.5</span>
+              <span class="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v2.9.6</span>
             </div>
           </div>
         </form>
@@ -825,18 +832,18 @@
 
 
   <!-- ================== Scripts ================== -->
-  <script src="js1.js?v=2.9.5"></script>
-  <script src="js2.js?v=2.9.5"></script>
-  <script src="js3.js?v=2.9.5"></script>
-  <script src="js4.js?v=2.9.5"></script>
-  <script src="js_schedule.js?v=2.9.5"></script>
-  <script src="js_classroom.js?v=2.9.5"></script>
-  <script src="js_behavior.js?v=2.9.5"></script>
-  <script src="js_student_card.js?v=2.9.5"></script>
-  <script src="js_qr_attendance.js?v=2.9.5"></script>
-  <script src="js_line_oa.js?v=2.9.5"></script>
-  <script src="js_manual.js?v=2.9.5"></script>
-  <script src="js_templates.js?v=2.9.5"></script>
+  <script src="js1.js?v=2.9.6"></script>
+  <script src="js2.js?v=2.9.6"></script>
+  <script src="js3.js?v=2.9.6"></script>
+  <script src="js4.js?v=2.9.6"></script>
+  <script src="js_schedule.js?v=2.9.6"></script>
+  <script src="js_classroom.js?v=2.9.6"></script>
+  <script src="js_behavior.js?v=2.9.6"></script>
+  <script src="js_student_card.js?v=2.9.6"></script>
+  <script src="js_qr_attendance.js?v=2.9.6"></script>
+  <script src="js_line_oa.js?v=2.9.6"></script>
+  <script src="js_manual.js?v=2.9.6"></script>
+  <script src="js_templates.js?v=2.9.6"></script>
  
   <!-- PWA Service Worker Registration & Force Update -->
   <script>
