@@ -9,8 +9,8 @@ function renderManual(container) {
       <div>
         <h1><i class='bx bxs-book-reader text-primary' >\x3c/i> คู่มือการใช้งาน\x3c/h1>
         <div class="sub" style="line-height:1.6;">
-          <i class='bx bx-info-circle'>\x3c/i> MHC Smart School - โรงเรียนมหาชัยพิทยาคาร - อ่านเพื่อทำความเข้าใจระบบ<br>
-          <span style="font-size:12px; color:#64748b;">พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ</span>
+          <i class='bx bx-info-circle'>\x3c/i> MHC Smart School — โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม<br>
+          <span style="font-size:12px; color:#64748b;">ผู้อำนวยการโรงเรียน: <b>นายอธิการ สุขศรี</b> • พัฒนาระบบโดย: <b>ครูก้องนที อุ่นเจริญ</b> • เวอร์ชัน <b>v2.9.9</b></span>
         \x3c/div>
       \x3c/div>
     \x3c/div>
@@ -138,24 +138,30 @@ function renderManual(container) {
 
 function manualTOC() {
   const items = [
-    { id:'sec-start',    icon:'bxs-rocket',          label:'เริ่มต้นใช้งาน' },
-    { id:'sec-login',    icon:'bxs-lock-open',        label:'เข้าสู่ระบบ / ออก' },
-    { id:'sec-dashboard',icon:'bxs-home-alt-2',       label:'หน้าหลัก (Dashboard)' },
-    { id:'sec-students', icon:'bxs-user-detail',      label:'ข้อมูลนักเรียน' },
-    { id:'sec-personnel',icon:'bxs-group',            label:'ครูและบุคลากร' },
-    { id:'sec-attend',   icon:'bxs-check-square',     label:'การเข้าเรียน' },
-    { id:'sec-schedule', icon:'bxs-calendar-check',   label:'ตารางสอน' },
-    { id:'sec-academic', icon:'bxs-book-content',     label:'งานวิชาการ' },
-    { id:'sec-reg',      icon:'bxs-id-card',          label:'งานทะเบียน' },
-    { id:'sec-finance',  icon:'bxs-wallet',           label:'งานการเงิน' },
-    { id:'sec-doc',      icon:'bxs-envelope',         label:'สารบรรณ' },
-    { id:'sec-approve',  icon:'bxs-badge-check',      label:'ระบบอนุมัติ' },
-    { id:'sec-calendar', icon:'bxs-calendar-event',   label:'ปฏิทิน / ข่าวสาร' },
-    { id:'sec-files',    icon:'bxs-folder',           label:'คลังไฟล์' },
-    { id:'sec-reports',  icon:'bxs-bar-chart-alt-2',  label:'รายงาน' },
-    { id:'sec-users',    icon:'bxs-user-account',     label:'จัดการผู้ใช้' },
-    { id:'sec-settings', icon:'bxs-cog',              label:'ตั้งค่าระบบ' },
-    { id:'sec-faq',      icon:'bxs-help-circle',      label:'คำถามที่พบบ่อย' }
+    { id:'sec-start',     icon:'bxs-rocket',          label:'เริ่มต้นใช้งาน' },
+    { id:'sec-login',     icon:'bxs-lock-open',        label:'เข้าสู่ระบบ / ออก' },
+    { id:'sec-dashboard', icon:'bxs-home-alt-2',       label:'หน้าหลัก (Dashboard)' },
+    { id:'sec-students',  icon:'bxs-user-detail',      label:'ข้อมูลนักเรียน' },
+    { id:'sec-classroom', icon:'bxs-school',           label:'จัดการห้องเรียน & เลื่อนชั้น' },
+    { id:'sec-behavior',  icon:'bxs-heart',            label:'พฤติกรรม & บันทึกคะแนน' },
+    { id:'sec-card',      icon:'bxs-id-card',          label:'พิมพ์บัตรนักเรียน & QR' },
+    { id:'sec-qr-att',    icon:'bx-qr-scan',           label:'เช็คชื่อ QR Code อัตโนมัติ' },
+    { id:'sec-personnel', icon:'bxs-group',            label:'ครูและบุคลากร' },
+    { id:'sec-attend',    icon:'bxs-check-square',     label:'การเข้าเรียน / โฮมรูม' },
+    { id:'sec-schedule',  icon:'bxs-calendar-check',   label:'ตารางสอน & พิมพ์บนมือถือ' },
+    { id:'sec-templates', icon:'bxs-file-doc',         label:'แบบฟอร์ม 4 ฝ่าย (30 ฟอร์ม)' },
+    { id:'sec-academic',  icon:'bxs-book-content',     label:'งานวิชาการ & ปพ.5' },
+    { id:'sec-reg',       icon:'bxs-id-card',          label:'งานทะเบียน' },
+    { id:'sec-finance',   icon:'bxs-wallet',           label:'งานการเงิน' },
+    { id:'sec-doc',       icon:'bxs-envelope',         label:'สารบรรณ' },
+    { id:'sec-approve',   icon:'bxs-badge-check',      label:'ระบบอนุมัติ' },
+    { id:'sec-calendar',  icon:'bxs-calendar-event',   label:'ปฏิทิน / ข่าวสาร' },
+    { id:'sec-files',     icon:'bxs-folder',           label:'คลังไฟล์' },
+    { id:'sec-reports',   icon:'bxs-bar-chart-alt-2',  label:'รายงาน' },
+    { id:'sec-external',  icon:'bxs-network-chart',    label:'ระบบเชื่อมโยงภายนอก' },
+    { id:'sec-users',     icon:'bxs-user-account',     label:'จัดการผู้ใช้' },
+    { id:'sec-settings',  icon:'bxs-cog',              label:'ตั้งค่าระบบ' },
+    { id:'sec-faq',       icon:'bxs-help-circle',      label:'คำถามที่พบบ่อย' }
   ];
   return items.map(i => `
     <div class="man-toc-item" onclick="scrollToSection('${i.id}')">
@@ -318,6 +324,115 @@ function manualContent() {
       \x3c/div>
     `)}
 
+    <!-- Classroom Management -->
+    ${manSection('sec-classroom','bxs-school','#4F46E5','จัดการห้องเรียน & เลื่อนชั้นเรียน',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        ระบบจัดการห้องเรียนช่วยจัดสรรครูที่ปรึกษา กำหนดเลขที่นักเรียน และอำนวยความสะดวกในการเลื่อนชั้นเรียนข้ามปีการศึกษา
+      \x3c/div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">ฟังก์ชันสำคัญในหน้าจัดการห้องเรียน\x3c/h3>
+      <div class="feature-grid">
+        <div class="feature-item"><i class='bx bx-user-check'>\x3c/i> กำหนดครูที่ปรึกษาประจำห้อง\x3c/div>
+        <div class="feature-item"><i class='bx bx-sort-ol'>\x3c/i> จัดเรียงเลขที่อัตโนมัติ 3 แบบ\x3c/div>
+        <div class="feature-item"><i class='bx bx-edit'>\x3c/i> แก้ไขเลขที่รายคนแบบ Inline\x3c/div>
+        <div class="feature-item"><i class='bx bx-up-arrow-circle'>\x3c/i> ระบบเลื่อนชั้นเรียน (Auto Promote)\x3c/div>
+      \x3c/div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">ระบบจัดเรียงเลขที่อัตโนมัติ (Roll Number Sorting)\x3c/h3>
+      <table class="man-table">
+        <thead><tr><th>โหมดการจัดเรียง\x3c/th><th>รายละเอียด\x3c/th>\x3c/tr>\x3c/thead>
+        <tbody>
+          <tr>
+            <td><b>1. มาตรฐาน สพฐ. / SGS\x3c/b> (แนะนำ)</td>
+            <td>เรียงนักเรียนชายตาม ก-ฮ ก่อน แล้วตามด้วยนักเรียนหญิงตาม ก-ฮ ถูกต้องตามระเบียบงานทะเบียน</td>
+          </tr>
+          <tr>
+            <td><b>2. ตามตัวอักษร ก-ฮ ทั้งหมด\x3c/b></td>
+            <td>เรียงชื่อนักเรียนทุกคนตามลำดับพยัญชนะ ก-ฮ โดยไม่แยกเพศ</td>
+          </tr>
+          <tr>
+            <td><b>3. ตามเลขประจำตัวนักเรียน\x3c/b></td>
+            <td>เรียงลำดับจากเลขประจำตัวนักเรียนน้อยไปมาก (รหัส SGS)</td>
+          </tr>
+        \x3c/tbody>
+      \x3c/table>
+
+      <div class="man-tip"><i class='bx bx-bulb'>\x3c/i>
+        <b>แก้ไขเลขที่รายคน:</b> คลิกที่ปุ่ม "แก้ไขเลขที่" ในหน้ารายชื่อนักเรียนของห้อง เพื่อพิมพ์ระบุเลขที่ของแต่ละคนได้โดยตรง แล้วกดบันทึกในคลิกเดียว
+      \x3c/div>
+    `)}
+
+    <!-- Behavior -->
+    ${manSection('sec-behavior','bxs-heart','#E11D48','พฤติกรรมนักเรียน & คะแนนความประพฤติ',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        ระบบบันทึกคะแนนพฤติกรรมนักเรียน เริ่มต้นที่ <b>100 คะแนน\x3c/b> สำหรับนักเรียนทุกคนในแต่ละปีการศึกษา
+      \x3c/div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">การบันทึกพฤติกรรม\x3c/h3>
+      <div class="man-step">
+        <div class="num">1\x3c/div>
+        <div class="text">
+          <div class="title">เลือกห้องเรียนและค้นหานักเรียน\x3c/div>
+          <div class="desc">พิมพ์ชื่อหรือเลขประจำตัวนักเรียนเพื่อเปิดโปรไฟล์พฤติกรรม\x3c/div>
+        \x3c/div>
+      \x3c/div>
+      <div class="man-step">
+        <div class="num">2\x3c/div>
+        <div class="text">
+          <div class="title">ตัดคะแนน หรือ เพิ่มคะแนนความดี\x3c/div>
+          <div class="desc">เลือกฐานความผิด (เช่น มาสาย, ไม่เข้าแถว, หนีเรียน, การแต่งกายผิดระเบียบ) หรือเลือกเพิ่มคะแนนจิตอาสาและสร้างชื่อเสียงให้โรงเรียน\x3c/div>
+        \x3c/div>
+      \x3c/div>
+      <div class="man-step">
+        <div class="num">3\x3c/div>
+        <div class="text">
+          <div class="title">ออกใบแจ้งเตือนพฤติกรรม\x3c/div>
+          <div class="desc">ระบบจะสรุปประวัติและสามารถพิมพ์รายงานคะแนนความประพฤติเพื่อส่งให้ผู้ปกครองรับทราบได้ทันที\x3c/div>
+        \x3c/div>
+      \x3c/div>
+    `)}
+
+    <!-- Student Cards -->
+    ${manSection('sec-card','bxs-id-card','#7C3AED','พิมพ์บัตรนักเรียน & สแกน Barcode',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        สร้างและพิมพ์บัตรประจำตัวนักเรียนรูปแบบมาตรฐาน มีรูปถ่าย, Barcode Code 128 และ QR Code ในใบเดียว
+      \x3c/div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">ฟังก์ชันเด่นของระบบบัตรนักเรียน\x3c/h3>
+      <div class="feature-grid">
+        <div class="feature-item"><i class='bx bx-barcode'>\x3c/i> Barcode ยิงด้วยเครื่องสแกนเนอร์\x3c/div>
+        <div class="feature-item"><i class='bx bx-qr'>\x3c/i> QR Code สแกนด้วยมือถือ\x3c/div>
+        <div class="feature-item"><i class='bx bx-printer'>\x3c/i> พิมพ์แบบชุด (Batch Print 8 บัตร/หน้า)\x3c/div>
+        <div class="feature-item"><i class='bx bx-download'>\x3c/i> บันทึกเป็น PDF ความคมชัดสูง\x3c/div>
+      \x3c/div>
+    `)}
+
+    <!-- QR Attendance -->
+    ${manSection('sec-qr-att','bx-qr-scan','#059669','เช็คชื่อ QR Code อัตโนมัติ',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        เปลี่ยนโทรศัพท์มือถือ แท็บเล็ต หรือคอมพิวเตอร์ที่มีกล้อง ให้กลายเป็นเครื่องสแกนเช็คชื่อหน้าเสาธงแบบไร้สัมผัส
+      \x3c/div>
+
+      <div class="man-step">
+        <div class="num">1\x3c/div>
+        <div class="text">
+          <div class="title">เปิดหน้า "เช็คชื่อ QR Code"\x3c/div>
+          <div class="desc">อนุญาตการเข้าถึงกล้อง (Camera Permission) บนเบราว์เซอร์\x3c/div>
+        \x3c/div>
+      \x3c/div>
+      <div class="man-step">
+        <div class="num">2\x3c/div>
+        <div class="text">
+          <div class="title">สแกน QR Code หน้าบัตรนักเรียน\x3c/div>
+          <div class="desc">ถือบัตรนักเรียนส่องที่หน้ากล้อง ระบบจะตรวจจับและบันทึกสถานะ "มาเรียน" ให้อัตโนมัติพร้อมเสียงเตือนปี๊บ\x3c/div>
+        \x3c/div>
+      \x3c/div>
+
+      <div class="man-tip"><i class='bx bx-shield-quarter'>\x3c/i>
+        <b>ป้องกันการสแกนซ้ำ:</b> ระบบมี Cooldown ป้องกันนักเรียนคนเดิมสแกนซ้ำภายในช่วงเวลาเดียวกันอย่างแม่นยำ
+      \x3c/div>
+    `)}
+
     <!-- Personnel -->
     ${manSection('sec-personnel','bxs-group','#10B981','ครูและบุคลากร',`
       <p style="color:#475569; font-size:14px;">ใช้งานเหมือนหน้าข้อมูลนักเรียน เพิ่มเติมที่สำคัญ:\x3c/p>
@@ -450,6 +565,71 @@ function manualContent() {
       </div>
       <div class="man-warn"><i class='bx bx-time-five'>\x3c/i>
         หากมีการลากวางตารางเรียนค้างไว้แล้วกดยกเลิกโหมดลากวางโดยไม่ได้กดเซฟ ระบบจะเด้งกล่องข้อความแจ้งเตือนความปลอดภัยเพื่อป้องกันข้อมูลหาย
+      \x3c/div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">การพิมพ์ตารางสอน (Print Schedule)\x3c/h3>
+      <div class="man-tip"><i class='bx bx-printer'>\x3c/i>
+        <b>พิมพ์ได้เลยบนมือถือโดยไม่ออกจากแอป:</b> รองรับทั้งโทรศัพท์มือถือ iPhone และ Android โดยเมื่อกดปุ่ม "🖨️ พิมพ์" ระบบจะเปิดหน้าต่าง In-App Print Preview จำลองกระดาษ A4 สวยงาม พร้อมปุ่มสั่งพิมพ์ AirPrint / Save PDF ได้ทันที
+      \x3c/div>
+      <div class="man-step">
+        <div class="num">1\x3c/div>
+        <div class="text">
+          <div class="title">เลือกโหมดตารางสอน\x3c/div>
+          <div class="desc">เลือก "ตารางสอนประจำชั้น" หรือ "ตารางสอนรายครู" และเลือกห้องเรียนหรือครูผู้สอนที่ต้องการ\x3c/div>
+        \x3c/div>
+      \x3c/div>
+      <div class="man-step">
+        <div class="num">2\x3c/div>
+        <div class="text">
+          <div class="title">กดปุ่ม "🖨️ พิมพ์" หรือ "พิมพ์ชุดทั้งระดับชั้น"\x3c/div>
+          <div class="desc">ระบบจะสร้างเอกสารตารางสอนขนาด A4 แนวนอนอย่างเป็นระเบียบ มีชื่อโรงเรียนมหาชัยพิทยาคาร และลงนามรับรองโดยผู้อำนวยการโรงเรียน <b>นายอธิการ สุขศรี</b> ถูกต้องตามแบบแผนราชการ\x3c/div>
+        \x3c/div>
+      \x3c/div>
+    `)}
+
+    <!-- Templates 4 Divisions (30 Forms) -->
+    ${manSection('sec-templates','bxs-file-doc','#4F46E5','แบบฟอร์มงาน 4 ฝ่าย (30 แบบฟอร์ม)',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        ศูนย์รวมแบบฟอร์มเอกสารราชการมาตรฐาน 30 แบบฟอร์ม ครอบคลุม 4 ฝ่ายบริหารของโรงเรียนมหาชัยพิทยาคาร พร้อมตราครุฑทางการ
+      \x3c/div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">โครงสร้างแบบฟอร์ม 4 ฝ่ายบริหาร\x3c/h3>
+      <table class="man-table">
+        <thead><tr><th>ฝ่ายบริหาร\x3c/th><th>จำนวน\x3c/th><th>ตัวอย่างแบบฟอร์ม\x3c/th>\x3c/tr>\x3c/thead>
+        <tbody>
+          <tr>
+            <td><b>1. ฝ่ายบริหารวิชาการ\x3c/b></td>
+            <td>8 แบบฟอร์ม</td>
+            <td>วช.01 ขออนุมัติแผนการจัดการเรียนรู้, วช.02 ขอไปราชการ/อบรม, วช.03 นิเทศการสอน, วช.06 สอบแก้ตัว 0 ร มส, วช.08 รายงาน ปพ.5</td>
+          </tr>
+          <tr>
+            <td><b>2. ฝ่ายบริหารงบประมาณและแผนงาน\x3c/b></td>
+            <td>8 แบบฟอร์ม</td>
+            <td>งบ.01 เสนอโครงการ, งบ.02 ขออนุมัติจัดซื้อจัดจ้าง, งบ.03 ขอเบิกเงินงบประมาณ, งบ.07 สรุปประเมินโครงการ</td>
+          </tr>
+          <tr>
+            <td><b>3. ฝ่ายบริหารงานบุคคล\x3c/b></td>
+            <td>7 แบบฟอร์ม</td>
+            <td>บค.01 ขอลาพักผ่อน, บค.02 ขอลาป่วย/คลอด/กิจ, บค.03 ขอไปราชการ, บค.05 ขอมี/เลื่อนวิทยฐานะ วPA</td>
+          </tr>
+          <tr>
+            <td><b>4. ฝ่ายบริหารทั่วไป\x3c/b></td>
+            <td>7 แบบฟอร์ม</td>
+            <td>บป.01 ขอใช้สถานที่/อาคาร, บป.02 ขอใช้ยานพาหนะ, บป.03 ขออนุญาตนำนักเรียนออกนอกสถานศึกษา, บป.06 แจ้งซ่อมแซม</td>
+          </tr>
+        \x3c/tbody>
+      \x3c/table>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">ฟังก์ชันการทำงานของระบบแบบฟอร์ม\x3c/h3>
+      <div class="feature-grid">
+        <div class="feature-item"><i class='bx bxs-file-doc'>\x3c/i> ดาวน์โหลดเป็นไฟล์ Word (.doc)\x3c/div>
+        <div class="feature-item"><i class='bx bx-printer'>\x3c/i> สั่งพิมพ์ขนาด A4 มีตราครุฑ\x3c/div>
+        <div class="feature-item"><i class='bx bx-edit'>\x3c/i> แก้ไขข้อความในฟอร์มได้โดยตรง\x3c/div>
+        <div class="feature-item"><i class='bx bx-reset'>\x3c/i> กู้คืนค่าเริ่มต้น (Reset Default)\x3c/div>
+      \x3c/div>
+
+      <div class="man-tip"><i class='bx bx-info-circle'>\x3c/i>
+        <b>การดึงข้อมูลอัตโนมัติ (Smart Autofill):</b> เมื่อเปิดแบบฟอร์ม ระบบจะกรอกชื่อครูผู้ใช้งาน ตำแหน่ง วันที่ปัจจุบัน และชื่อผู้อำนวยการโรงเรียน (นายอธิการ สุขศรี) ให้อัตโนมัติ ประหยัดเวลาในการพิมพ์
       \x3c/div>
     `)}
 
@@ -753,7 +933,39 @@ function manualContent() {
       <div class="man-tip"><i class='bx bx-spreadsheet'>\x3c/i>
         ไฟล์ที่ดาวน์โหลดเป็น <b>.xls</b> (Excel) เปิดได้ด้วย Microsoft Excel, Google Sheets, LibreOffice
       </div>
-    `)}<!-- Users -->
+    `)}
+
+    <!-- External Systems -->
+    ${manSection('sec-external','bxs-network-chart','#0284C7','ระบบเชื่อมโยงภายนอก (Google Apps Script)',`
+      <div class="man-success"><i class='bx bx-check-circle'>\x3c/i>
+        MHC Smart School เชื่อมต่อกับระบบเฉพาะทางภายนอก 3 ระบบหลักอย่างไร้รอยต่อ โดยสามารถเปิดใช้งานได้จากเมนูด้านซ้ายทันที
+      \x3c/div>
+
+      <h3 style="font-size:15px; margin:16px 0 10px; color:#0F172A;">3 ระบบภายนอกที่เชื่อมโยง\x3c/h3>
+      <table class="man-table">
+        <thead><tr><th>ระบบ\x3c/th><th>ฟังก์ชันการทำงาน\x3c/th>\x3c/tr>\x3c/thead>
+        <tbody>
+          <tr>
+            <td><b>1. ระบบนิเทศภายใน\x3c/b></td>
+            <td>บันทึกการนิเทศการจัดการเรียนการสอนของครู, แผนการสอน, ประเมินผล และสรุปคะแนนนิเทศรายบุคคล</td>
+          </tr>
+          <tr>
+            <td><b>2. ระบบเยี่ยมบ้านนักเรียน\x3c/b></td>
+            <td>บันทึกข้อมูลการลงพื้นที่เยี่ยมบ้าน, พิกัด GPS, ภาพถ่ายสภาพความเป็นอยู่ และข้อมูลคัดกรองนักเรียนรายบุคคล</td>
+          </tr>
+          <tr>
+            <td><b>3. ระบบเก็บผลงานและข้อมูลการอบรม\x3c/b></td>
+            <td>แฟ้มสะสมผลงานครูอิเล็กทรอนิกส์ (E-Portfolio), บันทึกการอบรม/สัมมนา/เกียรติบัตร และการนำไปใช้ประกอบ วPA</td>
+          </tr>
+        \x3c/tbody>
+      \x3c/table>
+
+      <div class="man-tip"><i class='bx bx-window-open'>\x3c/i>
+        ระบบจะโหลด Web App ปลายทางแสดงผลบนหน้าจอ MHC Smart School โดยอัตโนมัติ ไม่ต้องสลับแท็บไปมา
+      \x3c/div>
+    `)}
+
+    <!-- Users -->
     ${manSection('sec-users','bxs-user-account','#8B5CF6','จัดการผู้ใช้งาน (Admin)',`
       <div class="man-warn"><i class='bx bx-lock'>\x3c/i>
         เมนูนี้มองเห็นเฉพาะ <b>Admin\x3c/b> เท่านั้น

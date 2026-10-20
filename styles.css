@@ -1165,6 +1165,12 @@ tbody td { padding: 11px 14px !important; vertical-align: middle; color: var(--t
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+  .page-card-body {
+    -webkit-overflow-scrolling: touch;
+  }
+  iframe {
+    max-width: 100%;
+  }
 }
 
 /* ─── Attendance Dashboard Components (Clean Aurora Style) ───── */
