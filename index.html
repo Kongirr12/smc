@@ -365,7 +365,7 @@
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.8.0">
+  <link rel="stylesheet" href="styles.css?v=2.8.1">
 </head>
 <body>
 
@@ -480,8 +480,23 @@
       </div>
 
       <nav class="sidebar-menu" id="sidebarMenu">
+        <!-- เมนูหลัก -->
         <button class="menu-item active" data-page="dashboard" onclick="navigate('dashboard')">
           <i class='bx bxs-home-alt-2'></i> หน้าหลัก
+        </button>
+        <button class="menu-item" data-page="calendar" onclick="navigate('calendar')">
+          <i class='bx bxs-calendar-event'></i> ปฏิทินและข่าวสาร
+        </button>
+
+        <!-- หมวดที่ 1: งานวิชาการและกิจการนักเรียน -->
+        <div class="menu-divider"></div>
+        <div class="menu-section-label">งานวิชาการและนักเรียน</div>
+
+        <button class="menu-item" data-page="attendance" onclick="navigate('attendance')">
+          <i class='bx bxs-check-square'></i> การเข้าเรียน / โฮมรูม
+        </button>
+        <button class="menu-item" data-page="schedule" onclick="navigate('schedule')">
+          <i class='bx bxs-calendar-check'></i> ตารางสอน
         </button>
         <button class="menu-item" data-page="students" onclick="navigate('students')">
           <i class='bx bxs-user-detail'></i> ข้อมูลนักเรียน
@@ -498,47 +513,49 @@
         <button class="menu-item" data-page="qr_attendance" onclick="navigate('qr_attendance')">
           <i class='bx bx-qr-scan'></i> เช็คชื่อ QR Code
         </button>
+        <button class="menu-item" data-page="academic" onclick="navigate('academic')">
+          <i class='bx bxs-book-content'></i> งานวิชาการ & ปพ.5
+        </button>
+
+        <!-- หมวดที่ 2: บริหารทั่วไป บุคลากร และสารบรรณ -->
+        <div class="menu-divider"></div>
+        <div class="menu-section-label">บริหารทั่วไปและบุคลากร</div>
+
         <button class="menu-item staff-only" data-page="personnel" onclick="navigate('personnel')">
           <i class='bx bxs-group'></i> ครูและบุคลากร
         </button>
-        <button class="menu-item" data-page="attendance" onclick="navigate('attendance')">
-          <i class='bx bxs-check-square'></i> การเข้าเรียน
+        <button class="menu-item staff-only" data-page="documents" onclick="navigate('documents')">
+          <i class='bx bxs-envelope'></i> สารบรรณโรงเรียน
         </button>
-        <button class="menu-item" data-page="academic" onclick="navigate('academic')">
-          <i class='bx bxs-book-content'></i> งานวิชาการ
+        <button class="menu-item" data-page="templates" onclick="navigate('templates')">
+          <i class='bx bxs-file-doc'></i> แบบฟอร์มงาน 4 ฝ่าย
         </button>
-        <button class="menu-item" data-page="schedule" onclick="navigate('schedule')">
-          <i class='bx bxs-calendar-check'></i> ตารางสอน
+        <button class="menu-item" data-page="approvals" onclick="navigate('approvals')">
+          <i class='bx bxs-badge-check'></i> ระบบอนุมัติ
+          <span class="badge" id="badgeApprovals" style="display:none;">0</span>
         </button>
-        <button class="menu-item staff-only" data-page="registration" onclick="navigate('registration')">
-          <i class='bx bxs-id-card'></i> งานทะเบียน
+        <button class="menu-item" data-page="files" onclick="navigate('files')">
+          <i class='bx bxs-folder'></i> คลังไฟล์
         </button>
+
+        <!-- หมวดที่ 3: งบประมาณ การเงิน และแผนงาน -->
+        <div class="menu-divider"></div>
+        <div class="menu-section-label">การเงิน งบประมาณ และทะเบียน</div>
+
         <button class="menu-item staff-only" data-page="finance" onclick="navigate('finance')">
           <i class='bx bxs-wallet'></i> งานการเงิน
         </button>
         <button class="menu-item staff-only" data-page="budget" onclick="navigate('budget')">
           <i class='bx bxs-pie-chart-alt-2'></i> ระบบงบประมาณ
         </button>
-        <button class="menu-item staff-only" data-page="documents" onclick="navigate('documents')">
-          <i class='bx bxs-envelope'></i> สารบรรณโรงเรียน
-        </button>
-        <button class="menu-item" data-page="approvals" onclick="navigate('approvals')">
-          <i class='bx bxs-badge-check'></i> ระบบอนุมัติ
-          <span class="badge" id="badgeApprovals" style="display:none;">0</span>
-        </button>
-        <button class="menu-item" data-page="calendar" onclick="navigate('calendar')">
-          <i class='bx bxs-calendar-event'></i> ปฏิทินและข่าวสาร
-        </button>
-        <button class="menu-item" data-page="files" onclick="navigate('files')">
-          <i class='bx bxs-folder'></i> คลังไฟล์
-        </button>
-        <button class="menu-item" data-page="templates" onclick="navigate('templates')">
-          <i class='bx bxs-file-doc'></i> แบบฟอร์มงาน 4 ฝ่าย
+        <button class="menu-item staff-only" data-page="registration" onclick="navigate('registration')">
+          <i class='bx bxs-id-card'></i> งานทะเบียน
         </button>
         <button class="menu-item" data-page="reports" onclick="navigate('reports')">
-          <i class='bx bxs-bar-chart-alt-2'></i> รายงาน
+          <i class='bx bxs-bar-chart-alt-2'></i> รายงานและสถิติ
         </button>
 
+        <!-- หมวดที่ 4: ระบบภายนอก (ส่วนเสริม) -->
         <div class="menu-divider"></div>
         <div class="menu-section-label">ระบบภายนอก (ส่วนเสริม)</div>
 
@@ -552,6 +569,7 @@
           <i class='bx bxs-graduation'></i> ระบบเก็บข้อมูลการอบรม
         </button>
 
+        <!-- หมวดที่ 5: ผู้ดูแลระบบ -->
         <div class="menu-divider" id="adminDivider"></div>
         <div class="menu-section-label" id="adminLabel">สำหรับผู้ดูแล</div>
 
@@ -591,6 +609,9 @@
         </button>
         <div class="page-title" id="pageTitle">หน้าหลัก</div>
         <div class="actions">
+          <button class="icon-btn" onclick="openGlobalSearch()" title="ค้นหาด่วน (นักเรียน / เมนู) [Ctrl+K]" id="btnGlobalSearch">
+            <i class='bx bx-search'></i>
+          </button>
           <button class="icon-btn" onclick="forceAppUpdate()" title="อัปเดต / รีเฟรชระบบ" id="btnRefreshApp">
             <i class='bx bx-refresh text-xl'></i>
           </button>
@@ -630,24 +651,48 @@
         ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ
       </footer>
 
+      <!-- Mobile Bottom Navigation Bar (มือถือ) -->
+      <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="bottom-nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+          <i class='bx bxs-home-alt-2'></i>
+          <span>หน้าหลัก</span>
+        </button>
+        <button class="bottom-nav-item" data-page="attendance" onclick="navigate('attendance')">
+          <i class='bx bxs-check-shield'></i>
+          <span>เช็คชื่อ</span>
+        </button>
+        <button class="bottom-nav-item" data-page="schedule" onclick="navigate('schedule')">
+          <i class='bx bxs-calendar-check'></i>
+          <span>ตารางสอน</span>
+        </button>
+        <button class="bottom-nav-item" data-page="students" onclick="navigate('students')">
+          <i class='bx bxs-user-detail'></i>
+          <span>นักเรียน</span>
+        </button>
+        <button class="bottom-nav-item" id="btnBottomMore" onclick="toggleSidebar(true)">
+          <i class='bx bx-grid-alt'></i>
+          <span>เมนูอื่น</span>
+        </button>
+      </nav>
+
     </div>
 
   </div>
 
 
   <!-- ================== Scripts ================== -->
-  <script src="js1.js?v=2.8.0"></script>
-  <script src="js2.js?v=2.8.0"></script>
-  <script src="js3.js?v=2.8.0"></script>
-  <script src="js4.js?v=2.8.0"></script>
-  <script src="js_schedule.js?v=2.8.0"></script>
-  <script src="js_classroom.js?v=2.8.0"></script>
-  <script src="js_behavior.js?v=2.8.0"></script>
-  <script src="js_student_card.js?v=2.8.0"></script>
-  <script src="js_qr_attendance.js?v=2.8.0"></script>
-  <script src="js_line_oa.js?v=2.8.0"></script>
-  <script src="js_manual.js?v=2.8.0"></script>
-  <script src="js_templates.js?v=2.8.0"></script>
+  <script src="js1.js?v=2.8.1"></script>
+  <script src="js2.js?v=2.8.1"></script>
+  <script src="js3.js?v=2.8.1"></script>
+  <script src="js4.js?v=2.8.1"></script>
+  <script src="js_schedule.js?v=2.8.1"></script>
+  <script src="js_classroom.js?v=2.8.1"></script>
+  <script src="js_behavior.js?v=2.8.1"></script>
+  <script src="js_student_card.js?v=2.8.1"></script>
+  <script src="js_qr_attendance.js?v=2.8.1"></script>
+  <script src="js_line_oa.js?v=2.8.1"></script>
+  <script src="js_manual.js?v=2.8.1"></script>
+  <script src="js_templates.js?v=2.8.1"></script>
  
   <!-- PWA Service Worker Registration & Force Update -->
   <script>

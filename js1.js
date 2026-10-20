@@ -333,6 +333,9 @@ function navigate(page) {
   document.querySelectorAll('.menu-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
+  document.querySelectorAll('.bottom-nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
 
   const titles = {
     dashboard: 'หน้าหลัก',
@@ -425,6 +428,94 @@ function toggleSidebar(open) {
   bd.classList.toggle('show');
 }
 
+/* ─── Global Quick Search (Ctrl+K / Cmd+K) ─────────────────── */
+window.openGlobalSearch = function() {
+  const menuPages = [
+    { title: 'หน้าหลัก (ภาพรวม)', icon: 'bxs-home-alt-2', page: 'dashboard', cat: 'ทั่วไป' },
+    { title: 'เช็คชื่อการเข้าเรียน / แถวเสาธง', icon: 'bxs-check-square', page: 'attendance', cat: 'งานวิชาการ' },
+    { title: 'ตารางสอนประจำชั้น / รายครู', icon: 'bxs-calendar-check', page: 'schedule', cat: 'งานวิชาการ' },
+    { title: 'ข้อมูลนักเรียน', icon: 'bxs-user-detail', page: 'students', cat: 'งานวิชาการ' },
+    { title: 'จัดการห้องเรียน & เลื่อนชั้นเรียน', icon: 'bxs-school', page: 'classroom_mgmt', cat: 'งานวิชาการ' },
+    { title: 'พฤติกรรมนักเรียน / บันทึกคะแนน', icon: 'bxs-heart', page: 'behavior', cat: 'งานวิชาการ' },
+    { title: 'พิมพ์บัตรนักเรียน', icon: 'bxs-id-card', page: 'student_card', cat: 'งานวิชาการ' },
+    { title: 'เช็คชื่อ QR Code อัตโนมัติ', icon: 'bx-qr-scan', page: 'qr_attendance', cat: 'งานวิชาการ' },
+    { title: 'งานวิชาการ & ปพ.5', icon: 'bxs-book-content', page: 'academic', cat: 'งานวิชาการ' },
+    { title: 'ครูและบุคลากร', icon: 'bxs-group', page: 'personnel', cat: 'บริหารบุคคล' },
+    { title: 'สารบรรณโรงเรียน (รับ-ส่งหนังสือ)', icon: 'bxs-envelope', page: 'documents', cat: 'บริหารทั่วไป' },
+    { title: 'แบบฟอร์มงาน 4 ฝ่าย (30 ฟอร์ม)', icon: 'bxs-file-doc', page: 'templates', cat: 'บริหารทั่วไป' },
+    { title: 'ระบบอนุมัติเอกสาร', icon: 'bxs-badge-check', page: 'approvals', cat: 'บริหารทั่วไป' },
+    { title: 'คลังไฟล์เอกสาร', icon: 'bxs-folder', page: 'files', cat: 'บริหารทั่วไป' },
+    { title: 'งานการเงิน', icon: 'bxs-wallet', page: 'finance', cat: 'การเงิน' },
+    { title: 'ระบบงบประมาณและแผนงาน', icon: 'bxs-pie-chart-alt-2', page: 'budget', cat: 'การเงิน' },
+    { title: 'งานทะเบียนนักเรียน', icon: 'bxs-id-card', page: 'registration', cat: 'ทะเบียน' },
+    { title: 'รายงานและสถิติภาพรวม', icon: 'bxs-bar-chart-alt-2', page: 'reports', cat: 'รายงาน' },
+    { title: 'ปฏิทินและข่าวสารโรงเรียน', icon: 'bxs-calendar-event', page: 'calendar', cat: 'ประชาสัมพันธ์' },
+    { title: 'ระบบนิเทศภายใน', icon: 'bxs-chalkboard', page: 'ext_nited', cat: 'ส่วนเสริม' },
+    { title: 'ระบบเยี่ยมบ้าน', icon: 'bxs-home-heart', page: 'ext_homevisit', cat: 'ส่วนเสริม' },
+    { title: 'คู่มือการใช้งานระบบ', icon: 'bxs-book-reader', page: 'manual', cat: 'ช่วยเหลือ' },
+  ];
+  if (APP.role === 'admin') {
+    menuPages.push({ title: 'จัดการผู้ใช้งาน', icon: 'bxs-user-account', page: 'users', cat: 'ผู้ดูแล' });
+    menuPages.push({ title: 'ตั้งค่าระบบโรงเรียน', icon: 'bxs-cog', page: 'settings', cat: 'ผู้ดูแล' });
+  }
+
+  Swal.fire({
+    title: '<div class="text-base font-bold flex items-center justify-center gap-2 text-slate-800"><i class="bx bx-search text-indigo-600 text-xl"></i> ค้นหาด่วน (Quick Search)</div>',
+    html: `
+      <div class="text-left">
+        <div class="relative mb-3">
+          <input type="text" id="globalSearchInput" class="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none" placeholder="พิมพ์ชื่อเมนู หรือ หน้าระบบที่ต้องการ..." autofocus>
+          <i class="bx bx-search absolute left-3 top-3 text-slate-400 text-base"></i>
+        </div>
+        <div id="globalSearchResults" style="max-height: 300px; overflow-y: auto;" class="space-y-1">
+        </div>
+      </div>
+    `,
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: '460px',
+    customClass: { popup: 'rounded-2xl' },
+    didOpen: () => {
+      const inp = document.getElementById('globalSearchInput');
+      const box = document.getElementById('globalSearchResults');
+      const renderResults = (kw) => {
+        kw = (kw || '').trim().toLowerCase();
+        let html = '';
+        const filteredMenus = menuPages.filter(m => !kw || m.title.toLowerCase().includes(kw) || m.cat.toLowerCase().includes(kw));
+        if (filteredMenus.length > 0) {
+          filteredMenus.forEach(m => {
+            html += `
+              <div onclick="Swal.close(); navigate('${m.page}');" class="flex items-center justify-between p-2.5 rounded-xl hover:bg-indigo-50 cursor-pointer transition text-slate-700 hover:text-indigo-600 group">
+                <div class="flex items-center gap-2.5 text-sm font-medium">
+                  <i class="bx ${m.icon} text-lg text-slate-400 group-hover:text-indigo-600"></i>
+                  <span>${escapeHTML(m.title)}</span>
+                </div>
+                <span class="text-[11px] bg-slate-100 group-hover:bg-indigo-100 text-slate-500 group-hover:text-indigo-600 px-2 py-0.5 rounded-md font-semibold">${escapeHTML(m.cat)}</span>
+              </div>
+            `;
+          });
+        }
+        if (!html) {
+          html = `<div class="text-center py-6 text-slate-400 text-xs">ไม่พบผลลัพธ์ที่ตรงกับ "${escapeHTML(kw)}"</div>`;
+        }
+        box.innerHTML = html;
+      };
+      renderResults('');
+      inp.addEventListener('input', (e) => renderResults(e.target.value));
+      setTimeout(() => inp.focus(), 100);
+    }
+  });
+};
+
+// Keyboard shortcut listener: Ctrl+K or Cmd+K
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (typeof window.openGlobalSearch === 'function') {
+      window.openGlobalSearch();
+    }
+  }
+});
 
 /* ============================================================
  *  Dashboard
@@ -444,6 +535,45 @@ function renderDashboard(container) {
       <div class="date-pill">
         <i class='bx bx-calendar'>\x3c/i>
         <span id="todayLabel">\x3c/span>
+      \x3c/div>
+    \x3c/div>
+
+    <!-- Quick Actions Hub (ทางลัดประจำวัน) -->
+    <div class="quick-actions-bar">
+      <div class="quick-action-btn" onclick="navigate('attendance')">
+        <div class="qa-icon qa-icon-green"><i class='bx bxs-check-shield'>\x3c/i>\x3c/div>
+        <div class="qa-info">
+          <div class="qa-title">เช็คชื่อประจำวัน\x3c/div>
+          <div class="qa-desc">แถวหน้าเสาธง / โฮมรูม\x3c/div>
+        \x3c/div>
+        <i class='bx bx-chevron-right qa-arrow'>\x3c/i>
+      \x3c/div>
+
+      <div class="quick-action-btn" onclick="navigate('schedule')">
+        <div class="qa-icon qa-icon-indigo"><i class='bx bxs-calendar-check'>\x3c/i>\x3c/div>
+        <div class="qa-info">
+          <div class="qa-title">ตารางสอนวันนี้\x3c/div>
+          <div class="qa-desc">ตารางสอน & คาบเรียน\x3c/div>
+        \x3c/div>
+        <i class='bx bx-chevron-right qa-arrow'>\x3c/i>
+      \x3c/div>
+
+      <div class="quick-action-btn" onclick="navigate('students')">
+        <div class="qa-icon qa-icon-blue"><i class='bx bxs-user-detail'>\x3c/i>\x3c/div>
+        <div class="qa-info">
+          <div class="qa-title">ค้นหานักเรียน\x3c/div>
+          <div class="qa-desc">ข้อมูล / ชั้นเรียน / ติดต่อ\x3c/div>
+        \x3c/div>
+        <i class='bx bx-chevron-right qa-arrow'>\x3c/i>
+      \x3c/div>
+
+      <div class="quick-action-btn" onclick="navigate('templates')">
+        <div class="qa-icon qa-icon-purple"><i class='bx bxs-file-doc'>\x3c/i>\x3c/div>
+        <div class="qa-info">
+          <div class="qa-title">แบบฟอร์ม 4 ฝ่าย\x3c/div>
+          <div class="qa-desc">บันทึกข้อความ / งานเอกสาร\x3c/div>
+        \x3c/div>
+        <i class='bx bx-chevron-right qa-arrow'>\x3c/i>
       \x3c/div>
     \x3c/div>
 

@@ -1818,3 +1818,255 @@ html.dark-mode .stat-card {
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
+/* ============================================================
+ *  UX/UI Upgrade v2.8.1: Mobile Bottom Nav & Quick Actions Hub
+ * ============================================================ */
+
+/* ─── Mobile Bottom Navigation Bar ──────────────────────────── */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 35;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(79, 70, 229, 0.12);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+    padding-top: 6px;
+    padding-bottom: max(6px, var(--sab));
+    padding-left: max(8px, var(--sal));
+    padding-right: max(8px, var(--sar));
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: transparent;
+    border: none;
+    padding: 6px 2px;
+    color: #64748B;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
+    border-radius: var(--radius-sm);
+    min-height: 48px;
+  }
+
+  .bottom-nav-item i {
+    font-size: 21px;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+  }
+
+  .bottom-nav-item:active {
+    transform: scale(0.92);
+  }
+
+  .bottom-nav-item.active {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .bottom-nav-item.active i {
+    transform: translateY(-2px) scale(1.12);
+    color: var(--primary);
+  }
+
+  .content {
+    padding-bottom: calc(76px + var(--sab)) !important;
+  }
+
+  /* Make sure app footer does not block bottom nav */
+  .app-footer {
+    margin-bottom: calc(56px + var(--sab)) !important;
+  }
+}
+
+html.dark-mode .mobile-bottom-nav {
+  background: rgba(17, 19, 24, 0.95) !important;
+  border-top-color: rgba(99, 102, 241, 0.15) !important;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+html.dark-mode .bottom-nav-item {
+  color: #94A3B8 !important;
+}
+
+html.dark-mode .bottom-nav-item.active {
+  color: #818CF8 !important;
+}
+
+html.dark-mode .bottom-nav-item.active i {
+  color: #818CF8 !important;
+}
+
+/* ─── Quick Actions Hub (Dashboard) ────────────────────────── */
+.quick-actions-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.quick-action-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all var(--spring);
+  box-shadow: var(--shadow-xs);
+  text-align: left;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 62px;
+}
+
+.quick-action-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-sm);
+  border-color: rgba(79, 70, 229, 0.3);
+}
+
+.quick-action-btn:active {
+  transform: scale(0.97);
+}
+
+.qa-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  transition: transform var(--spring);
+}
+
+.quick-action-btn:hover .qa-icon {
+  transform: scale(1.1) rotate(4deg);
+}
+
+.qa-icon-green { background: rgba(5, 150, 105, 0.12); color: #059669; }
+.qa-icon-indigo { background: rgba(79, 70, 229, 0.12); color: #4F46E5; }
+.qa-icon-blue { background: rgba(2, 132, 199, 0.12); color: #0284C7; }
+.qa-icon-purple { background: rgba(124, 58, 237, 0.12); color: #7C3AED; }
+
+.qa-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.qa-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.qa-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.qa-arrow {
+  color: var(--text-muted);
+  font-size: 18px;
+  transition: transform var(--transition), color var(--transition);
+}
+
+.quick-action-btn:hover .qa-arrow {
+  transform: translateX(3px);
+  color: var(--primary);
+}
+
+@media (max-width: 992px) {
+  .quick-actions-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-actions-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .quick-action-btn {
+    padding: 10px 12px;
+    gap: 9px;
+    min-height: 52px;
+  }
+  .qa-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 19px;
+    border-radius: 10px;
+  }
+  .qa-title {
+    font-size: 12.5px;
+  }
+  .qa-desc {
+    display: none;
+  }
+  .qa-arrow {
+    display: none;
+  }
+}
+
+html.dark-mode .quick-action-btn {
+  background: #111318 !important;
+  border-color: rgba(99, 102, 241, 0.15) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+html.dark-mode .quick-action-btn:hover {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  background: #181B23 !important;
+}
+
+html.dark-mode .qa-title {
+  color: #F1F5F9 !important;
+}
+
+html.dark-mode .qa-desc {
+  color: #94A3B8 !important;
+}
+
+/* ─── Touch Targets on Mobile (Apple HIG >= 44px) ───────────── */
+@media (max-width: 640px) {
+  .btn, .icon-btn, select, .form-input {
+    min-height: 42px;
+  }
+  .menu-item {
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+}
+
+
