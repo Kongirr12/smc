@@ -365,7 +365,7 @@
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.9.4">
+  <link rel="stylesheet" href="styles.css?v=2.9.5">
 </head>
 <body>
 
@@ -549,7 +549,7 @@
               <i class='bx bx-code-alt text-indigo-500'></i>
               <span>พัฒนาระบบโดย <b>ครูก้องนที อุ่นเจริญ</b></span>
               <span class="text-slate-300 dark:text-slate-700">•</span>
-              <span class="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v2.9.4</span>
+              <span class="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v2.9.5</span>
             </div>
           </div>
         </form>
@@ -571,6 +571,8 @@
       if (c1) c1.textContent = timeStr;
       const c2 = document.getElementById('loginClockTextMobile');
       if (c2) c2.textContent = timeStrShort;
+      const c3 = document.getElementById('topbarClockText');
+      if (c3) c3.textContent = timeStr;
     }
     setInterval(updateLoginClock, 1000);
     updateLoginClock();
@@ -743,6 +745,13 @@
           <i class='bx bx-menu'></i>
         </button>
         <div class="page-title" id="pageTitle">หน้าหลัก</div>
+
+        <!-- Live System Clock & Online Status Badge in Topbar -->
+        <div class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="topbarClockText">--:--:-- น.</span>
+        </div>
+
         <div class="actions">
           <button class="icon-btn" onclick="openGlobalSearch()" title="ค้นหาด่วน (นักเรียน / เมนู) [Ctrl+K]" id="btnGlobalSearch">
             <i class='bx bx-search'></i>
@@ -816,18 +825,18 @@
 
 
   <!-- ================== Scripts ================== -->
-  <script src="js1.js?v=2.9.4"></script>
-  <script src="js2.js?v=2.9.4"></script>
-  <script src="js3.js?v=2.9.4"></script>
-  <script src="js4.js?v=2.9.4"></script>
-  <script src="js_schedule.js?v=2.9.4"></script>
-  <script src="js_classroom.js?v=2.9.4"></script>
-  <script src="js_behavior.js?v=2.9.4"></script>
-  <script src="js_student_card.js?v=2.9.4"></script>
-  <script src="js_qr_attendance.js?v=2.9.4"></script>
-  <script src="js_line_oa.js?v=2.9.4"></script>
-  <script src="js_manual.js?v=2.9.4"></script>
-  <script src="js_templates.js?v=2.9.4"></script>
+  <script src="js1.js?v=2.9.5"></script>
+  <script src="js2.js?v=2.9.5"></script>
+  <script src="js3.js?v=2.9.5"></script>
+  <script src="js4.js?v=2.9.5"></script>
+  <script src="js_schedule.js?v=2.9.5"></script>
+  <script src="js_classroom.js?v=2.9.5"></script>
+  <script src="js_behavior.js?v=2.9.5"></script>
+  <script src="js_student_card.js?v=2.9.5"></script>
+  <script src="js_qr_attendance.js?v=2.9.5"></script>
+  <script src="js_line_oa.js?v=2.9.5"></script>
+  <script src="js_manual.js?v=2.9.5"></script>
+  <script src="js_templates.js?v=2.9.5"></script>
  
   <!-- PWA Service Worker Registration & Force Update -->
   <script>
