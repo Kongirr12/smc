@@ -369,6 +369,9 @@ function routeApi(action, params, token) {
         }
         return transferStudents(sIds || [], params.targetClassroom || params.targetRoom, token, params.targetYear || params.academic_year);
       }
+      case 'getPromotionPreview': return getPromotionPreview(token);
+      case 'executePromotion': return executePromotion(params, token);
+      case 'rollbackPromotion': return rollbackPromotion(token);
 
       // ---------- ACADEMIC ----------
       case 'getSubjects': return getSubjects(params, token);
@@ -7977,6 +7980,321 @@ function getClassroomsForDropdown(sessionToken) {
   } catch(e) { return { status:'error', message:e.message }; }
 }
 
+
+/* ============================================================
+ *  STUDENT PROMOTION SYSTEM — ระบบเลื่อนชั้นเรียนประจำปีการศึกษา
+ * ============================================================ */
+
+function getPromotionPreview(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    const config = getConfig();
+    const currentAY = String(config.academic_year || '2569');
+    const nextAY = String(Number(currentAY) + 1);
+
+    const allStudents = readJsonSheet_('Students');
+    const activeStudents = allStudents.filter(s => s.status !== 'inactive' && s.status !== 'graduate' && s.status !== 'transfer');
+
+    // Group students by classroom
+    const studentsByClass = {};
+    activeStudents.forEach(s => {
+      const cls = s.classroom || 'ไม่ระบุห้อง';
+      if (!studentsByClass[cls]) studentsByClass[cls] = [];
+      studentsByClass[cls].push({
+        id: s.id,
+        student_code: s.student_id || s.id,
+        student_number: s.student_number || s.student_no || '',
+        name: ((s.prefix || '') + s.first_name + ' ' + s.last_name).trim(),
+        classroom: cls,
+        academic_year: s.academic_year || currentAY,
+        gender: s.gender || ''
+      });
+    });
+
+    // Sort students in each classroom
+    Object.keys(studentsByClass).forEach(cls => {
+      studentsByClass[cls].sort((a, b) => {
+        const na = Number(a.student_number || 0);
+        const nb = Number(b.student_number || 0);
+        if (na && nb) return na - nb;
+        return String(a.name).localeCompare(String(b.name), 'th');
+      });
+    });
+
+    const classroomsList = Object.keys(studentsByClass).sort((a, b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+
+    // Auto-generate suggested mapping
+    const regexRoom = new RegExp('(ม\\.|ป\\.|ประถม|มัธยม)?\\s*([1-6])\\/(\\d+)');
+    const suggestedMapping = classroomsList.map(cls => {
+      let targetCls = '';
+      let defaultAction = 'promote';
+
+      const match = cls.match(regexRoom);
+      if (match) {
+        const prefix = match[1] || 'ม.';
+        const grade = parseInt(match[2], 10);
+        const roomNo = match[3];
+
+        if (grade === 6) {
+          defaultAction = 'graduate';
+          targetCls = 'จบการศึกษา ม.6 (สำเร็จการศึกษา)';
+        } else if (grade === 3) {
+          defaultAction = 'graduate';
+          targetCls = 'จบการศึกษา ม.3';
+        } else {
+          defaultAction = 'promote';
+          targetCls = prefix + (grade + 1) + '/' + roomNo;
+        }
+      } else {
+        defaultAction = 'promote';
+        targetCls = cls;
+      }
+
+      return {
+        from_classroom: cls,
+        to_classroom: targetCls,
+        action: defaultAction,
+        student_count: studentsByClass[cls].length
+      };
+    });
+
+    // Check if previous promotion history exists for rollback
+    const history = readJsonSheet_('PromotionHistory');
+    const canRollback = history && history.length > 0;
+    const lastHistory = canRollback ? history[history.length - 1] : null;
+
+    return {
+      status: 'success',
+      data: {
+        current_year: currentAY,
+        next_year: nextAY,
+        classrooms: classroomsList,
+        students_by_class: studentsByClass,
+        suggested_mapping: suggestedMapping,
+        total_students: activeStudents.length,
+        can_rollback: canRollback,
+        last_promotion_info: lastHistory ? {
+          timestamp: lastHistory.timestamp,
+          target_year: lastHistory.target_year,
+          promoted_by: lastHistory.promoted_by,
+          total_affected: lastHistory.records ? lastHistory.records.length : 0
+        } : null
+      }
+    };
+  } catch (e) {
+    logError({ fn:'getPromotionPreview', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function executePromotion(params, sessionToken) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (_) {
+    return { status:'error', message:'ระบบกำลังประมวลผลคำขออื่นอยู่ กรุณาลองใหม่อีกครั้ง' };
+  }
+
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) { lock.releaseLock(); return auth.response; }
+
+    params = params || {};
+    const targetYear = String(params.target_year || '').trim();
+    if (!targetYear) {
+      lock.releaseLock();
+      return { status:'error', message:'กรุณาระบุปีการศึกษาใหม่ที่ต้องการเลื่อนชั้น' };
+    }
+
+    const mapping = params.mapping || {};
+    const overrides = params.overrides || {};
+    const updateSystemYear = !!params.update_system_year;
+
+    const allStudents = readJsonSheet_('Students');
+    const now = new Date().toISOString();
+    const historyRecords = [];
+
+    let promotedCount = 0;
+    let graduateCount = 0;
+    let retainedCount = 0;
+    const newClassroomsSet = new Set();
+
+    allStudents.forEach(s => {
+      const currentCls = s.classroom;
+      const override = overrides[s.id];
+      const roomMap = mapping[currentCls];
+
+      if (!override && !roomMap) return;
+
+      historyRecords.push({
+        id: s.id,
+        classroom: s.classroom,
+        status: s.status,
+        academic_year: s.academic_year || ''
+      });
+
+      let action = 'promote';
+      let targetCls = '';
+
+      if (override) {
+        action = override.action;
+        targetCls = override.target_classroom || currentCls;
+      } else if (roomMap) {
+        action = roomMap.action;
+        targetCls = roomMap.to_classroom;
+      }
+
+      if (action === 'graduate') {
+        s.status = 'graduate';
+        s.updated_at = now;
+        graduateCount++;
+      } else if (action === 'retain') {
+        s.academic_year = targetYear;
+        s.updated_at = now;
+        retainedCount++;
+      } else if (action === 'promote') {
+        s.classroom = targetCls;
+        s.academic_year = targetYear;
+        s.status = 'active';
+        s.updated_at = now;
+        newClassroomsSet.add(targetCls);
+        promotedCount++;
+      }
+    });
+
+    writeJsonSheet_('Students', allStudents);
+
+    if (newClassroomsSet.size > 0) {
+      const existingClassrooms = readJsonSheet_('Classrooms');
+      let createdRooms = 0;
+      const regexGrade = new RegExp('(ม\\.|ป\\.)?(\\d+)');
+      newClassroomsSet.forEach(rName => {
+        if (!rName || rName.includes('จบการศึกษา')) return;
+        const exists = existingClassrooms.some(r => r.name === rName && String(r.academic_year) === targetYear);
+        if (!exists) {
+          const match = rName.match(regexGrade);
+          const gradeLevel = match ? (match[1] || 'ม.') + match[2] : rName;
+          existingClassrooms.push({
+            id: 'cls_' + Utilities.getUuid().slice(0, 8),
+            name: rName,
+            grade_level: gradeLevel,
+            room_number: rName,
+            academic_year: targetYear,
+            semester: '1',
+            status: 'active',
+            teacher_name: '',
+            created_at: now,
+            updated_at: now
+          });
+          createdRooms++;
+        }
+      });
+      if (createdRooms > 0) {
+        writeJsonSheet_('Classrooms', existingClassrooms);
+      }
+    }
+
+    const historySheet = readJsonSheet_('PromotionHistory');
+    historySheet.push({
+      id: 'promo_' + Date.now(),
+      timestamp: now,
+      target_year: targetYear,
+      promoted_by: auth.user ? (auth.user.name || auth.user.username) : 'admin',
+      records: historyRecords
+    });
+    if (historySheet.length > 5) historySheet.splice(0, historySheet.length - 5);
+    writeJsonSheet_('PromotionHistory', historySheet);
+
+    if (updateSystemYear) {
+      saveConfig({
+        academic_year: targetYear,
+        semester: '1'
+      });
+    }
+
+    clearCachedKeys_(['classrooms_dropdown', 'app_config', 'dashboard_core_cache']);
+    lock.releaseLock();
+
+    return {
+      status: 'success',
+      message: 'เลื่อนชั้นขึ้นสู่ปีการศึกษา ' + targetYear + ' สำเร็จ (เลื่อนชั้น: ' + promotedCount + ' คน, จบการศึกษา: ' + graduateCount + ' คน, คงชั้นเดิม: ' + retainedCount + ' คน)',
+      data: {
+        promoted_count: promotedCount,
+        graduate_count: graduateCount,
+        retained_count: retainedCount,
+        target_year: targetYear,
+        update_system_year: updateSystemYear
+      }
+    };
+  } catch (e) {
+    lock.releaseLock();
+    logError({ fn:'executePromotion', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+function rollbackPromotion(sessionToken) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (_) {
+    return { status:'error', message:'ระบบกำลังประมวลผลคำขออื่นอยู่ กรุณาลองใหม่อีกครั้ง' };
+  }
+
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) { lock.releaseLock(); return auth.response; }
+
+    const historySheet = readJsonSheet_('PromotionHistory');
+    if (!historySheet || historySheet.length === 0) {
+      lock.releaseLock();
+      return { status:'error', message:'ไม่พบประวัติการเลื่อนชั้นที่สามารถย้อนกลับได้' };
+    }
+
+    const lastPromo = historySheet.pop();
+    const records = lastPromo.records || [];
+    if (records.length === 0) {
+      lock.releaseLock();
+      return { status:'error', message:'ประวัติการเลื่อนชั้นว่างเปล่า' };
+    }
+
+    const recMap = new Map();
+    records.forEach(r => recMap.set(r.id, r));
+
+    const allStudents = readJsonSheet_('Students');
+    const now = new Date().toISOString();
+    let restoredCount = 0;
+
+    allStudents.forEach(s => {
+      const prev = recMap.get(s.id);
+      if (prev) {
+        s.classroom = prev.classroom;
+        s.status = prev.status;
+        s.academic_year = prev.academic_year;
+        s.updated_at = now;
+        restoredCount++;
+      }
+    });
+
+    writeJsonSheet_('Students', allStudents);
+    writeJsonSheet_('PromotionHistory', historySheet);
+
+    clearCachedKeys_(['classrooms_dropdown', 'dashboard_core_cache']);
+    lock.releaseLock();
+
+    return {
+      status: 'success',
+      message: 'ย้อนกลับข้อมูลการเลื่อนชั้นสำเร็จ คืนสถานะนักเรียน ' + restoredCount + ' คน เรียบร้อยแล้ว',
+      data: { restored_count: restoredCount }
+    };
+  } catch (e) {
+    lock.releaseLock();
+    logError({ fn:'rollbackPromotion', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
 
 /* ============================================================
  *  BEHAVIOR — บันทึกคะแนนพฤติกรรม

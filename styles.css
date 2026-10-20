@@ -670,6 +670,12 @@ select {
 }
 .btn-blue:hover { box-shadow: 0 10px 30px rgba(79,70,229,.4); filter: brightness(1.08); }
 
+.btn-purple {
+  background: linear-gradient(135deg, #7C3AED, #6D28D9); color: white;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, .25); border-color: transparent;
+}
+.btn-purple:hover { box-shadow: 0 10px 30px rgba(124, 58, 237, .4); filter: brightness(1.08); }
+
 .btn-light {
   background: var(--bg-surface); color: var(--text-primary);
   border-color: var(--border); box-shadow: var(--shadow-xs);

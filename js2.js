@@ -141,6 +141,9 @@ function renderStudents(container) {
         <i class='bx bx-download'>\x3c/i> Export
       \x3c/button>
       ${APP.role !== 'teacher' ? `
+      <button class="btn btn-purple" onclick="openPromotionWizard()">
+        <i class='bx bx-up-arrow-circle'></i> ระบบเลื่อนชั้นเรียน
+      </button>
       <button class="btn btn-light" onclick="cleanStudentDataConfirm()" title="ลบข้อมูลนักเรียนที่ซ้ำกัน และแก้ไขคำนำหน้าที่ซ้ำ เช่น เด็กชายเด็กชาย">
         <i class='bx bx-check-double text-blue-600'>\x3c/i> จัดการชื่อ/ลบข้อมูลซ้ำ
       \x3c/button>

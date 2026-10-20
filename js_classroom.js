@@ -13,7 +13,7 @@ function renderClassroomMgmt(container) {
 
   container.innerHTML = `
     ${pageHeader('จัดการห้องเรียน', 'bxs-school', `
-      ${APP.role !== 'teacher' ? `<button class="btn btn-blue" onclick="openClassroomForm()"><i class='bx bx-plus'></i> เพิ่มห้องเรียน</button>` : ''}
+      ${APP.role !== 'teacher' ? `<button class="btn btn-purple" onclick="openPromotionWizard()"><i class='bx bx-up-arrow-circle'></i> ระบบเลื่อนชั้นเรียน</button><button class="btn btn-blue" onclick="openClassroomForm()"><i class='bx bx-plus'></i> เพิ่มห้องเรียน</button>` : ''}
     `)}
     <div class="page-card">
       <div class="page-card-body">
@@ -580,3 +580,393 @@ function deleteClassroomConfirm(id, name) {
       .deleteClassroom(id, APP.token);
   });
 }
+
+
+/* ============================================================
+ *  STUDENT GRADE PROMOTION WIZARD (ระบบเลื่อนชั้นเรียน)
+ * ============================================================ */
+
+const PromotionState = {
+  data: null,
+  mapping: {},
+  overrides: {},
+  activeOverrideClass: null
+};
+
+window.openPromotionWizard = function() {
+  showLoading('กำลังโหลดข้อมูลนักเรียนและห้องเรียน...');
+  google.script.run
+    .withSuccessHandler(res => {
+      hideLoading();
+      if (res.status !== 'success') {
+        return showToast('error', res.message || 'ไม่สามารถโหลดข้อมูลเลื่อนชั้นได้');
+      }
+      PromotionState.data = res.data;
+      PromotionState.mapping = {};
+      PromotionState.overrides = {};
+      PromotionState.activeOverrideClass = null;
+
+      (res.data.suggested_mapping || []).forEach(m => {
+        PromotionState.mapping[m.from_classroom] = {
+          action: m.action,
+          to_classroom: m.to_classroom
+        };
+      });
+
+      renderPromotionWizardModal();
+    })
+    .withFailureHandler(err => {
+      hideLoading();
+      showToast('error', err.message || err);
+    })
+    .getPromotionPreview(APP.token);
+};
+
+function renderPromotionWizardModal() {
+  const d = PromotionState.data;
+  if (!d) return;
+
+  const currentYear = d.current_year || '2569';
+  const nextYear = d.next_year || '2570';
+  const mappings = d.suggested_mapping || [];
+
+  const html = `
+    <div style="text-align:left; font-size:13px; color:#1E293B;">
+      <!-- Header Banner -->
+      <div style="background:linear-gradient(135deg,#4F46E5,#3730A3); border-radius:12px; padding:16px 20px; color:white; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <h3 style="margin:0; font-size:16px; font-weight:800; color:white; display:flex; align-items:center; gap:8px;">
+              <i class='bx bx-up-arrow-circle' style="font-size:22px;"></i> ระบบเลื่อนชั้นเรียนประจำปีการศึกษา
+            </h3>
+            <p style="margin:3px 0 0 0; font-size:12px; color:#E0E7FF;">
+              โรงเรียนมหาชัยพิทยาคาร • ปรับปรุงชั้นเรียนอัตโนมัติ ไม่ต้องกรอกรายชื่อใหม่
+            </p>
+          </div>
+          <div>
+            <span style="background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:99px; font-size:12px; font-weight:700;">
+              นักเรียนทั้งหมด: ${d.total_students} คน
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Year Setup Box -->
+      <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:12px 16px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:700; color:#475569; font-size:12.5px;">ปีการศึกษาปัจจุบัน:</span>
+            <span style="background:#E2E8F0; padding:3px 8px; border-radius:6px; font-weight:800; color:#1E293B; font-size:13px;">${currentYear}</span>
+          </div>
+          <i class='bx bx-right-arrow-alt' style="font-size:20px; color:#94A3B8;"></i>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-weight:700; color:#4338CA; font-size:12.5px;">เลื่อนขึ้นสู่ปีการศึกษาใหม่:</span>
+            <input type="text" id="promo_target_year" value="${nextYear}" style="width:75px; padding:4px 8px; border:2px solid #818CF8; border-radius:8px; font-weight:800; font-size:13.5px; text-align:center; color:#312E81; outline:none;">
+          </div>
+          ${d.can_rollback ? `
+            <button type="button" class="btn btn-light" onclick="triggerRollbackPromotion()" style="margin-left:auto; font-size:11.5px; padding:4px 10px; color:#B91C1C; border-color:#FECDD3;">
+              <i class='bx bx-undo'></i> ย้อนกลับการเลื่อนชั้นครั้งก่อน
+            </button>
+          ` : ''}
+        </div>
+        <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #CBD5E1;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:#334155; cursor:pointer;">
+            <input type="checkbox" id="promo_update_system_year" checked style="width:15px; height:15px; accent-color:#4F46E5;">
+            <span>ปรับเปลี่ยนปีการศึกษาหลักของระบบเป็นปีการศึกษาใหม่ทันทีหลังจากเลื่อนชั้นเสร็จสิ้น</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Mapping Table Header -->
+      <div style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="margin:0; font-size:13.5px; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:6px;">
+          <i class='bx bx-git-branch text-indigo-600'></i> แผนผังการเลื่อนชั้นห้องเรียน
+        </h4>
+        <span style="font-size:11.5px; color:#64748B;">คลิก "ปรับรายคน" เพื่อระบุนักเรียนที่ซ้ำชั้นหรือไม่เลื่อน</span>
+      </div>
+
+      <!-- Mapping Table Scroll Box -->
+      <div style="max-height:280px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:10px; margin-bottom:12px;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+          <thead>
+            <tr style="background:#F1F5F9; border-bottom:1px solid #CBD5E1; color:#334155; position:sticky; top:0; z-index:2;">
+              <th style="padding:8px 10px; text-align:left;">ห้องเรียนเดิม (${currentYear})</th>
+              <th style="padding:8px 6px; text-align:center; width:80px;">จำนวน</th>
+              <th style="padding:8px 4px; text-align:center; width:30px;"></th>
+              <th style="padding:8px 10px; text-align:left;">การดำเนินการ / ห้องเรียนปลายทาง (${nextYear})</th>
+              <th style="padding:8px 8px; text-align:center; width:110px;">ข้อยกเว้น</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${mappings.map(m => {
+              const currentAction = PromotionState.mapping[m.from_classroom]?.action || m.action;
+              const currentTo = PromotionState.mapping[m.from_classroom]?.to_classroom || m.to_classroom;
+              const overrideCount = Object.keys(PromotionState.overrides).filter(sid => {
+                const s = (d.students_by_class[m.from_classroom] || []).find(x => x.id === sid);
+                return !!s;
+              }).length;
+
+              return `
+                <tr style="border-bottom:1px solid #F1F5F9;">
+                  <td style="padding:8px 10px; font-weight:700; color:#1E293B;">
+                    ชั้น ${escapeHTML(m.from_classroom)}
+                  </td>
+                  <td style="padding:8px 6px; text-align:center; font-semibold; color:#475569;">
+                    ${m.student_count} คน
+                  </td>
+                  <td style="padding:8px 4px; text-align:center; color:#94A3B8;">
+                    ➔
+                  </td>
+                  <td style="padding:8px 10px;">
+                    <select class="promo-select" style="width:100%; padding:5px 8px; border:1px solid #CBD5E1; border-radius:6px; font-size:12px; background:white; font-weight:600;" onchange="onPromoRoomChange('${escapeHTML(m.from_classroom)}', this.value)">
+                      <option value="promote:${m.to_classroom}" ${currentAction==='promote' && currentTo===m.to_classroom ? 'selected' : ''}>
+                        🚀 เลื่อนขึ้น: ชั้น ${escapeHTML(m.to_classroom)}
+                      </option>
+                      <option value="graduate:จบการศึกษา" ${currentAction==='graduate' ? 'selected' : ''}>
+                        🎓 สำเร็จการศึกษา (จบการศึกษา)
+                      </option>
+                      <option value="retain:${m.from_classroom}" ${currentAction==='retain' ? 'selected' : ''}>
+                        ⏸️ คงชั้นเดิม (ซ้ำชั้นทั้งห้อง)
+                      </option>
+                    </select>
+                  </td>
+                  <td style="padding:8px 8px; text-align:center;">
+                    <button type="button" class="btn btn-light" style="font-size:11px; padding:3px 8px;" onclick="toggleStudentOverridePanel('${escapeHTML(m.from_classroom)}')">
+                      <i class='bx bx-user'></i> ปรับรายคน
+                      ${overrideCount > 0 ? `<b style="color:#4F46E5; margin-left:2px;">(${overrideCount})</b>` : ''}
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Expandable Student Override Box -->
+      <div id="promoStudentOverridePanel" style="display:none; background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:12px; margin-bottom:12px; max-height:220px; overflow-y:auto;">
+      </div>
+    </div>
+  `;
+
+  Swal.fire({
+    title: null,
+    html: html,
+    width: 820,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-check"></i> ดำเนินการเลื่อนชั้นเรียน',
+    confirmButtonColor: '#4F46E5',
+    cancelButtonText: 'ยกเลิก',
+    customClass: {
+      popup: 'rounded-2xl',
+      actions: 'gap-2'
+    },
+    preConfirm: () => {
+      return confirmExecutePromotion();
+    }
+  });
+}
+
+window.onPromoRoomChange = function(fromRoom, val) {
+  const parts = val.split(':');
+  const action = parts[0];
+  const toRoom = parts[1] || '';
+  if (!PromotionState.mapping[fromRoom]) PromotionState.mapping[fromRoom] = {};
+  PromotionState.mapping[fromRoom].action = action;
+  PromotionState.mapping[fromRoom].to_classroom = toRoom;
+};
+
+window.toggleStudentOverridePanel = function(classroom) {
+  const panel = document.getElementById('promoStudentOverridePanel');
+  if (!panel) return;
+
+  if (PromotionState.activeOverrideClass === classroom && panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    PromotionState.activeOverrideClass = null;
+    return;
+  }
+
+  PromotionState.activeOverrideClass = classroom;
+  panel.style.display = 'block';
+
+  const students = PromotionState.data?.students_by_class?.[classroom] || [];
+  const currentAction = PromotionState.mapping[classroom]?.action || 'promote';
+  const currentToRoom = PromotionState.mapping[classroom]?.to_classroom || classroom;
+
+  panel.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div style="font-weight:800; font-size:12.5px; color:#1E293B;">
+        <i class='bx bx-user-check text-indigo-600'></i> ปรับข้อยกเว้นรายคน: ชั้น ${escapeHTML(classroom)} (${students.length} คน)
+      </div>
+      <button type="button" class="btn btn-light" style="padding:2px 6px; font-size:11px;" onclick="document.getElementById('promoStudentOverridePanel').style.display='none';">
+        <i class='bx bx-x'></i> ปิด
+      </button>
+    </div>
+    <div style="font-size:11px; color:#64748B; margin-bottom:8px;">
+      กำหนดสถานะเฉพาะนักเรียนที่ไม่ต้องการเลื่อนตามห้อง (เช่น ซ้ำชั้น หรือไม่ผ่านเกณฑ์)
+    </div>
+    <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+      <thead>
+        <tr style="background:#E2E8F0; color:#334155;">
+          <th style="padding:5px 6px; width:35px; text-align:center;">ที่</th>
+          <th style="padding:5px 6px; width:70px; text-align:center;">รหัส</th>
+          <th style="padding:5px 8px; text-align:left;">ชื่อ - นามสกุล</th>
+          <th style="padding:5px 8px; text-align:left;">การดำเนินการเฉพาะบุคคล</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${students.map((s, idx) => {
+          const ov = PromotionState.overrides[s.id];
+          const curVal = ov ? (ov.action + (ov.target_classroom ? (':' + ov.target_classroom) : '')) : 'default';
+
+          return `
+            <tr style="border-bottom:1px solid #E2E8F0;">
+              <td style="padding:4px 6px; text-align:center; color:#64748B;">${idx + 1}</td>
+              <td style="padding:4px 6px; text-align:center; font-mono text-slate-500;">${escapeHTML(s.student_code || '-')}</td>
+              <td style="padding:4px 8px; font-weight:600; color:#1E293B;">${escapeHTML(s.name)}</td>
+              <td style="padding:4px 8px;">
+                <select style="width:100%; padding:3px 6px; border:1px solid #CBD5E1; border-radius:4px; font-size:11px; background:${ov ? '#EFF6FF' : 'white'}; font-weight:${ov ? '700' : 'normal'};" onchange="onStudentOverrideChange('${s.id}', this.value, '${escapeHTML(classroom)}')">
+                  <option value="default" ${curVal==='default'?'selected':''}>เลื่อนตามห้อง (${currentAction==='graduate'?'จบการศึกษา':('ขึ้นชั้น ' + currentToRoom)})</option>
+                  <option value="retain:${classroom}" ${curVal.startsWith('retain')?'selected':''}>⏸️ คงชั้นเดิม (ซ้ำชั้น ${escapeHTML(classroom)})</option>
+                  <option value="graduate:จบการศึกษา" ${curVal.startsWith('graduate')?'selected':''}>🎓 จบการศึกษา</option>
+                </select>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+};
+
+window.onStudentOverrideChange = function(studentId, val, classroom) {
+  if (val === 'default') {
+    delete PromotionState.overrides[studentId];
+  } else {
+    const parts = val.split(':');
+    PromotionState.overrides[studentId] = {
+      action: parts[0],
+      target_classroom: parts[1] || ''
+    };
+  }
+};
+
+window.confirmExecutePromotion = function() {
+  const targetYear = document.getElementById('promo_target_year')?.value?.trim();
+  const updateSystemYear = !!document.getElementById('promo_update_system_year')?.checked;
+
+  if (!targetYear) {
+    showToast('warning', 'กรุณาระบุปีการศึกษาใหม่');
+    return false;
+  }
+
+  const d = PromotionState.data;
+  let promoCount = 0;
+  let gradCount = 0;
+  let retainCount = 0;
+
+  Object.keys(d.students_by_class || {}).forEach(cls => {
+    const students = d.students_by_class[cls] || [];
+    const roomMap = PromotionState.mapping[cls] || { action: 'promote' };
+
+    students.forEach(s => {
+      const ov = PromotionState.overrides[s.id];
+      const act = ov ? ov.action : roomMap.action;
+      if (act === 'graduate') gradCount++;
+      else if (act === 'retain') retainCount++;
+      else promoCount++;
+    });
+  });
+
+  Swal.fire({
+    title: 'ยืนยันการเลื่อนชั้นเรียน?',
+    html: `
+      <div style="text-align:left; font-size:13px; color:#334155; line-height:1.6;">
+        <p style="margin-top:0;">ระบบกำลังจะดำเนินการเลื่อนชั้นนักเรียนขึ้นสู่ปีการศึกษา <b>${targetYear}</b> ดังนี้:</p>
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:10px 14px; margin:10px 0;">
+          <div>🚀 เลื่อนชั้นเรียน: <b style="color:#4F46E5;">${promoCount} คน</b></div>
+          <div>🎓 สำเร็จการศึกษา: <b style="color:#059669;">${gradCount} คน</b></div>
+          <div>⏸️ ซ้ำชั้น / คงชั้นเดิม: <b style="color:#D97706;">${retainCount} คน</b></div>
+        </div>
+        <p style="font-size:11.5px; color:#64748B; margin-bottom:0;">
+          * ข้อมูลเดิมทั้งหมดจะถูกสำรองไว้ก่อนดำเนินการ สามารถกดย้อนกลับ (Rollback) ได้ทุกเมื่อ
+        </p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-check"></i> ยืนยันเลื่อนชั้นทันที',
+    confirmButtonColor: '#4F46E5',
+    cancelButtonText: 'กลับไปตรวจสอบ'
+  }).then(r => {
+    if (!r.isConfirmed) {
+      renderPromotionWizardModal();
+      return;
+    }
+
+    showLoading('กำลังดำเนินการเลื่อนชั้นเรียนและสำรองข้อมูล...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status === 'success') {
+          Swal.fire({
+            title: 'เลื่อนชั้นเรียนสำเร็จ!',
+            text: res.message,
+            icon: 'success',
+            confirmButtonColor: '#4F46E5'
+          }).then(() => {
+            if (typeof loadClassroomList === 'function') loadClassroomList();
+            if (typeof loadStudents === 'function') loadStudents();
+            if (typeof loadDashboardData === 'function') loadDashboardData(true);
+          });
+        } else {
+          Swal.fire({ title: 'เกิดข้อผิดพลาด', text: res.message, icon: 'error' });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({ title: 'เกิดข้อผิดพลาด', text: err.message || err, icon: 'error' });
+      })
+      .executePromotion({
+        target_year: targetYear,
+        mapping: PromotionState.mapping,
+        overrides: PromotionState.overrides,
+        update_system_year: updateSystemYear
+      }, APP.token);
+  });
+
+  return false;
+};
+
+window.triggerRollbackPromotion = function() {
+  Swal.fire({
+    title: 'ย้อนกลับการเลื่อนชั้นครั้งก่อน?',
+    text: 'ระบบจะคืนค่าห้องเรียนและสถานะของนักเรียนทุกคนกลับสู่สภาวะเดิมก่อนการเลื่อนชั้นครั้งล่าสุด',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ย้อนกลับข้อมูล',
+    confirmButtonColor: '#DC2626',
+    cancelButtonText: 'ยกเลิก'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+
+    showLoading('กำลังเรียกคืนข้อมูลนักเรียน...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res.status === 'success') {
+          showToast('success', res.message);
+          openPromotionWizard();
+          if (typeof loadClassroomList === 'function') loadClassroomList();
+          if (typeof loadStudents === 'function') loadStudents();
+        } else {
+          showToast('error', res.message);
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', err.message || err);
+      })
+      .rollbackPromotion(APP.token);
+  });
+};
