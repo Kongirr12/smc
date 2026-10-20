@@ -1774,7 +1774,12 @@ const AttendanceState = {
   classrooms: [],
   subjects: [],  // loaded subjects (filtered for teacher role)
   periods: [],    // loaded period config
-  scheduleCache: [] // schedule cache
+  scheduleCache: [], // schedule cache
+  reportScope: 'monthly',
+  reportView: 'summary',
+  filterOptions: null,
+  reportLastData: null,
+  tableClassroom: ''
 };
 
 function renderAttendance(container) {
@@ -2709,9 +2714,9 @@ function renderAttendanceReport() {
     </div>
 
     <!-- Filter Form -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 mb-4 p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 mb-4 p-3 bg-slate-50/70 border border-slate-200/80 rounded-xl items-end">
       <!-- Classroom -->
-      <div>
+      <div class="sm:col-span-1 lg:col-span-3">
         <label class="text-[11px] font-bold text-slate-500 mb-1 block">ระดับชั้นเรียน</label>
         <select id="rptClassroom" onchange="updateReportSubjects(); loadAttendanceReport();" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
           <option value="">ทุกระดับชั้น (ทั้งโรงเรียน)</option>
@@ -2720,7 +2725,7 @@ function renderAttendanceReport() {
       </div>
 
       <!-- Report Type -->
-      <div>
+      <div class="sm:col-span-1 lg:col-span-3">
         <label class="text-[11px] font-bold text-slate-500 mb-1 block">ประเภทการเช็คชื่อ</label>
         <select id="rptType" onchange="onReportTypeChange()" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
           <option value="homeroom">🚩 เช็คแถวหน้าเสาธง / โฮมรูม</option>
@@ -2730,17 +2735,17 @@ function renderAttendanceReport() {
       </div>
 
       <!-- Scope: Monthly -->
-      <div id="rptMonthWrap" style="${AttendanceState.reportScope==='monthly'?'':'display:none;'}">
+      <div id="rptMonthWrap" class="sm:col-span-1 lg:col-span-3" style="${AttendanceState.reportScope==='monthly'?'':'display:none;'}">
         <label class="text-[11px] font-bold text-slate-500 mb-1 block">ประจำเดือน</label>
-        <select id="rptMonth" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
+        <select id="rptMonth" onchange="loadAttendanceReport()" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
           ${(AttendanceState.filterOptions?.months || []).map(m => `<option value="${m.ym}">${escapeHTML(m.label)}</option>`).join('')}
         </select>
       </div>
 
       <!-- Scope: Semester -->
-      <div id="rptSemesterWrap" style="${AttendanceState.reportScope==='semester'?'':'display:none;'}">
+      <div id="rptSemesterWrap" class="sm:col-span-1 lg:col-span-3" style="${AttendanceState.reportScope==='semester'?'':'display:none;'}">
         <label class="text-[11px] font-bold text-slate-500 mb-1 block">ภาคเรียน / ปีการศึกษา</label>
-        <select id="rptSemester" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
+        <select id="rptSemester" onchange="loadAttendanceReport()" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
           ${(AttendanceState.filterOptions?.semesters || [
             { id:'1', label:'ภาคเรียนที่ 1/2569 (พ.ค. - ต.ค.)' },
             { id:'2', label:'ภาคเรียนที่ 2/2569 (พ.ย. - มี.ค.)' }
@@ -2749,27 +2754,27 @@ function renderAttendanceReport() {
       </div>
 
       <!-- Scope: Custom Dates -->
-      <div id="rptCustomDatesWrap" class="col-span-1 sm:col-span-2 md:col-span-2 grid grid-cols-2 gap-2" style="${AttendanceState.reportScope==='custom'?'':'display:none;'}">
+      <div id="rptCustomDatesWrap" class="sm:col-span-2 lg:col-span-3 grid grid-cols-2 gap-2" style="${AttendanceState.reportScope==='custom'?'':'display:none;'}">
         <div>
           <label class="text-[11px] font-bold text-slate-500 mb-1 block">ตั้งแต่วันที่</label>
-          <input type="date" id="rptStart" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white" value="${monthStart}">
+          <input type="date" id="rptStart" class="w-full rounded-lg border border-slate-200 px-2 py-2 text-xs sm:text-sm bg-white" value="${monthStart}">
         </div>
         <div>
           <label class="text-[11px] font-bold text-slate-500 mb-1 block">ถึงวันที่</label>
-          <input type="date" id="rptEnd" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white" value="${todayStr}">
+          <input type="date" id="rptEnd" class="w-full rounded-lg border border-slate-200 px-2 py-2 text-xs sm:text-sm bg-white" value="${todayStr}">
         </div>
       </div>
 
       <!-- Action Buttons -->
-      <div class="col-span-1 sm:col-span-2 md:col-span-1 flex items-end gap-1.5 flex-wrap">
-        <button class="btn btn-blue flex-1 min-w-[90px]" onclick="loadAttendanceReport()">
-          <i class='bx bx-search'></i> ดูรายงาน
+      <div class="sm:col-span-2 lg:col-span-3 flex items-center justify-start sm:justify-end gap-1.5 flex-nowrap">
+        <button type="button" class="btn btn-blue px-3 py-2 text-xs sm:text-sm font-semibold flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-xs" onclick="loadAttendanceReport()">
+          <i class='bx bx-search text-base'></i> <span>ดูรายงาน</span>
         </button>
-        <button class="btn btn-light" onclick="exportReportCSV()" title="ดาวน์โหลด Excel/CSV">
-          <i class='bx bx-spreadsheet'></i> CSV
+        <button type="button" class="btn btn-light px-3 py-2 text-xs sm:text-sm font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-200 hover:bg-slate-100 shadow-xs" onclick="printAttendanceReport()" title="พิมพ์ PDF A4">
+          <i class='bx bx-printer text-indigo-600 text-base'></i> <span>พิมพ์</span>
         </button>
-        <button class="btn btn-light" onclick="printAttendanceReport()" title="พิมพ์ PDF A4">
-          <i class='bx bx-printer'></i> พิมพ์
+        <button type="button" class="btn btn-light px-3 py-2 text-xs sm:text-sm font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap border border-slate-200 hover:bg-slate-100 shadow-xs" onclick="exportReportCSV()" title="ดาวน์โหลด Excel/CSV">
+          <i class='bx bx-spreadsheet text-emerald-600 text-base'></i> <span>CSV</span>
         </button>
       </div>
     </div>
@@ -2905,10 +2910,24 @@ function updateReportSubjects() {
   }
 }
 
+function filterAttendanceTableRoom(room) {
+  AttendanceState.tableClassroom = room || '';
+  if (AttendanceState.reportLastData && AttendanceState.reportLastData.res) {
+    renderAttendanceReportData(AttendanceState.reportLastData.res);
+    const el = document.getElementById('reportStudentTableCard');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
+
 function loadAttendanceReport() {
   const scope = AttendanceState.reportScope || 'monthly';
   const classroom = document.getElementById('rptClassroom')?.value || '';
   const rptType   = document.getElementById('rptType')?.value || 'homeroom';
+
+  // Synchronize or reset table classroom filter
+  AttendanceState.tableClassroom = classroom || '';
 
   const params = {
     mode: 'class',
@@ -3079,10 +3098,11 @@ function renderAttendanceReportData(res) {
     classroomTableHtml = `
       <div class="page-card mb-4">
         <div class="page-card-body">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
               <i class="bx bxs-school text-indigo-600">\x3c/i> สรุปสถิติแยกตามระดับชั้นเรียน (${res.classrooms.length} ห้อง)
             </h4>
+            <span class="text-xs text-slate-500 flex items-center gap-1"><i class='bx bx-pointer'></i> คลิกที่ห้องเรียนเพื่อกรองดูรายชื่อ</span>
           </div>
           <div style="overflow-x:auto;">
             <table class="risk-table">
@@ -3100,23 +3120,31 @@ function renderAttendanceReportData(res) {
                 </tr>
               </thead>
               <tbody>
-                ${res.classrooms.map((c, i) => `
-                  <tr>
-                    <td style="text-align:center;" class="text-slate-400">${i + 1}</td>
-                    <td class="font-bold text-slate-800">ชั้น ${escapeHTML(c.classroom)}</td>
-                    <td class="text-slate-600 text-xs">${escapeHTML(c.teacher || 'ครูประจำชั้น')}</td>
-                    <td style="text-align:center;">${c.students_count} คน</td>
-                    <td style="text-align:center;" class="text-emerald-600 font-semibold">${c.present}</td>
-                    <td style="text-align:center;" class="text-rose-600 font-semibold">${c.absent}</td>
-                    <td style="text-align:center;" class="text-amber-600 font-semibold">${c.leave}</td>
-                    <td style="text-align:center;" class="text-blue-600 font-semibold">${c.late}</td>
-                    <td style="text-align:center;">
-                      <span class="inline-block px-2 py-0.5 rounded text-xs font-bold ${c.attendance_pct >= 95 ? 'bg-emerald-100 text-emerald-800' : (c.attendance_pct >= 90 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')}">
-                        ${c.attendance_pct.toFixed(1)}%
-                      </span>
-                    </td>
-                  </tr>
-                `).join('')}
+                ${res.classrooms.map((c, i) => {
+                  const isCur = (AttendanceState.tableClassroom === c.classroom);
+                  return `
+                    <tr onclick="filterAttendanceTableRoom('${escapeHTML(c.classroom)}')" class="cursor-pointer transition-colors ${isCur ? 'bg-indigo-50/80 font-semibold' : 'hover:bg-indigo-50/40'}" title="คลิกเพื่อเลือกดูชั้น ${escapeHTML(c.classroom)}">
+                      <td style="text-align:center;" class="text-slate-400">${i + 1}</td>
+                      <td class="font-bold text-slate-800">
+                        <div class="flex items-center gap-1.5">
+                          <span>ชั้น ${escapeHTML(c.classroom)}</span>
+                          ${isCur ? '<span class="text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-normal">กำลังแสดง</span>' : '<span class="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-normal hover:bg-indigo-600 hover:text-white transition-colors">ดูรายชื่อ</span>'}
+                        </div>
+                      </td>
+                      <td class="text-slate-600 text-xs">${escapeHTML(c.teacher || 'ครูประจำชั้น')}</td>
+                      <td style="text-align:center;">${c.students_count} คน</td>
+                      <td style="text-align:center;" class="text-emerald-600 font-semibold">${c.present}</td>
+                      <td style="text-align:center;" class="text-rose-600 font-semibold">${c.absent}</td>
+                      <td style="text-align:center;" class="text-amber-600 font-semibold">${c.leave}</td>
+                      <td style="text-align:center;" class="text-blue-600 font-semibold">${c.late}</td>
+                      <td style="text-align:center;">
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold ${c.attendance_pct >= 95 ? 'bg-emerald-100 text-emerald-800' : (c.attendance_pct >= 90 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')}">
+                          ${c.attendance_pct.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
               </tbody>
             </table>
           </div>
@@ -3125,7 +3153,64 @@ function renderAttendanceReportData(res) {
     `;
   }
 
-  // 3. Main Content
+  // 3. Filter Students by Table Classroom Selection
+  const allStudents = res.data || [];
+  const roomCounts = {};
+  const availableRooms = [];
+  allStudents.forEach(r => {
+    const rm = (r.classroom || '').trim();
+    if (rm) {
+      if (!roomCounts[rm]) {
+        roomCounts[rm] = 0;
+        availableRooms.push(rm);
+      }
+      roomCounts[rm]++;
+    }
+  });
+  availableRooms.sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
+
+  let activeRoom = AttendanceState.tableClassroom || '';
+  if (activeRoom && !availableRooms.includes(activeRoom)) {
+    activeRoom = '';
+    AttendanceState.tableClassroom = '';
+  }
+
+  const displayStudents = activeRoom
+    ? allStudents.filter(r => (r.classroom || '').trim() === activeRoom)
+    : allStudents;
+
+  // Classroom quick selector bar (rendered above the student table)
+  let roomSelectorHtml = '';
+  if (availableRooms.length > 1) {
+    roomSelectorHtml = `
+      <div class="bg-gradient-to-r from-slate-50 to-indigo-50/40 border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-xs font-bold text-slate-700 flex items-center gap-1 mr-1">
+            <i class='bx bxs-school text-indigo-600 text-base'></i> เลือกดูทีละห้อง:
+          </span>
+          <button type="button" onclick="filterAttendanceTableRoom('')" 
+            class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${!activeRoom ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}">
+            ทั้งหมด (${allStudents.length} คน)
+          </button>
+          ${availableRooms.map(rm => `
+            <button type="button" onclick="filterAttendanceTableRoom('${escapeHTML(rm)}')" 
+              class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${activeRoom === rm ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}">
+              ชั้น ${escapeHTML(rm)} (${roomCounts[rm]} คน)
+            </button>
+          `).join('')}
+        </div>
+        <div class="sm:hidden w-full mt-1 flex items-center gap-2">
+          <label class="text-[11px] text-slate-500 font-bold whitespace-nowrap">ห้องเรียน:</label>
+          <select onchange="filterAttendanceTableRoom(this.value)" class="flex-1 text-xs rounded-lg border border-slate-200 py-1.5 px-2 bg-white font-medium">
+            <option value="">ทั้งหมด (${allStudents.length} คน)</option>
+            ${availableRooms.map(rm => `<option value="${escapeHTML(rm)}" ${activeRoom === rm ? 'selected' : ''}>ชั้น ${escapeHTML(rm)} (${roomCounts[rm]} คน)</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `;
+  }
+
+  // 4. Main Content (wrapped in a clean card with room selector)
   let mainContentHtml = '';
 
   if (scope === 'monthly' && AttendanceState.reportView === 'matrix' && (rptType === 'homeroom' || isSubjectMode)) {
@@ -3146,12 +3231,13 @@ function renderAttendanceReportData(res) {
     }
 
     mainContentHtml = `
-      <div class="page-card">
+      <div id="reportStudentTableCard" class="page-card overflow-hidden">
+        ${roomSelectorHtml}
         <div class="page-card-body">
           <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bx-calendar-check text-indigo-600">\x3c/i> ${isSubjectMode ? 'แบบบันทึกเวลาเรียนรายวิชาประจำวัน (ปพ.5)' : 'แบบบันทึกเวลาเรียนและเช็คแถวรายวัน (ปพ.5)'}
+                <i class="bx bx-calendar-check text-indigo-600">\x3c/i> ${isSubjectMode ? 'แบบบันทึกเวลาเรียนรายวิชาประจำวัน (ปพ.5)' : 'แบบบันทึกเวลาเรียนและเช็คแถวรายวัน (ปพ.5)'} ${activeRoom ? ('ชั้น ' + escapeHTML(activeRoom) + ' ') : ''}(${displayStudents.length} คน)
               </h4>
               <p class="text-xs text-slate-500 m-0 mt-0.5">แสดงสัญลักษณ์: <b class="text-emerald-600">✓</b> มาเรียน | <b class="text-rose-600">ข</b> ขาด | <b class="text-amber-600">ล</b> ลา | <b class="text-indigo-600">ส</b> สาย</p>
             </div>
@@ -3178,7 +3264,9 @@ function renderAttendanceReportData(res) {
                 </tr>
               </thead>
               <tbody>
-                ${res.data.map((r, idx) => `
+                ${displayStudents.length === 0 ? `
+                  <tr><td colspan="${dayHeaders.length + 9}" class="text-center py-6 text-slate-400">ไม่พบข้อมูลนักเรียนในห้องนี้</td></tr>
+                ` : displayStudents.map((r, idx) => `
                   <tr>
                     <td class="text-slate-400 font-medium">${idx + 1}</td>
                     <td class="font-mono text-xs text-slate-600">${escapeHTML(r.student_code || '-')}</td>
@@ -3215,12 +3303,13 @@ function renderAttendanceReportData(res) {
   } else if (rptType === 'all_subjects' && res.subjects && res.subjects.length > 0) {
     // All Subjects Matrix Table
     mainContentHtml = `
-      <div class="page-card">
+      <div id="reportStudentTableCard" class="page-card overflow-hidden">
+        ${roomSelectorHtml}
         <div class="page-card-body">
           <div class="flex items-center justify-between mb-3">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bxs-book-content text-indigo-600">\x3c/i> ตารางเวลาเรียนเปรียบเทียบทุกรายวิชา (${res.subjects.length} วิชา)
+                <i class="bx bxs-book-content text-indigo-600">\x3c/i> ตารางเวลาเรียนเปรียบเทียบทุกรายวิชา (${res.subjects.length} วิชา) ${activeRoom ? ('ชั้น ' + escapeHTML(activeRoom) + ' ') : ''}(${displayStudents.length} คน)
               </h4>
               <p class="text-xs text-slate-500 m-0 mt-0.5">แสดงร้อยละเวลาเรียนของนักเรียนแต่ละคนในแต่ละรายวิชา</p>
             </div>
@@ -3244,7 +3333,9 @@ function renderAttendanceReportData(res) {
                 </tr>
               </thead>
               <tbody>
-                ${res.data.map((r, idx) => {
+                ${displayStudents.length === 0 ? `
+                  <tr><td colspan="${res.subjects.length + 6}" class="text-center py-6 text-slate-400">ไม่พบข้อมูลนักเรียนในห้องนี้</td></tr>
+                ` : displayStudents.map((r, idx) => {
                   const bad = r.total > 0 && r.attendance_pct < 80;
                   return `
                     <tr>
@@ -3287,12 +3378,13 @@ function renderAttendanceReportData(res) {
   } else if (scope === 'semester' && res.months && res.months.length > 0 && !isSubjectMode) {
     // Semester View with Monthly Breakdown Columns
     mainContentHtml = `
-      <div class="page-card">
+      <div id="reportStudentTableCard" class="page-card overflow-hidden">
+        ${roomSelectorHtml}
         <div class="page-card-body">
           <div class="flex items-center justify-between mb-3">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bx-calendar-star text-indigo-600">\x3c/i> ตารางสรุปเวลาเรียนรายบุคคลแยกตามรายเดือนตลอดภาคเรียน
+                <i class="bx bx-calendar-star text-indigo-600">\x3c/i> ตารางสรุปเวลาเรียนรายบุคคลแยกตามรายเดือนตลอดภาคเรียน ${activeRoom ? ('ชั้น ' + escapeHTML(activeRoom) + ' ') : ''}(${displayStudents.length} คน)
               </h4>
               <p class="text-xs text-slate-500 m-0 mt-0.5">สรุปร้อยละเวลาเรียนของแต่ละเดือน และยอดสะสมตลอดทั้งภาคเรียน</p>
             </div>
@@ -3314,7 +3406,9 @@ function renderAttendanceReportData(res) {
                 </tr>
               </thead>
               <tbody>
-                ${res.data.map((r, idx) => {
+                ${displayStudents.length === 0 ? `
+                  <tr><td colspan="${res.months.length + 7}" class="text-center py-6 text-slate-400">ไม่พบข้อมูลนักเรียนในห้องนี้</td></tr>
+                ` : displayStudents.map((r, idx) => {
                   const isRisk = (r.total > 0 && r.attendance_pct < 80);
                   return `
                     <tr>
@@ -3364,14 +3458,15 @@ function renderAttendanceReportData(res) {
     // Default Student Summary Table (supports both individual subject and general attendance)
     const countUnit = isSubjectMode ? 'คาบ' : 'วัน';
     mainContentHtml = `
-      <div class="page-card">
+      <div id="reportStudentTableCard" class="page-card overflow-hidden">
+        ${roomSelectorHtml}
         <div class="page-card-body">
           <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div>
               <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5 m-0">
-                <i class="bx bx-list-check text-indigo-600">\x3c/i> ${isSubjectMode ? 'ตารางสรุปเวลาเรียนรายวิชารายบุคคล' : 'ตารางสรุปเวลาเรียนรายบุคคล'} (${res.data.length} คน)
+                <i class="bx bx-list-check text-indigo-600">\x3c/i> ${isSubjectMode ? 'ตารางสรุปเวลาเรียนรายวิชารายบุคคล' : 'ตารางสรุปเวลาเรียนรายบุคคล'} ${activeRoom ? ('ชั้น ' + escapeHTML(activeRoom) + ' ') : ''}(${displayStudents.length} คน)
               </h4>
-              <p class="text-xs text-slate-500 m-0 mt-0.5">สรุปจำนวน${countUnit}มา ขาด ลา มาสาย และคิดเป็นร้อยละเวลาเรียนของวิชานี้</p>
+              <p class="text-xs text-slate-500 m-0 mt-0.5">สรุปจำนวน${countUnit}มา ขาด ลา มาสาย และคิดเป็นร้อยละเวลาเรียน${isSubjectMode ? 'ของวิชานี้' : ''}</p>
             </div>
           </div>
           <div style="overflow-x:auto;">
@@ -3392,7 +3487,9 @@ function renderAttendanceReportData(res) {
                 </tr>
               </thead>
               <tbody>
-                ${res.data.map((r, idx) => {
+                ${displayStudents.length === 0 ? `
+                  <tr><td colspan="11" class="text-center py-6 text-slate-400">ไม่พบข้อมูลนักเรียนในห้องนี้</td></tr>
+                ` : displayStudents.map((r, idx) => {
                   const bad = r.total > 0 && r.attendance_pct < 80;
                   return `
                     <tr>
@@ -3453,6 +3550,15 @@ function printAttendanceReport() {
   }
 
   const { res, scope, classroom, rptType } = last;
+  const activeRoom = AttendanceState.tableClassroom || '';
+  const printStudents = activeRoom
+    ? res.data.filter(r => (r.classroom || '').trim() === activeRoom)
+    : res.data;
+
+  if (printStudents.length === 0) {
+    return showToast('warning', 'ไม่พบข้อมูลนักเรียนสำหรับพิมพ์');
+  }
+
   const now = new Date();
   const printTimestamp = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear() + 543} เวลา ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`;
 
@@ -3462,7 +3568,9 @@ function printAttendanceReport() {
   const ay = res.academic_year || '2569';
 
   let reportTitle = 'รายงานการเข้าเรียน';
-  let subTitle = (classroom && classroom !== 'all' ? ('ระดับชั้น ' + classroom) : 'ทุกระดับชั้น (ภาพรวมทั้งโรงเรียน)');
+  let subTitle = activeRoom
+    ? ('ระดับชั้น ' + activeRoom + ` (${printStudents.length} คน)`)
+    : (classroom && classroom !== 'all' ? ('ระดับชั้น ' + classroom + ` (${printStudents.length} คน)`) : `ทุกระดับชั้น (ภาพรวมทั้งโรงเรียน ${printStudents.length} คน)`);
 
   const targetSub = res.target_subject;
   const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');
@@ -3489,7 +3597,7 @@ function printAttendanceReport() {
 
   const isLandscape = (scope === 'semester' || (scope === 'monthly' && AttendanceState.reportView === 'matrix'));
 
-  const rowsHtml = res.data.map((r, idx) => `
+  const rowsHtml = printStudents.map((r, idx) => `
     <tr>
       <td style="text-align:center;">${idx + 1}</td>
       <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
@@ -3500,8 +3608,8 @@ function printAttendanceReport() {
       <td style="text-align:center; color:#B45309;">${r.leave}</td>
       <td style="text-align:center; color:#1D4ED8;">${r.late}</td>
       <td style="text-align:center; font-weight:700;">${r.total}</td>
-      <td style="text-align:center; font-weight:700;">${r.attendance_pct.toFixed(1)}%</td>
-      <td style="text-align:center; font-weight:600; ${r.attendance_pct < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ'}</td>
+      <td style="text-align:center; font-weight:700;">${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}</td>
+      <td style="text-align:center; font-weight:600; ${r.total === 0 ? 'color:#64748B;' : (r.attendance_pct < 80 ? 'color:#B91C1C;' : 'color:#15803D;')}">${r.total === 0 ? 'ยังไม่มีข้อมูล' : (r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ')}</td>
     </tr>
   `).join('');
 
@@ -3528,41 +3636,38 @@ function printAttendanceReport() {
     tr:nth-child(even) { background: #FAFAFA; }
     .signatures { margin-top: 30px; display: flex; justify-content: space-between; page-break-inside: avoid; }
     .sig-box { text-align: center; min-width: 220px; font-size: 10pt; }
-    .sig-line { margin-top: 6px; }
-    .footer { margin-top: 20px; font-size: 8.5pt; color: #94A3B8; display: flex; justify-content: space-between; border-top: 1px solid #E2E8F0; padding-top: 6px; }
+    .sig-line { margin-top: 6px; color: #334155; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
   </style>
 </head>
 <body>
   <div class="header">
-    <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" class="logo" alt="ตราโรงเรียน">
+    <img src="https://img5.pic.in.th/file/secure-sv1/141088-removebg-preview.png" class="logo" alt="ตราโรงเรียน">
     <div class="title">${escapeHTML(reportTitle)}</div>
-    <div class="subtitle">${escapeHTML(subTitle)} โรงเรียนมหาชัยพิทยาคาร</div>
-    <div style="font-size:9pt; color:#64748B; margin-top:2px;">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
+    <div class="subtitle">${escapeHTML(subTitle)}</div>
+    <div style="font-size:9.5pt; color:#64748B; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
   </div>
 
   <div class="summary-bar">
-    <div>นักเรียนทั้งหมด: <b>${res.data.length} คน</b></div>
-    <div>มาเรียน: <b style="color:#15803D;">${formatNumber(res.summary?.present || 0)}</b></div>
-    <div>ขาดเรียน: <b style="color:#B91C1C;">${formatNumber(res.summary?.absent || 0)}</b></div>
-    <div>ลา: <b style="color:#B45309;">${formatNumber(res.summary?.leave || 0)}</b></div>
-    <div>มาสาย: <b style="color:#1D4ED8;">${formatNumber(res.summary?.late || 0)}</b></div>
-    <div>เฉลี่ยทั้งสิ้น: <b>${(res.summary?.attendance_pct || 0).toFixed(1)}%</b></div>
+    <div><b>จำนวนนักเรียนในรายงาน:</b> ${printStudents.length} คน</div>
+    <div><b>อัตราการเข้าเรียนเฉลี่ย:</b> ${(res.summary?.attendance_pct || 0).toFixed(1)}%</div>
+    <div><b>สถานะ:</b> ${(res.summary?.attendance_pct || 0) >= 80 ? 'ปกติ' : 'ต้องเฝ้าระวัง'}</div>
   </div>
 
   <table>
     <thead>
       <tr>
         <th style="width:35px;">ที่</th>
-        <th style="width:75px;">รหัส</th>
-        <th style="text-align:left; padding-left:6px;">ชื่อ - สกุล</th>
-        <th style="width:65px;">ชั้น</th>
-        <th style="width:40px;">มา</th>
-        <th style="width:40px;">ขาด</th>
-        <th style="width:40px;">ลา</th>
-        <th style="width:40px;">สาย</th>
-        <th style="width:45px;">รวม</th>
-        <th style="width:65px;">% เข้าเรียน</th>
-        <th style="width:65px;">การประเมิน</th>
+        <th style="width:80px;">รหัสนักเรียน</th>
+        <th>ชื่อ - นามสกุล</th>
+        <th style="width:75px;">ระดับชั้น</th>
+        <th style="width:55px;">มา</th>
+        <th style="width:55px;">ขาด</th>
+        <th style="width:55px;">ลา</th>
+        <th style="width:55px;">สาย</th>
+        <th style="width:60px;">รวม</th>
+        <th style="width:70px;">% เข้าเรียน</th>
+        <th style="width:75px;">ผลประเมิน</th>
       </tr>
     </thead>
     <tbody>
@@ -3574,7 +3679,7 @@ function printAttendanceReport() {
     <div class="sig-box">
       <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
       <div class="sig-line">( .............................................................. )</div>
-      <div class="sig-line">ตำแหน่ง ครูประจำชั้น / ผู้รับผิดชอบ</div>
+      <div class="sig-line">ตำแหน่ง ครูประจำชั้น / ครูผู้สอน</div>
       <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
     </div>
     <div class="sig-box">
@@ -3607,10 +3712,20 @@ function exportReportCSV() {
   }
 
   const { res, scope, classroom } = last;
+  const activeRoom = AttendanceState.tableClassroom || '';
+  const exportStudents = activeRoom
+    ? res.data.filter(r => (r.classroom || '').trim() === activeRoom)
+    : res.data;
+
+  if (exportStudents.length === 0) {
+    return showToast('warning', 'ไม่มีข้อมูลนักเรียนสำหรับดาวน์โหลด');
+  }
+
   const mOpt = document.getElementById('rptMonth');
   const mLabel = mOpt?.options[mOpt.selectedIndex]?.text || '';
   const sem = res.semester || '1';
   const ay = res.academic_year || '2569';
+  const roomTag = activeRoom ? ('_' + activeRoom) : (classroom ? ('_' + classroom) : '_ภาพรวม');
 
   let headers = [];
   let rows = [];
@@ -3634,7 +3749,7 @@ function exportReportCSV() {
       'มา (วัน)', 'ขาด (วัน)', 'ลา (วัน)', 'สาย (วัน)', 'รวมวันเรียน', '% มาเรียน'
     ];
 
-    rows = res.data.map((r, i) => [
+    rows = exportStudents.map((r, i) => [
       i + 1,
       r.student_code || '',
       (r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''),
@@ -3652,10 +3767,10 @@ function exportReportCSV() {
       r.leave || 0,
       r.late || 0,
       r.total || 0,
-      (r.attendance_pct || 0).toFixed(1) + '%'
+      r.total === 0 ? '-' : ((r.attendance_pct || 0).toFixed(1) + '%')
     ]);
 
-    filename = `รายงานเช็คแถวรายวันปพ5_${mLabel}_${classroom || 'ภาพรวม'}.xls`;
+    filename = `รายงานเช็คแถวรายวันปพ5_${mLabel}${roomTag}.xls`;
   } else if (scope === 'semester' && res.months && res.months.length > 0) {
     headers = [
       'ที่', 'รหัสนักเรียน', 'ชื่อ - สกุล', 'ชั้น',
@@ -3663,7 +3778,7 @@ function exportReportCSV() {
       'รวมทั้งเทอม (วัน)', '% ตลอดเทอม', 'การประเมิน'
     ];
 
-    rows = res.data.map((r, i) => [
+    rows = exportStudents.map((r, i) => [
       i + 1,
       r.student_code || '',
       (r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''),
@@ -3673,14 +3788,14 @@ function exportReportCSV() {
         return bm && bm.total > 0 ? (bm.attendance_pct.toFixed(1) + '%') : '-';
       }),
       r.total || 0,
-      (r.attendance_pct || 0).toFixed(1) + '%',
-      r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ'
+      r.total === 0 ? '-' : ((r.attendance_pct || 0).toFixed(1) + '%'),
+      r.total === 0 ? 'ยังไม่มีข้อมูล' : (r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ')
     ]);
 
-    filename = `รายงานเช็คแถวตลอดภาคเรียน_${sem}_${ay}_${classroom || 'ภาพรวม'}.xls`;
+    filename = `รายงานเช็คแถวตลอดภาคเรียน_${sem}_${ay}${roomTag}.xls`;
   } else {
     headers = ['ที่', 'รหัสนักเรียน', 'ชื่อ - สกุล', 'ชั้น', 'มา (วัน)', 'ขาด (วัน)', 'ลา (วัน)', 'สาย (วัน)', 'รวมวันเรียน', '% เข้าเรียน', 'สถานะ'];
-    rows = res.data.map((r, i) => [
+    rows = exportStudents.map((r, i) => [
       i + 1,
       r.student_code || '',
       (r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''),
@@ -3690,10 +3805,10 @@ function exportReportCSV() {
       r.leave || 0,
       r.late || 0,
       r.total || 0,
-      (r.attendance_pct || 0).toFixed(1) + '%',
-      r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ'
+      r.total === 0 ? '-' : ((r.attendance_pct || 0).toFixed(1) + '%'),
+      r.total === 0 ? 'ยังไม่มีข้อมูล' : (r.attendance_pct < 80 ? 'เสี่ยง มส.' : 'ปกติ')
     ]);
-    filename = `รายงานการเข้าเรียน_${classroom || 'ภาพรวม'}_${new Date().toISOString().slice(0, 10)}.xls`;
+    filename = `รายงานการเข้าเรียน${roomTag}_${new Date().toISOString().slice(0, 10)}.xls`;
   }
 
   exportToExcel(headers, rows, filename);
