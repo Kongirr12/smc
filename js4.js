@@ -1649,6 +1649,21 @@ function loadSettings() {
     .getSystemSettings(APP.token);
 }
 
+window.setDefaultSemesterDates = function() {
+  const ayInput = document.getElementById('set_academic_year');
+  const ay = parseInt(ayInput ? ayInput.value : '2569', 10) || 2569;
+  const ce = ay > 2400 ? ay - 543 : ay;
+  const s1Start = document.getElementById('set_semester_1_start');
+  const s1End = document.getElementById('set_semester_1_end');
+  const s2Start = document.getElementById('set_semester_2_start');
+  const s2End = document.getElementById('set_semester_2_end');
+  if (s1Start) s1Start.value = ce + '-05-16';
+  if (s1End)   s1End.value   = ce + '-10-31';
+  if (s2Start) s2Start.value = ce + '-11-01';
+  if (s2End)   s2End.value   = (ce + 1) + '-03-31';
+  if (typeof showToast === 'function') showToast('info', 'กำหนดวันเริ่มต้น-สิ้นสุดมาตรฐานของปี ' + ay + ' เรียบร้อย');
+};
+
 function renderSettingsForm(c) {
   const el = document.getElementById('settingsContent');
   if (!el) return;
@@ -1729,6 +1744,45 @@ function renderSettingsForm(c) {
                 <option value="2" ${String(c.semester)==='2'?'selected':''}>เทอม 2\x3c/option>
               \x3c/select>
             \x3c/div>
+
+            <!-- ช่วงเวลาภาคเรียนที่ 1 -->
+            <div class="col-span-12 mt-2 pt-2 border-t border-slate-100">
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="text-xs font-bold text-indigo-700 flex items-center gap-1.5">
+                  <i class='bx bxs-calendar-event'>\x3c/i> ช่วงเวลาภาคเรียนที่ 1 (เทอม 1)
+                </div>
+                <button type="button" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1" onclick="setDefaultSemesterDates()">
+                  <i class='bx bx-calendar-star'>\x3c/i> กำหนดวันมาตรฐาน
+                </button>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="set-label">วันเริ่มต้นเทอม 1\x3c/label>
+                  <input type="date" id="set_semester_1_start" class="set-input" value="${escapeHTML(c.semester_1_start||'')}">
+                </div>
+                <div>
+                  <label class="set-label">วันสิ้นสุดเทอม 1\x3c/label>
+                  <input type="date" id="set_semester_1_end" class="set-input" value="${escapeHTML(c.semester_1_end||'')}">
+                </div>
+              </div>
+            </div>
+
+            <!-- ช่วงเวลาภาคเรียนที่ 2 -->
+            <div class="col-span-12 mt-2 pt-2 border-t border-slate-100">
+              <div class="text-xs font-bold text-indigo-700 flex items-center gap-1.5 mb-1.5">
+                <i class='bx bxs-calendar-event'>\x3c/i> ช่วงเวลาภาคเรียนที่ 2 (เทอม 2)
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="set-label">วันเริ่มต้นเทอม 2\x3c/label>
+                  <input type="date" id="set_semester_2_start" class="set-input" value="${escapeHTML(c.semester_2_start||'')}">
+                </div>
+                <div>
+                  <label class="set-label">วันสิ้นสุดเทอม 2\x3c/label>
+                  <input type="date" id="set_semester_2_end" class="set-input" value="${escapeHTML(c.semester_2_end||'')}">
+                </div>
+              </div>
+            </div>
             <div class="col-span-6">
               <label class="set-label">% เข้าเรียนขั้นต่ำ\x3c/label>
               <input type="number" min="0" max="100" id="set_min_attendance_pct" class="set-input" value="${c.min_attendance_pct||80}">
@@ -1854,6 +1908,10 @@ function saveSettings() {
     folder_id          : document.getElementById('set_folder_id').value,
     academic_year      : document.getElementById('set_academic_year').value,
     semester           : document.getElementById('set_semester').value,
+    semester_1_start   : document.getElementById('set_semester_1_start') ? document.getElementById('set_semester_1_start').value : '',
+    semester_1_end     : document.getElementById('set_semester_1_end') ? document.getElementById('set_semester_1_end').value : '',
+    semester_2_start   : document.getElementById('set_semester_2_start') ? document.getElementById('set_semester_2_start').value : '',
+    semester_2_end     : document.getElementById('set_semester_2_end') ? document.getElementById('set_semester_2_end').value : '',
     min_attendance_pct : parseFloat(document.getElementById('set_min_attendance_pct').value) || 80,
     min_gpa_promote    : parseFloat(document.getElementById('set_min_gpa_promote').value) || 1.0,
     grade_thresholds   : thresholds,

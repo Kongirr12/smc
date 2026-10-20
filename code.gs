@@ -877,6 +877,24 @@ function getConfig() {
       cfg.director_name = 'นายอธิการ สุขศรี';
       changed = true;
     }
+    const ayStr = String(cfg.academic_year || '2569');
+    const ayNum = Number(ayStr) > 2400 ? Number(ayStr) - 543 : Number(ayStr || new Date().getFullYear());
+    if (!cfg.semester_1_start) {
+      cfg.semester_1_start = ayNum + '-05-16';
+      changed = true;
+    }
+    if (!cfg.semester_1_end) {
+      cfg.semester_1_end = ayNum + '-10-31';
+      changed = true;
+    }
+    if (!cfg.semester_2_start) {
+      cfg.semester_2_start = ayNum + '-11-01';
+      changed = true;
+    }
+    if (!cfg.semester_2_end) {
+      cfg.semester_2_end = (ayNum + 1) + '-03-31';
+      changed = true;
+    }
     if (changed && (cfg.id || arr.length > 0)) {
       saveConfig(cfg);
     }
@@ -2563,6 +2581,25 @@ function saveAttendanceBulk(payload, sessionToken) {
   }
 }
 
+function formatThaiShortDateServer_(d) {
+  if (!d) return '-';
+  if (typeof d === 'string' && d.includes('-')) {
+    const parts = d.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      const shortM = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+      const thYear = y > 2400 ? y : y + 543;
+      return day + ' ' + (shortM[m] || '') + ' ' + thYear;
+    }
+  }
+  const date = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(date.getTime())) return String(d);
+  const shortM = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  return date.getDate() + ' ' + shortM[date.getMonth()] + ' ' + (date.getFullYear() + 543);
+}
+
 /**
  * รายงานการเข้าเรียน
  * Mode 'student' : รายนักเรียน 1 คน ในช่วงเวลา
@@ -2617,9 +2654,26 @@ function getAttendanceFilterOptions(sessionToken) {
       };
     });
 
+    const s1Start = config.semester_1_start || (ayNum + '-05-16');
+    const s1End   = config.semester_1_end   || (ayNum + '-10-31');
+    const s2Start = config.semester_2_start || (ayNum + '-11-01');
+    const s2End   = config.semester_2_end   || ((ayNum + 1) + '-03-31');
+
     const semesters = [
-      { id: '1', label: 'ภาคเรียนที่ 1/' + currentAY + ' (พ.ค. - ต.ค.)', academic_year: currentAY },
-      { id: '2', label: 'ภาคเรียนที่ 2/' + currentAY + ' (พ.ย. - มี.ค.)', academic_year: currentAY }
+      { 
+        id: '1', 
+        label: 'ภาคเรียนที่ 1/' + currentAY + ' (' + formatThaiShortDateServer_(s1Start) + ' – ' + formatThaiShortDateServer_(s1End) + ')', 
+        academic_year: currentAY,
+        start_date: s1Start,
+        end_date: s1End
+      },
+      { 
+        id: '2', 
+        label: 'ภาคเรียนที่ 2/' + currentAY + ' (' + formatThaiShortDateServer_(s2Start) + ' – ' + formatThaiShortDateServer_(s2End) + ')', 
+        academic_year: currentAY,
+        start_date: s2Start,
+        end_date: s2End
+      }
     ];
 
     const students = readJsonSheet_('Students');
@@ -2670,12 +2724,14 @@ function getAttendanceReport(params, sessionToken) {
       const ayStr = String(params.academic_year || config.academic_year || '2569');
       const ay = Number(ayStr) > 2400 ? Number(ayStr) - 543 : Number(ayStr || new Date().getFullYear());
       if (sem === '2') {
-        start = ay + '-11-01';
-        end = (ay + 1) + '-04-30';
+        start = config.semester_2_start || (ay + '-11-01');
+        end   = config.semester_2_end   || ((ay + 1) + '-03-31');
       } else {
-        start = ay + '-05-01';
-        end = ay + '-10-31';
+        start = config.semester_1_start || (ay + '-05-16');
+        end   = config.semester_1_end   || (ay + '-10-31');
       }
+      if (params.start_date) start = params.start_date;
+      if (params.end_date)   end   = params.end_date;
     }
 
     let attendance = readJsonSheet_('Attendance');
@@ -6125,9 +6181,10 @@ function saveSystemSettings(settings, sessionToken) {
 
     // กรองให้เก็บเฉพาะ field ที่อนุญาต (ไม่ให้ override id ฯลฯ)
     const allowed = [
-      'school_name','school_address','school_district','school_province',
+      'school_name','director_name','school_address','school_district','school_province',
       'school_phone','school_email','school_logo','qr_code_contact','folder_id',
       'academic_year','semester',
+      'semester_1_start','semester_1_end','semester_2_start','semester_2_end',
       'notification_enabled','email_notifications','email_list',
       'session_timeout','maintenance_mode',
       'grade_thresholds','min_attendance_pct','min_gpa_promote',
