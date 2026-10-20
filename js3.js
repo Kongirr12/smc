@@ -16,6 +16,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     modal = document.createElement('div');
     modal.id = 'printDocModal';
     modal.className = 'fixed inset-0 z-[99999] bg-slate-900/80 backdrop-blur-sm flex flex-col';
+    modal.style.paddingTop = 'env(safe-area-inset-top, 0px)';
+    modal.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
     modal.innerHTML = `
       <div class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between shadow-sm gap-2">
         <div class="flex items-center gap-2 min-w-0">
@@ -25,7 +27,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 flex-wrap justify-end">
           <a id="btnOpenSafariAction" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold shadow-sm" style="background:#1D4ED8; color:white; display:none;">
             <i class='bx bx-globe text-base'></i>
-            <span>เปิดใน Safari เพื่อพิมพ์</span>
+            <span class="hidden sm:inline">เปิดใน </span><span>Safari เพื่อพิมพ์</span>
           </a>
           <button id="btnShareModalAction" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-slate-700" title="แชร์ หรือ สั่งพิมพ์">
             <i class='bx bx-share-alt text-base'></i>

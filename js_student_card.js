@@ -38,7 +38,7 @@ function renderStudentCard(container) {
     </div>
 
     <!-- Print Overlay -->
-    <div id="cardPrintOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:white;overflow:auto;padding:20px;">
+    <div id="cardPrintOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:white;overflow:auto;padding:max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));">
       <div style="max-width:900px;margin:0 auto;">
         <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
           <button onclick="triggerCardPrint()" style="padding:10px 20px;background:#3730A3;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
