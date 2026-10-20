@@ -3794,37 +3794,187 @@ function printDailyAttendanceRecord() {
     subTitle = `ระดับชั้น: ชั้น ${classroom || '-'} | เช็คแถวหน้าเสาธงและกิจกรรมโฮมรูม`;
   }
 
-  // Count statuses
-  let pCnt = 0, aCnt = 0, lCnt = 0, ltCnt = 0, unCnt = 0;
-  AttendanceState.records.forEach(r => {
-    if (r.status === 'present') pCnt++;
-    else if (r.status === 'absent') aCnt++;
-    else if (r.status === 'leave') lCnt++;
-    else if (r.status === 'late') ltCnt++;
-    else unCnt++;
-  });
-  const total = AttendanceState.records.length;
-  const checkedTotal = pCnt + aCnt + lCnt + ltCnt;
-  const pct = checkedTotal > 0 ? (((pCnt + ltCnt) / checkedTotal) * 100).toFixed(1) : '-';
+  const uniqueRooms = Array.from(new Set(AttendanceState.records.map(r => r.classroom).filter(Boolean)))
+    .sort((a,b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
 
-  const rowsHtml = AttendanceState.records.map((r, idx) => {
-    let stText = '<span style="color:#94A3B8;">[ &nbsp; ] ยังไม่ระบุ</span>';
-    if (r.status === 'present') stText = '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>';
-    else if (r.status === 'absent') stText = '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>';
-    else if (r.status === 'leave') stText = '<span style="color:#B45309; font-weight:bold;">∆ ลา</span>';
-    else if (r.status === 'late') stText = '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
+  let pagesHtml = '';
 
-    return `
-      <tr>
-        <td style="text-align:center; padding:4px 2px;">${r.student_number || (idx + 1)}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
-        <td style="text-align:left; font-weight:600; padding:4px 6px; word-break:break-word;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-        <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.classroom || classroom || '-')}</td>
-        <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${stText}</td>
-        <td style="text-align:center; color:#94A3B8; font-size:8pt; padding:4px 2px;">..........................</td>
-      </tr>
+  if (uniqueRooms.length > 1) {
+    // แยกพิมพ์ตัดตามห้อง / ระดับชั้น เมื่อมีหลายห้อง
+    pagesHtml = uniqueRooms.map((rm, rIdx) => {
+      const isLast = (rIdx === uniqueRooms.length - 1);
+      const roomRecords = AttendanceState.records.filter(r => r.classroom === rm);
+      let pCnt = 0, aCnt = 0, lCnt = 0, ltCnt = 0;
+      roomRecords.forEach(r => {
+        if (r.status === 'present') pCnt++;
+        else if (r.status === 'absent') aCnt++;
+        else if (r.status === 'leave') lCnt++;
+        else if (r.status === 'late') ltCnt++;
+      });
+      const checkedTotal = pCnt + aCnt + lCnt + ltCnt;
+      const pct = checkedTotal > 0 ? (((pCnt + ltCnt) / checkedTotal) * 100).toFixed(1) : '-';
+
+      const rowsHtml = roomRecords.map((r, idx) => {
+        let stText = '<span style="color:#94A3B8;">[ &nbsp; ] ยังไม่ระบุ</span>';
+        if (r.status === 'present') stText = '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>';
+        else if (r.status === 'absent') stText = '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>';
+        else if (r.status === 'leave') stText = '<span style="color:#B45309; font-weight:bold;">∆ ลา</span>';
+        else if (r.status === 'late') stText = '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
+
+        return `
+          <tr>
+            <td style="text-align:center; padding:4px 2px;">${r.student_number || (idx + 1)}</td>
+            <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
+            <td style="text-align:left; font-weight:600; padding:4px 6px; word-break:break-word;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+            <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.classroom || rm || '-')}</td>
+            <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${stText}</td>
+            <td style="text-align:center; color:#94A3B8; font-size:8pt; padding:4px 2px;">..........................</td>
+          </tr>
+        `;
+      }).join('');
+
+      const roomSubTitle = isSubject
+        ? `${subTitle} (ห้อง ${rm})`
+        : `ระดับชั้น: ชั้น ${rm} | เช็คแถวหน้าเสาธงและกิจกรรมโฮมรูม`;
+
+      const pageBreakStyle = isLast ? '' : 'page-break-after: always; break-after: page;';
+
+      return `
+        <div class="print-page-wrapper" style="${pageBreakStyle}">
+          <div class="header">
+            <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
+            <div class="title">${escapeHTML(docTitle)}</div>
+            <div class="subtitle">${escapeHTML(roomSubTitle)}</div>
+            <div style="font-size:9pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร | ประจำ${escapeHTML(dateThaiFull)}</div>
+          </div>
+
+          <div class="summary-bar">
+            <div><b>ชั้นเรียน:</b> ${escapeHTML(rm)} (${roomRecords.length} คน)</div>
+            <div style="color:#15803D;"><b>มา:</b> ${pCnt} คน</div>
+            <div style="color:#B91C1C;"><b>ขาด:</b> ${aCnt} คน</div>
+            <div style="color:#B45309;"><b>ลา:</b> ${lCnt} คน</div>
+            <div style="color:#1D4ED8;"><b>สาย:</b> ${ltCnt} คน</div>
+            <div><b>ร้อยละ:</b> ${pct}%</div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width:7%; text-align:center;">เลขที่</th>
+                <th style="width:14%; text-align:center;">รหัสนักเรียน</th>
+                <th style="width:35%; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
+                <th style="width:12%; text-align:center;">ระดับชั้น</th>
+                <th style="width:14%; text-align:center;">สถานะ</th>
+                <th style="width:18%; text-align:center;">หมายเหตุ / ลายมือชื่อ</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div class="signatures">
+            <div class="sig-box">
+              <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
+              <div class="sig-line">( .............................................................. )</div>
+              <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + rm}</div>
+              <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            </div>
+            <div class="sig-box">
+              <div>ทราบ / อนุมัติ</div>
+              <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+              <div class="sig-line">( นายอธิการ สุขศรี )</div>
+              <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    // ห้องเดียวปกติ
+    let pCnt = 0, aCnt = 0, lCnt = 0, ltCnt = 0;
+    AttendanceState.records.forEach(r => {
+      if (r.status === 'present') pCnt++;
+      else if (r.status === 'absent') aCnt++;
+      else if (r.status === 'leave') lCnt++;
+      else if (r.status === 'late') ltCnt++;
+    });
+    const total = AttendanceState.records.length;
+    const checkedTotal = pCnt + aCnt + lCnt + ltCnt;
+    const pct = checkedTotal > 0 ? (((pCnt + ltCnt) / checkedTotal) * 100).toFixed(1) : '-';
+
+    const rowsHtml = AttendanceState.records.map((r, idx) => {
+      let stText = '<span style="color:#94A3B8;">[ &nbsp; ] ยังไม่ระบุ</span>';
+      if (r.status === 'present') stText = '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>';
+      else if (r.status === 'absent') stText = '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>';
+      else if (r.status === 'leave') stText = '<span style="color:#B45309; font-weight:bold;">∆ ลา</span>';
+      else if (r.status === 'late') stText = '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
+
+      return `
+        <tr>
+          <td style="text-align:center; padding:4px 2px;">${r.student_number || (idx + 1)}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding:4px 6px; word-break:break-word;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${escapeHTML(r.classroom || classroom || '-')}</td>
+          <td style="text-align:center; padding:4px 2px; white-space:nowrap;">${stText}</td>
+          <td style="text-align:center; color:#94A3B8; font-size:8pt; padding:4px 2px;">..........................</td>
+        </tr>
+      `;
+    }).join('');
+
+    pagesHtml = `
+      <div class="print-page-wrapper">
+        <div class="header">
+          <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
+          <div class="title">${escapeHTML(docTitle)}</div>
+          <div class="subtitle">${escapeHTML(subTitle)}</div>
+          <div style="font-size:9pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร | ประจำ${escapeHTML(dateThaiFull)}</div>
+        </div>
+
+        <div class="summary-bar">
+          <div><b>นักเรียนทั้งหมด:</b> ${total} คน</div>
+          <div style="color:#15803D;"><b>มา:</b> ${pCnt} คน</div>
+          <div style="color:#B91C1C;"><b>ขาด:</b> ${aCnt} คน</div>
+          <div style="color:#B45309;"><b>ลา:</b> ${lCnt} คน</div>
+          <div style="color:#1D4ED8;"><b>สาย:</b> ${ltCnt} คน</div>
+          <div><b>ร้อยละ:</b> ${pct}%</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width:7%; text-align:center;">เลขที่</th>
+              <th style="width:14%; text-align:center;">รหัสนักเรียน</th>
+              <th style="width:35%; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
+              <th style="width:12%; text-align:center;">ระดับชั้น</th>
+              <th style="width:14%; text-align:center;">สถานะ</th>
+              <th style="width:18%; text-align:center;">หมายเหตุ / ลายมือชื่อ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div class="signatures">
+          <div class="sig-box">
+            <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
+            <div class="sig-line">( .............................................................. )</div>
+            <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
+            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+          </div>
+          <div class="sig-box">
+            <div>ทราบ / อนุมัติ</div>
+            <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+            <div class="sig-line">( นายอธิการ สุขศรี )</div>
+            <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+          </div>
+        </div>
+      </div>
     `;
-  }).join('');
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="th">
@@ -3877,12 +4027,7 @@ function printDailyAttendanceRecord() {
     </div>
   </div>
 
-  <div class="print-page-wrapper">
-    <div class="header">
-      <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
-      <div class="title">${escapeHTML(docTitle)}</div>
-      <div class="subtitle">${escapeHTML(subTitle)}</div>
-      <div style="font-size:9pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร | ประจำ${escapeHTML(dateThaiFull)}</div>
+  ${pagesHtml}
     </div>
 
     <div class="summary-bar">
@@ -4019,232 +4164,385 @@ function printAttendanceReport() {
     }
   }
 
-  // Generate Table based on Mode
-  let tableHeaderHtml = '';
-  let tableBodyHtml = '';
-  let extraLegendHtml = '';
+  // Helper to determine Grade Level from Classroom string (e.g. 'ม.1/1' -> 'ม.1')
+  function getGradeLevelFromClass(cls) {
+    if (!cls) return 'ไม่ระบุชั้น';
+    const str = String(cls).trim();
+    const m = str.match(/^(ม\.[1-6]|ป\.[1-6]|อ\.[1-3])/i);
+    if (m) return m[1];
+    return str.split('/')[0].trim() || str;
+  }
 
-  if (isMatrixMode) {
-    // 1. Matrix View (Day 1 - 31)
-    const ym = document.getElementById('rptMonth')?.value || res.start_date?.slice(0, 7) || new Date().toISOString().slice(0, 7);
-    const parts = ym.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const daysInMonth = new Date(year, month, 0).getDate();
+  function getGradeLevelFullThai(gLevel) {
+    if (!gLevel || gLevel === 'ทุกระดับชั้น') return 'ทุกระดับชั้น';
+    if (gLevel === 'ม.1') return 'ระดับชั้นมัธยมศึกษาปีที่ 1 (ม.1)';
+    if (gLevel === 'ม.2') return 'ระดับชั้นมัธยมศึกษาปีที่ 2 (ม.2)';
+    if (gLevel === 'ม.3') return 'ระดับชั้นมัธยมศึกษาปีที่ 3 (ม.3)';
+    if (gLevel === 'ม.4') return 'ระดับชั้นมัธยมศึกษาปีที่ 4 (ม.4)';
+    if (gLevel === 'ม.5') return 'ระดับชั้นมัธยมศึกษาปีที่ 5 (ม.5)';
+    if (gLevel === 'ม.6') return 'ระดับชั้นมัธยมศึกษาปีที่ 6 (ม.6)';
+    if (gLevel.startsWith('ม.')) return 'ระดับชั้นมัธยมศึกษาปีที่ ' + gLevel.replace('ม.', '') + ` (${gLevel})`;
+    return 'ระดับชั้น ' + gLevel;
+  }
 
-    const dayHeaders = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dt = new Date(year, month - 1, d);
-      const dayOfWeek = dt.getDay();
-      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-      const thDay = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][dayOfWeek];
-      dayHeaders.push({ day: d, isWeekend: isWeekend, thDay: thDay, ds: ym + '-' + String(d).padStart(2, '0') });
+  // Determine distinct grade levels
+  const GRADE_ORDER = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6', 'ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6'];
+  const uniqueGradeLevels = Array.from(new Set(printStudents.map(s => getGradeLevelFromClass(s.classroom)).filter(Boolean)));
+  uniqueGradeLevels.sort((a, b) => {
+    const ia = GRADE_ORDER.indexOf(a);
+    const ib = GRADE_ORDER.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return String(a).localeCompare(String(b), 'th', { numeric: true });
+  });
+
+  const isMultiGrade = uniqueGradeLevels.length > 1;
+
+  // Render each grade level section
+  const gradeSectionsHtml = uniqueGradeLevels.map((gLevel, gIdx) => {
+    const isLastGrade = (gIdx === uniqueGradeLevels.length - 1);
+    const gStudents = printStudents
+      .filter(s => getGradeLevelFromClass(s.classroom) === gLevel)
+      .sort((a, b) => {
+        const ca = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
+        if (ca !== 0) return ca;
+        const na = Number(a.student_number || a.student_no || 0);
+        const nb = Number(b.student_number || b.student_no || 0);
+        if (na && nb) return na - nb;
+        return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+      });
+
+    if (gStudents.length === 0) return '';
+
+    // Calculate Grade-level Attendance Average
+    let gTotalAttendPct = 0;
+    let gStudentsWithTotal = 0;
+    gStudents.forEach(s => {
+      if (s.total > 0) {
+        gTotalAttendPct += (s.attendance_pct || 0);
+        gStudentsWithTotal++;
+      }
+    });
+    const gAvgPct = gStudentsWithTotal > 0 ? (gTotalAttendPct / gStudentsWithTotal) : (res.summary?.attendance_pct || 0);
+
+    const gLevelName = getGradeLevelFullThai(gLevel);
+    let gSubTitle = isMultiGrade
+      ? `${gLevelName} (${gStudents.length} คน) | ภาคเรียนที่ ${sem}/${ay}`
+      : (activeRoom ? ('ระดับชั้น ' + activeRoom + ` (${gStudents.length} คน)`) : `${gLevelName} (${gStudents.length} คน)`);
+
+    if (isSubjectMode) {
+      if (targetSub?.teacher_name) gSubTitle = 'ครูผู้สอน: ' + targetSub.teacher_name + ' | ' + gSubTitle;
     }
 
-    tableHeaderHtml = `
-      <tr>
-        <th style="width:26px;">ที่</th>
-        <th style="width:60px;">เลขประจำตัว</th>
-        <th style="text-align:left; padding-left:5px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-        ${dayHeaders.map(h => `
-          <th style="width:18px; padding:2px 0px; ${h.isWeekend ? 'background:#F1F5F9; color:#94A3B8;' : ''}">
-            <div style="font-size:7.5px;">${h.thDay}</div>
-            <div style="font-size:9px; font-weight:800;">${h.day}</div>
-          </th>
-        `).join('')}
-        <th style="width:28px; color:#15803D;">มา</th>
-        <th style="width:28px; color:#B91C1C;">ขาด</th>
-        <th style="width:28px; color:#B45309;">ลา</th>
-        <th style="width:28px; color:#1D4ED8;">สาย</th>
-        <th style="width:30px;">รวม</th>
-        <th style="width:36px;">%</th>
-      </tr>
-    `;
+    let gTableHeaderHtml = '';
+    let gTableBodyHtml = '';
+    let gExtraLegendHtml = '';
 
-    tableBodyHtml = printStudents.map((r, idx) => `
-      <tr>
-        <td style="text-align:center;">${idx + 1}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
-        <td style="text-align:left; font-weight:600; white-space:nowrap; padding-left:5px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-        ${dayHeaders.map(h => {
-          const st = r.dates ? r.dates[h.ds] : null;
-          if (!st) return `<td style="text-align:center; color:#CBD5E1; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">-</td>`;
-          if (st === 'present') return `<td style="text-align:center; color:#15803D; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">✓</td>`;
-          if (st === 'absent')  return `<td style="text-align:center; color:#B91C1C; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">ข</td>`;
-          if (st === 'leave')   return `<td style="text-align:center; color:#B45309; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">ล</td>`;
-          if (st === 'late')    return `<td style="text-align:center; color:#1D4ED8; font-weight:bold; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">ส</td>`;
-          return `<td style="text-align:center; color:#CBD5E1; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">-</td>`;
-        }).join('')}
-        <td style="text-align:center; font-weight:bold; color:#15803D;">${r.present}</td>
-        <td style="text-align:center; font-weight:bold; color:#B91C1C;">${r.absent}</td>
-        <td style="text-align:center; font-weight:bold; color:#B45309;">${r.leave}</td>
-        <td style="text-align:center; font-weight:bold; color:#1D4ED8;">${r.late}</td>
-        <td style="text-align:center; font-weight:bold;">${r.total}</td>
-        <td style="text-align:center; font-weight:bold; ${r.total > 0 && r.attendance_pct < 80 ? 'color:#B91C1C;' : ''}">
-          ${r.total === 0 ? '-' : r.attendance_pct.toFixed(0) + '%'}
-        </td>
-      </tr>
-    `).join('');
+    if (isMatrixMode) {
+      // 1. Matrix View (Day 1 - 31)
+      const ym = document.getElementById('rptMonth')?.value || res.start_date?.slice(0, 7) || new Date().toISOString().slice(0, 7);
+      const parts = ym.split('-');
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const daysInMonth = new Date(year, month, 0).getDate();
 
-    extraLegendHtml = `
-      <div style="margin-top:6px; font-size:8pt; color:#475569; display:flex; justify-content:space-between; align-items:center;">
-        <div><b>คำอธิบายสัญลักษณ์:</b> <span style="color:#15803D; font-weight:bold;">✓</span> มาเรียน &nbsp;|&nbsp; <span style="color:#B91C1C; font-weight:bold;">ข</span> ขาดเรียน &nbsp;|&nbsp; <span style="color:#B45309; font-weight:bold;">ล</span> ลากิจ/ลาป่วย &nbsp;|&nbsp; <span style="color:#1D4ED8; font-weight:bold;">ส</span> มาสาย &nbsp;|&nbsp; แถบสีเทา = วันหยุดสุดสัปดาห์</div>
-        <div>เกณฑ์เวลาเรียนผ่านชั้น ≥ 80.0%</div>
-      </div>
-    `;
+      const dayHeaders = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dt = new Date(year, month - 1, d);
+        const dayOfWeek = dt.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const thDay = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][dayOfWeek];
+        dayHeaders.push({ day: d, isWeekend: isWeekend, thDay: thDay, ds: ym + '-' + String(d).padStart(2, '0') });
+      }
 
-  } else if (isSemesterMode) {
-    // 2. Semester Monthly Breakdown
-    tableHeaderHtml = `
-      <tr>
-        <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
-        <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
-        <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-        <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
-        ${res.months.map(m => `
-          <th style="min-width:55px; text-align:center;">${escapeHTML(m.label)}</th>
-        `).join('')}
-        <th style="width:60px; text-align:center;">รวม (วัน)</th>
-        <th style="width:70px; text-align:center;">% ตลอดเทอม</th>
-        <th style="width:68px; text-align:center;">ผลประเมิน</th>
-      </tr>
-    `;
+      gTableHeaderHtml = `
+        <tr>
+          <th style="width:26px;">ที่</th>
+          <th style="width:60px;">เลขประจำตัว</th>
+          <th style="text-align:left; padding-left:5px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+          <th style="width:45px; text-align:center;">ห้อง</th>
+          ${dayHeaders.map(h => `
+            <th style="width:18px; padding:2px 0px; ${h.isWeekend ? 'background:#F1F5F9; color:#94A3B8;' : ''}">
+              <div style="font-size:7pt; line-height:1;">${h.day}</div>
+              <div style="font-size:6pt; font-weight:normal; opacity:0.8;">${h.thDay}</div>
+            </th>
+          `).join('')}
+          <th style="width:28px; color:#15803D;">มา</th>
+          <th style="width:28px; color:#B91C1C;">ขาด</th>
+          <th style="width:28px; color:#B45309;">ลา</th>
+          <th style="width:28px; color:#1D4ED8;">สาย</th>
+          <th style="width:36px;">%</th>
+        </tr>
+      `;
 
-    tableBodyHtml = printStudents.map((r, idx) => {
-      const isRisk = (r.total > 0 && r.attendance_pct < 80);
-      return `
+      gTableBodyHtml = gStudents.map((r, idx) => `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
           <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:left; font-weight:600; padding-left:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
           <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
-          ${res.months.map(m => {
-            const mData = r.by_month ? r.by_month[m.ym] : null;
-            if (!mData || mData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
-            const p = mData.attendance_pct || 0;
-            return `<td style="text-align:center; font-weight:bold; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
+          ${dayHeaders.map(h => {
+            const st = r.dates ? r.dates[h.ds] : null;
+            if (h.isWeekend) return '<td style="background:#F8FAFC; text-align:center; color:#CBD5E1; font-size:7pt;">-</td>';
+            if (!st) return '<td style="text-align:center; color:#E2E8F0; font-size:7pt;">·</td>';
+            if (st === 'present') return '<td style="text-align:center; color:#15803D; font-weight:bold; font-size:8pt;">/</td>';
+            if (st === 'absent') return '<td style="text-align:center; color:#B91C1C; font-weight:bold; font-size:8pt;">ข</td>';
+            if (st === 'leave') return '<td style="text-align:center; color:#B45309; font-weight:bold; font-size:8pt;">ล</td>';
+            if (st === 'late') return '<td style="text-align:center; color:#1D4ED8; font-weight:bold; font-size:8pt;">ส</td>';
+            return '<td style="text-align:center; font-size:7pt;">-</td>';
           }).join('')}
-          <td style="text-align:center; font-weight:bold;">${r.total}</td>
-          <td style="text-align:center; font-weight:bold; ${isRisk ? 'color:#B91C1C;' : 'color:#15803D;'}">
-            ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
-          </td>
-          <td style="text-align:center; font-weight:bold; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
-            ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (isRisk ? 'เสี่ยง มส.' : 'ปกติ')}
+          <td style="text-align:center; font-weight:bold; color:#15803D;">${r.present}</td>
+          <td style="text-align:center; font-weight:bold; color:#B91C1C;">${r.absent}</td>
+          <td style="text-align:center; font-weight:bold; color:#B45309;">${r.leave}</td>
+          <td style="text-align:center; font-weight:bold; color:#1D4ED8;">${r.late}</td>
+          <td style="text-align:center; font-weight:bold; ${r.total > 0 && r.attendance_pct < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">
+            ${r.total === 0 ? '-' : r.attendance_pct.toFixed(0) + '%'}
           </td>
         </tr>
-      `;
-    }).join('');
+      `).join('');
 
-  } else if (isAllSubjectsMode) {
-    // 3. All Subjects Matrix
-    tableHeaderHtml = `
-      <tr>
-        <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
-        <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
-        <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-        <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
-        ${printSubjects.map(s => {
-          const clean = getCleanSubjectHeader(s);
-          return `
-          <th style="min-width:38px; padding:2px 1px; text-align:center;" title="${escapeHTML(clean.name)} (${s.periods_count || 0} คาบ)">
-            <div style="font-size:7pt; font-weight:bold; white-space:nowrap; line-height:1.1;">${escapeHTML(clean.code)}</div>
-            <div style="font-size:6.5pt; font-weight:normal; color:#64748B;">${s.periods_count || 0} คาบ</div>
-          </th>
-          `;
-        }).join('')}
-        <th style="width:55px; min-width:50px; text-align:center; font-size:7.5pt; padding:2px 1px;">% รวม</th>
-        <th style="width:58px; min-width:55px; text-align:center; font-size:7.5pt; padding:2px 1px;">ผลประเมิน</th>
-      </tr>
-    `;
-
-    tableBodyHtml = printStudents.map((r, idx) => {
-      const bad = r.total > 0 && r.attendance_pct < 80;
-      return `
-        <tr>
-          <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
-          ${printSubjects.map(s => {
-            const subData = r.by_subject ? r.by_subject[s.id] : null;
-            if (!subData || subData.total === 0) return '<td style="text-align:center; color:#94A3B8; font-size:7.5pt;">-</td>';
-            const p = subData.attendance_pct || 0;
-            return `<td style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px 1px; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
-          }).join('')}
-          <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${bad ? 'color:#B91C1C;' : 'color:#15803D;'}">
-            ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
-          </td>
-          <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${r.total === 0 ? 'color:#64748B;' : (bad ? 'color:#B91C1C;' : 'color:#15803D;')}">
-            ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (bad ? 'เสี่ยง มส.' : 'ปกติ')}
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    const subLegend = printSubjects.map(s => {
-      const clean = getCleanSubjectHeader(s);
-      return `<span style="display:inline-block; margin-right:8px; white-space:nowrap;"><b>${escapeHTML(clean.code)}</b>: ${escapeHTML(clean.name)}</span>`;
-    }).join(' ');
-
-    extraLegendHtml = `
-      <div style="margin-top:6px; font-size:7.5pt; color:#475569;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-          <div><b>เกณฑ์เวลาเรียน:</b> ตัวเลขในช่องรายวิชาคือร้อยละ (%) เวลาเรียนของนักเรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
-          <div>สถานะ: ปกติ (≥80%) / <span style="color:#B91C1C; font-weight:bold;">เสี่ยง มส. (<80%)</span></div>
+      gExtraLegendHtml = `
+        <div style="margin-top:6px; font-size:7.5pt; color:#64748B; display:flex; justify-content:space-between; align-items:center;">
+          <div><b>สัญลักษณ์:</b> <span style="color:#15803D; font-weight:bold;">/</span> มาเรียน &nbsp;|&nbsp; <span style="color:#B91C1C; font-weight:bold;">ข</span> ขาดเรียน &nbsp;|&nbsp; <span style="color:#B45309; font-weight:bold;">ล</span> ลา &nbsp;|&nbsp; <span style="color:#1D4ED8; font-weight:bold;">ส</span> มาสาย &nbsp;|&nbsp; <span style="color:#94A3B8;">-</span> วันหยุด/ไม่มีข้อมูล</div>
+          <div>* ข้อมูลตัดตามระดับชั้น: <b>${escapeHTML(gLevelName)}</b></div>
         </div>
-        ${subLegend ? `<div style="font-size:7pt; color:#64748B; border-top:1px dashed #CBD5E1; padding-top:3px; line-height:1.3;"><b>รหัสวิชา:</b> ${subLegend}</div>` : ''}
-      </div>
-    `;
+      `;
 
-  } else {
-    // 4. Default Summary View (Portrait - Perfectly Proportioned Table)
-    const countUnit = isSubjectMode ? 'คาบ' : 'วัน';
-    tableHeaderHtml = `
-      <tr>
-        <th style="width:30px;">ที่</th>
-        <th style="width:65px;">รหัสนักเรียน</th>
-        <th style="width:145px; min-width:135px; text-align:left; padding-left:8px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-        <th style="width:58px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
-        <th style="width:38px; color:#15803D;">มา</th>
-        <th style="width:38px; color:#B91C1C;">ขาด</th>
-        <th style="width:38px; color:#B45309;">ลา</th>
-        <th style="width:38px; color:#1D4ED8;">สาย</th>
-        <th style="width:42px;">รวม</th>
-        <th style="width:52px;">%</th>
-        <th style="width:68px;">ผลประเมิน</th>
-      </tr>
-    `;
-
-    tableBodyHtml = printStudents.map((r, idx) => {
-      const isRisk = (r.total > 0 && r.attendance_pct < 80);
-      return `
+    } else if (isSemesterMode) {
+      // 2. Semester Monthly Breakdown
+      gTableHeaderHtml = `
         <tr>
-          <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center; white-space:nowrap; font-size:8.5pt;">${escapeHTML(r.classroom || '-')}</td>
-          <td style="text-align:center; color:#15803D; font-weight:bold;">${r.present}</td>
-          <td style="text-align:center; color:#B91C1C; font-weight:bold;">${r.absent}</td>
-          <td style="text-align:center; color:#B45309; font-weight:bold;">${r.leave}</td>
-          <td style="text-align:center; color:#1D4ED8; font-weight:bold;">${r.late}</td>
-          <td style="text-align:center; font-weight:bold;">${r.total}</td>
-          <td style="text-align:center; font-weight:bold; ${isRisk ? 'color:#B91C1C;' : 'color:#15803D;'}">
-            ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
-          </td>
-          <td style="text-align:center; font-weight:bold; font-size:8.5pt; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
-            ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (isRisk ? 'เสี่ยง มส.' : 'ปกติ')}
-          </td>
+          <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
+          <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
+          <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+          <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ห้อง</th>
+          ${res.months.map(m => `
+            <th style="min-width:55px; text-align:center;">${escapeHTML(m.label)}</th>
+          `).join('')}
+          <th style="width:60px; text-align:center;">รวม (วัน)</th>
+          <th style="width:70px; text-align:center;">% ตลอดเทอม</th>
+          <th style="width:68px; text-align:center;">ผลประเมิน</th>
         </tr>
       `;
-    }).join('');
 
-    extraLegendHtml = `
-      <div style="margin-top:6px; font-size:8pt; color:#64748B; display:flex; justify-content:space-between; align-items:center;">
-        <div>* หน่วยนับ: จำนวน${countUnit}เรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
-        <div>สถานะ: ปกติ (≥80%) / เสี่ยง มส. (<80%)</div>
+      gTableBodyHtml = gStudents.map((r, idx) => {
+        const isRisk = (r.total > 0 && r.attendance_pct < 80);
+        return `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
+            <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+            <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
+            ${res.months.map(m => {
+              const mData = r.by_month ? r.by_month[m.ym] : null;
+              if (!mData || mData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
+              const p = mData.attendance_pct || 0;
+              return `<td style="text-align:center; font-weight:bold; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
+            }).join('')}
+            <td style="text-align:center; font-weight:bold;">${r.total}</td>
+            <td style="text-align:center; font-weight:bold; ${isRisk ? 'color:#B91C1C;' : 'color:#15803D;'}">
+              ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
+            </td>
+            <td style="text-align:center; font-weight:bold; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
+              ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (isRisk ? 'เสี่ยง มส.' : 'ปกติ')}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      gExtraLegendHtml = `
+        <div style="margin-top:6px; font-size:7.5pt; color:#64748B; display:flex; justify-content:space-between; align-items:center;">
+          <div>* หน่วยนับ: จำนวนวันเรียนตลอดภาคเรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
+          <div>ระดับชั้น: <b>${escapeHTML(gLevelName)}</b> (ปกติ ≥80% / เสี่ยง มส. <80%)</div>
+        </div>
+      `;
+
+    } else if (isAllSubjectsMode) {
+      // 3. All Subjects Matrix — Filter subjects specifically for THIS grade level!
+      const gSubjects = printSubjects.filter(s => {
+        // Direct grade_level check
+        if (s.grade_level) {
+          const sg = getGradeLevelFromClass(s.grade_level);
+          if (sg === gLevel || s.grade_level.includes(gLevel)) return true;
+        }
+        // Check if any student in this grade level has records for this subject
+        const hasData = gStudents.some(stu => {
+          const subData = stu.by_subject ? stu.by_subject[s.id] : null;
+          return subData && (subData.total > 0 || subData.periods_count > 0);
+        });
+        if (hasData) return true;
+
+        // Subject code pattern match
+        const c = (s.subject_code || s.code || '').trim();
+        if (gLevel === 'ม.1' && /^[ก-ฮa-zA-Z]{1,2}21\d{3}/.test(c)) return true;
+        if (gLevel === 'ม.2' && /^[ก-ฮa-zA-Z]{1,2}22\d{3}/.test(c)) return true;
+        if (gLevel === 'ม.3' && /^[ก-ฮa-zA-Z]{1,2}23\d{3}/.test(c)) return true;
+        if (gLevel === 'ม.4' && /^[ก-ฮa-zA-Z]{1,2}31\d{3}/.test(c)) return true;
+        if (gLevel === 'ม.5' && /^[ก-ฮa-zA-Z]{1,2}32\d{3}/.test(c)) return true;
+        if (gLevel === 'ม.6' && /^[ก-ฮa-zA-Z]{1,2}33\d{3}/.test(c)) return true;
+
+        return false;
+      });
+
+      const activeGSubjects = (gSubjects.length > 0) ? gSubjects : printSubjects;
+
+      gTableHeaderHtml = `
+        <tr>
+          <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
+          <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
+          <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+          <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ห้อง</th>
+          ${activeGSubjects.map(s => {
+            const clean = getCleanSubjectHeader(s);
+            return `
+            <th style="min-width:42px; padding:3px 2px; text-align:center;" title="${escapeHTML(clean.name)} (${s.periods_count || 0} คาบ)">
+              <div style="font-size:7.5pt; font-weight:bold; white-space:nowrap; line-height:1.1;">${escapeHTML(clean.code)}</div>
+              <div style="font-size:6.5pt; font-weight:normal; color:#64748B;">${s.periods_count || 0} คาบ</div>
+            </th>
+            `;
+          }).join('')}
+          <th style="width:55px; min-width:50px; text-align:center; font-size:7.5pt; padding:2px 1px;">% รวม</th>
+          <th style="width:58px; min-width:55px; text-align:center; font-size:7.5pt; padding:2px 1px;">ผลประเมิน</th>
+        </tr>
+      `;
+
+      gTableBodyHtml = gStudents.map((r, idx) => {
+        const bad = r.total > 0 && r.attendance_pct < 80;
+        return `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
+            <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+            <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
+            ${activeGSubjects.map(s => {
+              const subData = r.by_subject ? r.by_subject[s.id] : null;
+              if (!subData || subData.total === 0) return '<td style="text-align:center; color:#94A3B8; font-size:7.5pt;">-</td>';
+              const p = subData.attendance_pct || 0;
+              return `<td style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px 1px; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
+            }).join('')}
+            <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${bad ? 'color:#B91C1C;' : 'color:#15803D;'}">
+              ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
+            </td>
+            <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${r.total === 0 ? 'color:#64748B;' : (bad ? 'color:#B91C1C;' : 'color:#15803D;')}">
+              ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (bad ? 'เสี่ยง มส.' : 'ปกติ')}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const subLegend = activeGSubjects.map(s => {
+        const clean = getCleanSubjectHeader(s);
+        return `<span style="display:inline-block; margin-right:8px; white-space:nowrap;"><b>${escapeHTML(clean.code)}</b>: ${escapeHTML(clean.name)}</span>`;
+      }).join(' ');
+
+      gExtraLegendHtml = `
+        <div style="margin-top:6px; font-size:7.5pt; color:#475569;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+            <div><b>เกณฑ์เวลาเรียน:</b> ตัวเลขในช่องรายวิชาคือร้อยละ (%) เวลาเรียนของนักเรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
+            <div>สถานะ: ปกติ (≥80%) / <span style="color:#B91C1C; font-weight:bold;">เสี่ยง มส. (<80%)</span></div>
+          </div>
+          ${subLegend ? `<div style="font-size:7pt; color:#64748B; border-top:1px dashed #CBD5E1; padding-top:3px; line-height:1.3;"><b>รายวิชาประจำ${escapeHTML(gLevelName)}:</b> ${subLegend}</div>` : ''}
+        </div>
+      `;
+
+    } else {
+      // 4. Default Summary View
+      const countUnit = isSubjectMode ? 'คาบ' : 'วัน';
+      gTableHeaderHtml = `
+        <tr>
+          <th style="width:30px;">ที่</th>
+          <th style="width:65px;">รหัสนักเรียน</th>
+          <th style="width:145px; min-width:135px; text-align:left; padding-left:8px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+          <th style="width:58px; text-align:center; white-space:nowrap;">ห้อง</th>
+          <th style="width:38px; color:#15803D;">มา</th>
+          <th style="width:38px; color:#B91C1C;">ขาด</th>
+          <th style="width:38px; color:#B45309;">ลา</th>
+          <th style="width:38px; color:#1D4ED8;">สาย</th>
+          <th style="width:42px;">รวม</th>
+          <th style="width:52px;">%</th>
+          <th style="width:68px;">ผลประเมิน</th>
+        </tr>
+      `;
+
+      gTableBodyHtml = gStudents.map((r, idx) => {
+        const isRisk = (r.total > 0 && r.attendance_pct < 80);
+        return `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
+            <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+            <td style="text-align:center; white-space:nowrap; font-size:8.5pt;">${escapeHTML(r.classroom || '-')}</td>
+            <td style="text-align:center; color:#15803D; font-weight:bold;">${r.present}</td>
+            <td style="text-align:center; color:#B91C1C; font-weight:bold;">${r.absent}</td>
+            <td style="text-align:center; color:#B45309; font-weight:bold;">${r.leave}</td>
+            <td style="text-align:center; color:#1D4ED8; font-weight:bold;">${r.late}</td>
+            <td style="text-align:center; font-weight:bold;">${r.total}</td>
+            <td style="text-align:center; font-weight:bold; ${isRisk ? 'color:#B91C1C;' : 'color:#15803D;'}">
+              ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
+            </td>
+            <td style="text-align:center; font-weight:bold; font-size:8.5pt; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
+              ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (isRisk ? 'เสี่ยง มส.' : 'ปกติ')}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      gExtraLegendHtml = `
+        <div style="margin-top:6px; font-size:8pt; color:#64748B; display:flex; justify-content:space-between; align-items:center;">
+          <div>* หน่วยนับ: จำนวน${countUnit}เรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
+          <div>ระดับชั้น: <b>${escapeHTML(gLevelName)}</b> (ปกติ ≥80% / เสี่ยง มส. <80%)</div>
+        </div>
+      `;
+    }
+
+    const pageBreakStyle = (isMultiGrade && !isLastGrade) ? 'page-break-after: always; break-after: page;' : '';
+
+    return `
+      <div class="print-page-wrapper grade-level-section" style="${pageBreakStyle}">
+        <div class="header">
+          <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
+          <div class="title">${escapeHTML(reportTitle)}</div>
+          <div class="subtitle">${escapeHTML(gSubTitle)}</div>
+          <div style="font-size:8.5pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
+        </div>
+
+        <div class="summary-bar">
+          <div><b>ระดับชั้น:</b> ${escapeHTML(gLevelName)}</div>
+          <div><b>จำนวนนักเรียน:</b> ${gStudents.length} คน</div>
+          <div><b>อัตราการเข้าเรียนเฉลี่ย:</b> ${gAvgPct.toFixed(1)}%</div>
+          <div><b>สถานะ:</b> ${gAvgPct >= 80 ? 'ปกติ' : 'ต้องเฝ้าระวัง'}</div>
+        </div>
+
+        <table>
+          <thead>
+            ${gTableHeaderHtml}
+          </thead>
+          <tbody>
+            ${gTableBodyHtml}
+          </tbody>
+        </table>
+
+        ${gExtraLegendHtml}
+
+        <div class="signatures">
+          <div class="sig-box">
+            <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
+            <div class="sig-line">( .............................................................. )</div>
+            <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : (isMultiGrade ? 'หัวหน้าระดับชั้น ' + gLevel : 'ครูประจำชั้น')}</div>
+            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+          </div>
+          <div class="sig-box">
+            <div>ทราบ / อนุมัติ</div>
+            <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+            <div class="sig-line">( นายอธิการ สุขศรี )</div>
+            <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+          </div>
+        </div>
       </div>
     `;
-  }
+  }).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="th">
@@ -4294,6 +4592,8 @@ function printAttendanceReport() {
       .no-print { display: none !important; }
       body { margin: 0; background: #FFFFFF; }
       .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      .print-page-wrapper.grade-level-section { page-break-after: always !important; break-after: page !important; }
+      .print-page-wrapper.grade-level-section:last-child { page-break-after: auto !important; break-after: auto !important; }
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
       thead { display: table-header-group; }
@@ -4319,47 +4619,7 @@ function printAttendanceReport() {
     </div>
   </div>
 
-  <div class="print-page-wrapper">
-    <div class="header">
-      <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
-      <div class="title">${escapeHTML(reportTitle)}</div>
-      <div class="subtitle">${escapeHTML(subTitle)}</div>
-      <div style="font-size:8.5pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
-    </div>
-
-    <div class="summary-bar">
-      <div><b>จำนวนนักเรียนในรายงาน:</b> ${printStudents.length} คน</div>
-      <div><b>อัตราการเข้าเรียนเฉลี่ย:</b> ${(res.summary?.attendance_pct || 0).toFixed(1)}%</div>
-      <div><b>สถานะ:</b> ${(res.summary?.attendance_pct || 0) >= 80 ? 'ปกติ' : 'ต้องเฝ้าระวัง'}</div>
-    </div>
-
-    <table>
-      <thead>
-        ${tableHeaderHtml}
-      </thead>
-      <tbody>
-        ${tableBodyHtml}
-      </tbody>
-    </table>
-
-    ${extraLegendHtml}
-
-    <div class="signatures">
-      <div class="sig-box">
-        <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
-        <div class="sig-line">( .............................................................. )</div>
-        <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
-        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
-      </div>
-      <div class="sig-box">
-        <div>ทราบ / อนุมัติ</div>
-        <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
-        <div class="sig-line">( นายอธิการ สุขศรี )</div>
-        <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
-      </div>
-    </div>
-  </div>
+  ${gradeSectionsHtml}
 
   <div class="footer">
     <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>

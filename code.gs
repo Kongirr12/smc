@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.0.8',
+  APP_VERSION    : '3.0.9',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -3877,31 +3877,111 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
     return Number(g).toFixed(g % 1 ? 1 : 0);
   };
 
-  const tableRows = rows.map((r, i) => {
-    const m = (r.score_midterm === '' || r.score_midterm == null) ? '' : Number(r.score_midterm);
-    const f = (r.score_final   === '' || r.score_final   == null) ? '' : Number(r.score_final);
-    const t = (m !== '' && f !== '') ? (Number(m) + Number(f))
-              : (m !== '' ? m : (f !== '' ? f : ''));
-    const pct = (r.attendance_hours !== '' && r.total_hours !== '' && r.total_hours)
-      ? Math.round((r.attendance_hours / r.total_hours) * 1000) / 10 : '';
-    const gradeLv = (t !== '') ? calculateGradeLevel(t, 100, config.grade_thresholds) : null;
-    return `
-      <tr>
-        <td class="t-center">${i+1}</td>
-        <td class="t-center">${r.student_code || ''}</td>
-        <td>${escapeHTMLServer_((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</td>
-        <td class="t-center">${escapeHTMLServer_(r.classroom || '')}</td>
-        <td class="t-center">${m}</td>
-        <td class="t-center">${f}</td>
-        <td class="t-center">${t}</td>
-        <td class="t-center">${pct !== '' ? pct + '%' : ''}</td>
-        <td class="t-center"><b>${grade(gradeLv, r.grade_special)}</b></td>
-      </tr>`;
-  }).join('');
+  const distinctRooms = Array.from(new Set(rows.map(r => r.classroom).filter(Boolean)))
+    .sort((a,b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
 
-  const displayClass = classroom 
-    ? `${escapeHTMLServer_(subject.grade_level || '')} (ห้อง ${escapeHTMLServer_(classroom)})`
-    : escapeHTMLServer_(subject.grade_level || '-');
+  const isMultiRoom = (!classroom && distinctRooms.length > 1);
+
+  const roomsToRender = isMultiRoom ? distinctRooms : [classroom || (distinctRooms[0] || '')];
+
+  const sheetsHtml = roomsToRender.map((rm, rmIdx) => {
+    const isLast = (rmIdx === roomsToRender.length - 1);
+    const roomRows = isMultiRoom ? rows.filter(r => r.classroom === rm) : rows;
+
+    const tableRows = roomRows.map((r, i) => {
+      const m = (r.score_midterm === '' || r.score_midterm == null) ? '' : Number(r.score_midterm);
+      const f = (r.score_final   === '' || r.score_final   == null) ? '' : Number(r.score_final);
+      const t = (m !== '' && f !== '') ? (Number(m) + Number(f))
+                : (m !== '' ? m : (f !== '' ? f : ''));
+      const pct = (r.attendance_hours !== '' && r.total_hours !== '' && r.total_hours)
+        ? Math.round((r.attendance_hours / r.total_hours) * 1000) / 10 : '';
+      const gradeLv = (t !== '') ? calculateGradeLevel(t, 100, config.grade_thresholds) : null;
+      return `
+        <tr>
+          <td class="t-center">${i+1}</td>
+          <td class="t-center">${r.student_code || ''}</td>
+          <td>${escapeHTMLServer_((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</td>
+          <td class="t-center">${escapeHTMLServer_(r.classroom || rm || '')}</td>
+          <td class="t-center">${m}</td>
+          <td class="t-center">${f}</td>
+          <td class="t-center">${t}</td>
+          <td class="t-center">${pct !== '' ? pct + '%' : ''}</td>
+          <td class="t-center"><b>${grade(gradeLv, r.grade_special)}</b></td>
+        </tr>`;
+    }).join('');
+
+    const displayClass = rm 
+      ? `${escapeHTMLServer_(subject.grade_level || '')} (ห้อง ${escapeHTMLServer_(rm)})`
+      : escapeHTMLServer_(subject.grade_level || '-');
+
+    const breakStyle = (isMultiRoom && !isLast) ? 'page-break-after: always; break-after: page;' : '';
+
+    return `
+      <div class="pp5-sheet" style="${breakStyle}">
+        <div class="school">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
+        <h1>แบบบันทึกผลการเรียน (ปพ.5)</h1>
+        <div class="sub">รายวิชา ${escapeHTMLServer_(subject.subject_code || '')} ${escapeHTMLServer_(subject.subject_name || '')}</div>
+
+        <table class="info-table">
+          <tr>
+            <td class="lbl">กลุ่มสาระฯ:</td>
+            <td>${escapeHTMLServer_(subject.subject_group || '-')}</td>
+            <td class="lbl">หน่วยกิต:</td>
+            <td>${subject.credit || 0} หน่วยกิต</td>
+            <td class="lbl">ชั่วโมง/สัปดาห์:</td>
+            <td>${subject.hours_per_week || 0} ชม.</td>
+          </tr>
+          <tr>
+            <td class="lbl">ชั้น:</td>
+            <td>${displayClass}</td>
+            <td class="lbl">ภาคเรียน:</td>
+            <td>${escapeHTMLServer_(targetSem || subject.semester || '-')}</td>
+            <td class="lbl">ปีการศึกษา:</td>
+            <td>${escapeHTMLServer_(targetYear || subject.academic_year || '-')}</td>
+          </tr>
+          <tr>
+            <td class="lbl">ครูผู้สอน:</td>
+            <td colspan="5">${escapeHTMLServer_(teacherName)}</td>
+          </tr>
+        </table>
+
+        <table class="grade-table">
+          <thead>
+            <tr>
+              <th style="width:35px;">ที่</th>
+              <th style="width:75px;">รหัส</th>
+              <th>ชื่อ-นามสกุล</th>
+              <th style="width:55px;">ห้อง</th>
+              <th style="width:75px;">ระหว่างภาค<br>(${subject.midterm_weight || 70})</th>
+              <th style="width:65px;">ปลายภาค<br>(${subject.final_weight || 30})</th>
+              <th style="width:50px;">รวม</th>
+              <th style="width:60px;">เวลาเรียน</th>
+              <th style="width:55px;">ผลการเรียน</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+
+        <div class="signature-row">
+          <div class="sig">
+            <div class="sig-line">${teacher.signature ? `<img src="${escapeHTMLServer_(teacher.signature)}" alt="signature">` : ''}</div>
+            <div>(${escapeHTMLServer_(teacherName)})</div>
+            <div>ครูผู้สอน</div>
+          </div>
+          <div class="sig">
+            <div class="sig-line"></div>
+            <div>(.............................................)</div>
+            <div>หัวหน้ากลุ่มสาระฯ</div>
+          </div>
+          <div class="sig">
+            <div class="sig-line"></div>
+            <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
+            <div>ผู้อำนวยการโรงเรียน</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 
   return `
 <!DOCTYPE html><html lang="th"><head>
@@ -3925,13 +4005,18 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
   .signature-row {
     display: flex; justify-content: space-around;
     margin-top: 40px; font-size: 12px; text-align: center;
+    page-break-inside: avoid;
   }
   .signature-row .sig img { max-height: 50px; margin-bottom: 4px; }
   .sig-line {
     border-bottom: 1px dotted #000;
     width: 200px; margin: 0 auto 4px; padding-bottom: 30px;
   }
-  @media print { .no-print { display: none; } }
+  @media print {
+    .no-print { display: none !important; }
+    .pp5-sheet { page-break-after: always !important; break-after: page !important; }
+    .pp5-sheet:last-child { page-break-after: auto !important; break-after: auto !important; }
+  }
   .no-print {
     position: fixed; top: 10px; right: 10px;
     background: #800020; color: white; padding: 10px 16px;
@@ -3942,67 +4027,7 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
 
 <button class="no-print" onclick="window.print()">พิมพ์</button>
 
-<div class="school">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-<h1>แบบบันทึกผลการเรียน (ปพ.5)</h1>
-<div class="sub">รายวิชา ${escapeHTMLServer_(subject.subject_code || '')} ${escapeHTMLServer_(subject.subject_name || '')}</div>
-
-<table class="info-table">
-  <tr>
-    <td class="lbl">กลุ่มสาระฯ:</td>
-    <td>${escapeHTMLServer_(subject.subject_group || '-')}</td>
-    <td class="lbl">หน่วยกิต:</td>
-    <td>${subject.credit || 0} หน่วยกิต</td>
-    <td class="lbl">ชั่วโมง/สัปดาห์:</td>
-    <td>${subject.hours_per_week || 0} ชม.</td>
-  </tr>
-  <tr>
-    <td class="lbl">ชั้น:</td>
-    <td>${displayClass}</td>
-    <td class="lbl">ภาคเรียน:</td>
-    <td>${escapeHTMLServer_(targetSem || subject.semester || '-')}</td>
-    <td class="lbl">ปีการศึกษา:</td>
-    <td>${escapeHTMLServer_(targetYear || subject.academic_year || '-')}</td>
-  </tr>
-  <tr>
-    <td class="lbl">ครูผู้สอน:</td>
-    <td colspan="5">${escapeHTMLServer_(teacherName)}</td>
-  </tr>
-</table>
-
-<table class="grade-table">
-  <thead>
-    <tr>
-      <th style="width:35px;">ที่</th>
-      <th style="width:75px;">รหัส</th>
-      <th>ชื่อ-นามสกุล</th>
-      <th style="width:55px;">ห้อง</th>
-      <th style="width:75px;">ระหว่างภาค<br>(${subject.midterm_weight || 70})</th>
-      <th style="width:65px;">ปลายภาค<br>(${subject.final_weight || 30})</th>
-      <th style="width:50px;">รวม</th>
-      <th style="width:60px;">เวลาเรียน</th>
-      <th style="width:55px;">ผลการเรียน</th>
-    </tr>
-  </thead>
-  <tbody>${tableRows}</tbody>
-</table>
-
-<div class="signature-row">
-  <div class="sig">
-    <div class="sig-line">${teacher.signature ? `<img src="${escapeHTMLServer_(teacher.signature)}" alt="signature">` : ''}</div>
-    <div>(${escapeHTMLServer_(teacherName)})</div>
-    <div>ครูผู้สอน</div>
-  </div>
-  <div class="sig">
-    <div class="sig-line"></div>
-    <div>(.............................................)</div>
-    <div>หัวหน้ากลุ่มสาระฯ</div>
-  </div>
-  <div class="sig">
-    <div class="sig-line"></div>
-    <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
-    <div>ผู้อำนวยการโรงเรียน</div>
-  </div>
-</div>
+${sheetsHtml}
 
 </body></html>`;
 }
