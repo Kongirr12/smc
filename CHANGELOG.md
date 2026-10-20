@@ -3,7 +3,16 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.0.3] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.0.4] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🚀 เพิ่มฟีเจอร์และปรับปรุงหลัก (Major Updates)
+- **ปรับลดระดับแผงด้านบนลงมาตามตำแหน่งภาพที่ผู้ใช้กำหนด (Mobile Top Section Pull-Down & Spacing Fine-Tuning):**
+  - ดึงแผงส่วนหัวโลโก้และข้อมูลโรงเรียนด้านบนลงมาให้พ้นแถบ Dynamic Island / Notch ของ iPhone โดยปรับ `padding-top: max(44px, calc(env(safe-area-inset-top) + 24px))`
+  - ขยายระยะห่างและการจัดวางใน Hero Showcase และ Bento Cards ให้ทิ้งตัวลงมาสู่กึ่งกลางสายตาอย่างสมดุล ลดช่องว่างสีขาวส่วนเกินด้านล่าง และไม่เบียดชิดเพดานจอด้านบน
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.0.4` เพื่อเคลียร์แคชและบังคับอัปเดตเลย์เอาต์ใหม่ทันที
+
+---
+
+## [v3.0.3] - 2026-10-21
 ### 🚀 เพิ่มฟีเจอร์และปรับปรุงหลัก (Major Updates)
 - **ปรับแต่งขอบบน-ล่างและสเกลหน้าจอเข้าสู่ระบบบนมือถือ (Mobile Responsive & Spacing Optimization for Safari & Bookmarks):**
   - คืนค่าดีไซน์หน้าจอเข้าสู่ระบบระดับ Enterprise แบบเดิมที่สวยงาม (แผงแบรนด์ Smart Campus + การ์ดฟอร์มเข้าสู่ระบบ) ที่ผู้ใช้ชื่นชอบ
