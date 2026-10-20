@@ -362,8 +362,8 @@ function navigate(page) {
     manual  : 'คู่มือการใช้งาน',
     ext_nited: 'ระบบนิเทศภายใน',
     ext_homevisit: 'ระบบเยี่ยมบ้าน',
-    ext_training: 'ระบบเก็บข้อมูลการอบรม',
-    ext_portfolio: 'ระบบเก็บผลงานครู'
+    ext_portfolio: 'ระบบเก็บผลงานและข้อมูลการอบรม',
+    ext_training: 'ระบบเก็บผลงานและข้อมูลการอบรม'
   };
   document.getElementById('pageTitle').textContent = titles[page] || 'หน้าหลัก';
 
@@ -402,8 +402,8 @@ function navigate(page) {
     case 'manual':    if (typeof renderManual    === 'function') return renderManual(content);    break;
     case 'ext_nited': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbwhRcZMFI1aKaOVmlecoujOp_vhRS1RaEIczGefuyDfrgRZyNATB4tfb3oukcJ6InvbwA/exec', 'ระบบนิเทศภายใน');
     case 'ext_homevisit': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbzPVxRjrQ-693tDZa1XdaGxNkLYH_dlZnxQQ-P_co0lxWlXrTbgvvhGIOgJ0NUMpn4B/exec', 'ระบบเยี่ยมบ้าน');
-    case 'ext_training': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbzKx404GT7nYO8OyLnjUa9h0xdLAHRVW0YlTSjMQIT5Hz1ZOjb6_3J5WNKF0RvyZuKK/exec', 'ระบบเก็บข้อมูลการอบรม');
-    case 'ext_portfolio': return renderIframe(content, 'https://script.google.com/macros/s/AKfycby38tVx6RFc9CNsWuP8AZG4RPTGZ9PsjbFS-tLnydiTLDooW2z7x1nwmDlSng1TQm2M/exec', 'ระบบเก็บผลงานครู');
+    case 'ext_training':
+    case 'ext_portfolio': return renderIframe(content, 'https://script.google.com/macros/s/AKfycby38tVx6RFc9CNsWuP8AZG4RPTGZ9PsjbFS-tLnydiTLDooW2z7x1nwmDlSng1TQm2M/exec', 'ระบบเก็บผลงานและข้อมูลการอบรม');
   }
   // ถ้าไม่มี renderer ใน Part นี้ → แสดง placeholder
   renderComingSoon(content, titles[page] || page);
@@ -454,8 +454,7 @@ window.openGlobalSearch = function() {
     { title: 'ปฏิทินและข่าวสารโรงเรียน', icon: 'bxs-calendar-event', page: 'calendar', cat: 'ประชาสัมพันธ์' },
     { title: 'ระบบนิเทศภายใน', icon: 'bxs-chalkboard', page: 'ext_nited', cat: 'ส่วนเสริม' },
     { title: 'ระบบเยี่ยมบ้าน', icon: 'bxs-home-heart', page: 'ext_homevisit', cat: 'ส่วนเสริม' },
-    { title: 'ระบบเก็บข้อมูลการอบรม', icon: 'bxs-graduation', page: 'ext_training', cat: 'ส่วนเสริม' },
-    { title: 'ระบบเก็บผลงานครู', icon: 'bxs-briefcase', page: 'ext_portfolio', cat: 'ส่วนเสริม' },
+    { title: 'ระบบเก็บผลงานและข้อมูลการอบรม (Portfolio)', icon: 'bxs-briefcase', page: 'ext_portfolio', cat: 'ส่วนเสริม' },
     { title: 'คู่มือการใช้งานระบบ', icon: 'bxs-book-reader', page: 'manual', cat: 'ช่วยเหลือ' },
   ];
   if (APP.role === 'admin') {
