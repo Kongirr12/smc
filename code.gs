@@ -2639,20 +2639,38 @@ function getAttendanceFilterOptions(sessionToken) {
 
     const THAI_MONTHS = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-    const sortedYM = Array.from(seenYM).sort().reverse();
-    const months = sortedYM.map(ym => {
+    // Chronological order
+    const allYM = Array.from(seenYM).sort();
+
+    // From Present to Future (จากปัจจุบันไปหาอนาคต)
+    const currentAndFutureYM = allYM.filter(ym => ym >= curYM);
+    // Past months (sorted reverse-chronological, nearest past first)
+    const pastYM = allYM.filter(ym => ym < curYM).sort().reverse();
+
+    const formatMonthObj = (ym, isPast) => {
       const parts = ym.split('-');
       const y = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10);
       const thYear = y + 543;
+      const isCur = (ym === curYM);
       return {
         ym: ym,
         year: y,
         month: m,
         th_year: thYear,
-        label: (THAI_MONTHS[m] || ym) + ' ' + thYear
+        is_current: isCur,
+        is_past: !!isPast,
+        group: isPast ? 'past' : 'current_future',
+        group_label: isPast ? 'เดือนย้อนหลัง' : 'เดือนปัจจุบันและถัดไป',
+        label: (THAI_MONTHS[m] || ym) + ' ' + thYear + (isCur ? ' (ปัจจุบัน)' : '')
       };
-    });
+    };
+
+    // Ordered: current month -> future months, followed by past months
+    const months = [
+      ...currentAndFutureYM.map(ym => formatMonthObj(ym, false)),
+      ...pastYM.map(ym => formatMonthObj(ym, true))
+    ];
 
     const s1Start = config.semester_1_start || (ayNum + '-05-16');
     const s1End   = config.semester_1_end   || (ayNum + '-10-31');

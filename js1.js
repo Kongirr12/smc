@@ -986,7 +986,10 @@ window.switchAttendanceDashboardPeriod = function(scope, prefix) {
     };
 
     if (window.AttendanceState?.filterOptions?.months && periodSel) {
-      periodSel.innerHTML = window.AttendanceState.filterOptions.months.map(m => '<option value="' + m.ym + '">' + escapeHTML(m.label) + '</option>').join('');
+      periodSel.innerHTML = (typeof renderMonthOptionsHtml === 'function')
+        ? renderMonthOptionsHtml(window.AttendanceState.filterOptions.months, window.AttendanceState.filterOptions.current_ym)
+        : window.AttendanceState.filterOptions.months.map(m => '<option value="' + m.ym + '">' + escapeHTML(m.label) + '</option>').join('');
+      if (window.AttendanceState.filterOptions.current_ym) periodSel.value = window.AttendanceState.filterOptions.current_ym;
       loadMonthly();
     } else {
       google.script.run
@@ -995,7 +998,10 @@ window.switchAttendanceDashboardPeriod = function(scope, prefix) {
             if (!window.AttendanceState) window.AttendanceState = {};
             window.AttendanceState.filterOptions = res.data;
             if (periodSel) {
-              periodSel.innerHTML = res.data.months.map(m => '<option value="' + m.ym + '">' + escapeHTML(m.label) + '</option>').join('');
+              periodSel.innerHTML = (typeof renderMonthOptionsHtml === 'function')
+                ? renderMonthOptionsHtml(res.data.months, res.data.current_ym)
+                : res.data.months.map(m => '<option value="' + m.ym + '">' + escapeHTML(m.label) + '</option>').join('');
+              if (res.data.current_ym) periodSel.value = res.data.current_ym;
             }
             loadMonthly();
           }

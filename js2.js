@@ -2689,6 +2689,26 @@ function saveAttendance() {
 
 /* ----- Attendance Report (Monthly & Semester & Custom) ----- */
 
+function renderMonthOptionsHtml(monthsList, selectedYM) {
+  if (!monthsList || monthsList.length === 0) return '';
+  const curYM = selectedYM || (monthsList.find(m => m.is_current)?.ym) || (new Date().toISOString().slice(0, 7));
+  const curFuture = monthsList.filter(m => !m.is_past);
+  const past = monthsList.filter(m => m.is_past);
+
+  if (past.length > 0 && curFuture.length > 0) {
+    return `
+      <optgroup label="📌 เดือนปัจจุบัน & ถัดไป (ปัจจุบัน ➔ อนาคต)">
+        ${curFuture.map(m => `<option value="${m.ym}" ${m.ym === curYM ? 'selected' : ''}>${escapeHTML(m.label)}</option>`).join('')}
+      </optgroup>
+      <optgroup label="🕒 เดือนย้อนหลัง">
+        ${past.map(m => `<option value="${m.ym}" ${m.ym === curYM ? 'selected' : ''}>${escapeHTML(m.label)}</option>`).join('')}
+      </optgroup>
+    `;
+  }
+  return monthsList.map(m => `<option value="${m.ym}" ${m.ym === curYM ? 'selected' : ''}>${escapeHTML(m.label)}</option>`).join('');
+}
+window.renderMonthOptionsHtml = renderMonthOptionsHtml;
+
 function renderAttendanceReport() {
   const c = document.getElementById('attReport');
   if (!c) return;
@@ -2751,7 +2771,7 @@ function renderAttendanceReport() {
       <div id="rptMonthWrap" class="sm:col-span-1 lg:col-span-3" style="${AttendanceState.reportScope==='monthly'?'':'display:none;'}">
         <label class="text-[11px] font-bold text-slate-500 mb-1 block">ประจำเดือน</label>
         <select id="rptMonth" onchange="loadAttendanceReport()" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white">
-          ${(AttendanceState.filterOptions?.months || []).map(m => `<option value="${m.ym}">${escapeHTML(m.label)}</option>`).join('')}
+          ${renderMonthOptionsHtml(AttendanceState.filterOptions?.months, AttendanceState.filterOptions?.current_ym)}
         </select>
       </div>
 
@@ -2810,7 +2830,8 @@ function renderAttendanceReport() {
           // Populate months dropdown
           const mSel = document.getElementById('rptMonth');
           if (mSel && res.data.months && res.data.months.length > 0) {
-            mSel.innerHTML = res.data.months.map(m => `<option value="${m.ym}">${escapeHTML(m.label)}</option>`).join('');
+            mSel.innerHTML = renderMonthOptionsHtml(res.data.months, res.data.current_ym);
+            if (res.data.current_ym) mSel.value = res.data.current_ym;
           }
           // Populate semesters dropdown
           const sSel = document.getElementById('rptSemester');
@@ -4034,16 +4055,16 @@ function printAttendanceReport() {
     // 2. Semester Monthly Breakdown
     tableHeaderHtml = `
       <tr>
-        <th style="width:32px;">ที่</th>
-        <th style="width:68px;">รหัสนักเรียน</th>
-        <th style="text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-        <th style="width:65px;">ระดับชั้น</th>
+        <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
+        <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
+        <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+        <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
         ${res.months.map(m => `
-          <th style="min-width:60px; text-align:center;">${escapeHTML(m.label)}</th>
+          <th style="min-width:55px; text-align:center;">${escapeHTML(m.label)}</th>
         `).join('')}
-        <th style="width:65px; text-align:center;">รวม (วัน)</th>
-        <th style="width:75px; text-align:center;">% ตลอดเทอม</th>
-        <th style="width:75px; text-align:center;">ผลประเมิน</th>
+        <th style="width:60px; text-align:center;">รวม (วัน)</th>
+        <th style="width:70px; text-align:center;">% ตลอดเทอม</th>
+        <th style="width:68px; text-align:center;">ผลประเมิน</th>
       </tr>
     `;
 
@@ -4052,9 +4073,9 @@ function printAttendanceReport() {
       return `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center; white-space:nowrap;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
           ${res.months.map(m => {
             const mData = r.by_month ? r.by_month[m.ym] : null;
             if (!mData || mData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
@@ -4076,18 +4097,18 @@ function printAttendanceReport() {
     // 3. All Subjects Matrix
     tableHeaderHtml = `
       <tr>
-        <th style="width:32px;">ที่</th>
-        <th style="width:65px;">รหัสนักเรียน</th>
-        <th style="text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-        <th style="width:65px;">ระดับชั้น</th>
+        <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
+        <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
+        <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+        <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
         ${res.subjects.map(s => `
-          <th style="min-width:65px; text-align:center;">
-            <div>${escapeHTML(s.subject_code || s.subject_name)}</div>
-            <div style="font-size:7.5pt; font-weight:normal; color:#64748B;">${s.periods_count} คาบ</div>
+          <th style="min-width:38px; padding:2px 1px; text-align:center;">
+            <div style="font-size:7pt; font-weight:bold; white-space:nowrap; line-height:1.1;">${escapeHTML(s.subject_code || s.subject_name)}</div>
+            <div style="font-size:6.5pt; font-weight:normal; color:#64748B;">${s.periods_count} คาบ</div>
           </th>
         `).join('')}
-        <th style="width:75px; text-align:center;">% รวมทุกวิชา</th>
-        <th style="width:75px; text-align:center;">ผลประเมิน</th>
+        <th style="width:55px; min-width:50px; text-align:center; font-size:7.5pt; padding:2px 1px;">% รวม</th>
+        <th style="width:58px; min-width:55px; text-align:center; font-size:7.5pt; padding:2px 1px;">ผลประเมิน</th>
       </tr>
     `;
 
@@ -4096,24 +4117,31 @@ function printAttendanceReport() {
       return `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center; white-space:nowrap;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
           ${res.subjects.map(s => {
             const subData = r.by_subject ? r.by_subject[s.id] : null;
-            if (!subData || subData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
+            if (!subData || subData.total === 0) return '<td style="text-align:center; color:#94A3B8; font-size:7.5pt;">-</td>';
             const p = subData.attendance_pct || 0;
-            return `<td style="text-align:center; font-weight:bold; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
+            return `<td style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px 1px; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
           }).join('')}
-          <td style="text-align:center; font-weight:bold; ${bad ? 'color:#B91C1C;' : 'color:#15803D;'}">
+          <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${bad ? 'color:#B91C1C;' : 'color:#15803D;'}">
             ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
           </td>
-          <td style="text-align:center; font-weight:bold; ${r.total === 0 ? 'color:#64748B;' : (bad ? 'color:#B91C1C;' : 'color:#15803D;')}">
+          <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${r.total === 0 ? 'color:#64748B;' : (bad ? 'color:#B91C1C;' : 'color:#15803D;')}">
             ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (bad ? 'เสี่ยง มส.' : 'ปกติ')}
           </td>
         </tr>
       `;
     }).join('');
+
+    extraLegendHtml = `
+      <div style="margin-top:6px; font-size:7.5pt; color:#475569; display:flex; justify-content:space-between; align-items:center;">
+        <div><b>เกณฑ์เวลาเรียน:</b> ตัวเลขในช่องรายวิชาคือร้อยละ (%) เวลาเรียนของนักเรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
+        <div>สถานะ: ปกติ (≥80%) / <span style="color:#B91C1C; font-weight:bold;">เสี่ยง มส. (<80%)</span></div>
+      </div>
+    `;
 
   } else {
     // 4. Default Summary View (Portrait - Perfectly Proportioned Table)
@@ -4122,8 +4150,8 @@ function printAttendanceReport() {
       <tr>
         <th style="width:30px;">ที่</th>
         <th style="width:65px;">รหัสนักเรียน</th>
-        <th style="text-align:left; padding-left:8px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-        <th style="width:65px;">ระดับชั้น</th>
+        <th style="width:145px; min-width:135px; text-align:left; padding-left:8px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+        <th style="width:58px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
         <th style="width:38px; color:#15803D;">มา</th>
         <th style="width:38px; color:#B91C1C;">ขาด</th>
         <th style="width:38px; color:#B45309;">ลา</th>
@@ -4139,9 +4167,9 @@ function printAttendanceReport() {
       return `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace; font-size:9pt;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center; white-space:nowrap;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center; white-space:nowrap; font-size:8.5pt;">${escapeHTML(r.classroom || '-')}</td>
           <td style="text-align:center; color:#15803D; font-weight:bold;">${r.present}</td>
           <td style="text-align:center; color:#B91C1C; font-weight:bold;">${r.absent}</td>
           <td style="text-align:center; color:#B45309; font-weight:bold;">${r.leave}</td>
@@ -4198,9 +4226,9 @@ function printAttendanceReport() {
     .title { font-size: ${isMatrixMode ? '12pt' : '13pt'}; font-weight: bold; margin: 0; color: #1E293B; }
     .subtitle { font-size: 9pt; color: #334155; margin: 2px 0 0 0; }
     .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 4px 8px; border-radius: 4px; margin: 6px 0; font-size: 8.5pt; }
-    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: ${isMatrixMode ? '8pt' : '8.5pt'}; table-layout: fixed; }
-    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode ? '2px 0px' : '3px 2px'}; text-align: center; font-weight: bold; }
-    td { border: 1px solid #CBD5E1; padding: ${isMatrixMode ? '2px 1px' : '2.5px 3px'}; line-height: 1.25; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: ${isMatrixMode || isAllSubjectsMode ? '7.5pt' : '8.5pt'}; table-layout: ${isAllSubjectsMode || isSemesterMode ? 'auto' : 'fixed'}; }
+    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '3px 2px'}; text-align: center; font-weight: bold; }
+    td { border: 1px solid #CBD5E1; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '2.5px 3px'}; line-height: 1.25; }
     tr:nth-child(even) { background: #FAFAFA; }
     .signatures { margin-top: 20px; display: flex; justify-content: space-between; page-break-inside: avoid; }
     .sig-box { text-align: center; min-width: 190px; font-size: 9pt; }
