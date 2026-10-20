@@ -3572,6 +3572,9 @@ function printAttendanceDashboardOverview() {
 
   const docTitle = 'รายงานสรุปภาพรวมการเข้าเรียนประจำวัน';
   const subTitle = `ข้อมูลประจำวันที่ ${todayLabel} | ภาคเรียนที่ ${sem}/${ay}`;
+  const schoolLogoUrl = (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
+    || localStorage.getItem('cached_school_logo') 
+    || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
 
   const html = `<!DOCTYPE html>
 <html lang="th">
@@ -3579,26 +3582,27 @@ function printAttendanceDashboardOverview() {
   <meta charset="UTF-8">
   <title>${escapeHTML(docTitle)}</title>
   <style>
-    @page { size: A4 portrait; margin: 10mm 10mm 12mm 10mm; }
+    @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 11px; color: #0F172A; margin: 0; padding: 0; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 10pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .header { text-align: center; margin-top: 10px; margin-bottom: 12px; }
-    .logo { width: 55px; height: 55px; object-fit: contain; margin: 0 auto 4px auto; display: block; }
+    .print-page-wrapper { max-width: 195mm; margin: 15px auto; padding: 10mm 12mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; }
+    .header { text-align: center; margin-bottom: 12px; }
+    .logo { width: 52px; height: 52px; object-fit: contain; margin: 0 auto 4px auto; display: block; }
     .title { font-size: 13.5pt; font-weight: bold; margin: 0; color: #1E293B; }
-    .subtitle { font-size: 10.5pt; color: #334155; margin: 3px 0 0 0; }
+    .subtitle { font-size: 10pt; color: #334155; margin: 2px 0 0 0; }
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
-    .kpi-box { background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 12px; text-align: center; }
-    .kpi-title { font-size: 9.5pt; color: #64748B; font-weight: bold; margin-bottom: 3px; }
-    .kpi-val { font-size: 15pt; font-weight: 800; }
-    .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-box { text-align: center; min-width: 220px; font-size: 10pt; }
-    .sig-line { margin-top: 6px; color: #334155; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
+    .kpi-box { background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 8px; text-align: center; }
+    .kpi-title { font-size: 9pt; color: #64748B; font-weight: bold; margin-bottom: 3px; }
+    .kpi-val { font-size: 14pt; font-weight: 800; }
+    .signatures { margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-box { text-align: center; min-width: 220px; font-size: 9.5pt; }
+    .sig-line { margin-top: 5px; color: #334155; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
     @media print {
       .no-print { display: none !important; }
-      body { margin: 0; }
-      @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
+      body { margin: 0; background: #FFFFFF; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
     }
   </style>
 </head>
@@ -3618,54 +3622,56 @@ function printAttendanceDashboardOverview() {
     </div>
   </div>
 
-  <div class="header">
-    <img src="https://img5.pic.in.th/file/secure-sv1/141088-removebg-preview.png" class="logo" alt="ตราโรงเรียน">
-    <div class="title">${escapeHTML(docTitle)}</div>
-    <div class="subtitle">${escapeHTML(subTitle)}</div>
-    <div style="font-size:9.5pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
-  </div>
+  <div class="print-page-wrapper">
+    <div class="header">
+      <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
+      <div class="title">${escapeHTML(docTitle)}</div>
+      <div class="subtitle">${escapeHTML(subTitle)}</div>
+      <div style="font-size:9pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
+    </div>
 
-  <div class="kpi-grid">
-    <div class="kpi-box">
-      <div class="kpi-title">อัตราการมาเรียนเฉลี่ย</div>
-      <div class="kpi-val" style="color:#2563EB;">${escapeHTML(rateNum)}</div>
-      <div style="font-size:8pt; color:#64748B; margin-top:2px;">เกณฑ์สถานศึกษา ≥ 95%</div>
+    <div class="kpi-grid">
+      <div class="kpi-box">
+        <div class="kpi-title">อัตราการมาเรียนเฉลี่ย</div>
+        <div class="kpi-val" style="color:#2563EB;">${escapeHTML(rateNum)}</div>
+        <div style="font-size:8pt; color:#64748B; margin-top:2px;">เป้าหมาย ≥ 95.0%</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-title">มาเรียนตามปกติ</div>
+        <div class="kpi-val" style="color:#15803D;">${escapeHTML(presentNum)}</div>
+        <div style="font-size:8pt; color:#64748B; margin-top:2px;">เช็คชื่อเข้าชั้นเรียน / เสาธง</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-title">มาสาย</div>
+        <div class="kpi-val" style="color:#B45309;">${escapeHTML(lateNum)}</div>
+        <div style="font-size:8pt; color:#64748B; margin-top:2px;">บันทึกเวลามาสาย</div>
+      </div>
+      <div class="kpi-box">
+        <div class="kpi-title">ขาดเรียน / ลา</div>
+        <div class="kpi-val" style="color:#B91C1C;">${escapeHTML(absentNum)}</div>
+        <div style="font-size:8pt; color:#64748B; margin-top:2px;">ขาดและมีใบลา</div>
+      </div>
     </div>
-    <div class="kpi-box">
-      <div class="kpi-title">มาเรียนตามปกติ</div>
-      <div class="kpi-val" style="color:#15803D;">${escapeHTML(presentNum)}</div>
-      <div style="font-size:8pt; color:#64748B; margin-top:2px;">เช็คชื่อเข้าชั้นเรียน / หน้าเสาธง</div>
-    </div>
-    <div class="kpi-box">
-      <div class="kpi-title">มาสาย</div>
-      <div class="kpi-val" style="color:#B45309;">${escapeHTML(lateNum)}</div>
-      <div style="font-size:8pt; color:#64748B; margin-top:2px;">บันทึกเวลามาสาย</div>
-    </div>
-    <div class="kpi-box">
-      <div class="kpi-title">ขาดเรียน / ลา</div>
-      <div class="kpi-val" style="color:#B91C1C;">${escapeHTML(absentNum)}</div>
-      <div style="font-size:8pt; color:#64748B; margin-top:2px;">ขาดและมีใบลา</div>
-    </div>
-  </div>
 
-  <div style="margin-top:14px; background:#F8FAFC; border:1px solid #CBD5E1; padding:10px 14px; border-radius:6px; font-size:9.5pt; display:flex; justify-content:space-between; align-items:center;">
-    <div><b>สถานะการส่งยอดเช็คชื่อหน้าเสาธง:</b> ${escapeHTML(submittedChip)} | ${escapeHTML(pendingChip)}</div>
-    <div style="color:#64748B; font-size:9pt;">ข้อมูลระบบบริหารจัดการ MHC Smart School</div>
-  </div>
-
-  <div class="signatures">
-    <div class="sig-box">
-      <div>ลงชื่อ .............................................................. ผู้สรุปรายงาน</div>
-      <div class="sig-line">( .............................................................. )</div>
-      <div class="sig-line">ตำแหน่ง หัวหน้างานระดับชั้น / ผู้รับผิดชอบ</div>
-      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+    <div style="margin-top:12px; background:#F8FAFC; border:1px solid #CBD5E1; padding:8px 12px; border-radius:6px; font-size:9pt; display:flex; justify-content:space-between; align-items:center;">
+      <div><b>สถานะการส่งยอดเช็คชื่อหน้าเสาธง:</b> ${escapeHTML(submittedChip)} | ${escapeHTML(pendingChip)}</div>
+      <div style="color:#64748B; font-size:8.5pt;">ระบบบริหารจัดการ MHC Smart School</div>
     </div>
-    <div class="sig-box">
-      <div>ทราบ / อนุมัติ</div>
-      <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
-      <div class="sig-line">( นายอธิการ สุขศรี )</div>
-      <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+
+    <div class="signatures">
+      <div class="sig-box">
+        <div>ลงชื่อ .............................................................. ผู้สรุปรายงาน</div>
+        <div class="sig-line">( .............................................................. )</div>
+        <div class="sig-line">ตำแหน่ง หัวหน้างานระดับชั้น / ผู้รับผิดชอบ</div>
+        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+      <div class="sig-box">
+        <div>ทราบ / อนุมัติ</div>
+        <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+        <div class="sig-line">( นายอธิการ สุขศรี )</div>
+        <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
     </div>
   </div>
 
@@ -3711,6 +3717,9 @@ function printDailyAttendanceRecord() {
   const mode = AttendanceState.mode;
   const isSubject = (mode === 'subject');
   const classroom = AttendanceState.classroom || '';
+  const schoolLogoUrl = (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
+    || localStorage.getItem('cached_school_logo') 
+    || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
   
   let docTitle = isSubject ? 'แบบบันทึกการเข้าเรียนรายวิชาประจำวัน' : 'แบบบันทึกการเช็คแถวหน้าเสาธงและโฮมรูมประจำวัน';
   let subTitle = '';
@@ -3750,11 +3759,11 @@ function printDailyAttendanceRecord() {
     return `
       <tr>
         <td style="text-align:center;">${r.student_number || (idx + 1)}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
-        <td style="text-align:left; font-weight:600; padding-left:8px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-        <td style="text-align:center;">${escapeHTML(r.classroom || classroom || '-')}</td>
-        <td style="text-align:center;">${stText}</td>
-        <td style="text-align:center; color:#94A3B8; font-size:9pt;">..................................................</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:9pt;">${escapeHTML(r.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+        <td style="text-align:center; white-space:nowrap;">${escapeHTML(r.classroom || classroom || '-')}</td>
+        <td style="text-align:center; white-space:nowrap;">${stText}</td>
+        <td style="text-align:center; color:#94A3B8; font-size:8pt;">........................................</td>
       </tr>
     `;
   }).join('');
@@ -3765,27 +3774,32 @@ function printDailyAttendanceRecord() {
   <meta charset="UTF-8">
   <title>${escapeHTML(docTitle)}</title>
   <style>
-    @page { size: A4 portrait; margin: 10mm 10mm 12mm 10mm; }
+    @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 11px; color: #0F172A; margin: 0; padding: 0; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9.5pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .header { text-align: center; margin-top: 10px; margin-bottom: 12px; }
-    .logo { width: 55px; height: 55px; object-fit: contain; margin: 0 auto 4px auto; display: block; }
-    .title { font-size: 13.5pt; font-weight: bold; margin: 0; color: #1E293B; }
-    .subtitle { font-size: 10.5pt; color: #334155; margin: 3px 0 0 0; }
-    .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 6px 12px; border-radius: 6px; margin: 10px 0; font-size: 9.5pt; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10pt; }
-    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 5px; text-align: center; font-weight: bold; }
-    td { border: 1px solid #CBD5E1; padding: 5px 6px; }
+    .print-page-wrapper { max-width: 195mm; margin: 15px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; }
+    .header { text-align: center; margin-bottom: 10px; }
+    .logo { width: 50px; height: 50px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
+    .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; }
+    .subtitle { font-size: 9.5pt; color: #334155; margin: 2px 0 0 0; }
+    .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 5px 10px; border-radius: 6px; margin: 8px 0; font-size: 9pt; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 9pt; table-layout: fixed; }
+    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 4px; text-align: center; font-weight: bold; }
+    td { border: 1px solid #CBD5E1; padding: 3px 5px; line-height: 1.25; }
     tr:nth-child(even) { background: #FAFAFA; }
-    .signatures { margin-top: 25px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-box { text-align: center; min-width: 220px; font-size: 10pt; }
-    .sig-line { margin-top: 6px; color: #334155; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
+    .signatures { margin-top: 24px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-box { text-align: center; min-width: 200px; font-size: 9pt; }
+    .sig-line { margin-top: 5px; color: #334155; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 3px; }
     @media print {
       .no-print { display: none !important; }
-      body { margin: 0; }
-      @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
+      body { margin: 0; background: #FFFFFF; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      .signatures { page-break-inside: avoid; }
     }
   </style>
 </head>
@@ -3805,51 +3819,53 @@ function printDailyAttendanceRecord() {
     </div>
   </div>
 
-  <div class="header">
-    <img src="https://img5.pic.in.th/file/secure-sv1/141088-removebg-preview.png" class="logo" alt="ตราโรงเรียน">
-    <div class="title">${escapeHTML(docTitle)}</div>
-    <div class="subtitle">${escapeHTML(subTitle)}</div>
-    <div style="font-size:9.5pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร | ประจำ${escapeHTML(dateThaiFull)}</div>
-  </div>
-
-  <div class="summary-bar">
-    <div><b>นักเรียนทั้งหมด:</b> ${total} คน</div>
-    <div style="color:#15803D;"><b>มา:</b> ${pCnt} คน</div>
-    <div style="color:#B91C1C;"><b>ขาด:</b> ${aCnt} คน</div>
-    <div style="color:#B45309;"><b>ลา:</b> ${lCnt} คน</div>
-    <div style="color:#1D4ED8;"><b>สาย:</b> ${ltCnt} คน</div>
-    <div><b>ร้อยละการเข้าเรียน:</b> ${pct}%</div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:45px;">เลขที่</th>
-        <th style="width:85px;">รหัสนักเรียน</th>
-        <th>ชื่อ - นามสกุล</th>
-        <th style="width:80px;">ระดับชั้น</th>
-        <th style="width:110px;">สถานะการมาเรียน</th>
-        <th style="width:150px;">หมายเหตุ / ลายมือชื่อ</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rowsHtml}
-    </tbody>
-  </table>
-
-  <div class="signatures">
-    <div class="sig-box">
-      <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
-      <div class="sig-line">( .............................................................. )</div>
-      <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
-      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+  <div class="print-page-wrapper">
+    <div class="header">
+      <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
+      <div class="title">${escapeHTML(docTitle)}</div>
+      <div class="subtitle">${escapeHTML(subTitle)}</div>
+      <div style="font-size:9pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร | ประจำ${escapeHTML(dateThaiFull)}</div>
     </div>
-    <div class="sig-box">
-      <div>ทราบ / อนุมัติ</div>
-      <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
-      <div class="sig-line">( นายอธิการ สุขศรี )</div>
-      <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+
+    <div class="summary-bar">
+      <div><b>นักเรียนทั้งหมด:</b> ${total} คน</div>
+      <div style="color:#15803D;"><b>มา:</b> ${pCnt} คน</div>
+      <div style="color:#B91C1C;"><b>ขาด:</b> ${aCnt} คน</div>
+      <div style="color:#B45309;"><b>ลา:</b> ${lCnt} คน</div>
+      <div style="color:#1D4ED8;"><b>สาย:</b> ${ltCnt} คน</div>
+      <div><b>ร้อยละ:</b> ${pct}%</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px;">เลขที่</th>
+          <th style="width:68px;">รหัสนักเรียน</th>
+          <th style="text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
+          <th style="width:70px;">ระดับชั้น</th>
+          <th style="width:90px;">สถานะ</th>
+          <th style="width:130px;">หมายเหตุ / ลายมือชื่อ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+
+    <div class="signatures">
+      <div class="sig-box">
+        <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
+        <div class="sig-line">( .............................................................. )</div>
+        <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
+        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+      <div class="sig-box">
+        <div>ทราบ / อนุมัติ</div>
+        <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+        <div class="sig-line">( นายอธิการ สุขศรี )</div>
+        <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
     </div>
   </div>
 
@@ -3900,6 +3916,10 @@ function printAttendanceReport() {
   const mLabel = mOpt?.options[mOpt.selectedIndex]?.text || '';
   const sem = res.semester || '1';
   const ay = res.academic_year || '2569';
+
+  const schoolLogoUrl = (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
+    || localStorage.getItem('cached_school_logo') 
+    || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
 
   const targetSub = res.target_subject;
   const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');
@@ -3961,12 +3981,12 @@ function printAttendanceReport() {
     tableHeaderHtml = `
       <tr>
         <th style="width:26px;">ที่</th>
-        <th style="width:65px;">เลขประจำตัว</th>
-        <th style="min-width:125px; text-align:left;">ชื่อ - นามสกุล</th>
+        <th style="width:60px;">เลขประจำตัว</th>
+        <th style="text-align:left; padding-left:5px; white-space:nowrap;">ชื่อ - นามสกุล</th>
         ${dayHeaders.map(h => `
-          <th style="width:19px; padding:2px 1px; ${h.isWeekend ? 'background:#F1F5F9; color:#94A3B8;' : ''}">
-            <div style="font-size:8px;">${h.thDay}</div>
-            <div style="font-size:9.5px; font-weight:800;">${h.day}</div>
+          <th style="width:18px; padding:2px 0px; ${h.isWeekend ? 'background:#F1F5F9; color:#94A3B8;' : ''}">
+            <div style="font-size:7.5px;">${h.thDay}</div>
+            <div style="font-size:9px; font-weight:800;">${h.day}</div>
           </th>
         `).join('')}
         <th style="width:28px; color:#15803D;">มา</th>
@@ -3974,15 +3994,15 @@ function printAttendanceReport() {
         <th style="width:28px; color:#B45309;">ลา</th>
         <th style="width:28px; color:#1D4ED8;">สาย</th>
         <th style="width:30px;">รวม</th>
-        <th style="width:40px;">%</th>
+        <th style="width:36px;">%</th>
       </tr>
     `;
 
     tableBodyHtml = printStudents.map((r, idx) => `
       <tr>
         <td style="text-align:center;">${idx + 1}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:9pt;">${escapeHTML(r.student_code || '-')}</td>
-        <td style="text-align:left; font-weight:600; white-space:nowrap; padding-left:4px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; white-space:nowrap; padding-left:5px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
         ${dayHeaders.map(h => {
           const st = r.dates ? r.dates[h.ds] : null;
           if (!st) return `<td style="text-align:center; color:#CBD5E1; ${h.isWeekend ? 'background:#F8FAFC;' : ''}">-</td>`;
@@ -4004,7 +4024,7 @@ function printAttendanceReport() {
     `).join('');
 
     extraLegendHtml = `
-      <div style="margin-top:6px; font-size:8.5pt; color:#475569; display:flex; justify-content:space-between; align-items:center;">
+      <div style="margin-top:6px; font-size:8pt; color:#475569; display:flex; justify-content:space-between; align-items:center;">
         <div><b>คำอธิบายสัญลักษณ์:</b> <span style="color:#15803D; font-weight:bold;">✓</span> มาเรียน &nbsp;|&nbsp; <span style="color:#B91C1C; font-weight:bold;">ข</span> ขาดเรียน &nbsp;|&nbsp; <span style="color:#B45309; font-weight:bold;">ล</span> ลากิจ/ลาป่วย &nbsp;|&nbsp; <span style="color:#1D4ED8; font-weight:bold;">ส</span> มาสาย &nbsp;|&nbsp; แถบสีเทา = วันหยุดสุดสัปดาห์</div>
         <div>เกณฑ์เวลาเรียนผ่านชั้น ≥ 80.0%</div>
       </div>
@@ -4014,16 +4034,16 @@ function printAttendanceReport() {
     // 2. Semester Monthly Breakdown
     tableHeaderHtml = `
       <tr>
-        <th style="width:35px;">ที่</th>
-        <th style="width:75px;">รหัสนักเรียน</th>
-        <th style="min-width:140px; text-align:left;">ชื่อ - นามสกุล</th>
-        <th style="width:75px;">ระดับชั้น</th>
+        <th style="width:32px;">ที่</th>
+        <th style="width:68px;">รหัสนักเรียน</th>
+        <th style="text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+        <th style="width:65px;">ระดับชั้น</th>
         ${res.months.map(m => `
-          <th style="min-width:65px; text-align:center;">${escapeHTML(m.label)}</th>
+          <th style="min-width:60px; text-align:center;">${escapeHTML(m.label)}</th>
         `).join('')}
-        <th style="width:75px; text-align:center;">รวม (วัน)</th>
-        <th style="width:85px; text-align:center;">% ตลอดเทอม</th>
-        <th style="width:80px; text-align:center;">ผลประเมิน</th>
+        <th style="width:65px; text-align:center;">รวม (วัน)</th>
+        <th style="width:75px; text-align:center;">% ตลอดเทอม</th>
+        <th style="width:75px; text-align:center;">ผลประเมิน</th>
       </tr>
     `;
 
@@ -4032,9 +4052,9 @@ function printAttendanceReport() {
       return `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
           <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          <td style="text-align:center; white-space:nowrap;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
           ${res.months.map(m => {
             const mData = r.by_month ? r.by_month[m.ym] : null;
             if (!mData || mData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
@@ -4056,18 +4076,18 @@ function printAttendanceReport() {
     // 3. All Subjects Matrix
     tableHeaderHtml = `
       <tr>
-        <th style="width:35px;">ที่</th>
-        <th style="width:75px;">รหัสนักเรียน</th>
-        <th style="min-width:140px; text-align:left;">ชื่อ - นามสกุล</th>
-        <th style="width:75px;">ระดับชั้น</th>
+        <th style="width:32px;">ที่</th>
+        <th style="width:65px;">รหัสนักเรียน</th>
+        <th style="text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+        <th style="width:65px;">ระดับชั้น</th>
         ${res.subjects.map(s => `
-          <th style="min-width:70px; text-align:center;">
+          <th style="min-width:65px; text-align:center;">
             <div>${escapeHTML(s.subject_code || s.subject_name)}</div>
-            <div style="font-size:8pt; font-weight:normal; color:#64748B;">${s.periods_count} คาบ</div>
+            <div style="font-size:7.5pt; font-weight:normal; color:#64748B;">${s.periods_count} คาบ</div>
           </th>
         `).join('')}
-        <th style="width:85px; text-align:center;">% รวมทุกวิชา</th>
-        <th style="width:80px; text-align:center;">ผลประเมิน</th>
+        <th style="width:75px; text-align:center;">% รวมทุกวิชา</th>
+        <th style="width:75px; text-align:center;">ผลประเมิน</th>
       </tr>
     `;
 
@@ -4076,9 +4096,9 @@ function printAttendanceReport() {
       return `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
           <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          <td style="text-align:center; white-space:nowrap;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
           ${res.subjects.map(s => {
             const subData = r.by_subject ? r.by_subject[s.id] : null;
             if (!subData || subData.total === 0) return '<td style="text-align:center; color:#94A3B8;">-</td>';
@@ -4096,21 +4116,21 @@ function printAttendanceReport() {
     }).join('');
 
   } else {
-    // 4. Default Summary View
+    // 4. Default Summary View (Portrait - Perfectly Proportioned Table)
     const countUnit = isSubjectMode ? 'คาบ' : 'วัน';
     tableHeaderHtml = `
       <tr>
-        <th style="width:35px;">ที่</th>
-        <th style="width:80px;">รหัสนักเรียน</th>
-        <th style="min-width:140px; text-align:left;">ชื่อ - นามสกุล</th>
-        <th style="width:75px;">ระดับชั้น</th>
-        <th style="width:55px; color:#15803D;">มา (${countUnit})</th>
-        <th style="width:55px; color:#B91C1C;">ขาด (${countUnit})</th>
-        <th style="width:55px; color:#B45309;">ลา (${countUnit})</th>
-        <th style="width:55px; color:#1D4ED8;">สาย (${countUnit})</th>
-        <th style="width:60px;">รวม</th>
-        <th style="width:70px;">% เข้าเรียน</th>
-        <th style="width:75px;">ผลประเมิน</th>
+        <th style="width:30px;">ที่</th>
+        <th style="width:65px;">รหัสนักเรียน</th>
+        <th style="text-align:left; padding-left:8px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+        <th style="width:65px;">ระดับชั้น</th>
+        <th style="width:38px; color:#15803D;">มา</th>
+        <th style="width:38px; color:#B91C1C;">ขาด</th>
+        <th style="width:38px; color:#B45309;">ลา</th>
+        <th style="width:38px; color:#1D4ED8;">สาย</th>
+        <th style="width:42px;">รวม</th>
+        <th style="width:52px;">%</th>
+        <th style="width:68px;">ผลประเมิน</th>
       </tr>
     `;
 
@@ -4119,9 +4139,9 @@ function printAttendanceReport() {
       return `
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
-          <td style="text-align:center; font-family:'Courier New', monospace;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:6px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
-          <td style="text-align:center;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
+          <td style="text-align:center; font-family:'Courier New', monospace; font-size:9pt;">${escapeHTML(r.student_code || '-')}</td>
+          <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:center; white-space:nowrap;">ชั้น ${escapeHTML(r.classroom || '-')}</td>
           <td style="text-align:center; color:#15803D; font-weight:bold;">${r.present}</td>
           <td style="text-align:center; color:#B91C1C; font-weight:bold;">${r.absent}</td>
           <td style="text-align:center; color:#B45309; font-weight:bold;">${r.leave}</td>
@@ -4130,12 +4150,19 @@ function printAttendanceReport() {
           <td style="text-align:center; font-weight:bold; ${isRisk ? 'color:#B91C1C;' : 'color:#15803D;'}">
             ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
           </td>
-          <td style="text-align:center; font-weight:bold; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
+          <td style="text-align:center; font-weight:bold; font-size:8.5pt; ${r.total === 0 ? 'color:#64748B;' : (isRisk ? 'color:#B91C1C;' : 'color:#15803D;')}">
             ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (isRisk ? 'เสี่ยง มส.' : 'ปกติ')}
           </td>
         </tr>
       `;
     }).join('');
+
+    extraLegendHtml = `
+      <div style="margin-top:6px; font-size:8pt; color:#64748B; display:flex; justify-content:space-between; align-items:center;">
+        <div>* หน่วยนับ: จำนวน${countUnit}เรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
+        <div>สถานะ: ปกติ (≥80%) / เสี่ยง มส. (<80%)</div>
+      </div>
+    `;
   }
 
   const html = `<!DOCTYPE html>
@@ -4146,31 +4173,46 @@ function printAttendanceReport() {
   <style>
     @page {
       size: A4 ${isLandscape ? 'landscape' : 'portrait'};
-      margin: 8mm 8mm 10mm 8mm;
+      margin: 8mm 7mm 10mm 7mm;
     }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: ${isMatrixMode ? '9px' : '10.5px'}; color: #0F172A; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sarabun', 'Prompt', sans-serif;
+      font-size: ${isMatrixMode ? '8pt' : '9pt'};
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+      background: #F8FAFC;
+    }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .header { text-align: center; margin-top: 6px; margin-bottom: 10px; }
-    .logo { width: 50px; height: 50px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
-    .title { font-size: ${isMatrixMode ? '12.5pt' : '13.5pt'}; font-weight: bold; margin: 0; color: #1E293B; }
-    .subtitle { font-size: ${isMatrixMode ? '9.5pt' : '10pt'}; color: #334155; margin: 2px 0 0 0; }
-    .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 5px 10px; border-radius: 6px; margin: 8px 0; font-size: 9pt; }
-    table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: ${isMatrixMode ? '8.5pt' : '9.5pt'}; }
-    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode ? '3px 1px' : '4px 5px'}; text-align: center; font-weight: bold; }
-    td { border: 1px solid #CBD5E1; padding: ${isMatrixMode ? '2.5px 2px' : '3.5px 5px'}; }
+    .print-page-wrapper {
+      max-width: ${isLandscape ? '280mm' : '196mm'};
+      margin: 15px auto;
+      padding: 8mm 10mm;
+      background: #ffffff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      border-radius: 4px;
+    }
+    .header { text-align: center; margin-bottom: 8px; }
+    .logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
+    .title { font-size: ${isMatrixMode ? '12pt' : '13pt'}; font-weight: bold; margin: 0; color: #1E293B; }
+    .subtitle { font-size: 9pt; color: #334155; margin: 2px 0 0 0; }
+    .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 4px 8px; border-radius: 4px; margin: 6px 0; font-size: 8.5pt; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: ${isMatrixMode ? '8pt' : '8.5pt'}; table-layout: fixed; }
+    th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode ? '2px 0px' : '3px 2px'}; text-align: center; font-weight: bold; }
+    td { border: 1px solid #CBD5E1; padding: ${isMatrixMode ? '2px 1px' : '2.5px 3px'}; line-height: 1.25; }
     tr:nth-child(even) { background: #FAFAFA; }
-    .signatures { margin-top: 24px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-box { text-align: center; min-width: 200px; font-size: 9.5pt; }
+    .signatures { margin-top: 20px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-box { text-align: center; min-width: 190px; font-size: 9pt; }
     .sig-line { margin-top: 5px; color: #334155; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 3px; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 2px; }
     @media print {
       .no-print { display: none !important; }
-      body { margin: 0; }
+      body { margin: 0; background: #FFFFFF; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
       thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
       .signatures { page-break-inside: avoid; }
     }
   </style>
@@ -4193,43 +4235,45 @@ function printAttendanceReport() {
     </div>
   </div>
 
-  <div class="header">
-    <img src="https://img5.pic.in.th/file/secure-sv1/141088-removebg-preview.png" class="logo" alt="ตราโรงเรียน">
-    <div class="title">${escapeHTML(reportTitle)}</div>
-    <div class="subtitle">${escapeHTML(subTitle)}</div>
-    <div style="font-size:9pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
-  </div>
-
-  <div class="summary-bar">
-    <div><b>จำนวนนักเรียนในรายงาน:</b> ${printStudents.length} คน</div>
-    <div><b>อัตราการเข้าเรียนเฉลี่ย:</b> ${(res.summary?.attendance_pct || 0).toFixed(1)}%</div>
-    <div><b>สถานะ:</b> ${(res.summary?.attendance_pct || 0) >= 80 ? 'ปกติ' : 'ต้องเฝ้าระวัง'}</div>
-  </div>
-
-  <table>
-    <thead>
-      ${tableHeaderHtml}
-    </thead>
-    <tbody>
-      ${tableBodyHtml}
-    </tbody>
-  </table>
-
-  ${extraLegendHtml}
-
-  <div class="signatures">
-    <div class="sig-box">
-      <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
-      <div class="sig-line">( .............................................................. )</div>
-      <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
-      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+  <div class="print-page-wrapper">
+    <div class="header">
+      <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
+      <div class="title">${escapeHTML(reportTitle)}</div>
+      <div class="subtitle">${escapeHTML(subTitle)}</div>
+      <div style="font-size:8.5pt; color:#475569; margin-top:2px;">โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม</div>
     </div>
-    <div class="sig-box">
-      <div>ทราบ / อนุมัติ</div>
-      <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
-      <div class="sig-line">( นายอธิการ สุขศรี )</div>
-      <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-      <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+
+    <div class="summary-bar">
+      <div><b>จำนวนนักเรียนในรายงาน:</b> ${printStudents.length} คน</div>
+      <div><b>อัตราการเข้าเรียนเฉลี่ย:</b> ${(res.summary?.attendance_pct || 0).toFixed(1)}%</div>
+      <div><b>สถานะ:</b> ${(res.summary?.attendance_pct || 0) >= 80 ? 'ปกติ' : 'ต้องเฝ้าระวัง'}</div>
+    </div>
+
+    <table>
+      <thead>
+        ${tableHeaderHtml}
+      </thead>
+      <tbody>
+        ${tableBodyHtml}
+      </tbody>
+    </table>
+
+    ${extraLegendHtml}
+
+    <div class="signatures">
+      <div class="sig-box">
+        <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
+        <div class="sig-line">( .............................................................. )</div>
+        <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
+        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+      <div class="sig-box">
+        <div>ทราบ / อนุมัติ</div>
+        <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+        <div class="sig-line">( นายอธิการ สุขศรี )</div>
+        <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
     </div>
   </div>
 
