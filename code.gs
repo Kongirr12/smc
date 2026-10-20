@@ -2699,15 +2699,23 @@ function getAttendanceFilterOptions(sessionToken) {
 
     const allSubjects = readJsonSheet_('Academic')
       .filter(x => x._kind === 'subject')
-      .map(s => ({
-        id: s.id,
-        subject_code: s.subject_code || '',
-        subject_name: s.subject_name || '',
-        grade_level: s.grade_level || '',
-        teacher_name: s.teacher_name || '',
-        semester: s.semester || '',
-        academic_year: s.academic_year || ''
-      }))
+      .map(s => {
+        let code = String(s.subject_code || '').trim();
+        let name = String(s.subject_name || '').trim();
+        const uuidRx = /^[0-9a-f]{8}-[0-9a-f]{4}/i;
+        if (uuidRx.test(code)) code = '';
+        if (uuidRx.test(name)) name = '';
+        return {
+          id: s.id,
+          subject_code: code || name || 'วิชาเรียน',
+          subject_name: name || code || 'วิชาเรียน',
+          grade_level: s.grade_level || '',
+          teacher_name: s.teacher_name || '',
+          semester: s.semester || '',
+          academic_year: s.academic_year || ''
+        };
+      })
+      .filter(s => s.subject_code !== 'วิชาเรียน' || s.subject_name !== 'วิชาเรียน')
       .sort((a, b) => (a.subject_code || '').localeCompare(b.subject_code || '', 'th'));
 
     return {
@@ -2823,81 +2831,106 @@ function getAttendanceReport(params, sessionToken) {
     if (rtype === 'all_subjects') {
       const allSubjects = readJsonSheet_('Academic').filter(x => x._kind === 'subject');
       const subjectMap = new Map();
-      allSubjects.forEach(s => subjectMap.set(String(s.id), s));
-      const subjectIdSet = new Set(relevantAttendance.map(a => String(a.subject_id)).filter(Boolean));
+      allSubjects.forEach(s => {
+        if (s.id) subjectMap.set(String(s.id).trim(), s);
+      });
 
+      const validSubjectIds = new Set();
+      const sem = String(params.semester || config.semester || '1');
+      const ayStr = String(params.academic_year || config.academic_year || '2569');
+
+      // 1. Collect valid subject IDs from Attendance records (only if exist in subjectMap)
+      relevantAttendance.forEach(a => {
+        const sid = String(a.subject_id || '').trim();
+        if (sid && subjectMap.has(sid)) validSubjectIds.add(sid);
+      });
+
+      // 2. Collect valid subject IDs from Schedule entries (only if exist in subjectMap)
       try {
         const scheduleEntries = readJsonSheet_('Schedule').filter(x => 
-          (x._kind === 'schedule_entry' || x._kind === 'entry') && (!reqCls || String(x.classroom || '').trim() === reqCls)
+          (x._kind === 'schedule_entry' || x._kind === 'entry') && 
+          (!reqCls || String(x.classroom || '').trim() === reqCls) &&
+          (!x.semester || String(x.semester) === sem) &&
+          (!x.academic_year || String(x.academic_year) === ayStr)
         );
         scheduleEntries.forEach(e => {
-          if (e.subject_id) subjectIdSet.add(String(e.subject_id));
+          const sid = String(e.subject_id || '').trim();
+          if (sid && subjectMap.has(sid)) validSubjectIds.add(sid);
         });
       } catch (_) {}
 
-      // Ensure all registered subjects for this semester/grade are included
-      if (subjectIdSet.size === 0) {
-        const sem = String(params.semester || config.semester || '1');
-        const ayStr = String(params.academic_year || config.academic_year || '2569');
-
+      // 3. If no subjects found from attendance or schedule, collect registered subjects from Academic matching semester & year
+      if (validSubjectIds.size === 0) {
         allSubjects.forEach(s => {
           const semMatch = !s.semester || String(s.semester) === sem;
           const ayMatch = !s.academic_year || String(s.academic_year) === ayStr;
           if (reqCls) {
             if (s.grade_level && String(reqCls).includes(String(s.grade_level)) && semMatch && ayMatch) {
-              subjectIdSet.add(String(s.id));
+              validSubjectIds.add(String(s.id).trim());
             }
           } else {
             if (semMatch && ayMatch) {
-              subjectIdSet.add(String(s.id));
+              validSubjectIds.add(String(s.id).trim());
             }
           }
         });
-
-        if (subjectIdSet.size === 0) {
-          allSubjects.forEach(s => {
-            if (reqCls) {
-              if (s.grade_level && String(reqCls).includes(String(s.grade_level))) {
-                subjectIdSet.add(String(s.id));
-              }
-            } else {
-              subjectIdSet.add(String(s.id));
-            }
-          });
-        }
-
-        if (subjectIdSet.size === 0) {
-          allSubjects.forEach(s => subjectIdSet.add(String(s.id)));
-        }
       }
 
-      subjectsInfo = Array.from(subjectIdSet).map(subId => {
-        const sObj = subjectMap.get(subId) || {};
-        const subRecords = relevantAttendance.filter(a => String(a.subject_id) === subId);
-        const subSum = _attendanceSummary_(subRecords);
-        const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
-        let riskCount = 0;
-        const subStuMap = {};
-        subRecords.forEach(a => {
-          if (!subStuMap[a.student_id]) subStuMap[a.student_id] = [];
-          subStuMap[a.student_id].push(a);
-        });
-        classStudents.forEach(stu => {
-          const stuSubRecs = subStuMap[stu.id] || [];
-          if (stuSubRecs.length > 0) {
-            const p = _attendanceSummary_(stuSubRecs).attendance_pct;
-            if (p < 80) riskCount++;
+      // 4. Fallback: match by grade level regardless of semester
+      if (validSubjectIds.size === 0) {
+        allSubjects.forEach(s => {
+          if (reqCls) {
+            if (s.grade_level && String(reqCls).includes(String(s.grade_level))) {
+              validSubjectIds.add(String(s.id).trim());
+            }
+          } else {
+            validSubjectIds.add(String(s.id).trim());
           }
         });
-        return {
-          id: subId,
-          subject_code: sObj.subject_code || subId,
-          subject_name: sObj.subject_name || sObj.subject_code || subId,
-          periods_count: periodKeys.size || Number(sObj.periods || sObj.periods_per_week || 0),
-          summary: subSum,
-          risk_count: riskCount
-        };
-      }).sort((a, b) => (a.subject_code || '').localeCompare(b.subject_code || '', 'th'));
+      }
+
+      // 5. Ultimate fallback: take all subjects in Academic
+      if (validSubjectIds.size === 0) {
+        allSubjects.forEach(s => validSubjectIds.add(String(s.id).trim()));
+      }
+
+      subjectsInfo = Array.from(validSubjectIds)
+        .map(subId => {
+          const sObj = subjectMap.get(subId);
+          if (!sObj) return null; // Drop any orphaned ID
+
+          const subRecords = relevantAttendance.filter(a => String(a.subject_id) === subId);
+          const subSum = _attendanceSummary_(subRecords);
+          const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
+          let riskCount = 0;
+          const subStuMap = {};
+          subRecords.forEach(a => {
+            if (!subStuMap[a.student_id]) subStuMap[a.student_id] = [];
+            subStuMap[a.student_id].push(a);
+          });
+          classStudents.forEach(stu => {
+            const stuSubRecs = subStuMap[stu.id] || [];
+            if (stuSubRecs.length > 0) {
+              const p = _attendanceSummary_(stuSubRecs).attendance_pct;
+              if (p < 80) riskCount++;
+            }
+          });
+
+          const code = String(sObj.subject_code || '').trim();
+          const name = String(sObj.subject_name || '').trim();
+
+          return {
+            id: subId,
+            subject_code: code || name || 'วิชาเรียน',
+            subject_name: name || code || 'วิชาเรียน',
+            grade_level: sObj.grade_level || '',
+            periods_count: periodKeys.size || Number(sObj.periods || sObj.periods_per_week || sObj.hours_per_week || 0),
+            summary: subSum,
+            risk_count: riskCount
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => (a.subject_code || a.subject_name).localeCompare(b.subject_code || b.subject_name, 'th'));
     }
 
     // High performance Hash Map indexing
@@ -5328,16 +5361,19 @@ function generateReport(reportType, params, sessionToken) {
       } catch (_) {}
 
       const subjectsInfo = Array.from(subjectIdSet).map(subId => {
-        const sObj = subjectMap.get(subId) || {};
+        const sObj = subjectMap.get(subId);
+        if (!sObj) return null;
         const subRecords = attendance.filter(a => String(a.subject_id) === subId);
         const periodKeys = new Set(subRecords.map(a => a.date + '_' + a.period));
+        const code = String(sObj.subject_code || '').trim();
+        const name = String(sObj.subject_name || '').trim();
         return {
           id: subId,
-          code: sObj.subject_code || subId,
-          name: sObj.subject_name || sObj.subject_code || subId,
+          code: code || name || 'วิชาเรียน',
+          name: name || code || 'วิชาเรียน',
           periods: periodKeys.size
         };
-      }).sort((a, b) => (a.code || '').localeCompare(b.code || '', 'th'));
+      }).filter(Boolean).sort((a, b) => (a.code || a.name).localeCompare(b.code || b.name, 'th'));
 
       headers = ['ลำดับ', 'ชั้น', 'เลขประจำตัว', 'ชื่อ - นามสกุล', ...subjectsInfo.map(s => `${s.code} ${s.name} (${s.periods} คาบ)`), 'มา (รวม)', 'ขาด (รวม)', 'ลา (รวม)', 'สาย (รวม)', 'รวมทั้งหมด', '% เข้าเรียนเฉลี่ย', 'สถานะ'];
 

@@ -2908,14 +2908,41 @@ function onReportTypeChange() {
   loadAttendanceReport();
 }
 
+function getCleanSubjectHeader(s) {
+  if (!s) return { code: 'วิชา', name: 'วิชาเรียน' };
+  let code = String(s.subject_code || '').trim();
+  let name = String(s.subject_name || '').trim();
+  const uuidRx = /^[0-9a-f]{8}-[0-9a-f]{4}/i;
+  if (uuidRx.test(code)) code = '';
+  if (uuidRx.test(name)) name = '';
+  if (!code && !name) { code = 'วิชาเรียน'; name = 'วิชาเรียน'; }
+  else if (!code) code = name;
+  else if (!name) name = code;
+  return { code, name };
+}
+
+function filterValidReportSubjects(list) {
+  if (!list || !Array.isArray(list)) return [];
+  const uuidRx = /^[0-9a-f]{8}-[0-9a-f]{4}/i;
+  return list.filter(s => {
+    if (!s) return false;
+    const c = String(s.subject_code || '').trim();
+    const n = String(s.subject_name || '').trim();
+    if (!c && !n) return false;
+    if (uuidRx.test(c) && (!n || uuidRx.test(n))) return false;
+    return true;
+  });
+}
+
 function updateReportSubjects() {
   const cls = document.getElementById('rptClassroom')?.value || '';
   const grp = document.getElementById('rptSubjectGroup');
   if (!grp) return;
 
-  const subjectsList = (AttendanceState.filterOptions && AttendanceState.filterOptions.subjects && AttendanceState.filterOptions.subjects.length > 0)
+  const rawList = (AttendanceState.filterOptions && AttendanceState.filterOptions.subjects && AttendanceState.filterOptions.subjects.length > 0)
     ? AttendanceState.filterOptions.subjects
     : (AttendanceState.subjects || []);
+  const subjectsList = filterValidReportSubjects(rawList);
 
   let filtered = subjectsList;
   if (cls) {
@@ -2935,8 +2962,9 @@ function updateReportSubjects() {
     grp.innerHTML = '<option value="" disabled>-- ไม่พบรายวิชาในระดับชั้นนี้ --</option>';
   } else {
     grp.innerHTML = filtered.map(s => {
-      const code = s.subject_code ? (escapeHTML(s.subject_code) + ' ') : '';
-      const name = escapeHTML(s.subject_name || s.id);
+      const clean = getCleanSubjectHeader(s);
+      const code = clean.code ? (escapeHTML(clean.code) + ' ') : '';
+      const name = escapeHTML(clean.name);
       const teacher = s.teacher_name ? (' - ' + escapeHTML(s.teacher_name)) : '';
       const gl = (!cls && s.grade_level) ? (' [' + escapeHTML(s.grade_level) + ']') : '';
       return `<option value="${escapeHTML(s.id)}">${code}${name}${gl}${teacher}</option>`;
@@ -3336,9 +3364,10 @@ function renderAttendanceReportData(res) {
     `;
   } else if (rptType === 'all_subjects') {
     // All Subjects Matrix Table
-    const activeSubjects = (res.subjects && res.subjects.length > 0)
+    const rawSubs = (res.subjects && res.subjects.length > 0)
       ? res.subjects
       : (AttendanceState.filterOptions?.subjects || []);
+    const activeSubjects = filterValidReportSubjects(rawSubs);
 
     mainContentHtml = `
       <div id="reportStudentTableCard" class="page-card overflow-hidden">
@@ -3360,12 +3389,16 @@ function renderAttendanceReportData(res) {
                   <th style="width:75px; text-align:center;">รหัสนักเรียน</th>
                   <th style="min-width:140px;">ชื่อ - นามสกุล</th>
                   <th style="width:75px; text-align:center;">ระดับชั้น</th>
-                  ${activeSubjects.map(s => `
-                    <th style="min-width:75px; text-align:center;" title="${escapeHTML(s.subject_name)} (${s.periods_count || 0} คาบ)">
-                      <div class="text-[11px] font-bold">${escapeHTML(s.subject_code || s.subject_name)}</div>
-                      <div class="text-[10px] text-slate-400 font-normal">${s.periods_count || 0} คาบ</div>
+                  ${activeSubjects.map(s => {
+                    const clean = getCleanSubjectHeader(s);
+                    return `
+                    <th style="min-width:75px; text-align:center;" title="${escapeHTML(clean.name)} (${s.periods_count || 0} คาบ)">
+                      <div class="text-[11px] font-bold text-slate-800">${escapeHTML(clean.code)}</div>
+                      <div class="text-[10px] text-slate-500 font-normal truncate max-w-[85px] mx-auto" title="${escapeHTML(clean.name)}">${escapeHTML(clean.name)}</div>
+                      <div class="text-[9px] text-slate-400 font-normal mt-0.5">${s.periods_count || 0} คาบ</div>
                     </th>
-                  `).join('')}
+                    `;
+                  }).join('')}
                   <th style="width:85px; text-align:center;">% รวมทุกวิชา</th>
                   <th style="width:80px; text-align:center;">สถานะ</th>
                 </tr>
@@ -3952,9 +3985,10 @@ function printAttendanceReport() {
   const isAllSubjectsMode = (rptType === 'all_subjects');
   const isSemesterMode = (scope === 'semester' && res.months && res.months.length > 0 && !isSubjectMode && !isAllSubjectsMode);
 
-  const printSubjects = (res.subjects && res.subjects.length > 0)
+  const rawPrintSubs = (res.subjects && res.subjects.length > 0)
     ? res.subjects
     : (AttendanceState.filterOptions?.subjects || []);
+  const printSubjects = filterValidReportSubjects(rawPrintSubs);
 
   const isLandscape = (isMatrixMode || isSemesterMode || isAllSubjectsMode);
 
@@ -4109,12 +4143,15 @@ function printAttendanceReport() {
         <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
         <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
         <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ระดับชั้น</th>
-        ${printSubjects.map(s => `
-          <th style="min-width:38px; padding:2px 1px; text-align:center;">
-            <div style="font-size:7pt; font-weight:bold; white-space:nowrap; line-height:1.1;">${escapeHTML(s.subject_code || s.subject_name)}</div>
+        ${printSubjects.map(s => {
+          const clean = getCleanSubjectHeader(s);
+          return `
+          <th style="min-width:38px; padding:2px 1px; text-align:center;" title="${escapeHTML(clean.name)} (${s.periods_count || 0} คาบ)">
+            <div style="font-size:7pt; font-weight:bold; white-space:nowrap; line-height:1.1;">${escapeHTML(clean.code)}</div>
             <div style="font-size:6.5pt; font-weight:normal; color:#64748B;">${s.periods_count || 0} คาบ</div>
           </th>
-        `).join('')}
+          `;
+        }).join('')}
         <th style="width:55px; min-width:50px; text-align:center; font-size:7.5pt; padding:2px 1px;">% รวม</th>
         <th style="width:58px; min-width:55px; text-align:center; font-size:7.5pt; padding:2px 1px;">ผลประเมิน</th>
       </tr>
@@ -4144,10 +4181,18 @@ function printAttendanceReport() {
       `;
     }).join('');
 
+    const subLegend = printSubjects.map(s => {
+      const clean = getCleanSubjectHeader(s);
+      return `<span style="display:inline-block; margin-right:8px; white-space:nowrap;"><b>${escapeHTML(clean.code)}</b>: ${escapeHTML(clean.name)}</span>`;
+    }).join(' ');
+
     extraLegendHtml = `
-      <div style="margin-top:6px; font-size:7.5pt; color:#475569; display:flex; justify-content:space-between; align-items:center;">
-        <div><b>เกณฑ์เวลาเรียน:</b> ตัวเลขในช่องรายวิชาคือร้อยละ (%) เวลาเรียนของนักเรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
-        <div>สถานะ: ปกติ (≥80%) / <span style="color:#B91C1C; font-weight:bold;">เสี่ยง มส. (<80%)</span></div>
+      <div style="margin-top:6px; font-size:7.5pt; color:#475569;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+          <div><b>เกณฑ์เวลาเรียน:</b> ตัวเลขในช่องรายวิชาคือร้อยละ (%) เวลาเรียนของนักเรียน | เกณฑ์ผ่านชั้นเรียน ≥ 80.0%</div>
+          <div>สถานะ: ปกติ (≥80%) / <span style="color:#B91C1C; font-weight:bold;">เสี่ยง มส. (<80%)</span></div>
+        </div>
+        ${subLegend ? `<div style="font-size:7pt; color:#64748B; border-top:1px dashed #CBD5E1; padding-top:3px; line-height:1.3;"><b>รหัสวิชา:</b> ${subLegend}</div>` : ''}
       </div>
     `;
 
@@ -4404,12 +4449,16 @@ function exportReportCSV() {
 
     filename = `รายงานเช็คแถวรายวันปพ5_${mLabel}${roomTag}.xls`;
   } else if (rptType === 'all_subjects') {
-    const exportSubs = (res.subjects && res.subjects.length > 0)
+    const rawExportSubs = (res.subjects && res.subjects.length > 0)
       ? res.subjects
       : (AttendanceState.filterOptions?.subjects || []);
+    const exportSubs = filterValidReportSubjects(rawExportSubs);
     headers = [
       'ที่', 'รหัสนักเรียน', 'ชื่อ - สกุล', 'ชั้น',
-      ...exportSubs.map(s => (s.subject_code || s.subject_name)),
+      ...exportSubs.map(s => {
+        const clean = getCleanSubjectHeader(s);
+        return clean.code !== clean.name ? `${clean.code} ${clean.name}` : clean.code;
+      }),
       '% รวมทุกวิชา', 'การประเมิน'
     ];
     rows = exportStudents.map((r, i) => [
