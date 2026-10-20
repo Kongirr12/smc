@@ -3,7 +3,18 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.0.0] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.0.1] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🚀 เพิ่มฟีเจอร์และปรับปรุงหลัก (Major Updates)
+- **ลบขอบขาวรอบไอคอนทั้งหมดให้โปร่งใส 100% (Border-Free & Transparent Favicon / App Icons):**
+  - แก้ไขปัญหาขอบขาวสี่เหลี่ยมรอบไอคอนบนแถบแท็บเบราว์เซอร์ Google Chrome (ทั้ง Dark Mode และ Light Mode), Safari Reading List และ Mobile Bookmark
+  - ตัดพื้นที่พื้นหลังสีขาวส่วนเกิน (29.4% ของผืนผ้าใบเดิม) และทำขอบมุมโค้ง Squircle ด้านนอกให้โปร่งใสสมบูรณ์ (`Alpha = 0`) ด้วยการ De-fringe ขอบแบบ Anti-aliased ไร้รอยขอบขาวเล็ดลอด
+  - สร้างชุดไอคอนความละเอียดสูงใหม่ครบทุกขนาด: `favicon.ico` (16, 32, 48, 64px RGBA), `favicon-16.png`, `favicon-32.png`, `favicon-192.png`, `favicon-512.png`, `apple-touch-icon.png`, และ `app-icon.jpg` (พื้นหลัง Midnight Obsidian `#0B0F19`)
+  - เพิ่ม Cache Buster Query Strings (`?v=3.0.1`) ให้ทุกลิงก์ไอคอนใน `index.html` เพื่อให้เบราว์เซอร์โหลดไอคอนโปร่งใสทันที
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.0.1` พร้อมเพิ่ม `favicon-16.png` ลงใน Pre-cache Assets
+
+---
+
+## [v3.0.0] - 2026-10-21
 ### 🚀 เพิ่มฟีเจอร์และปรับปรุงหลัก (Major Updates)
 - **ปรับแต่งโทนสีไอคอนโลโก้ดั้งเดิม (Refined Original Logo Color Palette):**
   - คงรูปทรงสัญลักษณ์ Squircle และตราสัญลักษณ์ตัว "S" ดั้งเดิมที่คุ้นเคย
