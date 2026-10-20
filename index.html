@@ -365,7 +365,7 @@
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css?v=2.9.7">
+  <link rel="stylesheet" href="styles.css?v=2.9.8">
 </head>
 <body>
 
@@ -379,10 +379,10 @@
 
 
   <!-- ================== Login Screen (Enterprise Full-Screen Portal & Mobile Responsive) ================== -->
-  <div id="loginScreen" class="fixed inset-0 z-50 flex flex-col md:flex-row w-full min-h-screen overflow-y-auto bg-slate-950 select-none">
+  <div id="loginScreen" class="fixed inset-0 z-50 flex flex-col md:flex-row w-full min-h-screen min-h-[100dvh] overflow-y-auto bg-slate-950 select-none">
     
     <!-- LEFT PANEL: Brand & Smart Campus Showcase (Full-Screen on Desktop, Compact Hero on Mobile) -->
-    <div class="w-full md:w-7/12 lg:w-3/5 min-h-0 md:min-h-screen px-4 py-4 sm:p-8 lg:p-14 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border-b md:border-b-0 md:border-r border-slate-800/80" style="padding-top: max(14px, env(safe-area-inset-top));">
+    <div class="w-full md:w-7/12 lg:w-3/5 shrink-0 min-h-0 md:min-h-screen px-4 pt-4 pb-4 sm:p-8 lg:p-14 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border-b md:border-b-0 md:border-r border-slate-800/80" style="padding-top: max(54px, calc(env(safe-area-inset-top) + 16px));">
       
       <!-- Ambient Lighting Blobs -->
       <div class="absolute -top-32 -left-32 w-[320px] sm:w-[460px] h-[320px] sm:h-[460px] rounded-full bg-indigo-600/20 blur-[80px] sm:blur-[100px] pointer-events-none"></div>
@@ -468,9 +468,9 @@
       </div>
     </div>
 
-    <!-- RIGHT PANEL: Executive Login Form -->
-    <div class="w-full md:w-5/12 lg:w-2/5 min-h-0 md:min-h-screen px-5 py-6 sm:p-8 lg:p-14 flex flex-col justify-center bg-white dark:bg-slate-900 rounded-t-[28px] md:rounded-none shadow-2xl md:shadow-none border-t border-white/10 dark:border-slate-800 md:border-none transition-colors" style="padding-bottom: max(20px, env(safe-area-inset-bottom));">
-      <div class="w-full max-w-sm mx-auto">
+    <!-- RIGHT PANEL: Executive Login Form (Fills remaining height down to screen bottom) -->
+    <div class="w-full md:w-5/12 lg:w-2/5 flex-1 min-h-0 md:min-h-screen px-5 py-6 sm:p-8 lg:p-14 flex flex-col justify-between md:justify-center bg-white dark:bg-slate-900 rounded-t-[32px] md:rounded-none shadow-2xl md:shadow-none border-t border-white/10 dark:border-slate-800 md:border-none transition-colors" style="padding-bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px));">
+      <div class="w-full max-w-sm mx-auto my-auto">
         
         <!-- Form Header (No duplicate logo or school name!) -->
         <div class="mb-4 sm:mb-6">
@@ -536,7 +536,7 @@
               <i class='bx bx-code-alt text-indigo-500'></i>
               <span>พัฒนาระบบโดย <b>ครูก้องนที อุ่นเจริญ</b></span>
               <span class="text-slate-300 dark:text-slate-700">•</span>
-              <span class="font-mono text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v2.9.7</span>
+              <span class="font-mono text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v2.9.8</span>
             </div>
           </div>
         </form>
@@ -805,18 +805,18 @@
 
 
   <!-- ================== Scripts ================== -->
-  <script src="js1.js?v=2.9.7"></script>
-  <script src="js2.js?v=2.9.7"></script>
-  <script src="js3.js?v=2.9.7"></script>
-  <script src="js4.js?v=2.9.7"></script>
-  <script src="js_schedule.js?v=2.9.7"></script>
-  <script src="js_classroom.js?v=2.9.7"></script>
-  <script src="js_behavior.js?v=2.9.7"></script>
-  <script src="js_student_card.js?v=2.9.7"></script>
-  <script src="js_qr_attendance.js?v=2.9.7"></script>
-  <script src="js_line_oa.js?v=2.9.7"></script>
-  <script src="js_manual.js?v=2.9.7"></script>
-  <script src="js_templates.js?v=2.9.7"></script>
+  <script src="js1.js?v=2.9.8"></script>
+  <script src="js2.js?v=2.9.8"></script>
+  <script src="js3.js?v=2.9.8"></script>
+  <script src="js4.js?v=2.9.8"></script>
+  <script src="js_schedule.js?v=2.9.8"></script>
+  <script src="js_classroom.js?v=2.9.8"></script>
+  <script src="js_behavior.js?v=2.9.8"></script>
+  <script src="js_student_card.js?v=2.9.8"></script>
+  <script src="js_qr_attendance.js?v=2.9.8"></script>
+  <script src="js_line_oa.js?v=2.9.8"></script>
+  <script src="js_manual.js?v=2.9.8"></script>
+  <script src="js_templates.js?v=2.9.8"></script>
  
   <!-- PWA Service Worker Registration & Force Update -->
   <script>
