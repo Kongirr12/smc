@@ -162,27 +162,40 @@ html.dark-mode #loginScreen .login-bg-dots {
   background-image: radial-gradient(circle, rgba(165, 180, 252, 0.1) 1.2px, transparent 1.2px);
 }
 
-/* Modern Input Field Style (Dedicated Dark Aurora for Login Screen) */
-#loginScreen .modern-input-group {
+/* Modern Input Field Style */
+.modern-input-group {
   position: relative;
   display: flex;
   align-items: center;
-  background: rgba(30, 41, 59, 0.75);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
   border-radius: 16px;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-#loginScreen .modern-input-group:hover {
-  border-color: rgba(255, 255, 255, 0.25);
+html.dark-mode .modern-input-group {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.modern-input-group:hover {
+  border-color: #CBD5E1;
+  background: #FFFFFF;
+}
+html.dark-mode .modern-input-group:hover {
+  border-color: rgba(255, 255, 255, 0.2);
   background: rgba(30, 41, 59, 0.9);
 }
-#loginScreen .modern-input-group:focus-within {
-  background: #1E293B !important;
-  border-color: #818CF8 !important;
-  box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.25) !important;
+.modern-input-group:focus-within {
+  border-color: #6366F1 !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15), 0 2px 8px rgba(99, 102, 241, 0.08) !important;
   transform: translateY(-1px);
 }
-#loginScreen .modern-input-group > i {
+html.dark-mode .modern-input-group:focus-within {
+  background: #1E293B !important;
+  border-color: #818CF8 !important;
+  box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.2) !important;
+}
+.modern-input-group > i {
   position: absolute;
   left: 16px;
   font-size: 20px;
@@ -190,10 +203,13 @@ html.dark-mode #loginScreen .login-bg-dots {
   pointer-events: none;
   transition: color 0.2s ease;
 }
-#loginScreen .modern-input-group:focus-within > i {
+.modern-input-group:focus-within > i {
+  color: #4F46E5;
+}
+html.dark-mode .modern-input-group:focus-within > i {
   color: #818CF8;
 }
-#loginScreen .modern-input-group input {
+.modern-input-group input {
   width: 100%;
   padding: 12px 44px 12px 48px;
   border: none !important;
@@ -201,15 +217,18 @@ html.dark-mode #loginScreen .login-bg-dots {
   background: transparent !important;
   font-family: inherit;
   font-size: 14.5px;
-  color: #F8FAFC !important;
+  color: #0F172A;
   box-shadow: none !important;
   transform: none !important;
 }
-#loginScreen .modern-input-group input::placeholder {
+html.dark-mode .modern-input-group input {
+  color: #F8FAFC;
+}
+.modern-input-group input::placeholder {
   color: #94A3B8;
   font-size: 13.5px;
 }
-#loginScreen .modern-input-group .toggle-pwd {
+.modern-input-group .toggle-pwd {
   position: absolute;
   right: 12px;
   top: 50%;
@@ -225,9 +244,13 @@ html.dark-mode #loginScreen .login-bg-dots {
   justify-content: center;
   transition: all 0.2s ease;
 }
-#loginScreen .modern-input-group .toggle-pwd:hover {
-  color: #F8FAFC;
-  background: rgba(129, 140, 248, 0.2);
+.modern-input-group .toggle-pwd:hover {
+  color: #4F46E5;
+  background: rgba(99, 102, 241, 0.08);
+}
+html.dark-mode .modern-input-group .toggle-pwd:hover {
+  color: #818CF8;
+  background: rgba(129, 140, 248, 0.15);
 }
 
 .login-card {
