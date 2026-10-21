@@ -758,14 +758,30 @@ function renderDashboard(container) {
     <!-- Rest of Dashboard: Finance & Announcements -->
     <div class="dash-row mt-4">
       <div class="dash-card">
-        <h3><i class="bx bxs-megaphone text-primary mr-1"></i> ประกาศและกิจกรรมล่าสุด</h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 m-0 flex items-center gap-1.5 text-left">
+            <i class="bx bxs-megaphone text-primary"></i>
+            <span>ประกาศและกิจกรรมล่าสุด</span>
+          </h3>
+          <a href="#" onclick="event.preventDefault(); navigate('announcements');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5">
+            ดูทั้งหมด <i class="bx bx-chevron-right"></i>
+          </a>
+        </div>
         <div class="announce-list" id="announceList">
           <div class="empty-state"><i class="bx bx-loader-alt bx-spin"></i>กำลังโหลด...</div>
         </div>
       </div>
 
       <div class="dash-card">
-        <h3><i class="bx bx-wallet text-primary mr-1"></i> สรุปรายรับ - รายจ่าย</h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 m-0 flex items-center gap-1.5 text-left">
+            <i class="bx bx-wallet text-primary"></i>
+            <span>สรุปรายรับ - รายจ่าย</span>
+          </h3>
+          <a href="#" onclick="event.preventDefault(); navigate('finance');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5">
+            ดูทั้งหมด <i class="bx bx-chevron-right"></i>
+          </a>
+        </div>
         <div class="chart-box" style="height:170px;"><canvas id="chartFinance"></canvas></div>
         <div class="text-center mt-2">
           <div class="text-xs text-slate-500">คงเหลือสุทธิ</div>

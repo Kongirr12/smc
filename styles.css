@@ -709,9 +709,10 @@ select {
 .dash-card:hover { box-shadow: var(--shadow-md); border-color: rgba(79,70,229,.15); }
 .dash-card h3 {
   margin: 0 0 18px; font-size: 15px; font-weight: 700; color: var(--text-primary);
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: 8px; justify-content: flex-start; text-align: left;
 }
 .dash-card h3 a {
+  margin-left: auto;
   font-size: 12px; font-weight: 500; color: var(--primary);
   text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
   opacity: .8; transition: opacity var(--transition);
