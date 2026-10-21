@@ -4,22 +4,31 @@
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
 ## [v3.3.0] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
-### ⚡ เชื่อมโยงศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade) รองรับทั้ง Windows และ macOS
+### ⚡ เชื่อมโยงศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade v1.0.3) รองรับ Windows, macOS และส่วนขยาย Chrome
 - **เพิ่มเมนู "โปรแกรมช่วยกรอก SGS" ในหมวดระบบภายนอก (ส่วนเสริม):**
-  - เพิ่มเมนูใหม่ในแถบ Sidebar หมวดที่ 4: ระบบภายนอก (ส่วนเสริม) เชื่อมโยงไปยังหน้าศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade) สำหรับครูผู้สอน
+  - เพิ่มเมนูใหม่ในแถบ Sidebar หมวดที่ 4: ระบบภายนอก (ส่วนเสริม) เชื่อมโยงไปยังหน้าศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade v1.0.3) สำหรับครูผู้สอน
   - รองรับการค้นหาด่วนผ่าน Global Quick Search (`Ctrl+K` / `Cmd+K`)
-- **การ์ดดาวน์โหลดโปรแกรมแยกเวอร์ชันชัดเจน (Windows & macOS):**
-  - **สำหรับ Windows (PC / โน้ตบุ๊ก):**
-    - ลิงก์ดาวน์โหลดตรงไฟล์ติดตั้ง: `SGS AutoGrade Setup 1.0.0.exe`
+- **การ์ดดาวน์โหลดโปรแกรมแยกเวอร์ชันล่าสุด (v1.0.3 Final & Chrome Extension):**
+  - **สำหรับ Windows (PC / โน้ตบุ๊ก - Portable):**
+    - ลิงก์ดาวน์โหลดตรง: `AutoGrade-Windows-v1.0.3.zip` (231 MB)
+    - ลิงก์ดาวน์โหลดไฟล์ช่วยเปิด: `เปิดใช้งานโปรแกรม.bat`
+    - ลิงก์เปิดคู่มือภาษาไทย: `คู่มือการใช้งาน_Windows.txt`
     - ลิงก์เปิดโฟลเดอร์ Google Drive สำหรับ Windows
-    - คำแนะนำการติดตั้งและการข้าม SmartScreen (More info > Run anyway)
+    - คำแนะนำ: เป็นแบบ Portable ไม่ต้องติดตั้ง แตกไฟล์แล้วดับเบิลคลิกไฟล์ `.bat` หรือ `.exe` ได้ทันที (หากพบ SmartScreen ให้คลิก More info > Run anyway)
   - **สำหรับ macOS (MacBook / iMac):**
-    - ลิงก์ดาวน์โหลดตรงไฟล์: `AutoGrade-Mac-v1.0.zip` (รองรับ Apple Silicon M1-M4 และ Intel)
+    - ลิงก์ดาวน์โหลดตรง: `AutoGrade-Mac-v1.0.3.zip` (438 MB รองรับชิป M1-M4 และ Intel)
+    - ลิงก์เปิดโฟลเดอร์แอป: `SGS AutoGrade.app`
+    - ลิงก์เปิดคู่มือภาษาไทย: `คู่มือการใช้งาน_Mac.txt`
     - ลิงก์เปิดโฟลเดอร์ Google Drive สำหรับ Mac
-    - คำแนะนำการตั้งค่า Security & Privacy บน macOS (System Settings > Privacy & Security > Open Anyway)
-  - **แบบฟอร์ม & ไฟล์ตัวอย่างคะแนน:**
+    - คำแนะนำ: นำแอปไปวางใน Applications (กรณีเปิดครั้งแรก ให้คลิกขวาที่ตัวแอปแล้วเลือก Open หรือไปที่ System Settings > Privacy & Security > Open Anyway)
+  - **ส่วนขยาย Google Chrome (Chrome Extension):**
+    - ลิงก์ดาวน์โหลดตรง: `SGS_AutoGrade_Extension.zip` (687 KB)
+    - ลิงก์เปิดโฟลเดอร์ Google Drive ส่วนขยาย Chrome
+    - คำแนะนำ: เข้า `chrome://extensions` เปิด Developer mode แล้วกด `Load unpacked` โฟลเดอร์ที่แตกไฟล์
+  - **แบบฟอร์ม & ไฟล์ตัวอย่างคะแนน (สพฐ.):**
     - ลิงก์ดาวน์โหลดไฟล์: `ตัวอย่างการกรอกคะแนน.xlsx`
     - ลิงก์เปิดโฟลเดอร์ `form_excel_69/1 ตามรายชื่อ sgs`
+    - ลิงก์เปิดคู่มือรวม: `คู่มือการใช้งาน.txt`
     - ลิงก์เปิด Google Drive รวมโฟลเดอร์ `ระบบกรอก sgs` ทั้งหมด
 - **คู่มือขั้นตอนการใช้งาน 4 ขั้นตอน (Step-by-Step Workflow Guide):**
   - สรุปขั้นตอนการทำงานร่วมกันระหว่างระบบ ปพ.5 ของ MHC Smart School กับโปรแกรม SGS AutoGrade อย่างชัดเจน เข้าใจง่าย
