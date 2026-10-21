@@ -3,7 +3,23 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.3.6] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.3.7] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 📱 ปรับปรุงระบบพิมพ์และ Preview ให้ Responsive สมบูรณ์แบบบนมือถือ และเสริม CSS เส้นประลายเซ็น
+- **แก้ไขปัญหากรอบพรีวิวเอกสารบนมือถือเลื่อนแนวนอนไม่ได้ (`js3.js`):**
+  - เปลี่ยน Wrapper ของ `printDocIframe` จาก `overflow-hidden` เป็น `overflow-auto` พร้อมรองรับ iOS touch momentum scrolling (`-webkit-overflow-scrolling: touch;`)
+  - กำหนด `minHeight = '500px'` ให้กับ `printDocIframe` ป้องกันเอกสารถูกบีบหรือตัดบนหน้าจอขนาดเล็ก (<375px)
+- **เพิ่มคลาส `.sig-line` สำหรับเส้นประลงนามในแม่แบบเอกสารทั้งหมด (`js2.js`, `code.gs`):**
+  - เพิ่มกฎ CSS `.sig-line { border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 3px auto; }` ใน `printAttendanceDashboardOverview`, `printDailyAttendanceRecord`, และ `printAttendanceReport` (`js2.js`)
+  - เพิ่มกฎ CSS `.sig-line` ในแม่แบบ ปพ.5 และ ปพ.6 (`code.gs`)
+- **แก้ไขปัญหาข้อความตำแหน่งในช่องลงนาม ปพ.5 และ ปพ.6 ตกขอบ (`code.gs`):**
+  - เปลี่ยน `.sig-title` เป็น `white-space: normal;` ในแบบ ปพ.5 และ ปพ.6 เพื่อรองรับข้อความยาว เช่น "ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร" ในกริด 4 คอลัมน์โดยไม่ถูกตัดทอน
+- **เพิ่มการจัดวางหน้ากระดาษแบบ Responsive บนหน้าจอสำหรับ ปพ.5 และ ปพ.6 (`code.gs`):**
+  - เพิ่มบล็อก `@media screen` กำหนดพื้นหลัง `#F8FAFC`, `overflow-x: auto;`, กล่องเงาและ Padding ให้เอกสารดูเป็นระเบียบเสมือนหน้ากระดาษจริง และเลื่อนซ้าย-ขวาได้สะดวกบนมือถือ
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.7` พร้อมอัปเดต Query String `?v=3.3.7` ใน `index.html` และ `CONFIG.APP_VERSION` เป็น `3.3.7` ใน `code.gs`
+
+---
+
+## [v3.3.6] - 2026-10-21
 ### 🖨️ แก้ไขการแสดงผลเอกสารพิมพ์ทั้งหมด (1:1 WYSIWYG Preview & Print), ป้องกันตัวหนังสือ/ลายเซ็นตกขอบ และรองรับ Responsive มือถือ 100%
 - **แก้ไขปัญหาชื่อนักเรียนถูกตัดเป็น `นางสาว...` และคอลัมน์ผลประเมินตกบรรทัด (`js3.js`, `js2.js`, `js4.js`, `js_templates.js`):**
   - แก้ไข `cleanPreviewOverride` ใน `js3.js` จากเดิมที่บังคับ `table { table-layout: fixed !important; }` ในหน้าตัวอย่างก่อนพิมพ์ (ซึ่งทำให้ตาราง 19 คอลัมน์บีบช่อง `ชื่อ - นามสกุล` จนเหลือแค่ `นางสาว...`) ให้เปลี่ยนเป็น `table:not(.cal-table) { table-layout: auto !important; }` เหมือนกับ `@media print` 100%

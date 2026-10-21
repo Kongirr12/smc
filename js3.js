@@ -2019,8 +2019,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         </button>
       </div>
     </div>
-    <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex justify-center items-center p-0 sm:p-2">
-      <iframe id="printDocIframe" class="w-full h-full border-0 bg-white sm:rounded-lg sm:shadow-lg"></iframe>
+    <div class="flex-1 w-full bg-slate-200 overflow-auto relative flex flex-col p-0 sm:p-2" style="-webkit-overflow-scrolling: touch;">
+      <iframe id="printDocIframe" class="w-full h-full border-0 bg-white sm:rounded-lg sm:shadow-lg" style="min-width:0; flex-shrink:0;"></iframe>
     </div>
   `;
 
@@ -2337,6 +2337,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           }
         </style>
       `;
+      iframe.style.minHeight = '500px';
       iframe.srcdoc = modal._currentHtml.includes('</head>')
         ? modal._currentHtml.replace('</head>', cleanOverride + '</head>')
         : cleanOverride + modal._currentHtml;

@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.3.6',
+  APP_VERSION    : '3.3.7',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -4618,6 +4618,7 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
       align-items: flex-end;
       justify-content: center;
     }
+    .sig-line { border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 3px auto; }
     .sig-dots {
       white-space: nowrap;
       font-size: 7.5pt;
@@ -4635,13 +4636,17 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
       color: #334155;
       margin-top: 1px;
       line-height: 1.2;
-      white-space: nowrap;
+      white-space: normal;
     }
     .sig-date {
       font-size: 7pt;
       color: #64748B;
       margin-top: 2px;
       white-space: nowrap;
+    }
+    @media screen {
+      body { background: #F8FAFC !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+      .print-page-wrapper { margin: 12px auto !important; padding: 8mm 10mm !important; box-shadow: 0 4px 15px rgba(0,0,0,0.06) !important; border-radius: 4px !important; overflow-x: auto !important; }
     }
     @media print {
       .no-print { display: none !important; }
@@ -5000,6 +5005,7 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
       align-items: flex-end;
       justify-content: center;
     }
+    .sig-line { border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 3px auto; }
     .sig-dots {
       white-space: nowrap;
       font-size: 7.5pt;
@@ -5017,13 +5023,17 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
       color: #334155;
       margin-top: 1px;
       line-height: 1.2;
-      white-space: nowrap;
+      white-space: normal;
     }
     .sig-date {
       font-size: 7pt;
       color: #64748B;
       margin-top: 2px;
       white-space: nowrap;
+    }
+    @media screen {
+      body { background: #F8FAFC !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+      .print-page-wrapper, .pp6-container { margin: 12px auto !important; padding: 8mm 10mm !important; box-shadow: 0 4px 15px rgba(0,0,0,0.06) !important; border-radius: 4px !important; overflow-x: auto !important; }
     }
     @media print {
       .no-print { display: none !important; }

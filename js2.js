@@ -3665,6 +3665,7 @@ function printAttendanceDashboardOverview() {
     .signatures { margin-top: 30px; display: flex; justify-content: space-around; page-break-inside: avoid; gap: 16px; flex-wrap: nowrap; }
     .sig-box { text-align: center; min-width: 210px; max-width: 340px; flex: 1; font-size: 9pt; }
     .sig-stamp-zone { min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+    .sig-line { border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 3px auto; }
     .sig-dots { font-size: 9pt; color: #334155; white-space: nowrap; }
     .sig-name, .sig-title, .sig-date { margin-top: 3px; color: #334155; font-size: 9pt; white-space: nowrap; }
     .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
@@ -4065,6 +4066,7 @@ function printDailyAttendanceRecord() {
     .signatures { margin-top: 24px; display: flex; justify-content: space-around; page-break-inside: avoid; gap: 16px; flex-wrap: nowrap; }
     .sig-box { text-align: center; min-width: 210px; max-width: 340px; flex: 1; font-size: 9pt; }
     .sig-stamp-zone { min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+    .sig-line { border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 3px auto; }
     .sig-dots { font-size: 9pt; color: #334155; white-space: nowrap; }
     .sig-name, .sig-title, .sig-date { margin-top: 3px; color: #334155; font-size: 9pt; white-space: nowrap; }
     .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
@@ -4632,6 +4634,7 @@ function printAttendanceReport() {
     .signatures { margin-top: 20px; display: flex; justify-content: space-around; page-break-inside: avoid; gap: 16px; flex-wrap: nowrap; }
     .sig-box { text-align: center; min-width: 210px; max-width: 340px; flex: 1; font-size: 9pt; }
     .sig-stamp-zone { min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+    .sig-line { border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 3px auto; }
     .sig-dots { font-size: 9pt; color: #334155; white-space: nowrap; }
     .sig-name, .sig-title, .sig-date { margin-top: 3px; color: #334155; font-size: 9pt; white-space: nowrap; }
     .footer { margin-top: 18px; padding-top: 6px; border-top: 1px solid #CBD5E1; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; clear: both; }
