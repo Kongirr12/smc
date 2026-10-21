@@ -393,6 +393,23 @@ function triggerDirectInAppPrint(html) {
     document.body.appendChild(printArea);
   }
 
+  const modal = document.getElementById('printDocModal');
+  const isLand = (modal && modal._currentOrientation === 'landscape');
+  let dynamicStyle = document.getElementById('mhcDynamicPrintPageStyle');
+  if (!dynamicStyle) {
+    dynamicStyle = document.createElement('style');
+    dynamicStyle.id = 'mhcDynamicPrintPageStyle';
+    document.head.appendChild(dynamicStyle);
+  }
+  dynamicStyle.textContent = `
+    @media print {
+      @page {
+        size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
+        margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 10mm 10mm 10mm'} !important;
+      }
+    }
+  `;
+
   printArea.innerHTML = html || '';
   document.body.classList.add('is-printing-doc');
 
@@ -432,6 +449,29 @@ window.triggerInAppPrint = function() {
   const iframe = document.getElementById('printDocIframe');
   if (iframe && iframe.contentWindow) {
     try {
+      const idoc = iframe.contentDocument || iframe.contentWindow.document;
+      const imgs = idoc ? Array.from(idoc.images) : [];
+      const pending = imgs.filter(img => !img.complete);
+      if (pending.length > 0) {
+        let loaded = 0;
+        const doPrint = () => {
+          try {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+          } catch (e) {
+            triggerDirectInAppPrint(html);
+          }
+        };
+        pending.forEach(img => {
+          img.onload = img.onerror = () => {
+            loaded++;
+            if (loaded >= pending.length) doPrint();
+          };
+        });
+        setTimeout(doPrint, 500);
+        return;
+      }
+
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
       return;
@@ -712,37 +752,75 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
     multiState = getPrintMultiSignatureState();
   }
 
-  if (!multiState.masterEnabled) {
-    return html;
-  }
-
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // ฝัง CSS สไตล์ลายเซ็นแบบคมชัด สวยงาม ไม่ซ้อนทับตัวหนังสือ
+    // ฝัง CSS สไตล์ลายเซ็นแบบคมชัด สวยงาม สมดุลเท่ากันทุกช่อง ไม่ซ้อนทับตัวหนังสือ
     let style = doc.querySelector('style#mhcSigStyle');
     if (!style) {
       style = doc.createElement('style');
       style.id = 'mhcSigStyle';
       style.textContent = `
         .sig-stamp-zone {
-          min-height: 46px !important;
+          height: 48px !important;
+          min-height: 48px !important;
+          max-height: 48px !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
-          justify-content: center !important;
-          margin: 3px auto !important;
+          justify-content: flex-end !important;
+          margin: 0 auto 3px auto !important;
         }
         .teacher-sig-img, .mhc-sig-img {
-          max-height: 46px !important;
+          max-height: 44px !important;
           max-width: 145px !important;
           object-fit: contain !important;
           pointer-events: none !important;
-          display: inline-block !important;
-          vertical-align: middle !important;
+          display: block !important;
+          margin: 0 auto !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+        }
+        .sig-line {
+          border-bottom: 1px dotted #64748B !important;
+          width: 170px !important;
+          margin: 0 auto 4px auto !important;
+          padding-bottom: 0 !important;
+          min-height: 0 !important;
+        }
+        .sig-row, .signature-row {
+          display: flex !important;
+          justify-content: space-around !important;
+          align-items: flex-start !important;
+          margin-top: 24px !important;
+          text-align: center !important;
+          font-size: 11px !important;
+          gap: 20px !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .sig-box {
+          flex: 1 !important;
+          min-width: 170px !important;
+          max-width: 250px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          text-align: center !important;
+        }
+        .sig-name {
+          font-weight: 600 !important;
+          font-size: 11px !important;
+          color: #0F172A !important;
+          margin-top: 2px !important;
+          white-space: nowrap !important;
+        }
+        .sig-title {
+          font-size: 10.5px !important;
+          color: #475569 !important;
+          margin-top: 1px !important;
+          white-space: nowrap !important;
         }
         .mhc-sig-inline-wrap {
           display: inline-flex !important;
@@ -753,7 +831,7 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
         }
         @media print {
           .teacher-sig-img, .mhc-sig-img {
-            display: inline-block !important;
+            display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
             -webkit-print-color-adjust: exact !important;
@@ -765,6 +843,14 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
       else if (doc.body) doc.body.insertBefore(style, doc.body.firstChild);
     }
 
+    // กรณีปิดลายเซ็น (Signatures: OFF)
+    if (!multiState.masterEnabled) {
+      doc.querySelectorAll('.sig-stamp-zone').forEach(sz => { sz.innerHTML = ''; });
+      doc.querySelectorAll('.teacher-sig-img, .mhc-sig-img').forEach(img => { img.remove(); });
+      doc.querySelectorAll('.sig-dots').forEach(d => { d.style.display = ''; });
+      return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    }
+
     const tSig = (multiState.teacher && multiState.teacher.enabled && multiState.teacher.signature) ? multiState.teacher.signature : '';
     const tName = (multiState.teacher && multiState.teacher.name) ? multiState.teacher.name : 'ครูก้องนที อุ่นเจริญ';
 
@@ -772,117 +858,119 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
     const dName = 'นายอธิการ สุขศรี';
 
     const eSig = (multiState.evaluator && multiState.evaluator.enabled && multiState.evaluator.signature) ? multiState.evaluator.signature : '';
-    const eName = (multiState.evaluator && multiState.evaluator.name) ? multiState.evaluator.name : 'หัวหน้างานวัดและประเมินผลการศึกษา';
+    const eName = (multiState.evaluator && multiState.evaluator.name) ? multiState.evaluator.name : 'หัวหน้ากลุ่มบริหารวิชาการ';
 
     const pSig = (multiState.parent && multiState.parent.enabled && multiState.parent.signature) ? multiState.parent.signature : '';
     const pName = (multiState.parent && multiState.parent.name) ? multiState.parent.name : 'ผู้ปกครองนักเรียน';
 
-    // A. ปพ.5, ปพ.6, ตารางเรียน/สอน และรายงาน: โครงสร้าง .sig-box, .signature-grid, .signature-row
-    const stampBoxes = doc.querySelectorAll('.sig-box, .signature-grid > div, .signature-row > div');
+    // A. ปพ.5, ปพ.6, ตารางเรียน/สอน และรายงาน: โครงสร้าง .sig-box, .signature-grid, .signature-row, .sig-row
+    const stampBoxes = doc.querySelectorAll('.sig-box, .signature-grid > div, .signature-row > div, .sig-row > div, .signatures > div, .sig-container > div');
     stampBoxes.forEach((box, idx) => {
+      const roleAttr = (box.getAttribute('data-sig-role') || '').toLowerCase();
       const boxTxt = box.textContent || '';
-      const isDirector = boxTxt.includes('ผู้อำนวยการ') || boxTxt.includes('อธิการ') || boxTxt.includes('สุขศรี') || boxTxt.includes('อนุมัติผล') || boxTxt.includes('ทราบ / อนุมัติ');
-      const isEvaluator = boxTxt.includes('หัวหน้างานวัด') || boxTxt.includes('หัวหน้ากลุ่มสาระ') || boxTxt.includes('วัดและประเมินผล') || boxTxt.includes('วิชาการ') || boxTxt.includes('หัวหน้างานวิชาการ') || boxTxt.includes('หัวหน้ากลุ่มบริหารวิชาการ');
-      const isParent = boxTxt.includes('ผู้ปกครอง');
-      const isTeacher = !isDirector && !isEvaluator && !isParent && (
+      const isDirector = roleAttr === 'director' || boxTxt.includes('ผู้อำนวยการ') || boxTxt.includes('อธิการ') || boxTxt.includes('สุขศรี') || boxTxt.includes('อนุมัติผล') || boxTxt.includes('ทราบ / อนุมัติ');
+      const isEvaluator = roleAttr === 'evaluator' || boxTxt.includes('หัวหน้างานวัด') || boxTxt.includes('หัวหน้ากลุ่มสาระ') || boxTxt.includes('วัดและประเมินผล') || boxTxt.includes('วิชาการ') || boxTxt.includes('หัวหน้างานวิชาการ') || boxTxt.includes('หัวหน้ากลุ่มบริหารวิชาการ');
+      const isParent = roleAttr === 'parent' || boxTxt.includes('ผู้ปกครอง');
+      const isTeacher = roleAttr === 'teacher' || (!isDirector && !isEvaluator && !isParent && (
         boxTxt.includes('ครูประจำชั้น') || boxTxt.includes('ครูผู้สอน') || boxTxt.includes('ผู้รายงาน') || 
         boxTxt.includes('ผู้สรุปรายงาน') || boxTxt.includes('ผู้ตรวจเช็ค') || boxTxt.includes('ผู้จัดทำ') || 
-        boxTxt.includes('ครูที่ปรึกษา') || boxTxt.includes('ตำแหน่ง') || box.getAttribute('data-sig-role') === 'teacher' || idx === 0
-      );
+        boxTxt.includes('ครูที่ปรึกษา') || boxTxt.includes('ตำแหน่ง') || idx === 0
+      ));
 
       let targetSig = '';
       let targetName = '';
-      if (isDirector && dSig) {
-        targetSig = dSig;
-        targetName = dName;
-      } else if (isEvaluator && eSig) {
-        targetSig = eSig;
-        targetName = eName;
-      } else if (isParent && pSig) {
-        targetSig = pSig;
-        targetName = pName;
+      if (isDirector) {
+        if (multiState.director && multiState.director.enabled !== false) {
+          targetSig = dSig || generateDirectorSignatureSvg();
+          targetName = dName;
+        }
+      } else if (isEvaluator) {
+        if (multiState.evaluator && multiState.evaluator.enabled) {
+          targetSig = eSig || generateEvaluatorSignatureSvg();
+          targetName = eName;
+        }
+      } else if (isParent) {
+        if (multiState.parent && multiState.parent.enabled) {
+          targetSig = pSig;
+          targetName = pName;
+        }
       } else if (isTeacher) {
-        // หาข้อมูลระดับชั้นหรือห้องเรียนของกล่องนี้เพื่อแยกลายเซ็นอย่างถูกต้อง
-        const wrapper = box.closest('.grade-level-section, .print-page-wrapper, [data-grade-level], [data-classroom]');
-        let boxGrade = box.getAttribute('data-grade-level') || (wrapper ? wrapper.getAttribute('data-grade-level') : '') || '';
-        let boxClassroom = box.getAttribute('data-classroom') || (wrapper ? wrapper.getAttribute('data-classroom') : '') || '';
+        if (multiState.teacher && multiState.teacher.enabled !== false) {
+          // หาข้อมูลระดับชั้นหรือห้องเรียนของกล่องนี้เพื่อแยกลายเซ็นอย่างถูกต้อง
+          const wrapper = box.closest('.grade-level-section, .print-page-wrapper, .schedule-page, [data-grade-level], [data-classroom]');
+          let boxGrade = box.getAttribute('data-grade-level') || (wrapper ? wrapper.getAttribute('data-grade-level') : '') || '';
+          let boxClassroom = box.getAttribute('data-classroom') || (wrapper ? wrapper.getAttribute('data-classroom') : '') || '';
 
-        if (!boxGrade) {
-          const contextText = (box.textContent || '') + ' ' + (wrapper ? wrapper.textContent : '');
-          const mMatch = contextText.match(/(ม\.[1-6]|มัธยมศึกษาปีที่\s*([1-6])|ชั้นมัธยมศึกษาปีที่\s*([1-6]))/i);
-          if (mMatch) {
-            if (mMatch[1].startsWith('ม.')) boxGrade = mMatch[1];
-            else if (mMatch[2]) boxGrade = 'ม.' + mMatch[2];
-            else if (mMatch[3]) boxGrade = 'ม.' + mMatch[3];
+          if (!boxGrade) {
+            const contextText = (box.textContent || '') + ' ' + (wrapper ? wrapper.textContent : '');
+            const mMatch = contextText.match(/(ม\.[1-6]|มัธยมศึกษาปีที่\s*([1-6])|ชั้นมัธยมศึกษาปีที่\s*([1-6]))/i);
+            if (mMatch) {
+              if (mMatch[1].startsWith('ม.')) boxGrade = mMatch[1];
+              else if (mMatch[2]) boxGrade = 'ม.' + mMatch[2];
+              else if (mMatch[3]) boxGrade = 'ม.' + mMatch[3];
+            }
           }
-        }
-        if (!boxClassroom && boxGrade) {
-          const cMatch = (wrapper ? wrapper.textContent : '').match(/(ม\.[1-6]\/\d+)/i);
-          if (cMatch) boxClassroom = cMatch[1];
-        }
+          if (!boxClassroom && boxGrade) {
+            const cMatch = (wrapper ? wrapper.textContent : '').match(/(ม\.[1-6]\/\d+)/i);
+            if (cMatch) boxClassroom = cMatch[1];
+          }
 
-        const existingSigImg = box.querySelector('.teacher-sig-img');
-        const hasExistingValidSig = existingSigImg && existingSigImg.src && existingSigImg.src.startsWith('data:image');
+          const existingSigImg = box.querySelector('.teacher-sig-img');
+          const hasExistingValidSig = existingSigImg && existingSigImg.src && (existingSigImg.src.startsWith('data:image') || existingSigImg.src.startsWith('http'));
 
-        const gTeacher = (boxGrade && multiState.gradeTeachers && multiState.gradeTeachers[boxGrade]) || null;
-        const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
-        const autoRoomTeacher = (boxClassroom && autoMap && autoMap.byClassroom && autoMap.byClassroom[boxClassroom]) || null;
-        const autoGradeTeacher = (boxGrade && autoMap && autoMap.byGrade && autoMap.byGrade[boxGrade]) || null;
+          const gTeacher = (boxGrade && multiState.gradeTeachers && multiState.gradeTeachers[boxGrade]) || null;
+          const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+          const autoRoomTeacher = (boxClassroom && autoMap && autoMap.byClassroom && autoMap.byClassroom[boxClassroom]) || null;
+          const autoGradeTeacher = (boxGrade && autoMap && autoMap.byGrade && autoMap.byGrade[boxGrade]) || null;
 
-        // ลำดับความสำคัญในการเลือกข้อมูลครูประจำชั้น / หัวหน้าระดับชั้น:
-        // Priority 1: มีการระบุลายเซ็นเฉพาะระดับชั้นนั้นใน Studio (Grade-Level Custom Override)
-        if (gTeacher && gTeacher.enabled && gTeacher.signature) {
-          targetSig = gTeacher.signature;
-          targetName = gTeacher.name || tName;
-        }
-        // Priority 2: มีลายเซ็นที่ดึงตรงตามห้องเรียน/ระดับชั้นจาก Server มาอยู่แล้ว (Auto-Matched by Classroom)
-        else if (hasExistingValidSig && multiState.autoMatchClassroom !== false) {
-          targetSig = existingSigImg.src;
-          const curName = (box.querySelector('.sig-name')?.textContent || '').replace(/[()]/g, '').trim();
-          targetName = curName || (autoRoomTeacher ? autoRoomTeacher.name : (autoGradeTeacher ? autoGradeTeacher.name : tName));
-        }
-        // Priority 3: ดึงอัตโนมัติตามห้องเรียนจาก Cache ใน Client (Auto Match Classroom)
-        else if (autoRoomTeacher && autoRoomTeacher.signature && multiState.autoMatchClassroom !== false) {
-          targetSig = autoRoomTeacher.signature;
-          targetName = autoRoomTeacher.name || tName;
-        }
-        // Priority 4: ดึงอัตโนมัติตามระดับชั้นจาก Cache ใน Client (Auto Match Grade)
-        else if (autoGradeTeacher && autoGradeTeacher.signature && multiState.autoMatchClassroom !== false) {
-          targetSig = autoGradeTeacher.signature;
-          targetName = autoGradeTeacher.name || tName;
-        }
-        // Priority 5: ใช้ลายเซ็นครูประจำชั้นทั่วไป (Global Default Teacher)
-        else if (tSig) {
-          targetSig = tSig;
-          targetName = (gTeacher && gTeacher.name) ? gTeacher.name : tName;
+          // ลำดับความสำคัญในการเลือกข้อมูลครูประจำชั้น / หัวหน้าระดับชั้น:
+          // Priority 1: มีการระบุลายเซ็นเฉพาะระดับชั้นนั้นใน Studio (Grade-Level Custom Override)
+          if (gTeacher && gTeacher.enabled && gTeacher.signature) {
+            targetSig = gTeacher.signature;
+            targetName = gTeacher.name || tName;
+          }
+          // Priority 2: มีลายเซ็นที่ดึงตรงตามห้องเรียน/ระดับชั้นจาก Server มาอยู่แล้ว (Auto-Matched by Classroom)
+          else if (hasExistingValidSig && multiState.autoMatchClassroom !== false) {
+            targetSig = existingSigImg.src;
+            const curName = (box.querySelector('.sig-name')?.textContent || '').replace(/[()]/g, '').trim();
+            targetName = curName || (autoRoomTeacher ? autoRoomTeacher.name : (autoGradeTeacher ? autoGradeTeacher.name : tName));
+          }
+          // Priority 3: ดึงอัตโนมัติตามห้องเรียนจาก Cache ใน Client (Auto Match Classroom)
+          else if (autoRoomTeacher && autoRoomTeacher.signature && multiState.autoMatchClassroom !== false) {
+            targetSig = autoRoomTeacher.signature;
+            targetName = autoRoomTeacher.name || tName;
+          }
+          // Priority 4: ดึงอัตโนมัติตามระดับชั้นจาก Cache ใน Client (Auto Match Grade)
+          else if (autoGradeTeacher && autoGradeTeacher.signature && multiState.autoMatchClassroom !== false) {
+            targetSig = autoGradeTeacher.signature;
+            targetName = autoGradeTeacher.name || tName;
+          }
+          // Priority 5: ใช้ลายเซ็นครูประจำชั้นทั่วไป (Global Default Teacher)
+          else if (tSig) {
+            targetSig = tSig;
+            targetName = (gTeacher && gTeacher.name) ? gTeacher.name : tName;
+          }
         }
       }
 
       if (targetSig) {
-        const sz = box.querySelector('.sig-stamp-zone');
-        if (sz) {
-          sz.innerHTML = `<img src="${targetSig}" class="teacher-sig-img" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` +
-                         `<div style="border-bottom:1px dotted #94A3B8; width:130px; margin:2px auto 0 auto;"></div>`;
-          const dots = box.querySelector('.sig-dots');
-          if (dots) dots.style.display = 'none';
-        } else {
-          // หากไม่มี .sig-stamp-zone ค้นหาแถวที่มี "ลงชื่อ" หรือ .sig-line แล้วแทนที่ด้วยกล่องลายเซ็นสะอาด
-          let foundTarget = null;
-          const candidates = Array.from(box.querySelectorAll('div, p, span'));
-          for (const c of candidates) {
-            if (c.textContent && (c.textContent.includes('ลงชื่อ') || c.classList.contains('sig-line'))) {
-              foundTarget = c;
-              break;
-            }
-          }
-          if (foundTarget) {
-            foundTarget.outerHTML = `
-              <div class="sig-stamp-zone" style="min-height:46px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:3px auto;">
-                <img src="${targetSig}" class="teacher-sig-img" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />
-                <div style="border-bottom:1px dotted #94A3B8; width:130px; margin:2px auto 0 auto;"></div>
-              </div>
-            `;
-          }
+        let sz = box.querySelector('.sig-stamp-zone');
+        if (!sz) {
+          sz = doc.createElement('div');
+          sz.className = 'sig-stamp-zone';
+          const ref = box.querySelector('.sig-line, .sig-name, .sig-dots') || box.firstChild;
+          box.insertBefore(sz, ref);
+        }
+        sz.innerHTML = `<img src="${targetSig}" class="teacher-sig-img mhc-sig-img" alt="ลายเซ็น" />`;
+
+        const dots = box.querySelector('.sig-dots');
+        if (dots) dots.style.display = 'none';
+
+        let line = box.querySelector('.sig-line');
+        if (!line) {
+          line = doc.createElement('div');
+          line.className = 'sig-line';
+          sz.after(line);
         }
 
         // อัปเดตชื่อผู้ลงนาม
@@ -893,12 +981,25 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
           const allEls = box.querySelectorAll('div, p, span');
           allEls.forEach(el => {
             const t = (el.textContent || '').trim();
-            if (/^\(\s*[\.]{3,}\s*\)$/.test(t) || /^\(\s*…+\s*\)$/.test(t) || /^\(\s*_{3,}\s*\)$/.test(t) || /^\(\s*\)$/.test(t)) {
+            if (/^\(\s*[\.]{3,}\s*\)$/.test(t) || /^\(\s*…+\s*\)$/.test(t) || /^\(\s*_{3,}\s*\)$/.test(t) || /^\(\s*\)$/.test(t) || (isDirector && t.includes('อธิการ'))) {
               el.textContent = `( ${targetName} )`;
             }
           });
         }
         box.setAttribute('data-mhc-signed', 'true');
+      } else {
+        // ไม่มีลายเซ็น หรือตำแหน่งนี้ถูกปิด: เคลียร์รูปภาพออก และคงเส้นประไว้
+        const sz = box.querySelector('.sig-stamp-zone');
+        if (sz) sz.innerHTML = '';
+        const dots = box.querySelector('.sig-dots');
+        if (dots) dots.style.display = '';
+        let line = box.querySelector('.sig-line');
+        if (!line && !dots) {
+          line = doc.createElement('div');
+          line.className = 'sig-line';
+          if (sz) sz.after(line);
+          else box.prepend(line);
+        }
       }
     });
 
@@ -906,13 +1007,13 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
     doc.querySelectorAll('.teacher-sig-img').forEach(img => {
       if (img.closest('[data-mhc-signed]')) return;
       const parentTxt = (img.closest('.sig-box, .sig-row, div, td') || {}).textContent || '';
-      if ((parentTxt.includes('ผู้อำนวยการ') || parentTxt.includes('อธิการ')) && dSig) {
-        img.src = dSig;
+      if ((parentTxt.includes('ผู้อำนวยการ') || parentTxt.includes('อธิการ')) && (dSig || generateDirectorSignatureSvg())) {
+        img.src = dSig || generateDirectorSignatureSvg();
       } else if ((parentTxt.includes('หัวหน้า') || parentTxt.includes('วัดผล')) && eSig) {
         img.src = eSig;
       } else if (parentTxt.includes('ผู้ปกครอง') && pSig) {
         img.src = pSig;
-      } else if (multiState.autoMatchClassroom !== false && img.src && img.src.startsWith('data:image')) {
+      } else if (multiState.autoMatchClassroom !== false && img.src && (img.src.startsWith('data:image') || img.src.startsWith('http'))) {
         // คงรูปลายเซ็นเดิมที่ระบบแมตช์ตามห้องเรียนไว้
       } else if (tSig) {
         img.src = tSig;
@@ -922,7 +1023,7 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
     // C. แทรกในบล็อกข้อความราชการที่มี "ลงชื่อ" (แบบฟอร์ม 4 ฝ่าย / บันทึกข้อความ) ที่อยู่นอก .sig-box
     const allDivs = doc.querySelectorAll('div, p, td');
     allDivs.forEach(el => {
-      if (el.closest('[data-mhc-signed], .sig-box, .signature-grid, .signature-row')) return;
+      if (el.closest('[data-mhc-signed], .sig-box, .signature-grid, .signature-row, .sig-row, .signatures, .sig-container')) return;
       if (!el.textContent || !el.textContent.includes('ลงชื่อ')) return;
       if (el.querySelector('.teacher-sig-img, [data-mhc-signed]')) return;
       const hasChildWithSig = Array.from(el.children).some(c => c.textContent && c.textContent.includes('ลงชื่อ'));
@@ -933,16 +1034,16 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
 
       let targetSig = '';
       let targetName = '';
-      if ((contextTxt.includes('ผู้อำนวยการ') || contextTxt.includes('อธิการ') || contextTxt.includes('สุขศรี')) && dSig) {
-        targetSig = dSig;
+      if ((contextTxt.includes('ผู้อำนวยการ') || contextTxt.includes('อธิการ') || contextTxt.includes('สุขศรี')) && (multiState.director && multiState.director.enabled !== false)) {
+        targetSig = dSig || generateDirectorSignatureSvg();
         targetName = dName;
-      } else if ((contextTxt.includes('หัวหน้างาน') || contextTxt.includes('หัวหน้ากลุ่มสาระ') || contextTxt.includes('วัดผล') || contextTxt.includes('วิชาการ')) && eSig) {
-        targetSig = eSig;
+      } else if ((contextTxt.includes('หัวหน้างาน') || contextTxt.includes('หัวหน้ากลุ่มสาระ') || contextTxt.includes('วัดผล') || contextTxt.includes('วิชาการ')) && (multiState.evaluator && multiState.evaluator.enabled)) {
+        targetSig = eSig || generateEvaluatorSignatureSvg();
         targetName = eName;
-      } else if (contextTxt.includes('ผู้ปกครอง') && pSig) {
+      } else if (contextTxt.includes('ผู้ปกครอง') && (multiState.parent && multiState.parent.enabled)) {
         targetSig = pSig;
         targetName = pName;
-      } else if (tSig) {
+      } else if (multiState.teacher && multiState.teacher.enabled !== false && tSig) {
         targetSig = tSig;
         targetName = tName;
       }
@@ -1915,9 +2016,9 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const btnM = document.getElementById('btnToggleSignatureActionMobile');
 
     const activeList = [];
-    if (multi.teacher.enabled && multi.teacher.signature) activeList.push('ครู');
+    if (multi.teacher.enabled) activeList.push('ครู');
     if (multi.evaluator.enabled && multi.evaluator.signature) activeList.push('วัดผล');
-    if (multi.director.enabled && multi.director.signature) activeList.push('ผอ.');
+    if (multi.director.enabled) activeList.push('ผอ.');
     if (multi.parent.enabled && multi.parent.signature) activeList.push('ผู้ปกครอง');
 
     const hasAnyActive = multi.masterEnabled && activeList.length > 0;
@@ -1941,11 +2042,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
   const refreshPreview = () => {
     const multi = getPrintMultiSignatureState();
-    if (multi.masterEnabled) {
-      modal._currentHtml = applySignatureToDocument(modal._rawHtml, multi);
-    } else {
-      modal._currentHtml = modal._rawHtml;
-    }
+    modal._currentHtml = applySignatureToDocument(modal._rawHtml, multi);
     updateToggleBtnUI();
     updateOrientationBtnUI();
 
@@ -1957,12 +2054,14 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         <style id="cleanPreviewOverride">
           @page {
             size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
-            margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 10mm 10mm 10mm'} !important;
+            margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 8mm 8mm 8mm'} !important;
           }
           .no-print, .no-print-bar { display: none !important; }
           html, body {
             -webkit-text-size-adjust: 100% !important;
             text-size-adjust: 100% !important;
+            min-width: 0 !important;
+            width: 100% !important;
           }
           body {
             background: #F1F5F9 !important;
@@ -1976,7 +2075,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container, .pp5-sheet {
             margin: 8px auto !important;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
-            padding: ${isLand ? '10px 14px' : '14px 18px'} !important;
+            padding: ${isLand ? '10px 14px' : '10px 12px'} !important;
             max-width: ${isLand ? '285mm' : '205mm'} !important;
             width: 100% !important;
             box-sizing: border-box !important;
@@ -1985,21 +2084,69 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             -webkit-overflow-scrolling: touch !important;
           }
           table {
-            max-width: 100%;
-          }
-          .teacher-sig-img, .mhc-sig-img {
-            max-height: 46px !important;
-            max-width: 145px !important;
-            object-fit: contain !important;
-            display: inline-block !important;
-            vertical-align: middle !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            table-layout: fixed !important;
           }
           .sig-stamp-zone {
-            min-height: 44px !important;
+            height: 48px !important;
+            min-height: 48px !important;
+            max-height: 48px !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
-            justify-content: center !important;
+            justify-content: flex-end !important;
+            margin: 0 auto 3px auto !important;
+          }
+          .teacher-sig-img, .mhc-sig-img {
+            max-height: 44px !important;
+            max-width: 145px !important;
+            object-fit: contain !important;
+            display: block !important;
+            margin: 0 auto !important;
+            vertical-align: middle !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .sig-line {
+            border-bottom: 1px dotted #64748B !important;
+            width: 170px !important;
+            margin: 0 auto 4px auto !important;
+            padding-bottom: 0 !important;
+            min-height: 0 !important;
+          }
+          .sig-row, .signature-row {
+            display: flex !important;
+            justify-content: space-around !important;
+            align-items: flex-start !important;
+            margin-top: 24px !important;
+            text-align: center !important;
+            font-size: 11px !important;
+            gap: 20px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .sig-box {
+            flex: 1 !important;
+            min-width: 170px !important;
+            max-width: 250px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+          }
+          .sig-name {
+            font-weight: 600 !important;
+            font-size: 11px !important;
+            color: #0F172A !important;
+            margin-top: 2px !important;
+            white-space: nowrap !important;
+          }
+          .sig-title {
+            font-size: 10.5px !important;
+            color: #475569 !important;
+            margin-top: 1px !important;
+            white-space: nowrap !important;
           }
           /* ป้องกันการทับซ้อนข้อความท้ายเอกสารกับชื่อผู้บริหาร */
           .footer, .print-footer {
