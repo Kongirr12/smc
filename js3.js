@@ -538,7 +538,10 @@ function getPrintSignatureState() {
   const userName = (typeof APP !== 'undefined' && APP.user && (APP.user.name || APP.user.username)) ? (APP.user.name || APP.user.username) : '';
 
   const activeSig = customSig || userSig || '';
-  const activeName = customName || userName || 'ครูก้องนที อุ่นเจริญ';
+  let activeName = customName || userName || 'ครูก้องนที อุ่นเจริญ';
+  if (activeName === 'ผู้ดูแลระบบ' || activeName === 'admin') {
+    activeName = 'ครูก้องนที อุ่นเจริญ';
+  }
 
   // Default to enabled if a signature exists and user hasn't explicitly disabled it
   const enabled = savedEnabled !== null ? (savedEnabled === 'true') : (activeSig !== '');
@@ -764,150 +767,232 @@ function applySignatureToDocument(html, sigDataUrl, teacherName) {
   }
 }
 
-// 5. แสดงหน้าต่างจัดการ/วาด/เลือกลายเซ็นครู
+// 5. แสดงหน้าต่างจัดการ/วาด/เลือกลายเซ็นครู (Executive Aurora Signature Studio)
 function showSignatureManagerModal(onSaved) {
   let modal = document.getElementById('mhcSignatureManagerModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'mhcSignatureManagerModal';
-    modal.className = 'fixed inset-0 z-[100000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4';
+    modal.className = 'fixed inset-0 z-[100000] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 transition-all duration-300';
     document.body.appendChild(modal);
   }
 
   const curState = getPrintSignatureState();
   let drawnDataUrl = curState.signature || '';
-  let selectedTeacherName = curState.name || '';
+  let selectedTeacherName = curState.name || 'ครูก้องนที อุ่นเจริญ';
+  if (selectedTeacherName === 'ผู้ดูแลระบบ' || selectedTeacherName === 'admin') {
+    selectedTeacherName = 'ครูก้องนที อุ่นเจริญ';
+  }
   let penColor = '#002B9E'; // Royal blue
   let penWidth = 2.4;
 
   modal.innerHTML = `
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-      <!-- Header -->
-      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg">
+    <div class="bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] w-full max-w-xl overflow-hidden flex flex-col max-h-[94vh] border border-white/40 ring-1 ring-slate-900/10 animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Header with Aurora Dark Gradient -->
+      <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-white/10 relative overflow-hidden select-none">
+        <div class="absolute -right-8 -top-8 w-32 h-32 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="flex items-center gap-3 relative z-10">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xl shadow-md border border-indigo-400/30 flex-shrink-0">
             <i class='bx bx-edit-alt'></i>
           </div>
           <div>
-            <h3 class="text-sm font-bold text-slate-800">จัดการลายเซ็นครูสำหรับพิมพ์</h3>
-            <p class="text-[11px] text-slate-500">ลายเซ็นจะถูกประทับลงในเอกสารทุกหน้าที่สั่งพิมพ์อัตโนมัติ</p>
+            <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <span>จัดการลายเซ็นครูสำหรับพิมพ์</span>
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/20">A4 ทุกเอกสาร</span>
+            </h3>
+            <p class="text-[11px] text-indigo-200/80 font-normal mt-0.5">ระบบจะประทับลายเซ็นลงใน ปพ.5, ปพ.6, ตารางสอน และแบบฟอร์มทุกหน้าที่พิมพ์</p>
           </div>
         </div>
-        <button id="btnCloseSigManager" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100">
+        <button id="btnCloseSigManager" type="button" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer relative z-10" title="ปิดหน้าต่าง">
           <i class='bx bx-x text-2xl leading-none'></i>
         </button>
       </div>
 
       <!-- Body -->
-      <div class="p-5 overflow-y-auto space-y-4">
-        <!-- ชื่อครูผู้ลงนาม -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุลครูผู้ลงนาม</label>
-          <input id="sigTeacherNameInput" type="text" class="form-input w-full text-xs rounded-lg border-slate-200" placeholder="เช่น ครูก้องนที อุ่นเจริญ" value="${escapeHTML(selectedTeacherName)}">
-        </div>
-
-        <!-- แท็บวิธีเพิ่มลายเซ็น -->
-        <div class="flex rounded-lg bg-slate-100 p-1 text-xs font-medium">
-          <button id="tabSigDraw" type="button" class="flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold">
-            ✍️ วาดลายเซ็นสด
-          </button>
-          <button id="tabSigUpload" type="button" class="flex-1 py-1.5 rounded-md transition-all text-center text-slate-600 hover:text-slate-900">
-            📁 อัปโหลดรูป
-          </button>
-          <button id="tabSigSelect" type="button" class="flex-1 py-1.5 rounded-md transition-all text-center text-slate-600 hover:text-slate-900">
-            👥 เลือกครูในระบบ
-          </button>
-        </div>
-
-        <!-- Pane: วาดลายเซ็น -->
-        <div id="paneSigDraw" class="space-y-2.5">
+      <div class="p-5 sm:p-6 overflow-y-auto space-y-4 bg-slate-50/40">
+        
+        <!-- ส่วนระบุชื่อ-นามสกุลครูผู้ลงนาม -->
+        <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2">
           <div class="flex items-center justify-between">
-            <!-- ตัวเลือกสีปากกา -->
-            <div class="flex items-center gap-1.5">
-              <span class="text-[11px] text-slate-500 font-medium">หมึก:</span>
-              <button id="btnColorBlue" type="button" class="w-6 h-6 rounded-full border-2 border-indigo-500 shadow-xs" style="background:#002B9E;" title="สีน้ำเงินเข้มราชการ"></button>
-              <button id="btnColorBlack" type="button" class="w-6 h-6 rounded-full border-2 border-transparent shadow-xs" style="background:#0F172A;" title="สีดำ"></button>
+            <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <i class='bx bxs-user-check text-indigo-600 text-sm'></i>
+              <span>ชื่อ-นามสกุลครูผู้ลงนามในเอกสาร</span>
+            </label>
+            <span class="text-[11px] text-slate-400">จะพิมพ์ลงในวงเล็บ ( ................... )</span>
+          </div>
+          <div class="relative">
+            <i class='bx bx-user absolute left-3.5 top-3 text-slate-400 text-base'></i>
+            <input id="sigTeacherNameInput" type="text" class="w-full text-xs sm:text-sm pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/10 font-semibold text-slate-800 transition-all outline-none" placeholder="เช่น ครูก้องนที อุ่นเจริญ" value="${escapeHTML(selectedTeacherName)}">
+          </div>
+          <!-- ปุ่มลัดเลือกชื่อด่วน -->
+          <div class="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+            <span class="text-[10px] text-slate-400 font-medium flex-shrink-0">เลือกด่วน:</span>
+            <button type="button" class="btn-quick-name flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200/60 transition-all cursor-pointer" data-name="ครูก้องนที อุ่นเจริญ">
+              ✍️ ครูก้องนที อุ่นเจริญ
+            </button>
+            <button type="button" class="btn-quick-name flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold border border-amber-200/60 transition-all cursor-pointer" data-name="นายอธิการ สุขศรี">
+              👑 ผอ. นายอธิการ สุขศรี
+            </button>
+          </div>
+        </div>
+
+        <!-- แท็บสลับ 3 ช่องทาง -->
+        <div class="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 flex gap-1.5 select-none">
+          <button id="tabSigDraw" type="button" class="flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60">
+            <i class='bx bx-pen text-sm'></i>
+            <span>วาดลายเซ็นสด</span>
+          </button>
+          <button id="tabSigUpload" type="button" class="flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5">
+            <i class='bx bx-cloud-upload text-sm'></i>
+            <span>อัปโหลดรูป</span>
+          </button>
+          <button id="tabSigSelect" type="button" class="flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5">
+            <i class='bx bxs-user-detail text-sm'></i>
+            <span>เลือกครูในระบบ</span>
+          </button>
+        </div>
+
+        <!-- PANE 1: วาดลายเซ็นสด -->
+        <div id="paneSigDraw" class="space-y-2.5">
+          <!-- Toolbar: หมึก + ขนาดเส้น + ล้าง -->
+          <div class="bg-white px-3.5 py-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-2 shadow-2xs">
+            <!-- สีหมึก -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500 font-semibold">สีหมึก:</span>
+              <button id="btnColorBlue" type="button" class="w-7 h-7 rounded-full border-2 border-indigo-600 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105" style="background:#002B9E;" title="สีน้ำเงินเข้มราชการ">
+                <i class='bx bx-check text-white text-xs'></i>
+              </button>
+              <button id="btnColorBlack" type="button" class="w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105" style="background:#0F172A;" title="สีดำ">
+              </button>
             </div>
-            <!-- ตัวเลือกขนาดเส้น -->
-            <div class="flex items-center gap-1">
-              <span class="text-[11px] text-slate-500 font-medium mr-1">เส้น:</span>
-              <button id="btnSizeThin" type="button" class="px-2 py-0.5 text-[10px] rounded border border-slate-200 hover:bg-slate-50">บาง</button>
-              <button id="btnSizeNormal" type="button" class="px-2 py-0.5 text-[10px] rounded border border-indigo-500 bg-indigo-50 text-indigo-700 font-bold">ปกติ</button>
-              <button id="btnSizeThick" type="button" class="px-2 py-0.5 text-[10px] rounded border border-slate-200 hover:bg-slate-50">หนา</button>
+
+            <!-- ขนาดเส้น -->
+            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              <button id="btnSizeThin" type="button" class="px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all">บาง</button>
+              <button id="btnSizeNormal" type="button" class="px-2.5 py-1 text-[11px] rounded-lg bg-white text-indigo-700 shadow-2xs font-bold transition-all">ปกติ</button>
+              <button id="btnSizeThick" type="button" class="px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all">หนา</button>
             </div>
-            <!-- ปุ่มล้าง -->
-            <button id="btnClearSigCanvas" type="button" class="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-0.5 font-medium">
-              <i class='bx bx-trash text-sm'></i> ล้าง
+
+            <!-- ล้างแคนวาส -->
+            <button id="btnClearSigCanvas" type="button" class="px-2.5 py-1.5 rounded-xl text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold flex items-center gap-1 transition-all border border-rose-100">
+              <i class='bx bx-trash text-sm'></i>
+              <span>ล้าง</span>
             </button>
           </div>
 
-          <div class="relative w-full border-2 border-dashed border-indigo-200 rounded-xl bg-white overflow-hidden shadow-inner flex items-center justify-center" style="touch-action:none; height:160px;">
-            <canvas id="sigCanvas" class="w-full h-full cursor-crosshair"></canvas>
-            <div id="sigPlaceholderNote" class="absolute pointer-events-none text-center text-slate-300 text-xs ${drawnDataUrl ? 'hidden' : ''}">
-              <i class='bx bx-pencil text-xl block mb-0.5'></i>
-              ใช้นิ้ว ปากกาสไตลัส หรือเมาส์วาดลายเซ็นในกรอบนี้
+          <!-- กรอบแคนวาสวาดลายเซ็น -->
+          <div class="relative w-full border-2 border-dashed border-indigo-200/90 hover:border-indigo-400 rounded-2xl bg-white overflow-hidden shadow-inner flex items-center justify-center transition-all" style="touch-action:none; height:185px;">
+            <canvas id="sigCanvas" class="w-full h-full cursor-crosshair relative z-10"></canvas>
+            
+            <!-- Faint Baseline Guide -->
+            <div class="absolute bottom-9 left-1/2 -translate-x-1/2 w-4/5 border-b border-dashed border-slate-200 pointer-events-none z-0"></div>
+            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] text-slate-300 font-mono pointer-events-none z-0">
+              เส้นกึ่งกลางระนาบการเซ็น
+            </div>
+
+            <!-- Placeholder Note -->
+            <div id="sigPlaceholderNote" class="absolute pointer-events-none text-center text-slate-400 text-xs ${drawnDataUrl ? 'hidden' : ''} z-0 px-4">
+              <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl mx-auto mb-1.5 shadow-2xs">
+                <i class='bx bx-pen'></i>
+              </div>
+              <div class="font-semibold text-slate-600">วาดลายเซ็นสดในกรอบนี้</div>
+              <p class="text-[11px] text-slate-400 mt-0.5">รองรับปากกาสไตลัส, นิ้วสัมผัสบนจอ หรือเมาส์ลากเส้น</p>
             </div>
           </div>
         </div>
 
-        <!-- Pane: อัปโหลด -->
+        <!-- PANE 2: อัปโหลดรูปภาพ -->
         <div id="paneSigUpload" class="hidden space-y-2.5">
-          <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-indigo-400 transition-colors bg-slate-50/50">
+          <div class="border-2 border-dashed border-indigo-200/90 hover:border-indigo-500 rounded-2xl p-7 text-center transition-all bg-white hover:bg-indigo-50/20 group cursor-pointer">
             <input id="sigFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden">
-            <label for="sigFileInput" class="cursor-pointer flex flex-col items-center gap-1.5">
-              <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+            <label for="sigFileInput" class="cursor-pointer flex flex-col items-center gap-2">
+              <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-2xl transition-all shadow-xs">
                 <i class='bx bx-cloud-upload'></i>
               </div>
-              <span class="text-xs font-bold text-indigo-600 hover:underline">คลิกเลือกไฟล์รูปภาพลายเซ็น</span>
-              <span class="text-[11px] text-slate-400">รองรับ PNG โปร่งใส, JPG หรือ WebP (ระบบตัดพื้นหลังขาวให้อัตโนมัติ)</span>
+              <div>
+                <span class="text-xs sm:text-sm font-bold text-indigo-700 block">คลิกเพื่อเลือกไฟล์รูปภาพลายเซ็น</span>
+                <span class="text-[11px] text-slate-400 block mt-0.5">รองรับไฟล์ PNG, JPG หรือ WebP</span>
+              </div>
+              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200 mt-1">
+                <i class='bx bx-check-shield text-xs'></i>
+                <span>ระบบลบพื้นหลังกระดาษสีขาวให้เป็นลายเซ็นโปร่งแสงอัตโนมัติ</span>
+              </div>
             </label>
           </div>
         </div>
 
-        <!-- Pane: เลือกครูในระบบ -->
-        <div id="paneSigSelect" class="hidden space-y-2.5">
+        <!-- PANE 3: เลือกครูจากระบบ -->
+        <div id="paneSigSelect" class="hidden space-y-2.5 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
           <div class="flex items-center justify-between">
-            <label class="block text-xs font-semibold text-slate-700">เลือกครูจากรายชื่อในระบบ MHC</label>
-            <span id="sigTeacherCountBadge" class="text-[11px] text-indigo-600 font-semibold">กำลังโหลดข้อมูล...</span>
+            <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <i class='bx bxs-user-account text-indigo-600'></i>
+              <span>เลือกครูจากฐานข้อมูลบุคลากร MHC</span>
+            </label>
+            <span id="sigTeacherCountBadge" class="text-[11px] text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">กำลังโหลด...</span>
           </div>
           <div class="relative">
-            <input id="sigTeacherSearchInput" type="text" class="form-input w-full text-xs rounded-lg border-slate-200" placeholder="🔍 พิมพ์ชื่อ หรือ นามสกุล เพื่อค้นหาด่วน...">
+            <i class='bx bx-search absolute left-3 top-2.5 text-slate-400 text-sm'></i>
+            <input id="sigTeacherSearchInput" type="text" class="w-full text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 transition-all outline-none" placeholder="🔍 พิมพ์ชื่อ หรือ นามสกุล เพื่อค้นหาด่วน...">
           </div>
-          <select id="sigTeacherSelect" size="6" class="form-select w-full text-xs rounded-lg border-slate-200 focus:border-indigo-500 overflow-y-auto" style="min-height:130px;">
+          <select id="sigTeacherSelect" size="5" class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 p-1.5 focus:border-indigo-600 focus:bg-white outline-none overflow-y-auto" style="min-height:120px;">
             <option value="" disabled>กำลังโหลดรายชื่อครู...</option>
           </select>
-          <p class="text-[11px] text-slate-500 flex items-center gap-1">
+          <p class="text-[11px] text-slate-500 flex items-center gap-1 pt-0.5">
             <i class='bx bx-info-circle text-xs text-indigo-500'></i>
-            คลิกเลือกชื่อครูในรายการ ระบบจะเลือกลายเซ็นมาใช้ทันที (หากยังไม่มีลายเซ็น สามารถวาดเพิ่มได้ที่แท็บ "วาดลายเซ็นสด")
+            คลิกเลือกชื่อครูในรายการ ระบบจะดึงลายเซ็นมาใช้ทันที (หากยังไม่มี สามารถวาดใหม่ที่แท็บ "วาดลายเซ็นสด")
           </p>
         </div>
 
-        <!-- กล่องตัวอย่างลายเซ็นปัจจุบัน -->
-        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <div class="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
-            <span>ตัวอย่างลายเซ็นที่จะใช้พิมพ์:</span>
-            <span id="sigStatusBadge" class="text-[10px] px-1.5 py-0.5 rounded ${drawnDataUrl ? 'bg-emerald-100 text-emerald-700 font-semibold' : 'bg-slate-200 text-slate-600 font-medium'}">
-              ${drawnDataUrl ? 'พร้อมใช้งาน' : 'ยังไม่มีลายเซ็น'}
+        <!-- Live Preview Card: การแสดงผลจริงบนเอกสาร -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <i class='bx bx-show text-indigo-600'></i>
+              <span>ตัวอย่างลายเซ็นที่จะประทับลงในเอกสาร:</span>
+            </span>
+            <span id="sigStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold transition-all ${drawnDataUrl ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}">
+              ${drawnDataUrl ? '✓ พร้อมประทับลงเอกสาร' : '○ รอการวาดหรือเลือก'}
             </span>
           </div>
-          <div class="h-16 w-full bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden p-2 relative">
-            <div id="sigLineGuide" class="absolute w-3/4 border-b border-slate-300 bottom-4"></div>
-            <img id="sigCurrentPreviewImg" src="${drawnDataUrl || ''}" alt="ลายเซ็น" class="max-h-12 max-w-full object-contain relative z-10 ${drawnDataUrl ? '' : 'hidden'}" style="mix-blend-mode:multiply;">
-            <span id="sigCurrentPreviewEmpty" class="text-xs text-slate-400 ${drawnDataUrl ? 'hidden' : ''}">ยังไม่มีลายเซ็น</span>
+
+          <!-- กล่องกระดาษจำลอง A4 -->
+          <div class="h-24 w-full bg-slate-50/80 rounded-xl border border-slate-200/90 flex flex-col items-center justify-center p-2 relative overflow-hidden select-none">
+            <div class="h-12 w-full flex items-center justify-center relative">
+              <img id="sigCurrentPreviewImg" src="${drawnDataUrl || ''}" alt="ลายเซ็น" class="max-h-11 max-w-[180px] object-contain relative z-10 transition-all ${drawnDataUrl ? '' : 'hidden'}" style="mix-blend-mode:multiply;">
+              <div id="sigCurrentPreviewEmpty" class="text-xs text-slate-400 flex items-center gap-1.5 ${drawnDataUrl ? 'hidden' : ''}">
+                <i class='bx bx-pencil text-slate-300 text-sm'></i>
+                <span>ยังไม่ได้กำหนดลายเซ็น</span>
+              </div>
+            </div>
+            <!-- เส้นจุดไข่ปลาและชื่อในวงเล็บเสมือนเอกสารจริง -->
+            <div class="text-center font-serif text-[11px] text-slate-700 tracking-wide mt-1">
+              <span class="text-slate-300">...................................................</span>
+              <div id="sigPreviewNameText" class="font-bold text-slate-800 text-[11px] leading-tight">
+                ( ${escapeHTML(selectedTeacherName || 'ครูก้องนที อุ่นเจริญ')} )
+              </div>
+            </div>
           </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between select-none">
+        <div class="text-[11px] text-slate-400 hidden sm:block">
+          <i class='bx bx-shield-check text-indigo-500 mr-0.5'></i> บันทึกในเครื่องอัตโนมัติ
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button id="btnCancelSigManager" type="button" class="btn px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-all cursor-pointer">
+            ยกเลิก
+          </button>
+          <button id="btnSaveSigManager" type="button" class="btn px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 cursor-pointer border-0">
+            <i class='bx bx-check text-base'></i>
+            <span>บันทึกและเปิดใช้งานลายเซ็นนี้</span>
+          </button>
         </div>
       </div>
 
-      <!-- Footer Buttons -->
-      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50/50">
-        <button id="btnCancelSigManager" type="button" class="btn btn-light px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200">
-          ยกเลิก
-        </button>
-        <button id="btnSaveSigManager" type="button" class="btn btn-primary px-4 py-2 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5" style="background:#4F46E5; color:white;">
-          <i class='bx bx-check text-base'></i>
-          <span>บันทึกและใช้ลายเซ็นนี้</span>
-        </button>
-      </div>
     </div>
   `;
 
@@ -927,24 +1012,64 @@ function showSignatureManagerModal(onSaved) {
   const previewEmpty = modal.querySelector('#sigCurrentPreviewEmpty');
   const badge = modal.querySelector('#sigStatusBadge');
   const nameInput = modal.querySelector('#sigTeacherNameInput');
+  const previewNameText = modal.querySelector('#sigPreviewNameText');
+
+  // Live Name Preview Sync
+  const updatePreviewName = (n) => {
+    if (previewNameText) {
+      previewNameText.textContent = `( ${n ? n.trim() : '...................................................'} )`;
+    }
+  };
+  nameInput.oninput = () => updatePreviewName(nameInput.value);
+
+  // Quick Name Select Chips
+  modal.querySelectorAll('.btn-quick-name').forEach(btn => {
+    btn.onclick = () => {
+      const n = btn.getAttribute('data-name');
+      if (n) {
+        nameInput.value = n;
+        updatePreviewName(n);
+        nameInput.focus();
+      }
+    };
+  });
+
+  // Helper for Updating Signature Preview
+  const updatePreviewSig = (url, badgeLabel, badgeClass) => {
+    drawnDataUrl = url || '';
+    if (drawnDataUrl) {
+      previewImg.src = drawnDataUrl;
+      previewImg.classList.remove('hidden');
+      previewEmpty.classList.add('hidden');
+      badge.textContent = badgeLabel || '✓ พร้อมประทับลงเอกสาร';
+      badge.className = badgeClass || 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all';
+    } else {
+      previewImg.src = '';
+      previewImg.classList.add('hidden');
+      previewEmpty.classList.remove('hidden');
+      badge.textContent = '○ รอการวาดหรือเลือก';
+      badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-500 transition-all';
+    }
+  };
 
   // Tab switching
   const setTab = (tab) => {
     [tabDraw, tabUpload, tabSelect].forEach(t => {
-      t.className = 'flex-1 py-1.5 rounded-md transition-all text-center text-slate-600 hover:text-slate-900';
+      t.className = 'flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5';
     });
     [paneDraw, paneUpload, paneSelect].forEach(p => p.classList.add('hidden'));
 
     if (tab === 'draw') {
-      tabDraw.className = 'flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold';
+      tabDraw.className = 'flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60';
       paneDraw.classList.remove('hidden');
-      setTimeout(resizeCanvas, 50);
+      setTimeout(resizeCanvas, 60);
     } else if (tab === 'upload') {
-      tabUpload.className = 'flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold';
+      tabUpload.className = 'flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60';
       paneUpload.classList.remove('hidden');
     } else if (tab === 'select') {
-      tabSelect.className = 'flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold';
+      tabSelect.className = 'flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60';
       paneSelect.classList.remove('hidden');
+      if (allTeachersList.length > 0) applyTeacherSearch();
     }
   };
   tabDraw.onclick = () => setTab('draw');
@@ -956,13 +1081,17 @@ function showSignatureManagerModal(onSaved) {
   const btnColorBlack = modal.querySelector('#btnColorBlack');
   btnColorBlue.onclick = () => {
     penColor = '#002B9E';
-    btnColorBlue.className = 'w-6 h-6 rounded-full border-2 border-indigo-500 shadow-xs';
-    btnColorBlack.className = 'w-6 h-6 rounded-full border-2 border-transparent shadow-xs';
+    btnColorBlue.innerHTML = "<i class='bx bx-check text-white text-xs'></i>";
+    btnColorBlue.className = 'w-7 h-7 rounded-full border-2 border-indigo-600 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
+    btnColorBlack.innerHTML = '';
+    btnColorBlack.className = 'w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
   };
   btnColorBlack.onclick = () => {
     penColor = '#0F172A';
-    btnColorBlack.className = 'w-6 h-6 rounded-full border-2 border-indigo-500 shadow-xs';
-    btnColorBlue.className = 'w-6 h-6 rounded-full border-2 border-transparent shadow-xs';
+    btnColorBlack.innerHTML = "<i class='bx bx-check text-white text-xs'></i>";
+    btnColorBlack.className = 'w-7 h-7 rounded-full border-2 border-slate-900 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
+    btnColorBlue.innerHTML = '';
+    btnColorBlue.className = 'w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
   };
 
   const btnThin = modal.querySelector('#btnSizeThin');
@@ -971,9 +1100,9 @@ function showSignatureManagerModal(onSaved) {
   const setSize = (w, activeBtn) => {
     penWidth = w;
     [btnThin, btnNormal, btnThick].forEach(b => {
-      b.className = 'px-2 py-0.5 text-[10px] rounded border border-slate-200 hover:bg-slate-50';
+      b.className = 'px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all';
     });
-    activeBtn.className = 'px-2 py-0.5 text-[10px] rounded border border-indigo-500 bg-indigo-50 text-indigo-700 font-bold';
+    activeBtn.className = 'px-2.5 py-1 text-[11px] rounded-lg bg-white text-indigo-700 shadow-2xs font-bold transition-all';
   };
   btnThin.onclick = () => setSize(1.6, btnThin);
   btnNormal.onclick = () => setSize(2.4, btnNormal);
@@ -1027,12 +1156,7 @@ function showSignatureManagerModal(onSaved) {
     isDrawing = false;
     const trimmed = trimCanvasWhitespace(canvas);
     if (trimmed) {
-      drawnDataUrl = trimmed;
-      previewImg.src = drawnDataUrl;
-      previewImg.classList.remove('hidden');
-      previewEmpty.classList.add('hidden');
-      badge.textContent = 'วาดสำเร็จ';
-      badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold';
+      updatePreviewSig(trimmed, '✓ วาดสำเร็จ', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200');
     }
   };
 
@@ -1043,6 +1167,7 @@ function showSignatureManagerModal(onSaved) {
   modal.querySelector('#btnClearSigCanvas').onclick = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (note) note.style.display = 'block';
+    updatePreviewSig('', 'ล้างเรียบร้อย', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-700 border border-rose-200');
   };
 
   // File upload
@@ -1055,12 +1180,7 @@ function showSignatureManagerModal(onSaved) {
       const img = new Image();
       img.onload = () => {
         makeImageTransparent(img, (cleanUrl) => {
-          drawnDataUrl = cleanUrl;
-          previewImg.src = drawnDataUrl;
-          previewImg.classList.remove('hidden');
-          previewEmpty.classList.add('hidden');
-          badge.textContent = 'อัปโหลดสำเร็จ';
-          badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold';
+          updatePreviewSig(cleanUrl, '✓ อัปโหลดสำเร็จ', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200');
         });
       };
       img.src = re.target.result;
@@ -1157,17 +1277,12 @@ function showSignatureManagerModal(onSaved) {
     const opt = teacherSelect.selectedOptions[0];
     if (opt && opt.value) {
       nameInput.value = opt.value;
+      updatePreviewName(opt.value);
       const sig = opt.getAttribute('data-sig');
       if (sig) {
-        drawnDataUrl = sig;
-        previewImg.src = drawnDataUrl;
-        previewImg.classList.remove('hidden');
-        previewEmpty.classList.add('hidden');
-        badge.textContent = 'พบลายเซ็นในระบบ';
-        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold';
+        updatePreviewSig(sig, '✓ พบลายเซ็นในระบบ', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200');
       } else {
-        badge.textContent = 'ยังไม่มีลายเซ็น';
-        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold';
+        updatePreviewSig('', '○ รอเพิ่มลายเซ็น', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-200');
         if (typeof showToast === 'function') {
           showToast(`ครู ${opt.value} ยังไม่มีลายเซ็นในระบบ คุณสามารถคลิกแท็บ "วาดลายเซ็นสด" เพื่อวาดได้ทันที`, 'info');
         }
@@ -1216,29 +1331,34 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     modal.style.paddingTop = 'env(safe-area-inset-top, 0px)';
     modal.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
     modal.innerHTML = `
-      <div class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 sm:py-2.5 flex items-center justify-between shadow-xs gap-2 flex-shrink-0">
-        <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <i class='bx bxs-file-pdf text-red-600 text-lg sm:text-xl flex-shrink-0'></i>
-          <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
+      <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shadow-2xs gap-3 flex-shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg shadow-2xs border border-indigo-100 flex-shrink-0">
+            <i class='bx bxs-printer'></i>
+          </div>
+          <div>
+            <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate block">ตัวอย่างเอกสารสำหรับพิมพ์</span>
+            <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบลายเซ็นและข้อมูลก่อนพิมพ์หรือบันทึกเป็น PDF</span>
+          </div>
         </div>
-        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div class="flex items-center gap-2 flex-shrink-0">
           <!-- ปุ่มเปิด/ปิดลายเซ็นครู -->
-          <button id="btnToggleSignatureAction" type="button" class="btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all" title="เปิด/ปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์">
+          <button id="btnToggleSignatureAction" type="button" class="btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer shadow-2xs" title="เปิด/ปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์">
             <span id="sigToggleDot" class="w-2 h-2 rounded-full"></span>
             <i class='bx bx-edit-alt text-sm'></i>
             <span id="sigToggleText">ลายเซ็นครู</span>
           </button>
           <!-- ปุ่มจัดการลายเซ็น -->
-          <button id="btnConfigSignatureAction" type="button" class="btn btn-light p-1.5 text-slate-600 hover:text-slate-900 rounded-lg border border-slate-200 hover:bg-slate-100" title="ตั้งค่าหรือวาดลายเซ็นครู">
+          <button id="btnConfigSignatureAction" type="button" class="btn p-2 text-slate-600 hover:text-indigo-600 rounded-xl border border-slate-200/80 hover:bg-indigo-50/50 hover:border-indigo-200 transition-all cursor-pointer" title="ตั้งค่าหรือวาดลายเซ็นครู">
             <i class='bx bx-slider-alt text-base'></i>
           </button>
           <!-- ปุ่มพิมพ์เอกสาร -->
-          <button id="btnPrintModalAction" type="button" class="btn btn-primary flex items-center gap-1 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm rounded-lg" style="background:#4F46E5; color:white;" title="พิมพ์เอกสาร / AirPrint / บันทึกเป็น PDF">
+          <button id="btnPrintModalAction" type="button" class="btn flex items-center gap-1.5 px-4 py-1.5 text-xs sm:text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 shadow-sm active:scale-95 transition-all cursor-pointer border-0" title="พิมพ์เอกสาร / บันทึกเป็น PDF">
             <i class='bx bx-printer text-base'></i>
-            <span>พิมพ์</span>
+            <span>พิมพ์เอกสาร</span>
           </button>
           <!-- ปุ่มปิด -->
-          <button id="btnClosePrintModalAction" type="button" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="ปิดหน้าต่าง">
+          <button id="btnClosePrintModalAction" type="button" class="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-all cursor-pointer border border-transparent hover:border-slate-200" title="ปิดหน้าต่าง">
             <i class='bx bx-x text-xl leading-none'></i>
           </button>
         </div>
