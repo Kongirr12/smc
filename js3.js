@@ -439,11 +439,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
         </div>
         <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          <button id="btnDownloadModalAction" type="button" class="btn btn-light flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition" title="ดาวน์โหลดไฟล์ PDF ขนาด A4">
-            <i class='bx bxs-file-pdf text-base text-red-600'></i>
-            <span>บันทึก PDF</span>
-          </button>
-          <button id="btnPrintModalAction" type="button" class="btn btn-primary flex items-center gap-1 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm rounded-lg" style="background:#4F46E5; color:white;" title="พิมพ์เอกสาร / AirPrint">
+          <button id="btnPrintModalAction" type="button" class="btn btn-primary flex items-center gap-1 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm rounded-lg" style="background:#4F46E5; color:white;" title="พิมพ์เอกสาร / AirPrint / บันทึกเป็น PDF">
             <i class='bx bx-printer text-base'></i>
             <span>พิมพ์</span>
           </button>
@@ -469,10 +465,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
     document.getElementById('btnPrintModalAction').onclick = () => {
       window.triggerInAppPrint();
-    };
-
-    document.getElementById('btnDownloadModalAction').onclick = () => {
-      downloadPdfDocument(modal._currentHtml, modal._currentTitle);
     };
 
     document.addEventListener('keydown', (e) => {

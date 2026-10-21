@@ -3672,7 +3672,7 @@ function printAttendanceDashboardOverview() {
     </div>
     <div style="display:flex; gap:8px;">
       <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
-        🖨 พิมพ์เอกสาร / บันทึก PDF
+        🖨 พิมพ์เอกสาร
       </button>
       <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
         ปิด
@@ -4028,7 +4028,7 @@ function printDailyAttendanceRecord() {
     </div>
     <div style="display:flex; gap:8px;">
       <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
-        🖨 พิมพ์เอกสาร / บันทึก PDF
+        🖨 พิมพ์เอกสาร
       </button>
       <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
         ปิด
@@ -4577,7 +4577,7 @@ function printAttendanceReport() {
     </div>
     <div style="display:flex; gap:8px;">
       <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
-        🖨 พิมพ์เอกสาร / บันทึก PDF
+        🖨 พิมพ์เอกสาร
       </button>
       <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
         ปิด

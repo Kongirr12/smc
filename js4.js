@@ -2696,7 +2696,7 @@ function printCalendar() {
         <span style="font-size:11px; opacity:0.8; margin-left:8px;">(กระดาษ A4 แนวนอน)</span>
       </div>
       <button class="btn-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
-        🖨 พิมพ์ / บันทึกเป็น PDF
+        🖨 พิมพ์เอกสาร
       </button>
     </div>
 

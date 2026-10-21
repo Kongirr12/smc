@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.1.5',
+  APP_VERSION    : '3.1.6',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -9667,7 +9667,7 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
 <div class="no-print-bar no-print">
   <div style="font-weight:700; font-size:13px;">🖨️ รวมทั้งหมด ${pageCount} หน้า (A4 แนวนอน)</div>
   <button class="no-print-btn" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
-    <span>🖨 พิมพ์ / บันทึก PDF ทั้งหมด</span>
+    <span>🖨 พิมพ์เอกสารทั้งหมด</span>
   </button>
 </div>
 ${combinedBody}

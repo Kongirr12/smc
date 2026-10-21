@@ -3828,7 +3828,7 @@ function previewTemplatePrint(templateId) {
     </div>
     <div style="display:flex; gap:8px;">
       <button class="btn-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
-        🖨 พิมพ์ / บันทึกเป็น PDF
+        🖨 พิมพ์เอกสาร
       </button>
     </div>
   </div>

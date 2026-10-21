@@ -3,7 +3,17 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.1.5] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.1.6] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🧹 ปรับแต่งหน้าต่างตัวอย่างก่อนพิมพ์ (Print Preview Simplification)
+- **ตัดปุ่ม "บันทึก PDF" ที่ซ้ำซ้อนออกจากแถบเครื่องมือของหน้าต่างแสดงตัวอย่างเอกสาร (`showPrintPreviewModal`):**
+  - คงเหลือเฉพาะปุ่ม **`[ 🖨️ พิมพ์ ]`** และปุ่มปิด `[ ✕ ]`
+  - เนื่องจากในหน้าต่างเมนูสั่งพิมพ์มาตรฐานของทุกระบบปฏิบัติการ (Chrome, Edge, Safari, iOS, Android, macOS, Windows) มีตัวเลือกปลายทางเป็น **"บันทึกเป็น PDF (Save as PDF)"** ในตัวอยู่แล้ว ซึ่งให้คุณภาพไฟล์ PDF แบบ Vector คมชัดสูง ถูกต้องตามหน้ากระดาษ A4 มากกว่า
+  - ปรับปรุงข้อความปุ่มสั่งพิมพ์ภายในเอกสารทุกฉบับให้กระชับ ชัดเจน เป็น `🖨 พิมพ์เอกสาร`
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.1.6` พร้อมอัปเดต Query String `?v=3.1.6` ใน `index.html` ทั้งหมด
+
+---
+
+## [v3.1.5] - 2026-10-21
 ### 🎨 ปรับปรุงประสบการณ์ใช้งาน (UX Enhancement)
 - **ซ่อนปุ่มลูกศรขึ้น-ลง (Number Input Spinners) ในช่องกรอกคะแนนทั้งหมด:**
   - ซ่อน `::-webkit-inner-spin-button` และ `::-webkit-outer-spin-button` รวมถึง `-moz-appearance: textfield` ในคลาส `.grade-input` และ `#gradeTable input[type=number]`
