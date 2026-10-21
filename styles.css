@@ -2299,6 +2299,114 @@ input[type=number].no-spin,
   border-radius: 0px !important;
 }
 
+/* ─── SGS & Academic Grade Sheet Grid Table ─────────────────── */
+#gradeTable {
+  border-collapse: collapse !important;
+  border: 1px solid #CBD5E1 !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  background: #FFFFFF !important;
+}
+
+#gradeTable th {
+  border: 1px solid #CBD5E1 !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
+
+#gradeTable td {
+  border: 1px solid #CBD5E1 !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  padding: 3px 3px !important;
+  background: #FFFFFF;
+}
+
+#gradeTable tr:hover td {
+  background-color: #F8FAFC !important;
+}
+
+#gradeTable .grade-input {
+  width: 100% !important;
+  min-width: 40px !important;
+  height: 32px !important;
+  padding: 0 4px !important;
+  border: 1px solid #94A3B8 !important;
+  border-radius: 0px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #0F172A !important;
+  background: #FFFFFF !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  line-height: 30px !important;
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+#gradeTable .grade-input:focus {
+  outline: none !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 1.5px #2563EB !important;
+  background: #FFFFFF !important;
+}
+
+#gradeTable .grade-output {
+  width: 100% !important;
+  height: 32px !important;
+  line-height: 30px !important;
+  padding: 0 4px !important;
+  text-align: center !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  background: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 0px !important;
+  color: #1E293B !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#gradeTable .grade-output.grade-fail {
+  background: #FEE2E2 !important;
+  color: #B91C1C !important;
+  font-weight: 700 !important;
+  border-color: #FCA5A5 !important;
+}
+
+#gradeTable .grade-output.grade-pass {
+  background: #DCFCE7 !important;
+  color: #15803D !important;
+  border-color: #86EFAC !important;
+}
+
+#gradeTable .ql-select {
+  width: 100% !important;
+  height: 32px !important;
+  padding: 0 4px !important;
+  border: 1px solid #94A3B8 !important;
+  border-radius: 0px !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  background: #FFFFFF !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  line-height: 30px !important;
+}
+
+#gradeTable .ql-select:focus {
+  outline: none !important;
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 1.5px #2563EB !important;
+}
+
 /* ─── MHC Smart Messenger & Chat Floating Styles ───────────── */
 #mhcChatFloatingWindow {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
