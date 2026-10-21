@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.2.8',
+  APP_VERSION    : '3.2.9',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -4461,7 +4461,7 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
   <style>
     @page {
       size: A4 landscape;
-      margin: 8mm 10mm 10mm 10mm;
+      margin: 5mm 6mm 6mm 6mm;
     }
     * { box-sizing: border-box; }
     body {
@@ -4636,8 +4636,44 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
     }
     @media print {
       .no-print { display: none !important; }
+      html, body {
+        background: #FFFFFF !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+      .print-page-wrapper, .pp5-sheet {
+        margin: 0 auto !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+      }
       .pp5-sheet { page-break-after: always !important; break-after: page !important; }
       .pp5-sheet:last-child { page-break-after: auto !important; break-after: auto !important; }
+      table, .grade-table, .stat-table, .info-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        page-break-inside: auto !important;
+        border-collapse: collapse !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
+      th, td {
+        min-width: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        word-break: break-word !important;
+      }
+      .signature-grid {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
     }
     .no-print {
       position: fixed; top: 12px; right: 12px;
@@ -4776,7 +4812,7 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
   <style>
     @page {
       size: A4 portrait;
-      margin: 12mm 15mm 15mm 15mm;
+      margin: 10mm 12mm 12mm 12mm;
     }
     * { box-sizing: border-box; }
     body {
@@ -4982,6 +5018,42 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
     }
     @media print {
       .no-print { display: none !important; }
+      html, body {
+        background: #FFFFFF !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+      .print-page-wrapper, .pp6-container {
+        margin: 0 auto !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+      }
+      table, .subjects-table, .eval-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        page-break-inside: auto !important;
+        border-collapse: collapse !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
+      th, td {
+        min-width: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        word-break: break-word !important;
+      }
+      .signature-grid {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
     }
     .no-print {
       position: fixed; top: 12px; right: 12px;
@@ -5421,7 +5493,13 @@ function renderReceiptTemplate_(config, tx, student) {
     font-size: 80px; color: rgba(30,64,175,.04); pointer-events: none;
     font-weight: 900;
   }
-  @media print { .no-print { display: none; } }
+  @media print {
+    .no-print { display: none !important; }
+    html, body { background: #FFFFFF !important; margin: 0 !important; padding: 0 !important; width: 100% !important; overflow: visible !important; }
+    .receipt-box { box-shadow: none !important; max-width: 100% !important; margin: 0 auto !important; overflow: visible !important; }
+    table, .item-table, .totals-table { width: 100% !important; border-collapse: collapse !important; }
+    tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+  }
   .no-print {
     position: fixed; top: 10px; right: 10px;
     background: #800020; color: white; padding: 10px 16px;
@@ -8271,7 +8349,7 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
 <title>ตารางสอน ${escapeHTMLServer_(classroom)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4 landscape; margin: 8mm; }
+  @page { size: A4 landscape; margin: 5mm 6mm 6mm 6mm; }
   body {
     font-family: 'Sarabun', sans-serif;
     font-size: 12px; color: #0F172A; margin: 0;
@@ -8284,8 +8362,13 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     body { padding: 12px; background: #F8FAFC; }
   }
   @media print {
-    body { padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    html, body { padding: 0 !important; background: #FFF !important; font-size: 11px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .no-print { display: none !important; }
+    table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
+    tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+    thead { display: table-header-group !important; }
+    th, td { page-break-inside: avoid !important; break-inside: avoid !important; }
+    .signature-row { flex-wrap: nowrap !important; page-break-inside: avoid !important; break-inside: avoid !important; }
   }
   .header {
     text-align: center; margin-bottom: 16px;
@@ -8323,9 +8406,6 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     border-radius: 8px; cursor: pointer; border: none;
     font-family: inherit; font-weight: 700; font-size: 13px;
     z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  }
-  @media print {
-    .signature-row { flex-wrap: nowrap !important; }
   }
 </style></head><body>
 <button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
@@ -8484,7 +8564,7 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
 <title>ตารางสอน ${escapeHTMLServer_(teacherName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4 landscape; margin: 8mm; }
+  @page { size: A4 landscape; margin: 5mm 6mm 6mm 6mm; }
   body {
     font-family:'Sarabun',sans-serif; font-size:12px; color:#0F172A; margin:0;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
@@ -8494,8 +8574,13 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
     body { padding: 12px; background: #F8FAFC; }
   }
   @media print {
-    body { padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    html, body { padding: 0 !important; background: #FFF !important; font-size: 11px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .no-print { display: none !important; }
+    table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
+    tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+    thead { display: table-header-group !important; }
+    th, td { page-break-inside: avoid !important; break-inside: avoid !important; }
+    .sig-row { flex-wrap: nowrap !important; page-break-inside: avoid !important; break-inside: avoid !important; }
   }
   .header { text-align:center; margin-bottom:16px; }
   .workload { text-align:right; font-size:11px; color:#64748B; margin-bottom:6px; }
@@ -8512,9 +8597,6 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
     border-radius:8px; cursor:pointer; border:none;
     font-family:inherit; font-weight:700; font-size:13px;
     z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  }
-  @media print {
-    .sig-row { flex-wrap: nowrap !important; }
   }
 </style></head><body>
 <button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
@@ -9975,7 +10057,7 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
 <title>พิมพ์ตาราง${type==='teacher'?'สอนของครู':'เรียน'}ทั้งหมด (${pageCount} หน้า)</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4 landscape; margin: 8mm; }
+  @page { size: A4 landscape; margin: 5mm 6mm 6mm 6mm; }
   * { box-sizing: border-box; }
   body {
     font-family: 'Sarabun', sans-serif;
@@ -9987,9 +10069,14 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
     body { min-width: 860px; padding: 12px; background: #F8FAFC; }
   }
   @media print {
-    body { min-width: 100% !important; padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    html, body { padding: 0 !important; background: #FFF !important; font-size: 11px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .no-print, .no-print-bar { display: none !important; }
-    .schedule-page { min-height: auto; padding: 0; }
+    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; }
+    table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
+    tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+    thead { display: table-header-group !important; }
+    th, td { page-break-inside: avoid !important; break-inside: avoid !important; }
+    .sig-row { flex-wrap: nowrap !important; page-break-inside: avoid !important; break-inside: avoid !important; }
   }
   .schedule-page {
     page-break-after: always;

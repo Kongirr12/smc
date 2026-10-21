@@ -3,7 +3,36 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.2.8] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.2.9] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🖨️ แก้ไขปัญหาตารางขาดและตกขอบกระดาษเวลาสั่งพิมพ์ทั่วทั้งระบบ (Universal Table Print Truncation & Clipping Elimination)
+- **แก้ปัญหา Overflow Clipping ใน Container ตัวอย่างการพิมพ์ (`cleanPreviewOverride` ใน `js3.js`):**
+  - แก้ไขสาเหตุหลักที่ทำให้ตารางหลายหน้าถูกตัดขาดหลังจบหน้า 1 หรือตกขอบกระดาษด้านขวา: ในหน้าจอพรีวิวมี `overflow-x: auto !important;` ซึ่งเบราว์เซอร์ (Chrome, Safari, iOS WebKit) จะตัดเนื้อหาทิ้งเวลาพิมพ์
+  - สั่ง Override ใน `@media print` ให้ Container ทั้งหมด (`.print-page-wrapper`, `.pp6-container`, `.pp5-sheet`, `.schedule-page`, `.calendar-container`, `body`, `table`) มีค่า `overflow: visible !important; height: auto !important; max-height: none !important;` พิมพ์ตารางต่อเนื่องหลายหน้าได้ครบ 100%
+- **ปรับตารางเป็น Flexible Width เต็ม 100% และ Auto Layout ไร้การตกขอบ (`table-layout: auto; max-width: 100%`):**
+  - ปลดล็อกค่า `min-width: 740px` และ `min-width: 860px` ที่เคยดันตารางล้นขอบกระดาษ A4 ในเวลาพิมพ์
+  - ปรับความกว้างของคอลัมน์วิชาในรายงานเปรียบเทียบทุกรายวิชา (`isAllSubjectsMode` ใน `js2.js`) จากเดิมที่ล็อก `min-width: 42px;` เปลี่ยนเป็นยืดหยุ่นตามเนื้อหา พร้อม `padding: 2px 1px; min-width: 0;` ช่วยให้คอลัมน์ `% รวม` และ `ผลประเมิน` ทางขวาสุดไม่หลุดขอบกระดาษอีกต่อไป
+- **ปกป้องแถวและหัวตารางไม่ให้ฉีกขาดข้ามหน้า (Page Break & Table Header Group Integrity):**
+  - เพิ่ม `tr { page-break-inside: avoid !important; break-inside: avoid !important; }` ทุกแม่แบบพิมพ์ ป้องกันไม่ให้แถวตารางถูกเฉือนครึ่งระหว่างรอยต่อหน้ากระดาษ
+  - เพิ่ม `thead { display: table-header-group !important; }` และ `tfoot { display: table-footer-group !important; }` ในทุกแม่แบบพิมพ์ ทำให้หัวตารางแสดงซ้ำที่ด้านบนของทุกหน้ากระดาษอย่างเป็นระเบียบ
+- **ขยายพื้นที่พิมพ์แนวนอนด้วยขอบกระดาษที่เหมาะสม (Optimized Landscape Margins):**
+  - ปรับระยะขอบ `@page` แนวนอนในแม่แบบ ปพ.5, ตารางสอนประจำห้อง, ตารางสอนรายครู, ตารางสอนทั้งหมด, ปฏิทินวิชาการ และรายงานการเข้าเรียน จาก `8-10mm` เป็น `5mm 6mm 6mm 6mm` ได้พื้นที่พิมพ์เพิ่มขึ้นอีกกว่า 10mm คอลัมน์กว้างขึ้น ไม่เบียด ไม่ล้น
+- **ครอบคลุมแม่แบบพิมพ์ตารางทั้งระบบ 100%:**
+  1. แบบบันทึกผลการเรียน ปพ.5 (`code.gs`)
+  2. แบบรายงานผลการพัฒนาคุณภาพผู้เรียน ปพ.6 รายบุคคล (`code.gs`)
+  3. ตารางเรียน/ตารางสอนประจำชั้นเรียน (`code.gs`)
+  4. ตารางสอนรายครู (`code.gs`)
+  5. พิมพ์ตารางสอนทั้งหมดทุกชั้น/ทุกคน (`code.gs`)
+  6. ใบเสร็จรับเงิน (`code.gs`)
+  7. รายงานสรุปภาพรวมการเข้าเรียนประจำวัน (`js2.js`)
+  8. บันทึกการเข้าเรียนรายวัน (`js2.js`)
+  9. รายงานการเข้าเรียนทุกโหมด: เมทริกซ์ 31 วัน, เปรียบเทียบทุกรายวิชา, สรุปรายภาคเรียน (`js2.js`)
+  10. ปฏิทินวิชาการและกิจกรรมประจำเดือน (`js4.js`)
+  11. แบบฟอร์มเอกสาร 4 ฝ่าย 30 แบบฟอร์ม (`js_templates.js`)
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.2.9` พร้อมอัปเดต Query String `?v=3.2.9` ใน `index.html` และ `code.gs`
+
+---
+
+## [v3.2.8] - 2026-10-21
 ### 📱 ปรับปรุงระบบแสดงตัวอย่างและสั่งพิมพ์บนโทรศัพท์มือถือแบบ Responsive 100% พร้อมปรับรูปแบบลายเซ็นให้คมชัดสวยงาม ไม่ซ้อนทับ (Mobile Responsive Print Modal & Clean Signature Suite)
 - **แถบเครื่องมือสั่งพิมพ์ Responsive 2 ระดับบนโทรศัพท์มือถือ (Dual-Tier Mobile Print Toolbar):**
   - แก้ไขปัญหาปุ่มบนแถบเครื่องมือล้นขอบจอและถูกตัดบน iPhone/Android ในหน้าต่างตัวอย่างการพิมพ์ (`showPrintPreviewModal` ใน `js3.js`)

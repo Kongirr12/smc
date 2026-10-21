@@ -1742,7 +1742,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         <style id="cleanPreviewOverride">
           @page {
             size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
-            margin: ${isLand ? '8mm 10mm 10mm 10mm' : '10mm 12mm 12mm 12mm'} !important;
+            margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 10mm 10mm 10mm'} !important;
           }
           .no-print, .no-print-bar { display: none !important; }
           html, body {
@@ -1758,7 +1758,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
           }
-          .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container {
+          .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container, .pp5-sheet {
             margin: 8px auto !important;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
             padding: ${isLand ? '10px 14px' : '14px 18px'} !important;
@@ -1815,16 +1815,25 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           @media print {
             @page {
               size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
-              margin: ${isLand ? '8mm 10mm 10mm 10mm' : '10mm 12mm 12mm 12mm'} !important;
+              margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 10mm 10mm 10mm'} !important;
             }
-            body {
+            html, body {
               background: #FFFFFF !important;
               margin: 0 !important;
               padding: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              overflow: visible !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container {
+            /* ยกเลิก overflow clipping ทั้งหมดในเวลาพิมพ์ เพื่อให้พิมพ์ตารางหลายหน้าได้สมบูรณ์ */
+            .print-page-wrapper, .print-doc, .pp6-container, .pp5-sheet, .schedule-page, .calendar-container, .receipt-box, div {
+              overflow: visible !important;
+              height: auto !important;
+              max-height: none !important;
+            }
+            .print-page-wrapper, .print-doc, .pp6-container, .pp5-sheet, .schedule-page, .calendar-container, .receipt-box {
               margin: 0 auto !important;
               padding: 0 !important;
               box-shadow: none !important;
@@ -1832,14 +1841,43 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               width: 100% !important;
               max-width: 100% !important;
             }
-            .signatures, .sig-container, .signature-grid {
+            /* ป้องกันตารางตกขอบกระดาษ: ปรับให้ยืดหยุ่นเต็มพื้นที่ 100% และ auto layout */
+            table {
+              width: 100% !important;
+              max-width: 100% !important;
+              min-width: 0 !important;
+              table-layout: auto !important;
+              page-break-inside: auto !important;
+              border-collapse: collapse !important;
+            }
+            thead {
+              display: table-header-group !important;
+            }
+            tfoot {
+              display: table-footer-group !important;
+            }
+            tr {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            th, td {
+              min-width: 0 !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              word-break: break-word !important;
+              overflow-wrap: break-word !important;
+            }
+            .signatures, .sig-container, .signature-grid, .sig-row, .signature-row {
               display: flex !important;
               justify-content: space-between !important;
               flex-wrap: nowrap !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
             .footer, .print-footer {
               position: static !important;
-              margin-top: 16px !important;
+              margin-top: 14px !important;
+              page-break-inside: avoid !important;
             }
             .no-print, .no-print-bar { display: none !important; }
           }

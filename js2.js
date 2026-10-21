@@ -3662,9 +3662,12 @@ function printAttendanceDashboardOverview() {
     .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
-      body { margin: 0; background: #FFFFFF; }
-      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
-      .signatures { flex-wrap: nowrap !important; }
+      html, body { margin: 0 !important; padding: 0 !important; background: #FFFFFF !important; overflow: visible !important; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; overflow: visible !important; height: auto !important; }
+      .signatures { flex-wrap: nowrap !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+      table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: auto !important; border-collapse: collapse !important; }
+      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+      thead { display: table-header-group !important; }
     }
   </style>
 </head>
@@ -4031,12 +4034,13 @@ function printDailyAttendanceRecord() {
     .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
-      body { margin: 0; background: #FFFFFF; }
-      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
-      table { page-break-inside: auto; }
-      tr { page-break-inside: avoid; page-break-after: auto; }
-      thead { display: table-header-group; }
-      .signatures { page-break-inside: avoid; flex-wrap: nowrap !important; }
+      html, body { margin: 0 !important; padding: 0 !important; background: #FFFFFF !important; overflow: visible !important; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; overflow: visible !important; height: auto !important; }
+      table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; page-break-inside: auto !important; table-layout: auto !important; border-collapse: collapse !important; }
+      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+      th, td { min-width: 0 !important; page-break-inside: avoid !important; break-inside: avoid !important; word-break: break-word !important; }
+      thead { display: table-header-group !important; }
+      .signatures { page-break-inside: avoid !important; break-inside: avoid !important; flex-wrap: nowrap !important; }
     }
   </style>
 </head>
@@ -4370,21 +4374,21 @@ function printAttendanceReport() {
 
       gTableHeaderHtml = `
         <tr>
-          <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
-          <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
-          <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
-          <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ห้อง</th>
+          <th style="width:28px; min-width:24px; text-align:center;">ที่</th>
+          <th style="width:60px; min-width:52px; text-align:center;">รหัสนักเรียน</th>
+          <th style="min-width:110px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+          <th style="width:45px; min-width:40px; text-align:center; white-space:nowrap;">ห้อง</th>
           ${activeGSubjects.map(s => {
             const clean = getCleanSubjectHeader(s);
             return `
-            <th style="min-width:42px; padding:3px 2px; text-align:center;" title="${escapeHTML(clean.name)} (${s.periods_count || 0} คาบ)">
+            <th style="min-width:0; padding:2px 1px; text-align:center;" title="${escapeHTML(clean.name)} (${s.periods_count || 0} คาบ)">
               <div style="font-size:7.5pt; font-weight:bold; white-space:nowrap; line-height:1.1;">${escapeHTML(clean.code)}</div>
               <div style="font-size:6.5pt; font-weight:normal; color:#64748B;">${s.periods_count || 0} คาบ</div>
             </th>
             `;
           }).join('')}
-          <th style="width:55px; min-width:50px; text-align:center; font-size:7.5pt; padding:2px 1px;">% รวม</th>
-          <th style="width:58px; min-width:55px; text-align:center; font-size:7.5pt; padding:2px 1px;">ผลประเมิน</th>
+          <th style="width:48px; min-width:0; text-align:center; font-size:7.5pt; padding:2px 1px; white-space:nowrap;">% รวม</th>
+          <th style="width:52px; min-width:0; text-align:center; font-size:7.5pt; padding:2px 1px; white-space:nowrap;">ผลประเมิน</th>
         </tr>
       `;
 
@@ -4540,7 +4544,7 @@ function printAttendanceReport() {
   <style>
     @page {
       size: A4 ${isLandscape ? 'landscape' : 'portrait'};
-      margin: 8mm 7mm 10mm 7mm;
+      margin: ${isLandscape ? '5mm 6mm 6mm 6mm' : '8mm 7mm 10mm 7mm'};
     }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body {
@@ -4555,7 +4559,7 @@ function printAttendanceReport() {
     }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
     .print-page-wrapper {
-      max-width: ${isLandscape ? '280mm' : '196mm'};
+      max-width: ${isLandscape ? '285mm' : '196mm'};
       width: 100%;
       margin: 15px auto;
       padding: 8mm 10mm;
@@ -4571,7 +4575,7 @@ function printAttendanceReport() {
     .title { font-size: ${isMatrixMode ? '12pt' : '13pt'}; font-weight: bold; margin: 0; color: #1E293B; }
     .subtitle { font-size: 9pt; color: #334155; margin: 2px 0 0 0; }
     .summary-bar { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 4px 8px; border-radius: 4px; margin: 6px 0; font-size: 8.5pt; }
-    table { width: 100%; min-width: ${isLandscape ? '740px' : '580px'}; border-collapse: collapse; margin-top: 4px; font-size: ${isMatrixMode || isAllSubjectsMode ? '7.5pt' : '8.5pt'}; table-layout: ${isAllSubjectsMode || isSemesterMode ? 'auto' : 'fixed'}; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: ${isMatrixMode || isAllSubjectsMode ? '7.5pt' : '8.5pt'}; table-layout: auto; }
     th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '3px 2px'}; text-align: center; font-weight: bold; }
     td { border: 1px solid #CBD5E1; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '2.5px 3px'}; line-height: 1.25; }
     tr:nth-child(even) { background: #FAFAFA; }
@@ -4583,14 +4587,16 @@ function printAttendanceReport() {
     .footer { margin-top: 18px; padding-top: 6px; border-top: 1px solid #CBD5E1; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
-      body { margin: 0; background: #FFFFFF; }
-      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      html, body { margin: 0 !important; padding: 0 !important; background: #FFFFFF !important; overflow: visible !important; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; overflow: visible !important; height: auto !important; }
       .print-page-wrapper.grade-level-section { page-break-after: always !important; break-after: page !important; }
       .print-page-wrapper.grade-level-section:last-child { page-break-after: auto !important; break-after: auto !important; }
-      table { page-break-inside: auto; }
-      tr { page-break-inside: avoid; page-break-after: auto; }
-      thead { display: table-header-group; }
-      .signatures { page-break-inside: avoid; flex-wrap: nowrap !important; }
+      table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; page-break-inside: auto !important; table-layout: auto !important; border-collapse: collapse !important; }
+      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+      th, td { min-width: 0 !important; page-break-inside: avoid !important; break-inside: avoid !important; word-break: break-word !important; }
+      thead { display: table-header-group !important; }
+      tfoot { display: table-footer-group !important; }
+      .signatures { page-break-inside: avoid !important; break-inside: avoid !important; flex-wrap: nowrap !important; }
     }
   </style>
 </head>

@@ -1801,7 +1801,7 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     display: block !important;
     position: static !important;
     width: 100% !important;
-    max-width: 190mm !important;
+    max-width: 100% !important;
     margin: 0 auto !important;
     padding: 0 !important;
     overflow: visible !important;
@@ -1812,7 +1812,8 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   #rptArea table {
     width: 100% !important;
     border-collapse: collapse !important;
-    table-layout: fixed !important;
+    table-layout: auto !important;
+    page-break-inside: auto !important;
   }
   #rptArea thead {
     display: table-header-group !important;
@@ -1827,6 +1828,7 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     color: #1E293B !important;
     padding: 5px 3px !important;
     font-size: 11px !important;
+    min-width: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -1834,6 +1836,8 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     border: 1px solid #CBD5E1 !important;
     padding: 4px 3px !important;
     font-size: 11px !important;
+    min-width: 0 !important;
+    word-break: break-word !important;
   }
 }
 
@@ -1869,6 +1873,35 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     padding: 0 !important;
     background: #FFFFFF !important;
     overflow: visible !important;
+  }
+  body.is-printing-doc #inAppPrintArea * {
+    overflow: visible !important;
+  }
+  body.is-printing-doc #inAppPrintArea table {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    table-layout: auto !important;
+  }
+  body.is-printing-doc #inAppPrintArea thead {
+    display: table-header-group !important;
+  }
+  body.is-printing-doc #inAppPrintArea tfoot {
+    display: table-footer-group !important;
+  }
+  body.is-printing-doc #inAppPrintArea tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  body.is-printing-doc #inAppPrintArea th,
+  body.is-printing-doc #inAppPrintArea td {
+    min-width: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
   body.is-printing-doc #inAppPrintArea .no-print,
   body.is-printing-doc #inAppPrintArea .no-print-bar,

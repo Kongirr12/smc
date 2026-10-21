@@ -3814,8 +3814,30 @@ function previewTemplatePrint(templateId) {
         min-height: auto !important;
         overflow: visible !important;
       }
-      table, tr, td, th {
-        page-break-inside: avoid;
+      table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        page-break-inside: auto !important;
+        border-collapse: collapse !important;
+        table-layout: auto !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
+      tfoot {
+        display: table-footer-group !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      th, td {
+        min-width: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
       }
     }
   </style>

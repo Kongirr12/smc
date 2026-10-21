@@ -2472,7 +2472,7 @@ function printCalendar() {
   <style>
     @page {
       size: A4 landscape;
-      margin: 8mm 10mm 10mm 10mm;
+      margin: 5mm 6mm 6mm 6mm;
     }
     * {
       box-sizing: border-box;
@@ -2686,8 +2686,43 @@ function printCalendar() {
       .no-print {
         display: none !important;
       }
-      body {
-        background: transparent;
+      html, body {
+        background: #FFFFFF !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        width: 100% !important;
+      }
+      .print-doc {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        overflow: visible !important;
+      }
+      table, .cal-table, .event-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
+      th, td {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .sig-container {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
     }
   </style>
