@@ -3650,6 +3650,9 @@ function renderGradeSheetTable() {
         <button class="btn btn-outline-success text-xs font-semibold shadow-2xs" onclick="exportPP5ToExcel()" title="ส่งออกไฟล์ Excel (.xlsx) ที่มีโครงสร้างตรงกับโปรแกรม SGS AutoGrade 100% และสรุป ปพ.5">
           <i class='bx bx-file mr-1 text-emerald-600'></i> โหลด Excel (AutoGrade .xlsx)
         </button>
+        <button class="btn btn-light text-xs font-semibold shadow-2xs hover:border-indigo-300 hover:text-indigo-600" onclick="navigate('ext_sgs')" title="ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade) สำหรับ Windows และ Mac">
+          <i class='bx bx-laptop mr-1 text-indigo-600'></i> โปรแกรมช่วยกรอก SGS (Mac/Win)
+        </button>
         <button class="btn btn-light text-xs font-semibold shadow-2xs" onclick="exportPP5ToCsv()" title="ส่งออกไฟล์ CSV (.csv) สำหรับระบบ SGS">
           <i class='bx bx-table mr-1 text-blue-600'></i> โหลด CSV (SGS .csv)
         </button>

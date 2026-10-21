@@ -441,6 +441,7 @@ function navigate(page) {
     settings: 'ตั้งค่าระบบ',
     schedule: 'ตารางสอน',
     manual  : 'คู่มือการใช้งาน',
+    ext_sgs : 'โปรแกรมช่วยกรอกคะแนน SGS',
     ext_nited: 'ระบบนิเทศภายใน',
     ext_homevisit: 'ระบบเยี่ยมบ้าน',
     ext_portfolio: 'ระบบเก็บผลงานและข้อมูลการอบรม',
@@ -482,6 +483,7 @@ function navigate(page) {
     case 'settings':  if (typeof renderSettings  === 'function') return renderSettings(content);  break;
     case 'schedule':  if (typeof renderSchedule  === 'function') return renderSchedule(content);  break;
     case 'manual':    if (typeof renderManual    === 'function') return renderManual(content);    break;
+    case 'ext_sgs':   return renderExtSgs(content);
     case 'ext_nited': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbwhRcZMFI1aKaOVmlecoujOp_vhRS1RaEIczGefuyDfrgRZyNATB4tfb3oukcJ6InvbwA/exec', 'ระบบนิเทศภายใน');
     case 'ext_homevisit': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbzPVxRjrQ-693tDZa1XdaGxNkLYH_dlZnxQQ-P_co0lxWlXrTbgvvhGIOgJ0NUMpn4B/exec', 'ระบบเยี่ยมบ้าน');
     case 'ext_training':
@@ -534,6 +536,7 @@ window.openGlobalSearch = function() {
     { title: 'งานทะเบียนนักเรียน', icon: 'bxs-id-card', page: 'registration', cat: 'ทะเบียน' },
     { title: 'รายงานและสถิติภาพรวม', icon: 'bxs-bar-chart-alt-2', page: 'reports', cat: 'รายงาน' },
     { title: 'ปฏิทินและข่าวสารโรงเรียน', icon: 'bxs-calendar-event', page: 'calendar', cat: 'ประชาสัมพันธ์' },
+    { title: 'โปรแกรมช่วยกรอกคะแนน SGS (Mac & Windows)', icon: 'bxs-download', page: 'ext_sgs', cat: 'ส่วนเสริม' },
     { title: 'ระบบนิเทศภายใน', icon: 'bxs-chalkboard', page: 'ext_nited', cat: 'ส่วนเสริม' },
     { title: 'ระบบเยี่ยมบ้าน', icon: 'bxs-home-heart', page: 'ext_homevisit', cat: 'ส่วนเสริม' },
     { title: 'ระบบเก็บผลงานและข้อมูลการอบรม (Portfolio)', icon: 'bxs-briefcase', page: 'ext_portfolio', cat: 'ส่วนเสริม' },
@@ -1839,6 +1842,229 @@ function renderIframe(container, url, title) {
       <iframe src="${url}" 
               style="flex: 1; width: 100%; height: 100%; border: none; zoom: 0.95;" 
               title="${title}"></iframe>
+    </div>
+  `;
+}
+
+/* ============================================================
+ *  EXTERNAL ADDONS: โปรแกรมช่วยกรอกคะแนน SGS (AutoGrade)
+ *  รองรับ Windows (.exe) และ macOS (.zip) + แบบฟอร์ม 69/1
+ * ============================================================ */
+function renderExtSgs(container) {
+  const gdriveMainUrl = 'https://drive.google.com/drive/folders/153RWKxcpQmdPZYz8QHBA6vyXKWwV4QDD';
+  const winFileUrl = 'https://drive.google.com/file/d/1Pf3v90TdeVnr5XnDnVhsqR6d4L0NCT9J/view?usp=sharing';
+  const winFolderUrl = 'https://drive.google.com/drive/folders/1KrXnn2B0jai7gXIA8v_meJ9q2qDVrGya';
+  const macFileUrl = 'https://drive.google.com/file/d/1PunKcq9MPaeYKsw2Yma9RQk2Nu_szbhc/view?usp=sharing';
+  const macFolderUrl = 'https://drive.google.com/drive/folders/1J8CV5tG_fbCs8pB01KDDSSNgQzcoBs9j';
+  const sampleExcelUrl = 'https://drive.google.com/file/d/1YLMGobE0cHmrcfOGZZe1Icp2WR2xBKlO/view?usp=sharing';
+  const sampleFolderUrl = 'https://drive.google.com/drive/folders/1Qek8W5BWP6nhPz8w69AADW8zZasn42yR';
+
+  container.innerHTML = `
+    <div class="space-y-6 max-w-6xl mx-auto pb-12 animate-fade-in">
+      <!-- Hero Banner -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 p-6 sm:p-8 text-white shadow-xl border border-indigo-500/20">
+        <div class="relative z-10">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-3">
+            <i class='bx bxs-bolt text-amber-400'></i> ส่วนเสริมระบบสารสนเทศภายนอก
+          </div>
+          <h1 class="text-xl sm:text-3xl font-extrabold tracking-tight text-white mb-2">
+            โปรแกรมช่วยกรอกคะแนน SGS (AutoGrade)
+          </h1>
+          <p class="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
+            ศูนย์ดาวน์โหลดและคู่มือการใช้งานโปรแกรมช่วยกรอกคะแนนเข้าสู่ระบบ SGS ของสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.) อัตโนมัติ รองรับทั้งระบบปฏิบัติการ Windows และ macOS เชื่อมโยงกับไฟล์ Excel ปพ.5 จากระบบ MHC Smart School 100%
+          </p>
+          <div class="flex flex-wrap items-center gap-2 mt-4 text-[11px] sm:text-xs text-slate-300 font-medium">
+            <span class="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg backdrop-blur-sm border border-white/10">
+              <i class='bx bxl-windows text-sky-400'></i> รองรับ Windows 10 / 11
+            </span>
+            <span class="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg backdrop-blur-sm border border-white/10">
+              <i class='bx bxl-apple text-slate-300'></i> รองรับ macOS (Apple Silicon & Intel)
+            </span>
+            <span class="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg backdrop-blur-sm border border-white/10">
+              <i class='bx bx-check-shield text-emerald-400'></i> ตรงตามแบบฟอร์ม สพฐ.
+            </span>
+          </div>
+        </div>
+        <div class="absolute -right-12 -bottom-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      </div>
+
+      <!-- Download Cards Grid (Windows, Mac, Template) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        
+        <!-- Card 1: Windows -->
+        <div class="card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center text-2xl mb-4 border border-sky-200 dark:border-sky-800 shadow-2xs">
+              <i class='bx bxl-windows'></i>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base sm:text-lg">สำหรับ Windows</h3>
+              <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300">.exe</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              ไฟล์ติดตั้ง SGS AutoGrade Setup 1.0.0.exe สำหรับคอมพิวเตอร์และโน้ตบุ๊ก Windows 10 / 11
+            </p>
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300 space-y-1.5 mb-4 border border-slate-100 dark:border-slate-800">
+              <div class="flex items-start gap-1.5">
+                <i class='bx bx-check-circle text-sky-500 mt-0.5 flex-shrink-0'></i>
+                <span>ดับเบิลคลิกไฟล์ <b>.exe</b> เพื่อติดตั้งโปรแกรม</span>
+              </div>
+              <div class="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                <i class='bx bx-shield-quarter text-amber-500 mt-0.5 flex-shrink-0'></i>
+                <span>หากขึ้นแจ้งเตือน SmartScreen ให้คลิก <i>More info</i> แล้วเลือก <i>Run anyway</i></span>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2 pt-2">
+            <a href="${winFileUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-blue w-full justify-center text-xs sm:text-sm font-bold shadow-sm">
+              <i class='bx bxs-download mr-1.5 text-base'></i> ดาวน์โหลดโปรแกรม Windows (.exe)
+            </a>
+            <a href="${winFolderUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-light w-full justify-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <i class='bx bxl-google-cloud mr-1.5 text-sky-500'></i> เปิดโฟลเดอร์ใน Google Drive
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 2: macOS -->
+        <div class="card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center justify-center text-2xl mb-4 border border-slate-300 dark:border-slate-700 shadow-2xs">
+              <i class='bx bxl-apple'></i>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base sm:text-lg">สำหรับ macOS</h3>
+              <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">.zip</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              ไฟล์ AutoGrade-Mac-v1.0.zip รองรับชิป Apple Silicon (M1/M2/M3/M4) และชิป Intel
+            </p>
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300 space-y-1.5 mb-4 border border-slate-100 dark:border-slate-800">
+              <div class="flex items-start gap-1.5">
+                <i class='bx bx-check-circle text-indigo-500 mt-0.5 flex-shrink-0'></i>
+                <span>แตกไฟล์ <b>.zip</b> แล้วนำแอปไปวางในโฟลเดอร์ Applications</span>
+              </div>
+              <div class="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                <i class='bx bx-lock-alt text-amber-500 mt-0.5 flex-shrink-0'></i>
+                <span>หากเปิดครั้งแรกมีแจ้งเตือน ให้ไปที่ <i>System Settings > Privacy & Security</i> แล้วกด <i>Open Anyway</i></span>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2 pt-2">
+            <a href="${macFileUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-blue w-full justify-center text-xs sm:text-sm font-bold shadow-sm" style="background:#1E293B; border-color:#334155;">
+              <i class='bx bxs-download mr-1.5 text-base'></i> ดาวน์โหลดโปรแกรม Mac (.zip)
+            </a>
+            <a href="${macFolderUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-light w-full justify-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <i class='bx bxl-google-cloud mr-1.5 text-indigo-500'></i> เปิดโฟลเดอร์ใน Google Drive
+            </a>
+          </div>
+        </div>
+
+        <!-- Card 3: Templates & Google Drive -->
+        <div class="card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-2xl mb-4 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+              <i class='bx bxs-file-doc'></i>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base sm:text-lg">แบบฟอร์ม & ไฟล์ตัวอย่าง</h3>
+              <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">.xlsx</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              โครงสร้างตารางคะแนนมาตรฐานตามระบบ SGS พร้อมไฟล์ตัวอย่างสำหรับทดสอบการรัน
+            </p>
+            <div class="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300 space-y-1.5 mb-4 border border-slate-100 dark:border-slate-800">
+              <div class="flex items-start gap-1.5">
+                <i class='bx bx-check-double text-emerald-600 mt-0.5 flex-shrink-0'></i>
+                <span>มีคอลัมน์ stdID, คะแนนเก็บ S1-S20, กลางภาค, ปลายภาค, Q1-Q8, L1-L5 ครบถ้วน</span>
+              </div>
+              <div class="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                <i class='bx bx-folder text-emerald-600 mt-0.5 flex-shrink-0'></i>
+                <span>มีโฟลเดอร์ไฟล์ตามรายชื่อ 69/1 สำหรับโรงเรียน</span>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2 pt-2">
+            <a href="${sampleExcelUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success w-full justify-center text-xs sm:text-sm font-bold shadow-2xs">
+              <i class='bx bx-download mr-1.5 text-base text-emerald-600'></i> โหลดไฟล์ตัวอย่างการกรอกคะแนน (.xlsx)
+            </a>
+            <a href="${gdriveMainUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-light w-full justify-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <i class='bx bxl-google-cloud mr-1.5 text-emerald-600'></i> เปิด Google Drive รวมทั้งหมด
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- How to use 4-Step Guide -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <i class='bx bx-book-open text-indigo-600'></i>
+              <span>ขั้นตอนการใช้งานโปรแกรมร่วมกับระบบ MHC Smart School</span>
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              เพียง 4 ขั้นตอนง่ายๆ ในการนำผลการเรียน ปพ.5 เข้าสู่ระบบ SGS กระทรวงศึกษาธิการ
+            </p>
+          </div>
+          <button class="btn btn-light text-xs font-semibold hidden sm:inline-flex" onclick="navigate('academic')">
+            <i class='bx bx-arrow-back mr-1'></i> ไปหน้าบันทึกคะแนน ปพ.5
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <!-- Step 1 -->
+          <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 relative">
+            <div class="w-7 h-7 rounded-full bg-indigo-600 text-white font-extrabold text-xs flex items-center justify-center mb-3">1</div>
+            <h4 class="font-bold text-slate-800 dark:text-slate-200 text-sm mb-1.5">บันทึกคะแนนในระบบ</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              เข้าเมนู <b>"งานวิชาการ & ปพ.5"</b> เลือกรายวิชา และกรอกคะแนนเก็บ (S1-S20), กลางภาค, ปลายภาค, คุณลักษณะ (Q1-Q8) และอ่านคิดวิเคราะห์ (L1-L5)
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 relative">
+            <div class="w-7 h-7 rounded-full bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center mb-3">2</div>
+            <h4 class="font-bold text-slate-800 dark:text-slate-200 text-sm mb-1.5">ส่งออกไฟล์ AutoGrade</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              คลิกปุ่มสีเขียว <b>"โหลด Excel (AutoGrade .xlsx)"</b> ด้านบนตารางคะแนน ระบบจะสร้างไฟล์ที่มีโครงสร้างตรงกับโปรแกรม 100%
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 relative">
+            <div class="w-7 h-7 rounded-full bg-sky-600 text-white font-extrabold text-xs flex items-center justify-center mb-3">3</div>
+            <h4 class="font-bold text-slate-800 dark:text-slate-200 text-sm mb-1.5">เปิดโปรแกรม AutoGrade</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              เปิดโปรแกรม <b>SGS AutoGrade</b> บนเครื่องคอมพิวเตอร์ของคุณครู (Windows หรือ Mac) แล้วคลิกเลือกไฟล์ Excel ที่ดาวน์โหลดมา
+            </p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 relative">
+            <div class="w-7 h-7 rounded-full bg-purple-600 text-white font-extrabold text-xs flex items-center justify-center mb-3">4</div>
+            <h4 class="font-bold text-slate-800 dark:text-slate-200 text-sm mb-1.5">เริ่มกรอกคะแนนอัตโนมัติ</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              ล็อกอินเข้าเว็บไซต์ระบบ SGS เปิดหน้ารายวิชาที่ตรงกัน แล้วกดปุ่ม <b>"เริ่มกรอกคะแนน"</b> ในโปรแกรม ระบบจะพิมพ์คะแนนให้อัตโนมัติทันที
+            </p>
+          </div>
+
+        </div>
+
+        <div class="mt-5 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+          <i class='bx bxs-bulb text-base mt-0.5 text-amber-600 flex-shrink-0'></i>
+          <div class="leading-relaxed">
+            <b>ข้อแนะนำเพิ่มเติม:</b> ขณะที่โปรแกรม AutoGrade กำลังหยอดคะแนนลงบนหน้าเว็บ SGS แนะนำให้เปิดหน้าต่างเว็บ SGS ไว้ที่หน้าจอหลักและหลีกเลี่ยงการคลิกเมาส์หรือพิมพ์แป้นพิมพ์อื่นแทรก จนกว่าโปรแกรมจะขึ้นแจ้งเตือนว่ากรอกคะแนนเสร็จสิ้นครบทุกคนครับ
+          </div>
+        </div>
+
+        <div class="mt-4 text-center sm:hidden">
+          <button class="btn btn-blue w-full text-xs font-bold" onclick="navigate('academic')">
+            <i class='bx bx-book-content mr-1'></i> ไปหน้าระบบ ปพ.5 และบันทึกคะแนน
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }

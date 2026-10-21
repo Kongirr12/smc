@@ -3,7 +3,34 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.2.9] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.3.0] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### ⚡ เชื่อมโยงศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade) รองรับทั้ง Windows และ macOS
+- **เพิ่มเมนู "โปรแกรมช่วยกรอก SGS" ในหมวดระบบภายนอก (ส่วนเสริม):**
+  - เพิ่มเมนูใหม่ในแถบ Sidebar หมวดที่ 4: ระบบภายนอก (ส่วนเสริม) เชื่อมโยงไปยังหน้าศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade) สำหรับครูผู้สอน
+  - รองรับการค้นหาด่วนผ่าน Global Quick Search (`Ctrl+K` / `Cmd+K`)
+- **การ์ดดาวน์โหลดโปรแกรมแยกเวอร์ชันชัดเจน (Windows & macOS):**
+  - **สำหรับ Windows (PC / โน้ตบุ๊ก):**
+    - ลิงก์ดาวน์โหลดตรงไฟล์ติดตั้ง: `SGS AutoGrade Setup 1.0.0.exe`
+    - ลิงก์เปิดโฟลเดอร์ Google Drive สำหรับ Windows
+    - คำแนะนำการติดตั้งและการข้าม SmartScreen (More info > Run anyway)
+  - **สำหรับ macOS (MacBook / iMac):**
+    - ลิงก์ดาวน์โหลดตรงไฟล์: `AutoGrade-Mac-v1.0.zip` (รองรับ Apple Silicon M1-M4 และ Intel)
+    - ลิงก์เปิดโฟลเดอร์ Google Drive สำหรับ Mac
+    - คำแนะนำการตั้งค่า Security & Privacy บน macOS (System Settings > Privacy & Security > Open Anyway)
+  - **แบบฟอร์ม & ไฟล์ตัวอย่างคะแนน:**
+    - ลิงก์ดาวน์โหลดไฟล์: `ตัวอย่างการกรอกคะแนน.xlsx`
+    - ลิงก์เปิดโฟลเดอร์ `form_excel_69/1 ตามรายชื่อ sgs`
+    - ลิงก์เปิด Google Drive รวมโฟลเดอร์ `ระบบกรอก sgs` ทั้งหมด
+- **คู่มือขั้นตอนการใช้งาน 4 ขั้นตอน (Step-by-Step Workflow Guide):**
+  - สรุปขั้นตอนการทำงานร่วมกันระหว่างระบบ ปพ.5 ของ MHC Smart School กับโปรแกรม SGS AutoGrade อย่างชัดเจน เข้าใจง่าย
+- **ทางลัดจากหน้าระบบ ปพ.5 (Academic Quick Shortcut):**
+  - เพิ่มปุ่ม `[ 💻 โปรแกรมช่วยกรอก SGS (Mac/Win) ]` บนแถบเครื่องมือหน้าบันทึกคะแนน ปพ.5 ช่วยให้คุณครูสามารถคลิกเข้าสู่หน้าดาวน์โหลดได้ทันทีขณะตัดเกรด
+- **คู่มือระบบ (Manual):** อัปเดตตารางระบบภายนอกและส่วนเสริมในคู่มือการใช้งานระบบ (`js_manual.js`)
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.0` พร้อมอัปเดต Query String `?v=3.3.0` ใน `index.html` และ `code.gs`
+
+---
+
+## [v3.2.9] - 2026-10-21
 ### 🖨️ แก้ไขปัญหาตารางขาดและตกขอบกระดาษเวลาสั่งพิมพ์ทั่วทั้งระบบ (Universal Table Print Truncation & Clipping Elimination)
 - **แก้ปัญหา Overflow Clipping ใน Container ตัวอย่างการพิมพ์ (`cleanPreviewOverride` ใน `js3.js`):**
   - แก้ไขสาเหตุหลักที่ทำให้ตารางหลายหน้าถูกตัดขาดหลังจบหน้า 1 หรือตกขอบกระดาษด้านขวา: ในหน้าจอพรีวิวมี `overflow-x: auto !important;` ซึ่งเบราว์เซอร์ (Chrome, Safari, iOS WebKit) จะตัดเนื้อหาทิ้งเวลาพิมพ์
