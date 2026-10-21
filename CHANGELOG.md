@@ -3,7 +3,16 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.1.4] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.1.5] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🎨 ปรับปรุงประสบการณ์ใช้งาน (UX Enhancement)
+- **ซ่อนปุ่มลูกศรขึ้น-ลง (Number Input Spinners) ในช่องกรอกคะแนนทั้งหมด:**
+  - ซ่อน `::-webkit-inner-spin-button` และ `::-webkit-outer-spin-button` รวมถึง `-moz-appearance: textfield` ในคลาส `.grade-input` และ `#gradeTable input[type=number]`
+  - ช่วยแก้ปัญหาปุ่มลูกศรขึ้นลงมาบดบังตัวเลขและเกะกะเวลาคลิกพิมพ์คะแนน ทำให้พื้นที่กรอกคะแนนกว้าง ชัดเจน คลิกพิมพ์ตัวเลขและกด Tab เลื่อนช่องได้อย่างลื่นไหล รวดเร็ว 100%
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.1.5` พร้อมอัปเดต Query String `?v=3.1.5` ใน `index.html` ทั้งหมด
+
+---
+
+## [v3.1.4] - 2026-10-21
 ### 🚀 เพิ่มฟีเจอร์และปรับปรุงหลัก (Major Updates)
 - **ปรับตารางกรอกคะแนนเป็นรูปแบบเดียวกับระบบ SGS (`Edit-TblTranscripts-Table.aspx`) และเชื่อมโยงโปรแกรม SGS AutoGrade แบบ 100%:**
   - **โครงสร้างตารางกรอกคะแนนเสมือนระบบ SGS ของกระทรวงศึกษาธิการ:**

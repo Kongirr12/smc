@@ -2296,6 +2296,13 @@ function renderGradeSheetTable() {
         width: 100%; padding: 4.5px 5px; border: 1.5px solid #CBD5E1;
         border-radius: 6px; font-family: inherit; font-size: 12px;
         background: #FFFFFF; text-align: center; box-sizing: border-box;
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      .grade-input::-webkit-outer-spin-button,
+      .grade-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
       }
       .grade-input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
       .grade-output {

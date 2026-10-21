@@ -2276,4 +2276,22 @@ html.dark-mode .qa-desc {
   }
 }
 
+/* ─── Hide number input spinners in tables and grade forms ────────── */
+input[type=number].no-spin::-webkit-inner-spin-button,
+input[type=number].no-spin::-webkit-outer-spin-button,
+#gradeTable input[type=number]::-webkit-inner-spin-button,
+#gradeTable input[type=number]::-webkit-outer-spin-button,
+.grade-input::-webkit-inner-spin-button,
+.grade-input::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type=number].no-spin,
+#gradeTable input[type=number],
+.grade-input {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
 
