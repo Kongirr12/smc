@@ -9249,10 +9249,23 @@ function getClassroomTeachersMap(sessionToken) {
         }
       });
 
+      // ดึงข้อมูล ผอ. (นายอธิการ สุขศรี)
+      const directorPer = personnel.find(p =>
+        (String(p.first_name || '').trim() === 'อธิการ' && String(p.last_name || '').trim() === 'สุขศรี') ||
+        String(p.position || '').trim() === 'ผู้อำนวยการโรงเรียน' ||
+        String(p.personnel_id || '').toLowerCase() === 'director'
+      );
+      const cfg = getConfig();
+      const directorData = {
+        name: cfg.director_name || 'นายอธิการ สุขศรี',
+        signature: (directorPer && directorPer.signature) ? directorPer.signature : ''
+      };
+
       return {
         status: 'success',
         byClassroom: byClassroom,
         byGrade: byGrade,
+        director: directorData,
         academic_year: ay
       };
     });

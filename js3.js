@@ -703,6 +703,18 @@ function ensureClassroomTeachersMap(callback) {
       .withSuccessHandler(res => {
         if (res && res.status === 'success') {
           window._mhcClassroomTeachersMap = res;
+          // ซิงค์ลายเซ็นจริงของ ผอ. จากฐานข้อมูล Personnel ทันทีเมื่อมีข้อมูล
+          if (res.director && res.director.signature) {
+            try {
+              const multi = getPrintMultiSignatureState();
+              const defaultSvg = generateDirectorSignatureSvg();
+              if (!multi.director.signature || multi.director.signature === defaultSvg) {
+                multi.director.signature = res.director.signature;
+                if (res.director.name) multi.director.name = res.director.name;
+                savePrintMultiSignatureState(multi);
+              }
+            } catch (_) {}
+          }
         }
         if (typeof callback === 'function') callback(window._mhcClassroomTeachersMap || null);
       })
@@ -932,7 +944,9 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
           // Priority 2: มีลายเซ็นที่ดึงตรงตามห้องเรียน/ระดับชั้นจาก Server มาอยู่แล้ว (Auto-Matched by Classroom)
           else if (hasExistingValidSig && multiState.autoMatchClassroom !== false) {
             targetSig = existingSigImg.src;
-            const curName = (box.querySelector('.sig-name')?.textContent || '').replace(/[()]/g, '').trim();
+            const rawCurName = (box.querySelector('.sig-name')?.textContent || '').replace(/[()]/g, '').trim();
+            const isOnlyDots = rawCurName.replace(/[\.\s_…\-]/g, '').length === 0;
+            const curName = isOnlyDots ? '' : rawCurName;
             targetName = curName || (autoRoomTeacher ? autoRoomTeacher.name : (autoGradeTeacher ? autoGradeTeacher.name : tName));
           }
           // Priority 3: ดึงอัตโนมัติตามห้องเรียนจาก Cache ใน Client (Auto Match Classroom)
@@ -949,6 +963,10 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
           else if (tSig) {
             targetSig = tSig;
             targetName = (gTeacher && gTeacher.name) ? gTeacher.name : tName;
+          }
+
+          if (!targetName || targetName.replace(/[\.\s_…\-]/g, '').length === 0) {
+            targetName = tName || 'ครูก้องนที อุ่นเจริญ';
           }
         }
       }
