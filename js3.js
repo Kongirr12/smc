@@ -528,35 +528,143 @@ function makeImageTransparent(imgElement, callback) {
   }
 }
 
-// 3. อ่านสถานะและข้อมูลลายเซ็นสำหรับพิมพ์
-function getPrintSignatureState() {
-  const savedEnabled = localStorage.getItem('mhc_sig_enabled');
-  const customSig = localStorage.getItem('mhc_custom_signature') || '';
-  const customName = localStorage.getItem('mhc_custom_signature_name') || '';
+// 3. ตัวสร้างลายเซ็นดิจิทัลทางการระดับผู้บริหาร (SVG Official Calligraphy Signatures)
+function generateDirectorSignatureSvg() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 85" width="260" height="85">
+    <path d="M 20 48 C 24 22, 40 18, 48 38 C 52 48, 44 58, 36 52 C 32 46, 38 32, 55 30 C 70 28, 80 48, 90 40 C 100 32, 110 20, 122 34 C 132 46, 142 28, 155 30 C 170 32, 185 18, 200 34 C 210 44, 180 58, 145 62 C 115 65, 75 64, 40 60 C 65 58, 115 56, 170 52 C 190 50, 210 48, 220 45" 
+      fill="none" stroke="#002B9E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 46 22 C 48 16, 52 14, 56 17 C 58 20, 54 24, 50 23" 
+      fill="none" stroke="#002B9E" stroke-width="2.2" stroke-linecap="round" />
+    <path d="M 124 20 C 128 14, 135 16, 134 22 C 132 25, 128 24, 126 22" 
+      fill="none" stroke="#002B9E" stroke-width="2.2" stroke-linecap="round" />
+    <path d="M 168 18 C 173 12, 180 14, 178 20 C 176 23, 172 22, 170 20" 
+      fill="none" stroke="#002B9E" stroke-width="2.2" stroke-linecap="round" />
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
 
+function generateEvaluatorSignatureSvg() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 80" width="250" height="80">
+    <path d="M 25 50 C 35 25, 50 20, 58 35 C 62 45, 52 56, 42 50 C 36 44, 45 28, 65 30 C 80 32, 92 48, 105 36 C 118 24, 130 38, 145 32 C 160 26, 172 40, 185 30 C 195 24, 205 38, 215 32 C 190 55, 140 60, 60 58 C 90 54, 140 50, 195 48" 
+      fill="none" stroke="#002B9E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 52 22 C 55 16, 60 18, 58 24" fill="none" stroke="#002B9E" stroke-width="2.0" stroke-linecap="round" />
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+// 4. อ่านสถานะและข้อมูลลายเซ็นแบบครบทุกผู้ลงนาม 4 ฝ่าย
+function getPrintMultiSignatureState() {
+  let savedMulti = null;
+  try {
+    const raw = localStorage.getItem('mhc_multi_signatures');
+    if (raw) savedMulti = JSON.parse(raw);
+  } catch (e) {}
+
+  const legacySig = localStorage.getItem('mhc_custom_signature') || '';
+  const legacyName = localStorage.getItem('mhc_custom_signature_name') || '';
   const userSig = (typeof APP !== 'undefined' && APP.user && APP.user.signature) ? APP.user.signature : '';
   const userName = (typeof APP !== 'undefined' && APP.user && (APP.user.name || APP.user.username)) ? (APP.user.name || APP.user.username) : '';
 
-  const activeSig = customSig || userSig || '';
-  let activeName = customName || userName || 'ครูก้องนที อุ่นเจริญ';
-  if (activeName === 'ผู้ดูแลระบบ' || activeName === 'admin') {
-    activeName = 'ครูก้องนที อุ่นเจริญ';
-  }
+  let teacherName = (savedMulti && savedMulti.teacher && savedMulti.teacher.name) || legacyName || userName || 'ครูก้องนที อุ่นเจริญ';
+  if (teacherName === 'ผู้ดูแลระบบ' || teacherName === 'admin') teacherName = 'ครูก้องนที อุ่นเจริญ';
+  const teacherSig = (savedMulti && savedMulti.teacher && savedMulti.teacher.signature) || legacySig || userSig || '';
 
-  // Default to enabled if a signature exists and user hasn't explicitly disabled it
-  const enabled = savedEnabled !== null ? (savedEnabled === 'true') : (activeSig !== '');
+  const defaultDirSig = generateDirectorSignatureSvg();
+  const directorSig = (savedMulti && savedMulti.director && savedMulti.director.signature) || defaultDirSig;
+  const directorName = 'นายอธิการ สุขศรี';
+
+  const defaultEvalSig = generateEvaluatorSignatureSvg();
+  const evaluatorSig = (savedMulti && savedMulti.evaluator && savedMulti.evaluator.signature) || defaultEvalSig;
+  const evaluatorName = (savedMulti && savedMulti.evaluator && savedMulti.evaluator.name) || 'หัวหน้างานวัดและประเมินผลการศึกษา';
+
+  const parentSig = (savedMulti && savedMulti.parent && savedMulti.parent.signature) || '';
+  const parentName = (savedMulti && savedMulti.parent && savedMulti.parent.name) || 'ผู้ปกครองนักเรียน';
+
+  const savedMaster = localStorage.getItem('mhc_sig_enabled');
+  const masterEnabled = savedMaster !== null ? (savedMaster === 'true') : true;
 
   return {
-    enabled: enabled && !!activeSig,
-    hasSignature: !!activeSig,
-    signature: activeSig,
-    name: activeName
+    masterEnabled: masterEnabled,
+    teacher: {
+      roleId: 'teacher',
+      title: 'ครูประจำชั้น / ครูผู้สอน',
+      enabled: savedMulti && savedMulti.teacher ? !!savedMulti.teacher.enabled : true,
+      signature: teacherSig,
+      name: teacherName
+    },
+    evaluator: {
+      roleId: 'evaluator',
+      title: 'หัวหน้างานวัดและประเมินผล',
+      enabled: savedMulti && savedMulti.evaluator ? !!savedMulti.evaluator.enabled : true,
+      signature: evaluatorSig,
+      name: evaluatorName
+    },
+    director: {
+      roleId: 'director',
+      title: 'ผู้อำนวยการโรงเรียน (นายอธิการ สุขศรี)',
+      enabled: savedMulti && savedMulti.director ? !!savedMulti.director.enabled : true,
+      signature: directorSig,
+      name: directorName
+    },
+    parent: {
+      roleId: 'parent',
+      title: 'ผู้ปกครองนักเรียน',
+      enabled: savedMulti && savedMulti.parent ? !!savedMulti.parent.enabled : false,
+      signature: parentSig,
+      name: parentName
+    }
   };
 }
 
-// 4. แทรกรูปภาพลายเซ็นลงใน HTML เอกสารทุกรูปแบบ ทุกหน้าที่พิมพ์
-function applySignatureToDocument(html, sigDataUrl, teacherName) {
-  if (!html || !sigDataUrl) return html;
+function savePrintMultiSignatureState(state) {
+  try {
+    localStorage.setItem('mhc_multi_signatures', JSON.stringify(state));
+    localStorage.setItem('mhc_sig_enabled', state.masterEnabled ? 'true' : 'false');
+    if (state.teacher) {
+      localStorage.setItem('mhc_custom_signature', state.teacher.signature || '');
+      localStorage.setItem('mhc_custom_signature_name', state.teacher.name || '');
+    }
+  } catch (e) {}
+}
+
+// Wrapper เพื่อความเข้ากันได้ย้อนหลัง 100%
+function getPrintSignatureState() {
+  const multi = getPrintMultiSignatureState();
+  const hasAny = (multi.teacher.enabled && !!multi.teacher.signature) ||
+                 (multi.director.enabled && !!multi.director.signature) ||
+                 (multi.evaluator.enabled && !!multi.evaluator.signature) ||
+                 (multi.parent.enabled && !!multi.parent.signature);
+  return {
+    enabled: multi.masterEnabled && hasAny,
+    hasSignature: hasAny,
+    signature: multi.teacher.signature || multi.director.signature || '',
+    name: multi.teacher.name || 'ครูก้องนที อุ่นเจริญ',
+    multi: multi
+  };
+}
+
+// 5. แทรกรูปภาพลายเซ็นลงใน HTML เอกสารทุกรูปแบบ ทุกหน้าที่พิมพ์ รองรับครบทุกตำแหน่งผู้ลงนาม
+function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
+  if (!html) return html;
+
+  let multiState = null;
+  if (sigOptionsOrUrl && typeof sigOptionsOrUrl === 'object' && sigOptionsOrUrl.teacher) {
+    multiState = sigOptionsOrUrl;
+  } else if (typeof sigOptionsOrUrl === 'string' && sigOptionsOrUrl) {
+    multiState = {
+      masterEnabled: true,
+      teacher: { enabled: true, signature: sigOptionsOrUrl, name: legacyTeacherName || 'ครูก้องนที อุ่นเจริญ' },
+      evaluator: { enabled: false, signature: '', name: '' },
+      director: { enabled: false, signature: '', name: 'นายอธิการ สุขศรี' },
+      parent: { enabled: false, signature: '', name: '' }
+    };
+  } else {
+    multiState = getPrintMultiSignatureState();
+  }
+
+  if (!multiState.masterEnabled) {
+    return html;
+  }
 
   try {
     const parser = new DOMParser();
@@ -602,7 +710,7 @@ function applySignatureToDocument(html, sigDataUrl, teacherName) {
           print-color-adjust: exact !important;
         }
         @media print {
-          .mhc-sig-img, .mhc-sig-center-img {
+          .mhc-sig-img, .mhc-sig-center-img, .teacher-sig-img {
             display: inline-block !important;
             visibility: visible !important;
             opacity: 1 !important;
@@ -615,146 +723,116 @@ function applySignatureToDocument(html, sigDataUrl, teacherName) {
       else if (doc.body) doc.body.insertBefore(style, doc.body.firstChild);
     }
 
-    const teacherKeywords = [
-      'ครูผู้สอน', 'ครูประจำชั้น', 'ครูที่ปรึกษา', 'ผู้สรุปรายงาน', 'ผู้รายงาน',
-      'ผู้ตรวจเช็ค', 'ผู้ขออนุญาต', 'ผู้ยื่นคำร้อง', 'ผู้จัดทำ', 'ผู้บันทึกข้อมูล',
-      'ผู้วิจัย', 'ผู้ชี้แจง', 'ผู้แจ้งซ่อม', 'ผู้ขอรับบริการ', 'ผู้ขออนุเคราะห์',
-      'ผู้ขอยืม', 'ผู้ยินยอมเปลี่ยนเวร', 'ครูผู้รายงาน', 'ครูเวรประจำวัน'
-    ];
+    const tSig = (multiState.teacher && multiState.teacher.enabled && multiState.teacher.signature) ? multiState.teacher.signature : '';
+    const tName = (multiState.teacher && multiState.teacher.name) ? multiState.teacher.name : '';
 
-    const excludeKeywords = [
-      'ผู้อำนวยการ', 'อธิการ', 'สุขศรี', 'นายทะเบียน', 'ผู้ปกครอง',
-      'หัวหน้ากลุ่มสาระ', 'หัวหน้างานวัดผล', 'เจ้าหน้าที่ผู้จ่ายพัสดุ',
-      'ผู้ตรวจรับงานซ่อม', 'ผู้ผลิตเอกสาร', 'ผู้รับงานเอกสาร', 'ผู้รับคืน',
-      'ผู้อนุมัติ', 'รองผู้อำนวยการ'
-    ];
+    const dSig = (multiState.director && multiState.director.enabled && multiState.director.signature) ? multiState.director.signature : '';
+    const dName = 'นายอธิการ สุขศรี';
 
-    const isExcluded = (txt) => excludeKeywords.some(kw => txt.includes(kw));
+    const eSig = (multiState.evaluator && multiState.evaluator.enabled && multiState.evaluator.signature) ? multiState.evaluator.signature : '';
+    const eName = (multiState.evaluator && multiState.evaluator.name) ? multiState.evaluator.name : '';
 
-    // A0. อัปเดต .sig-stamp-zone ของ ปพ.5 และ ปพ.6 รูปแบบใหม่
-    const stampZones = doc.querySelectorAll('.sig-stamp-zone');
-    stampZones.forEach(sz => {
-      const box = sz.closest('.sig-box');
-      if (!box) return;
+    const pSig = (multiState.parent && multiState.parent.enabled && multiState.parent.signature) ? multiState.parent.signature : '';
+
+    // A. ปพ.5 และ ปพ.6 โครงสร้าง .signature-grid และ .sig-box
+    const stampBoxes = doc.querySelectorAll('.sig-box, .signature-grid > div');
+    stampBoxes.forEach((box, idx) => {
       const boxTxt = box.textContent || '';
-      if (isExcluded(boxTxt)) return;
-      const isTeacher = teacherKeywords.some(kw => boxTxt.includes(kw)) ||
-                        (teacherName && boxTxt.includes(teacherName)) ||
-                        (box.parentElement && box === box.parentElement.firstElementChild);
-      if (isTeacher) {
-        sz.innerHTML = `<img src="${sigDataUrl}" class="teacher-sig-img" alt="ลายเซ็น" style="max-height:42px; max-width:130px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
-        if (teacherName) {
-          const nameEl = box.querySelector('.sig-name');
-          if (nameEl && /^\(\s*[\.]{5,}\s*\)$/.test(nameEl.textContent.trim())) {
-            nameEl.textContent = `( ${teacherName} )`;
-          }
+      const isDirector = boxTxt.includes('ผู้อำนวยการ') || boxTxt.includes('อธิการ') || boxTxt.includes('สุขศรี');
+      const isEvaluator = boxTxt.includes('หัวหน้างานวัด') || boxTxt.includes('หัวหน้ากลุ่มสาระ') || boxTxt.includes('วัดและประเมินผล');
+      const isParent = boxTxt.includes('ผู้ปกครอง');
+      const isTeacher = !isDirector && !isEvaluator && !isParent && (
+        boxTxt.includes('ครูประจำชั้น') || boxTxt.includes('ครูผู้สอน') || boxTxt.includes('ตำแหน่ง') || idx === 0
+      );
+
+      if (isDirector && dSig) {
+        const sz = box.querySelector('.sig-stamp-zone');
+        if (sz) {
+          sz.innerHTML = `<img src="${dSig}" class="teacher-sig-img" alt="ลายเซ็น ผอ." style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
+        }
+        const nameEl = box.querySelector('.sig-name');
+        if (nameEl) nameEl.textContent = `( ${dName} )`;
+      } else if (isEvaluator && eSig) {
+        const sz = box.querySelector('.sig-stamp-zone');
+        if (sz) {
+          sz.innerHTML = `<img src="${eSig}" class="teacher-sig-img" alt="ลายเซ็น หัวหน้าวัดผล" style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
+        }
+        const nameEl = box.querySelector('.sig-name');
+        if (nameEl && (/^\(\s*[\.]{4,}\s*\)$/.test(nameEl.textContent.trim()) || eName)) {
+          nameEl.textContent = `( ${eName || 'หัวหน้างานวัดและประเมินผลการศึกษา'} )`;
+        }
+      } else if (isParent && pSig) {
+        const sz = box.querySelector('.sig-stamp-zone');
+        if (sz) {
+          sz.innerHTML = `<img src="${pSig}" class="teacher-sig-img" alt="ลายเซ็น ผู้ปกครอง" style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
+        }
+      } else if (isTeacher && tSig) {
+        const sz = box.querySelector('.sig-stamp-zone');
+        if (sz) {
+          sz.innerHTML = `<img src="${tSig}" class="teacher-sig-img" alt="ลายเซ็น ครู" style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
+        }
+        const nameEl = box.querySelector('.sig-name');
+        if (nameEl && (/^\(\s*[\.]{4,}\s*\)$/.test(nameEl.textContent.trim()) || !nameEl.textContent.trim() || tName)) {
+          if (tName) nameEl.textContent = `( ${tName} )`;
         }
       }
     });
 
-    // A. อัปเดต elements ที่มี .teacher-sig-img อยู่แล้ว
-    const existingImgs = doc.querySelectorAll('.teacher-sig-img, img[alt="signature"], img[alt="Signature"]');
-    existingImgs.forEach(img => {
+    // B. อัปเดต elements ที่มี .teacher-sig-img อยู่เดิมใน HTML
+    doc.querySelectorAll('.teacher-sig-img').forEach(img => {
       const parentTxt = (img.closest('.sig-box, .sig-row, div, td') || {}).textContent || '';
-      if (!isExcluded(parentTxt)) {
-        img.src = sigDataUrl;
-        img.style.mixBlendMode = 'multiply';
-        img.style.maxHeight = '48px';
+      if ((parentTxt.includes('ผู้อำนวยการ') || parentTxt.includes('อธิการ')) && dSig) {
+        img.src = dSig;
+      } else if ((parentTxt.includes('หัวหน้า') || parentTxt.includes('วัดผล')) && eSig) {
+        img.src = eSig;
+      } else if (parentTxt.includes('ผู้ปกครอง') && pSig) {
+        img.src = pSig;
+      } else if (tSig) {
+        img.src = tSig;
       }
     });
 
-    // B. อัปเดต .sig-line ของตารางสอนและเอกสารทั่วไป
-    const sigLines = doc.querySelectorAll('.sig-line');
-    sigLines.forEach(sl => {
-      const parent = sl.parentElement;
-      if (!parent) return;
-      const parentTxt = parent.textContent || '';
-      if (isExcluded(parentTxt)) return;
-
-      const hasTeacherWord = teacherKeywords.some(kw => parentTxt.includes(kw)) ||
-                             (teacherName && parentTxt.includes(teacherName));
-      if (hasTeacherWord && (!sl.querySelector('img') || sl.innerHTML.trim() === '')) {
-        sl.innerHTML = `<img src="${sigDataUrl}" class="mhc-sig-img" style="position:static !important; max-height:46px; mix-blend-mode:multiply; object-fit:contain; display:inline-block;">`;
-      }
-    });
-
-    // C. แทรกใน element ที่มีข้อความ "ลงชื่อ"
-    const allElements = doc.body ? Array.from(doc.body.querySelectorAll('*')) : [];
-    const sigElements = allElements.filter(el => {
-      if (!el.textContent || !el.textContent.includes('ลงชื่อ')) return false;
-      if (isExcluded(el.textContent)) return false;
+    // C. แทรกในบล็อกข้อความราชการที่มี "ลงชื่อ" (แบบฟอร์ม 4 ฝ่าย / บันทึกข้อความ)
+    const allDivs = doc.querySelectorAll('div, p, td');
+    allDivs.forEach(el => {
+      if (!el.textContent || !el.textContent.includes('ลงชื่อ')) return;
+      if (el.querySelector('.mhc-sig-img, .mhc-sig-center-img, .teacher-sig-img')) return;
       const hasChildWithSig = Array.from(el.children).some(c => c.textContent && c.textContent.includes('ลงชื่อ'));
-      return !hasChildWithSig;
-    });
+      if (hasChildWithSig) return;
 
-    sigElements.forEach(el => {
       const txt = el.textContent || '';
-      const parentTxt = (el.parentElement ? el.parentElement.textContent : '') || '';
-      const contextTxt = txt + ' ' + parentTxt;
+      const contextTxt = txt + ' ' + ((el.parentElement ? el.parentElement.textContent : '') || '');
 
-      if (isExcluded(contextTxt)) return;
+      let targetSig = '';
+      let targetName = '';
+      if ((contextTxt.includes('ผู้อำนวยการ') || contextTxt.includes('อธิการ') || contextTxt.includes('สุขศรี')) && dSig) {
+        targetSig = dSig;
+        targetName = dName;
+      } else if ((contextTxt.includes('หัวหน้างาน') || contextTxt.includes('หัวหน้ากลุ่มสาระ') || contextTxt.includes('วัดผล')) && eSig) {
+        targetSig = eSig;
+        targetName = eName;
+      } else if (contextTxt.includes('ผู้ปกครอง') && pSig) {
+        targetSig = pSig;
+      } else if (tSig) {
+        targetSig = tSig;
+        targetName = tName;
+      }
 
-      const isTeacher = teacherKeywords.some(kw => contextTxt.includes(kw)) ||
-                        (teacherName && contextTxt.includes(teacherName)) ||
-                        (el.closest('.signatures, .signature-grid') &&
-                         el.closest('.sig-box') === el.closest('.signatures, .signature-grid').firstElementChild);
-
-      if (isTeacher) {
-        if (el.querySelector('.mhc-sig-img, .mhc-sig-center-img')) return;
-
+      if (targetSig) {
         const isCentered = (el.style.textAlign === 'center') || (el.closest('.sig-box') != null);
-        const rawInner = el.innerHTML;
-        const sigRegex = /(ลงชื่อ\s*[\.]{5,}|ลงชื่อ\s*…+|ลงชื่อ\s*_{5,}|\(ลงชื่อ\)\s*[\.]{5,})/g;
-
-        if (sigRegex.test(rawInner)) {
-          el.innerHTML = rawInner.replace(sigRegex, (m) => {
+        const sigRegex = /(ลงชื่อ\s*[\.]{4,}|ลงชื่อ\s*…+|ลงชื่อ\s*_{4,}|\(ลงชื่อ\)\s*[\.]{4,})/g;
+        if (sigRegex.test(el.innerHTML)) {
+          el.innerHTML = el.innerHTML.replace(sigRegex, (m) => {
             return `<span class="mhc-sig-wrap">` +
-                     `<img src="${sigDataUrl}" class="${isCentered ? 'mhc-sig-center-img' : 'mhc-sig-img'}" alt="ลายเซ็น" />` +
+                     `<img src="${targetSig}" class="${isCentered ? 'mhc-sig-center-img' : 'mhc-sig-img'}" alt="ลายเซ็น" />` +
                      `<span>${m}</span>` +
                    `</span>`;
           });
-        } else {
-          el.innerHTML = `<span class="mhc-sig-wrap">` +
-                           `<img src="${sigDataUrl}" class="${isCentered ? 'mhc-sig-center-img' : 'mhc-sig-img'}" alt="ลายเซ็น" />` +
-                           `<span>${rawInner}</span>` +
-                         `</span>`;
         }
-
-        // เติมชื่อครูลงในวงเล็บ ( .................... ) ด้านล่างถ้ายังเป็นจุดไข่ปลา
-        if (teacherName && el.parentElement) {
-          const nextLine = el.nextElementSibling;
-          if (nextLine && nextLine.textContent) {
-            const lineTxt = nextLine.textContent.trim();
-            if (/^\(\s*[\.]{5,}\s*\)$/.test(lineTxt) || /^\(\s*…+\s*\)$/.test(lineTxt)) {
-              nextLine.innerHTML = `( ${teacherName} )`;
-            }
-          }
-        }
-      }
-    });
-
-    // D. จัดการบล็อกข้อความที่มี <br> ใน js_templates.js
-    const containerDivs = doc.querySelectorAll('div, p');
-    containerDivs.forEach(c => {
-      if (c.children.length > 0 && c.querySelector('br')) {
-        const fullTxt = c.textContent || '';
-        if (fullTxt.includes('ลงชื่อ') && !isExcluded(fullTxt)) {
-          const isTeacher = teacherKeywords.some(kw => fullTxt.includes(kw)) ||
-                            (teacherName && fullTxt.includes(teacherName));
-          if (isTeacher && !c.querySelector('.mhc-sig-img, .mhc-sig-center-img')) {
-            c.innerHTML = c.innerHTML.replace(
-              /((?:ลงชื่อ|\(ลงชื่อ\))\s*[\.]{5,}[^\n<]*)/g,
-              (match) => {
-                if (isExcluded(match)) return match;
-                return `<span class="mhc-sig-wrap">` +
-                         `<img src="${sigDataUrl}" class="mhc-sig-img" alt="ลายเซ็น" />` +
-                         `<span>${match}</span>` +
-                       `</span>`;
-              }
-            );
-            if (teacherName) {
-              c.innerHTML = c.innerHTML.replace(/\(\s*[\.]{6,}\s*\)/, `( ${teacherName} )`);
-            }
+        if (targetName) {
+          const nextEl = el.nextElementSibling;
+          if (nextEl && /^\(\s*[\.]{4,}\s*\)$/.test(nextEl.textContent.trim())) {
+            nextEl.textContent = `( ${targetName} )`;
           }
         }
       }
@@ -762,13 +840,13 @@ function applySignatureToDocument(html, sigDataUrl, teacherName) {
 
     return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
   } catch (err) {
-    console.error('Signature injection error:', err);
+    console.error('Multi-signature injection error:', err);
     return html;
   }
 }
 
-// 5. แสดงหน้าต่างจัดการ/วาด/เลือกลายเซ็นครู (Executive Aurora Signature Studio)
-function showSignatureManagerModal(onSaved) {
+// 6. ศูนย์จัดการและประทับลายเซ็นผู้ลงนามทางการ (Official Multi-Signatory Studio)
+function showSignatureManagerModal(onSaved, initialRoleId) {
   let modal = document.getElementById('mhcSignatureManagerModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -777,553 +855,646 @@ function showSignatureManagerModal(onSaved) {
     document.body.appendChild(modal);
   }
 
-  const curState = getPrintSignatureState();
-  let drawnDataUrl = curState.signature || '';
-  let selectedTeacherName = curState.name || 'ครูก้องนที อุ่นเจริญ';
-  if (selectedTeacherName === 'ผู้ดูแลระบบ' || selectedTeacherName === 'admin') {
-    selectedTeacherName = 'ครูก้องนที อุ่นเจริญ';
-  }
-  let penColor = '#002B9E'; // Royal blue
+  const multiState = getPrintMultiSignatureState();
+  let currentRoleId = initialRoleId || 'teacher';
+  let penColor = '#002B9E';
   let penWidth = 2.4;
 
-  modal.innerHTML = `
-    <div class="bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] w-full max-w-xl overflow-hidden flex flex-col max-h-[94vh] border border-white/40 ring-1 ring-slate-900/10 animate-in fade-in zoom-in-95 duration-200">
-      
-      <!-- Header with Aurora Dark Gradient -->
-      <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-white/10 relative overflow-hidden select-none">
-        <div class="absolute -right-8 -top-8 w-32 h-32 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="flex items-center gap-3 relative z-10">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xl shadow-md border border-indigo-400/30 flex-shrink-0">
-            <i class='bx bx-edit-alt'></i>
-          </div>
-          <div>
-            <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-              <span>จัดการลายเซ็นครูสำหรับพิมพ์</span>
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/20">A4 ทุกเอกสาร</span>
-            </h3>
-            <p class="text-[11px] text-indigo-200/80 font-normal mt-0.5">ระบบจะประทับลายเซ็นลงใน ปพ.5, ปพ.6, ตารางสอน และแบบฟอร์มทุกหน้าที่พิมพ์</p>
-          </div>
-        </div>
-        <button id="btnCloseSigManager" type="button" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer relative z-10" title="ปิดหน้าต่าง">
-          <i class='bx bx-x text-2xl leading-none'></i>
+  const renderModalUI = () => {
+    const curRole = multiState[currentRoleId];
+
+    const rolesList = [
+      { id: 'teacher', icon: 'bx-edit', title: 'ครูประจำชั้น / ครูผู้สอน', color: 'indigo' },
+      { id: 'evaluator', icon: 'bx-check-double', title: 'หัวหน้างานวัดผล', color: 'teal' },
+      { id: 'director', icon: 'bxs-crown', title: 'ผอ. นายอธิการ สุขศรี', color: 'amber' },
+      { id: 'parent', icon: 'bx-home-heart', title: 'ผู้ปกครองนักเรียน', color: 'rose' }
+    ];
+
+    const roleTabsHtml = rolesList.map(r => {
+      const active = r.id === currentRoleId;
+      const roleData = multiState[r.id];
+      const hasSig = !!(roleData && roleData.signature);
+      const isEnabled = !!(roleData && roleData.enabled);
+
+      return `
+        <button type="button" class="btn-role-tab flex-1 py-2 px-2 rounded-xl transition-all text-center flex items-center justify-center gap-1.5 border text-xs cursor-pointer ${active ? 'bg-white shadow-xs font-bold text-slate-900 border-slate-300/80 ring-2 ring-indigo-500/20' : 'bg-transparent text-slate-500 hover:text-slate-800 border-transparent hover:bg-white/60'}" data-role="${r.id}">
+          <i class='bx ${r.icon} text-sm ${active ? 'text-indigo-600' : ''}'></i>
+          <span class="truncate">${r.title.split(' ')[0]}</span>
+          <span class="w-2 h-2 rounded-full flex-shrink-0 ${isEnabled && hasSig ? 'bg-emerald-500' : (hasSig ? 'bg-amber-400' : 'bg-slate-300')}"></span>
         </button>
-      </div>
+      `;
+    }).join('');
 
-      <!-- Body -->
-      <div class="p-5 sm:p-6 overflow-y-auto space-y-4 bg-slate-50/40">
+    modal.innerHTML = `
+      <div class="bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] w-full max-w-xl overflow-hidden flex flex-col max-h-[94vh] border border-white/40 ring-1 ring-slate-900/10 animate-in fade-in zoom-in-95 duration-200">
         
-        <!-- ส่วนระบุชื่อ-นามสกุลครูผู้ลงนาม -->
-        <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2">
-          <div class="flex items-center justify-between">
-            <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <i class='bx bxs-user-check text-indigo-600 text-sm'></i>
-              <span>ชื่อ-นามสกุลครูผู้ลงนามในเอกสาร</span>
-            </label>
-            <span class="text-[11px] text-slate-400">จะพิมพ์ลงในวงเล็บ ( ................... )</span>
+        <!-- Header with Aurora Dark Gradient -->
+        <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between border-b border-white/10 relative overflow-hidden select-none">
+          <div class="absolute -right-8 -top-8 w-32 h-32 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none"></div>
+          <div class="flex items-center gap-3 relative z-10">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center text-xl shadow-md border border-indigo-400/30 flex-shrink-0">
+              <i class='bx bxs-badge-check'></i>
+            </div>
+            <div>
+              <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                <span>ศูนย์จัดการลายเซ็นครบทุกตำแหน่ง</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/20">ปพ.5 · ปพ.6 · 4 ฝ่าย</span>
+              </h3>
+              <p class="text-[11px] text-indigo-200/80 font-normal mt-0.5">กำหนดและประทับลายเซ็นครบทั้ง 4 ตำแหน่งลงในเอกสารสำหรับพิมพ์ได้ในที่เดียว</p>
+            </div>
           </div>
-          <div class="relative">
-            <i class='bx bx-user absolute left-3.5 top-3 text-slate-400 text-base'></i>
-            <input id="sigTeacherNameInput" type="text" class="w-full text-xs sm:text-sm pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/10 font-semibold text-slate-800 transition-all outline-none" placeholder="เช่น ครูก้องนที อุ่นเจริญ" value="${escapeHTML(selectedTeacherName)}">
-          </div>
-          <!-- ปุ่มลัดเลือกชื่อด่วน -->
-          <div class="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
-            <span class="text-[10px] text-slate-400 font-medium flex-shrink-0">เลือกด่วน:</span>
-            <button type="button" class="btn-quick-name flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200/60 transition-all cursor-pointer" data-name="ครูก้องนที อุ่นเจริญ">
-              ✍️ ครูก้องนที อุ่นเจริญ
-            </button>
-            <button type="button" class="btn-quick-name flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold border border-amber-200/60 transition-all cursor-pointer" data-name="นายอธิการ สุขศรี">
-              👑 ผอ. นายอธิการ สุขศรี
-            </button>
-          </div>
-        </div>
-
-        <!-- แท็บสลับ 3 ช่องทาง -->
-        <div class="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 flex gap-1.5 select-none">
-          <button id="tabSigDraw" type="button" class="flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60">
-            <i class='bx bx-pen text-sm'></i>
-            <span>วาดลายเซ็นสด</span>
-          </button>
-          <button id="tabSigUpload" type="button" class="flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5">
-            <i class='bx bx-cloud-upload text-sm'></i>
-            <span>อัปโหลดรูป</span>
-          </button>
-          <button id="tabSigSelect" type="button" class="flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5">
-            <i class='bx bxs-user-detail text-sm'></i>
-            <span>เลือกครูในระบบ</span>
+          <button id="btnCloseSigManager" type="button" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer relative z-10" title="ปิดหน้าต่าง">
+            <i class='bx bx-x text-2xl leading-none'></i>
           </button>
         </div>
 
-        <!-- PANE 1: วาดลายเซ็นสด -->
-        <div id="paneSigDraw" class="space-y-2.5">
-          <!-- Toolbar: หมึก + ขนาดเส้น + ล้าง -->
-          <div class="bg-white px-3.5 py-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-2 shadow-2xs">
-            <!-- สีหมึก -->
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-slate-500 font-semibold">สีหมึก:</span>
-              <button id="btnColorBlue" type="button" class="w-7 h-7 rounded-full border-2 border-indigo-600 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105" style="background:#002B9E;" title="สีน้ำเงินเข้มราชการ">
-                <i class='bx bx-check text-white text-xs'></i>
-              </button>
-              <button id="btnColorBlack" type="button" class="w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105" style="background:#0F172A;" title="สีดำ">
-              </button>
-            </div>
-
-            <!-- ขนาดเส้น -->
-            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              <button id="btnSizeThin" type="button" class="px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all">บาง</button>
-              <button id="btnSizeNormal" type="button" class="px-2.5 py-1 text-[11px] rounded-lg bg-white text-indigo-700 shadow-2xs font-bold transition-all">ปกติ</button>
-              <button id="btnSizeThick" type="button" class="px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all">หนา</button>
-            </div>
-
-            <!-- ล้างแคนวาส -->
-            <button id="btnClearSigCanvas" type="button" class="px-2.5 py-1.5 rounded-xl text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold flex items-center gap-1 transition-all border border-rose-100">
-              <i class='bx bx-trash text-sm'></i>
-              <span>ล้าง</span>
-            </button>
+        <!-- 4 Role Selector Bar -->
+        <div class="p-3 bg-slate-100 border-b border-slate-200/80">
+          <div class="text-[11px] font-bold text-slate-600 mb-1.5 flex items-center justify-between">
+            <span>เลือกตำแหน่งผู้ลงนามที่ต้องการตั้งค่า:</span>
+            <span class="text-[10px] text-indigo-600 font-medium">สลับตั้งค่าได้ครบทุกฝ่าย</span>
           </div>
-
-          <!-- กรอบแคนวาสวาดลายเซ็น -->
-          <div class="relative w-full border-2 border-dashed border-indigo-200/90 hover:border-indigo-400 rounded-2xl bg-white overflow-hidden shadow-inner flex items-center justify-center transition-all" style="touch-action:none; height:185px;">
-            <canvas id="sigCanvas" class="w-full h-full cursor-crosshair relative z-10"></canvas>
-            
-            <!-- Faint Baseline Guide -->
-            <div class="absolute bottom-9 left-1/2 -translate-x-1/2 w-4/5 border-b border-dashed border-slate-200 pointer-events-none z-0"></div>
-            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] text-slate-300 font-mono pointer-events-none z-0">
-              เส้นกึ่งกลางระนาบการเซ็น
-            </div>
-
-            <!-- Placeholder Note -->
-            <div id="sigPlaceholderNote" class="absolute pointer-events-none text-center text-slate-400 text-xs ${drawnDataUrl ? 'hidden' : ''} z-0 px-4">
-              <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl mx-auto mb-1.5 shadow-2xs">
-                <i class='bx bx-pen'></i>
-              </div>
-              <div class="font-semibold text-slate-600">วาดลายเซ็นสดในกรอบนี้</div>
-              <p class="text-[11px] text-slate-400 mt-0.5">รองรับปากกาสไตลัส, นิ้วสัมผัสบนจอ หรือเมาส์ลากเส้น</p>
-            </div>
+          <div class="flex gap-1 bg-slate-200/70 p-1 rounded-2xl">
+            ${roleTabsHtml}
           </div>
         </div>
 
-        <!-- PANE 2: อัปโหลดรูปภาพ -->
-        <div id="paneSigUpload" class="hidden space-y-2.5">
-          <div class="border-2 border-dashed border-indigo-200/90 hover:border-indigo-500 rounded-2xl p-7 text-center transition-all bg-white hover:bg-indigo-50/20 group cursor-pointer">
-            <input id="sigFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden">
-            <label for="sigFileInput" class="cursor-pointer flex flex-col items-center gap-2">
-              <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-2xl transition-all shadow-xs">
-                <i class='bx bx-cloud-upload'></i>
+        <!-- Body -->
+        <div class="p-5 sm:p-6 overflow-y-auto space-y-4 bg-slate-50/40">
+          
+          <!-- แถบเปิด/ปิดการใส่ลายเซ็นของตำแหน่งนี้ -->
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-base">
+                <i class='bx bx-toggle-right'></i>
               </div>
               <div>
-                <span class="text-xs sm:text-sm font-bold text-indigo-700 block">คลิกเพื่อเลือกไฟล์รูปภาพลายเซ็น</span>
-                <span class="text-[11px] text-slate-400 block mt-0.5">รองรับไฟล์ PNG, JPG หรือ WebP</span>
-              </div>
-              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200 mt-1">
-                <i class='bx bx-check-shield text-xs'></i>
-                <span>ระบบลบพื้นหลังกระดาษสีขาวให้เป็นลายเซ็นโปร่งแสงอัตโนมัติ</span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- PANE 3: เลือกครูจากระบบ -->
-        <div id="paneSigSelect" class="hidden space-y-2.5 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <div class="flex items-center justify-between">
-            <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <i class='bx bxs-user-account text-indigo-600'></i>
-              <span>เลือกครูจากฐานข้อมูลบุคลากร MHC</span>
-            </label>
-            <span id="sigTeacherCountBadge" class="text-[11px] text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">กำลังโหลด...</span>
-          </div>
-          <div class="relative">
-            <i class='bx bx-search absolute left-3 top-2.5 text-slate-400 text-sm'></i>
-            <input id="sigTeacherSearchInput" type="text" class="w-full text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 transition-all outline-none" placeholder="🔍 พิมพ์ชื่อ หรือ นามสกุล เพื่อค้นหาด่วน...">
-          </div>
-          <select id="sigTeacherSelect" size="5" class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 p-1.5 focus:border-indigo-600 focus:bg-white outline-none overflow-y-auto" style="min-height:120px;">
-            <option value="" disabled>กำลังโหลดรายชื่อครู...</option>
-          </select>
-          <p class="text-[11px] text-slate-500 flex items-center gap-1 pt-0.5">
-            <i class='bx bx-info-circle text-xs text-indigo-500'></i>
-            คลิกเลือกชื่อครูในรายการ ระบบจะดึงลายเซ็นมาใช้ทันที (หากยังไม่มี สามารถวาดใหม่ที่แท็บ "วาดลายเซ็นสด")
-          </p>
-        </div>
-
-        <!-- Live Preview Card: การแสดงผลจริงบนเอกสาร -->
-        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <i class='bx bx-show text-indigo-600'></i>
-              <span>ตัวอย่างลายเซ็นที่จะประทับลงในเอกสาร:</span>
-            </span>
-            <span id="sigStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold transition-all ${drawnDataUrl ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}">
-              ${drawnDataUrl ? '✓ พร้อมประทับลงเอกสาร' : '○ รอการวาดหรือเลือก'}
-            </span>
-          </div>
-
-          <!-- กล่องกระดาษจำลอง A4 -->
-          <div class="h-24 w-full bg-slate-50/80 rounded-xl border border-slate-200/90 flex flex-col items-center justify-center p-2 relative overflow-hidden select-none">
-            <div class="h-12 w-full flex items-center justify-center relative">
-              <img id="sigCurrentPreviewImg" src="${drawnDataUrl || ''}" alt="ลายเซ็น" class="max-h-11 max-w-[180px] object-contain relative z-10 transition-all ${drawnDataUrl ? '' : 'hidden'}" style="mix-blend-mode:multiply;">
-              <div id="sigCurrentPreviewEmpty" class="text-xs text-slate-400 flex items-center gap-1.5 ${drawnDataUrl ? 'hidden' : ''}">
-                <i class='bx bx-pencil text-slate-300 text-sm'></i>
-                <span>ยังไม่ได้กำหนดลายเซ็น</span>
+                <span class="text-xs font-bold text-slate-800 block">ประทับลายเซ็นของตำแหน่งนี้ลงเอกสาร</span>
+                <span class="text-[10px] text-slate-400">ตำแหน่ง: <b class="text-indigo-600">${curRole.title}</b></span>
               </div>
             </div>
-            <!-- เส้นจุดไข่ปลาและชื่อในวงเล็บเสมือนเอกสารจริง -->
-            <div class="text-center font-serif text-[11px] text-slate-700 tracking-wide mt-1">
-              <span class="text-slate-300">...................................................</span>
-              <div id="sigPreviewNameText" class="font-bold text-slate-800 text-[11px] leading-tight">
-                ( ${escapeHTML(selectedTeacherName || 'ครูก้องนที อุ่นเจริญ')} )
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input id="chkRoleEnabled" type="checkbox" class="sr-only peer" ${curRole.enabled ? 'checked' : ''}>
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
+          <!-- ส่วนระบุชื่อ-นามสกุลผู้ลงนาม -->
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <i class='bx bxs-user-check text-indigo-600 text-sm'></i>
+                <span>ชื่อ-นามสกุลผู้ลงนาม (พิมพ์ลงในวงเล็บ)</span>
+              </label>
+              ${currentRoleId === 'director' ? `<span class="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md border border-amber-200">ผู้อำนวยการโรงเรียน</span>` : ''}
+            </div>
+            <div class="relative">
+              <i class='bx bx-user absolute left-3.5 top-3 text-slate-400 text-base'></i>
+              <input id="sigTeacherNameInput" type="text" class="w-full text-xs sm:text-sm pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/10 font-semibold text-slate-800 transition-all outline-none" placeholder="ชื่อ-นามสกุล" value="${escapeHTML(curRole.name || '')}">
+            </div>
+            <!-- ปุ่มด่วนสำหรับแต่ละบทบาท -->
+            <div class="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+              <span class="text-[10px] text-slate-400 font-medium flex-shrink-0">เลือกด่วน:</span>
+              <button type="button" class="btn-quick-name flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200/60 transition-all cursor-pointer" data-name="ครูก้องนที อุ่นเจริญ">
+                ✍️ ครูก้องนที อุ่นเจริญ
+              </button>
+              <button type="button" class="btn-quick-name flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold border border-amber-200/60 transition-all cursor-pointer" data-name="นายอธิการ สุขศรี">
+                👑 ผอ. นายอธิการ สุขศรี
+              </button>
+              ${currentRoleId === 'director' ? `
+                <button id="btnQuickDirectorSig" type="button" class="flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 transition-all cursor-pointer">
+                  ⚡ ใช้ลายเซ็นทางการ ผอ. ทันที
+                </button>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- แท็บสลับ 3 ช่องทาง -->
+          <div class="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 flex gap-1.5 select-none">
+            <button id="tabSigDraw" type="button" class="flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60">
+              <i class='bx bx-pen text-sm'></i>
+              <span>วาดลายเซ็นสด</span>
+            </button>
+            <button id="tabSigUpload" type="button" class="flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5">
+              <i class='bx bx-cloud-upload text-sm'></i>
+              <span>อัปโหลดรูป</span>
+            </button>
+            <button id="tabSigSelect" type="button" class="flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5">
+              <i class='bx bxs-user-detail text-sm'></i>
+              <span>เลือกครูในระบบ</span>
+            </button>
+          </div>
+
+          <!-- PANE 1: วาดลายเซ็นสด -->
+          <div id="paneSigDraw" class="space-y-2.5">
+            <div class="bg-white px-3.5 py-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-2 shadow-2xs">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 font-semibold">สีหมึก:</span>
+                <button id="btnColorBlue" type="button" class="w-7 h-7 rounded-full border-2 border-indigo-600 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105" style="background:#002B9E;" title="สีน้ำเงินเข้มราชการ">
+                  <i class='bx bx-check text-white text-xs'></i>
+                </button>
+                <button id="btnColorBlack" type="button" class="w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105" style="background:#0F172A;" title="สีดำ">
+                </button>
+              </div>
+
+              <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                <button id="btnSizeThin" type="button" class="px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all">บาง</button>
+                <button id="btnSizeNormal" type="button" class="px-2.5 py-1 text-[11px] rounded-lg bg-white text-indigo-700 shadow-2xs font-bold transition-all">ปกติ</button>
+                <button id="btnSizeThick" type="button" class="px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all">หนา</button>
+              </div>
+
+              <button id="btnClearSigCanvas" type="button" class="px-2.5 py-1.5 rounded-xl text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-semibold flex items-center gap-1 transition-all border border-rose-100">
+                <i class='bx bx-trash text-sm'></i>
+                <span>ล้าง</span>
+              </button>
+            </div>
+
+            <div class="relative w-full border-2 border-dashed border-indigo-200/90 hover:border-indigo-400 rounded-2xl bg-white overflow-hidden shadow-inner flex items-center justify-center transition-all" style="touch-action:none; height:185px;">
+              <canvas id="sigCanvas" class="w-full h-full cursor-crosshair relative z-10"></canvas>
+              <div class="absolute bottom-9 left-1/2 -translate-x-1/2 w-4/5 border-b border-dashed border-slate-200 pointer-events-none z-0"></div>
+              <div class="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] text-slate-300 font-mono pointer-events-none z-0">
+                เส้นกึ่งกลางระนาบการเซ็น
+              </div>
+
+              <div id="sigPlaceholderNote" class="absolute pointer-events-none text-center text-slate-400 text-xs ${curRole.signature ? 'hidden' : ''} z-0 px-4">
+                <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl mx-auto mb-1.5 shadow-2xs">
+                  <i class='bx bx-pen'></i>
+                </div>
+                <div class="font-semibold text-slate-600">วาดลายเซ็นของ ${curRole.title} ในกรอบนี้</div>
+                <p class="text-[11px] text-slate-400 mt-0.5">รองรับปากกาสไตลัส, นิ้วสัมผัสบนจอ หรือเมาส์ลากเส้น</p>
               </div>
             </div>
+          </div>
+
+          <!-- PANE 2: อัปโหลดรูปภาพ -->
+          <div id="paneSigUpload" class="hidden space-y-2.5">
+            <div class="border-2 border-dashed border-indigo-200/90 hover:border-indigo-500 rounded-2xl p-7 text-center transition-all bg-white hover:bg-indigo-50/20 group cursor-pointer">
+              <input id="sigFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+              <label for="sigFileInput" class="cursor-pointer flex flex-col items-center gap-2">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-2xl transition-all shadow-xs">
+                  <i class='bx bx-cloud-upload'></i>
+                </div>
+                <div>
+                  <span class="text-xs sm:text-sm font-bold text-indigo-700 block">คลิกเพื่อเลือกไฟล์รูปภาพลายเซ็น</span>
+                  <span class="text-[11px] text-slate-400 block mt-0.5">รองรับไฟล์ PNG, JPG หรือ WebP</span>
+                </div>
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200 mt-1">
+                  <i class='bx bx-check-shield text-xs'></i>
+                  <span>ระบบลบพื้นหลังกระดาษสีขาวให้เป็นลายเซ็นโปร่งแสงอัตโนมัติ</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- PANE 3: เลือกครูจากระบบ -->
+          <div id="paneSigSelect" class="hidden space-y-2.5 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <i class='bx bxs-user-account text-indigo-600'></i>
+                <span>เลือกครูจากฐานข้อมูลบุคลากร MHC</span>
+              </label>
+              <span id="sigTeacherCountBadge" class="text-[11px] text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">กำลังโหลด...</span>
+            </div>
+            <div class="relative">
+              <i class='bx bx-search absolute left-3 top-2.5 text-slate-400 text-sm'></i>
+              <input id="sigTeacherSearchInput" type="text" class="w-full text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 transition-all outline-none" placeholder="🔍 พิมพ์ชื่อ หรือ นามสกุล เพื่อค้นหาด่วน...">
+            </div>
+            <select id="sigTeacherSelect" size="5" class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 p-1.5 focus:border-indigo-600 focus:bg-white outline-none overflow-y-auto" style="min-height:120px;">
+              <option value="" disabled>กำลังโหลดรายชื่อครู...</option>
+            </select>
+          </div>
+
+          <!-- Live Preview Card: การแสดงผลจริงบนเอกสาร -->
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <i class='bx bx-show text-indigo-600'></i>
+                <span>ตัวอย่างลายเซ็นที่จะประทับลงในช่อง <b>${curRole.title}</b>:</span>
+              </span>
+              <span id="sigStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold transition-all ${curRole.signature ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}">
+                ${curRole.signature ? '✓ พร้อมประทับลงเอกสาร' : '○ รอการวาดหรือเลือก'}
+              </span>
+            </div>
+
+            <!-- กล่องกระดาษจำลอง A4 -->
+            <div class="h-24 w-full bg-slate-50/80 rounded-xl border border-slate-200/90 flex flex-col items-center justify-center p-2 relative overflow-hidden select-none">
+              <div class="h-12 w-full flex items-center justify-center relative">
+                <img id="sigCurrentPreviewImg" src="${curRole.signature || ''}" alt="ลายเซ็น" class="max-h-11 max-w-[180px] object-contain relative z-10 transition-all ${curRole.signature ? '' : 'hidden'}" style="mix-blend-mode:multiply;">
+                <div id="sigCurrentPreviewEmpty" class="text-xs text-slate-400 flex items-center gap-1.5 ${curRole.signature ? 'hidden' : ''}">
+                  <i class='bx bx-pencil text-slate-300 text-sm'></i>
+                  <span>ยังไม่ได้กำหนดลายเซ็น</span>
+                </div>
+              </div>
+              <div class="text-center font-serif text-[11px] text-slate-700 tracking-wide mt-1">
+                <span class="text-slate-300">...................................................</span>
+                <div id="sigPreviewNameText" class="font-bold text-slate-800 text-[11px] leading-tight">
+                  ( ${escapeHTML(curRole.name || '...................................................')} )
+                </div>
+                <div class="text-[10px] text-slate-500">${curRole.title}</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2 select-none">
+          <div class="flex items-center gap-1.5">
+            <button id="btnEnableAllSignatures" type="button" class="text-xs px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold border border-indigo-200 transition-all cursor-pointer" title="เปิดใช้งานลายเซ็นครู + วัดผล + ผอ. นายอธิการ สุขศรี พร้อมกันในคลิกเดียว">
+              ⚡ เปิดลายเซ็นครบทุกฝ่าย (3 ฝ่าย)
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnCancelSigManager" type="button" class="btn px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-all cursor-pointer">
+              ยกเลิก
+            </button>
+            <button id="btnSaveSigManager" type="button" class="btn px-5 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 cursor-pointer border-0">
+              <i class='bx bx-check text-base'></i>
+              <span>บันทึกและประทับลายเซ็น</span>
+            </button>
           </div>
         </div>
 
       </div>
+    `;
 
-      <!-- Footer Actions -->
-      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between select-none">
-        <div class="text-[11px] text-slate-400 hidden sm:block">
-          <i class='bx bx-shield-check text-indigo-500 mr-0.5'></i> บันทึกในเครื่องอัตโนมัติ
-        </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button id="btnCancelSigManager" type="button" class="btn px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-all cursor-pointer">
-            ยกเลิก
-          </button>
-          <button id="btnSaveSigManager" type="button" class="btn px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 cursor-pointer border-0">
-            <i class='bx bx-check text-base'></i>
-            <span>บันทึกและเปิดใช้งานลายเซ็นนี้</span>
-          </button>
-        </div>
-      </div>
-
-    </div>
-  `;
-
-  modal.style.display = 'flex';
-
-  // Elements
-  const tabDraw = modal.querySelector('#tabSigDraw');
-  const tabUpload = modal.querySelector('#tabSigUpload');
-  const tabSelect = modal.querySelector('#tabSigSelect');
-  const paneDraw = modal.querySelector('#paneSigDraw');
-  const paneUpload = modal.querySelector('#paneSigUpload');
-  const paneSelect = modal.querySelector('#paneSigSelect');
-
-  const canvas = modal.querySelector('#sigCanvas');
-  const note = modal.querySelector('#sigPlaceholderNote');
-  const previewImg = modal.querySelector('#sigCurrentPreviewImg');
-  const previewEmpty = modal.querySelector('#sigCurrentPreviewEmpty');
-  const badge = modal.querySelector('#sigStatusBadge');
-  const nameInput = modal.querySelector('#sigTeacherNameInput');
-  const previewNameText = modal.querySelector('#sigPreviewNameText');
-
-  // Live Name Preview Sync
-  const updatePreviewName = (n) => {
-    if (previewNameText) {
-      previewNameText.textContent = `( ${n ? n.trim() : '...................................................'} )`;
-    }
-  };
-  nameInput.oninput = () => updatePreviewName(nameInput.value);
-
-  // Quick Name Select Chips
-  modal.querySelectorAll('.btn-quick-name').forEach(btn => {
-    btn.onclick = () => {
-      const n = btn.getAttribute('data-name');
-      if (n) {
-        nameInput.value = n;
-        updatePreviewName(n);
-        nameInput.focus();
-      }
-    };
-  });
-
-  // Helper for Updating Signature Preview
-  const updatePreviewSig = (url, badgeLabel, badgeClass) => {
-    drawnDataUrl = url || '';
-    if (drawnDataUrl) {
-      previewImg.src = drawnDataUrl;
-      previewImg.classList.remove('hidden');
-      previewEmpty.classList.add('hidden');
-      badge.textContent = badgeLabel || '✓ พร้อมประทับลงเอกสาร';
-      badge.className = badgeClass || 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all';
-    } else {
-      previewImg.src = '';
-      previewImg.classList.add('hidden');
-      previewEmpty.classList.remove('hidden');
-      badge.textContent = '○ รอการวาดหรือเลือก';
-      badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-500 transition-all';
-    }
-  };
-
-  // Tab switching
-  const setTab = (tab) => {
-    [tabDraw, tabUpload, tabSelect].forEach(t => {
-      t.className = 'flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5';
-    });
-    [paneDraw, paneUpload, paneSelect].forEach(p => p.classList.add('hidden'));
-
-    if (tab === 'draw') {
-      tabDraw.className = 'flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60';
-      paneDraw.classList.remove('hidden');
-      setTimeout(resizeCanvas, 60);
-    } else if (tab === 'upload') {
-      tabUpload.className = 'flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60';
-      paneUpload.classList.remove('hidden');
-    } else if (tab === 'select') {
-      tabSelect.className = 'flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60';
-      paneSelect.classList.remove('hidden');
-      if (allTeachersList.length > 0) applyTeacherSearch();
-    }
-  };
-  tabDraw.onclick = () => setTab('draw');
-  tabUpload.onclick = () => setTab('upload');
-  tabSelect.onclick = () => setTab('select');
-
-  // Pen tools
-  const btnColorBlue = modal.querySelector('#btnColorBlue');
-  const btnColorBlack = modal.querySelector('#btnColorBlack');
-  btnColorBlue.onclick = () => {
-    penColor = '#002B9E';
-    btnColorBlue.innerHTML = "<i class='bx bx-check text-white text-xs'></i>";
-    btnColorBlue.className = 'w-7 h-7 rounded-full border-2 border-indigo-600 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
-    btnColorBlack.innerHTML = '';
-    btnColorBlack.className = 'w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
-  };
-  btnColorBlack.onclick = () => {
-    penColor = '#0F172A';
-    btnColorBlack.innerHTML = "<i class='bx bx-check text-white text-xs'></i>";
-    btnColorBlack.className = 'w-7 h-7 rounded-full border-2 border-slate-900 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
-    btnColorBlue.innerHTML = '';
-    btnColorBlue.className = 'w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105';
-  };
-
-  const btnThin = modal.querySelector('#btnSizeThin');
-  const btnNormal = modal.querySelector('#btnSizeNormal');
-  const btnThick = modal.querySelector('#btnSizeThick');
-  const setSize = (w, activeBtn) => {
-    penWidth = w;
-    [btnThin, btnNormal, btnThick].forEach(b => {
-      b.className = 'px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all';
-    });
-    activeBtn.className = 'px-2.5 py-1 text-[11px] rounded-lg bg-white text-indigo-700 shadow-2xs font-bold transition-all';
-  };
-  btnThin.onclick = () => setSize(1.6, btnThin);
-  btnNormal.onclick = () => setSize(2.4, btnNormal);
-  btnThick.onclick = () => setSize(3.6, btnThick);
-
-  // Setup Canvas
-  let isDrawing = false;
-  let lastX = 0, lastY = 0;
-  const ctx = canvas.getContext('2d');
-
-  function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  }
-  setTimeout(resizeCanvas, 60);
-
-  canvas.addEventListener('pointerdown', (e) => {
-    isDrawing = true;
-    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
-    const rect = canvas.getBoundingClientRect();
-    lastX = e.clientX - rect.left;
-    lastY = e.clientY - rect.top;
-    if (note) note.style.display = 'none';
-  });
-
-  canvas.addEventListener('pointermove', (e) => {
-    if (!isDrawing) return;
-    const rect = canvas.getBoundingClientRect();
-    const currentX = e.clientX - rect.left;
-    const currentY = e.clientY - rect.top;
-
-    ctx.strokeStyle = penColor;
-    ctx.lineWidth = penWidth;
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(currentX, currentY);
-    ctx.stroke();
-
-    lastX = currentX;
-    lastY = currentY;
-  });
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    isDrawing = false;
-    const trimmed = trimCanvasWhitespace(canvas);
-    if (trimmed) {
-      updatePreviewSig(trimmed, '✓ วาดสำเร็จ', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200');
-    }
-  };
-
-  canvas.addEventListener('pointerup', stopDrawing);
-  canvas.addEventListener('pointercancel', stopDrawing);
-
-  // Clear canvas
-  modal.querySelector('#btnClearSigCanvas').onclick = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (note) note.style.display = 'block';
-    updatePreviewSig('', 'ล้างเรียบร้อย', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-700 border border-rose-200');
-  };
-
-  // File upload
-  const fileInput = modal.querySelector('#sigFileInput');
-  fileInput.onchange = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (re) => {
-      const img = new Image();
-      img.onload = () => {
-        makeImageTransparent(img, (cleanUrl) => {
-          updatePreviewSig(cleanUrl, '✓ อัปโหลดสำเร็จ', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200');
-        });
+    // ผูก Event การเปลี่ยนแท็บบทบาท (Role Tabs)
+    modal.querySelectorAll('.btn-role-tab').forEach(btn => {
+      btn.onclick = () => {
+        const nextRole = btn.getAttribute('data-role');
+        if (nextRole && nextRole !== currentRoleId) {
+          // บันทึกชื่อปัจจุบันก่อนสลับ
+          const nameInp = modal.querySelector('#sigTeacherNameInput');
+          if (nameInp) multiState[currentRoleId].name = nameInp.value.trim();
+          currentRoleId = nextRole;
+          renderModalUI();
+        }
       };
-      img.src = re.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Teachers in system
-  const teacherSelect = modal.querySelector('#sigTeacherSelect');
-  const searchInput = modal.querySelector('#sigTeacherSearchInput');
-  const countBadge = modal.querySelector('#sigTeacherCountBadge');
-  let allTeachersList = [];
-
-  const normalizePersonnelToTeachers = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    return arr.filter(p => {
-      if (!p) return false;
-      const status = String(p.status || '').trim().toLowerCase();
-      if (status === 'inactive' || status === 'ลาออก' || status === 'เกษียณ') return false;
-      const type = String(p.type || '').trim().toLowerCase();
-      const pos = String(p.position || '').trim();
-      return type === 'teacher' || type === 'ครู' || pos.includes('ครู') || pos.includes('สอน') || pos.includes('อาจารย์') || (!p.type && !pos.includes('ธุรการ') && !pos.includes('ช่าง') && !pos.includes('นักการ'));
-    }).map(p => ({
-      id: p.id,
-      name: (p.name || ((p.prefix || '') + (p.first_name || '') + ' ' + (p.last_name || ''))).trim(),
-      position: p.position || 'ครูผู้สอน',
-      department: p.department || '',
-      signature: p.signature || ''
-    })).filter(p => p.name.length > 0)
-    .sort((a, b) => a.name.localeCompare(b.name, 'th'));
-  };
-
-  const renderTeacherOptions = (teachers) => {
-    if (!teacherSelect) return;
-    if (!teachers || teachers.length === 0) {
-      teacherSelect.innerHTML = '<option value="" disabled>-- ไม่พบรายชื่อครูที่ตรงกับคำค้นหา --</option>';
-      if (countBadge) countBadge.textContent = 'ไม่พบข้อมูล';
-      return;
-    }
-    const withSig = teachers.filter(t => t.signature).length;
-    if (countBadge) {
-      countBadge.textContent = `ครูทั้งหมด ${teachers.length} ท่าน (มีลายเซ็น ${withSig} ท่าน)`;
-    }
-    teacherSelect.innerHTML = teachers.map(t => {
-      const tName = t.name;
-      const pos = t.position || 'ครูผู้สอน';
-      const hasSig = !!t.signature;
-      const sigTag = hasSig ? '✓ มีลายเซ็น' : '○ รอเพิ่มลายเซ็น';
-      return `<option value="${escapeHTML(tName)}" data-sig="${escapeHTML(t.signature || '')}" data-pos="${escapeHTML(pos)}">${escapeHTML(tName)} (${escapeHTML(pos)}) — ${sigTag}</option>`;
-    }).join('');
-  };
-
-  const applyTeacherSearch = () => {
-    const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
-    if (!q) {
-      renderTeacherOptions(allTeachersList);
-      return;
-    }
-    const filtered = allTeachersList.filter(t => {
-      const n = (t.name || '').toLowerCase();
-      const p = (t.position || '').toLowerCase();
-      const d = (t.department || '').toLowerCase();
-      return n.includes(q) || p.includes(q) || d.includes(q);
     });
-    renderTeacherOptions(filtered);
-  };
 
-  if (searchInput) {
-    searchInput.oninput = applyTeacherSearch;
-  }
+    // ผูกสวิตช์เปิด/ปิดบทบาท
+    const chkRole = modal.querySelector('#chkRoleEnabled');
+    if (chkRole) {
+      chkRole.onchange = () => {
+        multiState[currentRoleId].enabled = chkRole.checked;
+      };
+    }
 
-  // 1. Initial populate from client cache/memory if available
-  if (typeof APP !== 'undefined' && Array.isArray(APP.personnel) && APP.personnel.length > 0) {
-    allTeachersList = normalizePersonnelToTeachers(APP.personnel);
-    renderTeacherOptions(allTeachersList);
-  }
+    // ผูกปุ่มลัด ผอ.
+    const btnQuickDir = modal.querySelector('#btnQuickDirectorSig');
+    if (btnQuickDir) {
+      btnQuickDir.onclick = () => {
+        const dirSig = generateDirectorSignatureSvg();
+        multiState.director.signature = dirSig;
+        multiState.director.name = 'นายอธิการ สุขศรี';
+        multiState.director.enabled = true;
+        renderModalUI();
+      };
+    }
 
-  // 2. Fetch fresh teacher list from server (all teaching staff)
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-          allTeachersList = res.data;
-          applyTeacherSearch();
+    // ผูกปุ่มลัดเปิดครบทุกฝ่าย
+    const btnAllSig = modal.querySelector('#btnEnableAllSignatures');
+    if (btnAllSig) {
+      btnAllSig.onclick = () => {
+        multiState.masterEnabled = true;
+        multiState.teacher.enabled = true;
+        if (!multiState.teacher.signature) {
+          multiState.teacher.signature = multiState.teacher.signature || '';
         }
-      })
-      .withFailureHandler((err) => {
-        console.warn('Load teachers dropdown failed:', err);
-      })
-      .getTeachersForDropdown(typeof APP !== 'undefined' ? APP.token : '');
-  }
-
-  teacherSelect.onchange = () => {
-    const opt = teacherSelect.selectedOptions[0];
-    if (opt && opt.value) {
-      nameInput.value = opt.value;
-      updatePreviewName(opt.value);
-      const sig = opt.getAttribute('data-sig');
-      if (sig) {
-        updatePreviewSig(sig, '✓ พบลายเซ็นในระบบ', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200');
-      } else {
-        updatePreviewSig('', '○ รอเพิ่มลายเซ็น', 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-200');
+        multiState.evaluator.enabled = true;
+        if (!multiState.evaluator.signature) {
+          multiState.evaluator.signature = generateEvaluatorSignatureSvg();
+        }
+        multiState.director.enabled = true;
+        if (!multiState.director.signature) {
+          multiState.director.signature = generateDirectorSignatureSvg();
+        }
+        renderModalUI();
         if (typeof showToast === 'function') {
-          showToast(`ครู ${opt.value} ยังไม่มีลายเซ็นในระบบ คุณสามารถคลิกแท็บ "วาดลายเซ็นสด" เพื่อวาดได้ทันที`, 'info');
+          showToast('เปิดการประทับลายเซ็นครบ 3 ฝ่าย (ครู, วัดผล, ผอ.) เรียบร้อยแล้ว', 'success');
         }
-      }
+      };
     }
-  };
 
-  // Close handlers
-  const closeModal = () => { modal.style.display = 'none'; };
-  modal.querySelector('#btnCloseSigManager').onclick = closeModal;
-  modal.querySelector('#btnCancelSigManager').onclick = closeModal;
+    // Elements ของบทบาทปัจจุบัน
+    const tabDraw = modal.querySelector('#tabSigDraw');
+    const tabUpload = modal.querySelector('#tabSigUpload');
+    const tabSelect = modal.querySelector('#tabSigSelect');
+    const paneDraw = modal.querySelector('#paneSigDraw');
+    const paneUpload = modal.querySelector('#paneSigUpload');
+    const paneSelect = modal.querySelector('#paneSigSelect');
 
-  // Save handler
-  modal.querySelector('#btnSaveSigManager').onclick = () => {
-    if (!drawnDataUrl) {
-      if (typeof showToast === 'function') {
-        showToast('กรุณาวาดลายเซ็นหรืออัปโหลดรูปภาพก่อนบันทึก', 'warning');
+    const canvas = modal.querySelector('#sigCanvas');
+    const note = modal.querySelector('#sigPlaceholderNote');
+    const previewImg = modal.querySelector('#sigCurrentPreviewImg');
+    const previewEmpty = modal.querySelector('#sigCurrentPreviewEmpty');
+    const badge = modal.querySelector('#sigStatusBadge');
+    const nameInput = modal.querySelector('#sigTeacherNameInput');
+    const previewNameText = modal.querySelector('#sigPreviewNameText');
+
+    nameInput.oninput = () => {
+      multiState[currentRoleId].name = nameInput.value.trim();
+      if (previewNameText) {
+        previewNameText.textContent = `( ${nameInput.value.trim() || '...................................................'} )`;
+      }
+    };
+
+    modal.querySelectorAll('.btn-quick-name').forEach(btn => {
+      btn.onclick = () => {
+        const n = btn.getAttribute('data-name');
+        if (n) {
+          nameInput.value = n;
+          multiState[currentRoleId].name = n;
+          if (previewNameText) previewNameText.textContent = `( ${n} )`;
+          nameInput.focus();
+        }
+      };
+    });
+
+    const updatePreviewSig = (url) => {
+      multiState[currentRoleId].signature = url || '';
+      if (url) {
+        previewImg.src = url;
+        previewImg.classList.remove('hidden');
+        previewEmpty.classList.add('hidden');
+        badge.textContent = '✓ พร้อมประทับลงเอกสาร';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all';
       } else {
-        alert('กรุณาวาดลายเซ็นหรืออัปโหลดรูปภาพก่อนบันทึก');
+        previewImg.src = '';
+        previewImg.classList.add('hidden');
+        previewEmpty.classList.remove('hidden');
+        badge.textContent = '○ รอการวาดหรือเลือก';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-500 transition-all';
       }
-      return;
-    }
-    const finalName = nameInput.value.trim() || 'ครูก้องนที อุ่นเจริญ';
-    localStorage.setItem('mhc_custom_signature', drawnDataUrl);
-    localStorage.setItem('mhc_custom_signature_name', finalName);
-    localStorage.setItem('mhc_sig_enabled', 'true');
+    };
 
-    closeModal();
-    if (typeof onSaved === 'function') {
-      onSaved(drawnDataUrl, finalName);
+    // Canvas Setup
+    let isDrawing = false;
+    let hasStrokes = !!multiState[currentRoleId].signature;
+    const ctx = canvas ? canvas.getContext('2d', { willReadFrequently: true }) : null;
+
+    const setupCanvas = () => {
+      if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = (rect.width || 400) * dpr;
+      canvas.height = (rect.height || 185) * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = penColor;
+      ctx.lineWidth = penWidth;
+
+      if (multiState[currentRoleId].signature) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 20, 20, (rect.width - 40) || 300, (rect.height - 40) || 120);
+        };
+        img.src = multiState[currentRoleId].signature;
+      }
+    };
+
+    setTimeout(setupCanvas, 40);
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+      }
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    const startDraw = (e) => {
+      e.preventDefault();
+      isDrawing = true;
+      hasStrokes = true;
+      if (note) note.classList.add('hidden');
+      const pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    };
+
+    const draw = (e) => {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const pos = getPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    };
+
+    const stopDraw = () => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      const trimmed = trimCanvasWhitespace(canvas);
+      if (trimmed) updatePreviewSig(trimmed);
+    };
+
+    if (canvas) {
+      canvas.addEventListener('mousedown', startDraw);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDraw);
+      canvas.addEventListener('mouseleave', stopDraw);
+      canvas.addEventListener('touchstart', startDraw, { passive: false });
+      canvas.addEventListener('touchmove', draw, { passive: false });
+      canvas.addEventListener('touchend', stopDraw);
     }
-    if (typeof showToast === 'function') {
-      showToast('บันทึกลายเซ็นเรียบร้อยแล้ว — เอกสารจะประทับลายเซ็นนี้ทุกหน้า', 'success');
+
+    // Color buttons
+    const btnBlue = modal.querySelector('#btnColorBlue');
+    const btnBlack = modal.querySelector('#btnColorBlack');
+    if (btnBlue && btnBlack) {
+      btnBlue.onclick = () => {
+        penColor = '#002B9E';
+        if (ctx) ctx.strokeStyle = penColor;
+        btnBlue.innerHTML = "<i class='bx bx-check text-white text-xs'></i>";
+        btnBlue.className = "w-7 h-7 rounded-full border-2 border-indigo-600 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105";
+        btnBlack.innerHTML = "";
+        btnBlack.className = "w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105";
+      };
+      btnBlack.onclick = () => {
+        penColor = '#0F172A';
+        if (ctx) ctx.strokeStyle = penColor;
+        btnBlack.innerHTML = "<i class='bx bx-check text-white text-xs'></i>";
+        btnBlack.className = "w-7 h-7 rounded-full border-2 border-indigo-600 shadow-sm relative flex items-center justify-center transition-transform hover:scale-105";
+        btnBlue.innerHTML = "";
+        btnBlue.className = "w-7 h-7 rounded-full border-2 border-transparent shadow-sm relative flex items-center justify-center transition-transform hover:scale-105";
+      };
+    }
+
+    // Pen size buttons
+    const btnThin = modal.querySelector('#btnSizeThin');
+    const btnNormal = modal.querySelector('#btnSizeNormal');
+    const btnThick = modal.querySelector('#btnSizeThick');
+    const setSizeActive = (btn, size) => {
+      penWidth = size;
+      if (ctx) ctx.lineWidth = size;
+      [btnThin, btnNormal, btnThick].forEach(b => {
+        b.className = "px-2.5 py-1 text-[11px] rounded-lg text-slate-600 hover:text-slate-900 font-medium transition-all";
+      });
+      btn.className = "px-2.5 py-1 text-[11px] rounded-lg bg-white text-indigo-700 shadow-2xs font-bold transition-all";
+    };
+    if (btnThin) btnThin.onclick = () => setSizeActive(btnThin, 1.6);
+    if (btnNormal) btnNormal.onclick = () => setSizeActive(btnNormal, 2.4);
+    if (btnThick) btnThick.onclick = () => setSizeActive(btnThick, 3.8);
+
+    // Clear Canvas
+    const btnClear = modal.querySelector('#btnClearSigCanvas');
+    if (btnClear) {
+      btnClear.onclick = () => {
+        if (!ctx || !canvas) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasStrokes = false;
+        if (note) note.classList.remove('hidden');
+        updatePreviewSig('');
+      };
+    }
+
+    // Tabs switching
+    const setTab = (target) => {
+      [tabDraw, tabUpload, tabSelect].forEach(t => {
+        t.className = "flex-1 py-2 rounded-xl transition-all text-center text-slate-600 hover:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5";
+      });
+      [paneDraw, paneUpload, paneSelect].forEach(p => p.classList.add('hidden'));
+
+      if (target === 'draw') {
+        tabDraw.className = "flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60";
+        paneDraw.classList.remove('hidden');
+        setTimeout(setupCanvas, 20);
+      } else if (target === 'upload') {
+        tabUpload.className = "flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60";
+        paneUpload.classList.remove('hidden');
+      } else if (target === 'select') {
+        tabSelect.className = "flex-1 py-2 rounded-xl transition-all text-center bg-white shadow-xs text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200/60";
+        paneSelect.classList.remove('hidden');
+        loadTeachersList();
+      }
+    };
+
+    if (tabDraw) tabDraw.onclick = () => setTab('draw');
+    if (tabUpload) tabUpload.onclick = () => setTab('upload');
+    if (tabSelect) tabSelect.onclick = () => setTab('select');
+
+    // File Upload
+    const fileInput = modal.querySelector('#sigFileInput');
+    if (fileInput) {
+      fileInput.onchange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            processSignatureImage(img, (cleanDataUrl) => {
+              updatePreviewSig(cleanDataUrl);
+              setTab('draw');
+              setupCanvas();
+            });
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      };
+    }
+
+    // Teacher select loader
+    let masterTeachersList = [];
+    const selectEl = modal.querySelector('#sigTeacherSelect');
+    const badgeCount = modal.querySelector('#sigTeacherCountBadge');
+    const searchInput = modal.querySelector('#sigTeacherSearchInput');
+
+    const renderTeacherOptions = (list) => {
+      if (!selectEl) return;
+      selectEl.innerHTML = '';
+      if (!list || list.length === 0) {
+        selectEl.innerHTML = '<option value="" disabled class="p-2 text-slate-400">ไม่พบบุคลากรตามคำค้นหา</option>';
+        return;
+      }
+      list.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id || t.name;
+        opt.className = 'py-1.5 px-2.5 rounded-lg hover:bg-indigo-50 cursor-pointer flex items-center justify-between text-xs';
+        const hasS = !!(t.signature && t.signature.length > 20);
+        opt.textContent = `${t.name || '-'} (${t.position || 'ครู'}) ${hasS ? '✍️ มีลายเซ็น' : '○ ยังไม่มีลายเซ็น'}`;
+        opt.dataset.signature = t.signature || '';
+        opt.dataset.name = t.name || '';
+        selectEl.appendChild(opt);
+      });
+    };
+
+    const loadTeachersList = () => {
+      if (masterTeachersList.length > 0) return;
+      const localTeachers = (typeof APP !== 'undefined' && APP.personnel)
+        ? APP.personnel.filter(p => p.status === 'active' || !p.status)
+        : [];
+      if (localTeachers.length > 0) {
+        masterTeachersList = localTeachers;
+        renderTeacherOptions(masterTeachersList);
+        if (badgeCount) badgeCount.textContent = `${masterTeachersList.length} ท่าน`;
+      } else {
+        if (badgeCount) badgeCount.textContent = 'พร้อมใช้งาน';
+      }
+    };
+
+    if (selectEl) {
+      selectEl.onchange = () => {
+        const opt = selectEl.options[selectEl.selectedIndex];
+        if (!opt) return;
+        const sUrl = opt.dataset.signature;
+        const sName = opt.dataset.name;
+        if (sName) {
+          nameInput.value = sName;
+          multiState[currentRoleId].name = sName;
+          if (previewNameText) previewNameText.textContent = `( ${sName} )`;
+        }
+        if (sUrl && sUrl.length > 20) {
+          updatePreviewSig(sUrl);
+          setTab('draw');
+          setupCanvas();
+        }
+      };
+    }
+
+    if (searchInput) {
+      searchInput.oninput = () => {
+        const q = searchInput.value.trim().toLowerCase();
+        const filtered = masterTeachersList.filter(t => (t.name || '').toLowerCase().includes(q) || (t.position || '').toLowerCase().includes(q));
+        renderTeacherOptions(filtered);
+      };
+    }
+
+    // Modal Close and Save Handlers
+    const closeModal = () => { modal.style.display = 'none'; };
+    const btnClose = modal.querySelector('#btnCloseSigManager');
+    const btnCancel = modal.querySelector('#btnCancelSigManager');
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnCancel) btnCancel.onclick = closeModal;
+
+    const btnSave = modal.querySelector('#btnSaveSigManager');
+    if (btnSave) {
+      btnSave.onclick = () => {
+        // อัปเดตชื่อของบทบาทปัจจุบัน
+        if (nameInput) multiState[currentRoleId].name = nameInput.value.trim();
+        multiState.masterEnabled = true;
+
+        savePrintMultiSignatureState(multiState);
+
+        if (typeof showToast === 'function') {
+          showToast('บันทึกและเปิดใช้งานลายเซ็นผู้ลงนามเรียบร้อยแล้ว', 'success');
+        }
+
+        closeModal();
+        if (typeof onSaved === 'function') onSaved(multiState);
+      };
     }
   };
+
+  renderModalUI();
+  modal.style.display = 'flex';
 }
 
+// 7. หน้าต่างตัวอย่างเอกสารสำหรับพิมพ์ (Universal Executive Print Preview Modal)
 function showPrintPreviewModal(html, docTitle, directUrl) {
   let modal = document.getElementById('printDocModal');
-  const env = getPrintEnv();
-
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'printDocModal';
@@ -1344,33 +1515,31 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         </div>
         <div class="min-w-0">
           <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate block">ตัวอย่างเอกสารสำหรับพิมพ์</span>
-          <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบความถูกต้องและลายเซ็นก่อนสั่งพิมพ์หรือส่งออก PDF (A4)</span>
+          <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบความถูกต้องและลายเซ็นทุกฝ่ายก่อนสั่งพิมพ์หรือส่งออก PDF (A4)</span>
         </div>
       </div>
 
-      <!-- Right: Action Buttons with Unified 38px Height & whitespace-nowrap -->
+      <!-- Right: Standardized 38px Executive Control Buttons -->
       <div class="flex items-center gap-2 flex-shrink-0">
-        <!-- Toggle Signature -->
-        <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-3.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs gap-2" title="เปิด/ปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์">
+        <!-- ปุ่มเปิด/ปิดลายเซ็น (Multi-Signature State Aware) -->
+        <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-2 font-semibold" title="คลิกเพื่อเปิด/ปิดการใส่ลายเซ็นลงในเอกสาร">
           <span id="sigToggleDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></span>
           <i class='bx bx-edit-alt text-sm'></i>
-          <span id="sigToggleText" class="font-semibold text-xs whitespace-nowrap">ลายเซ็นครู: ปิดอยู่</span>
+          <span id="sigToggleText">ลายเซ็น: ปิดอยู่</span>
         </button>
 
-        <!-- Config Signature Studio -->
-        <button id="btnConfigSignatureAction" type="button" class="print-topbar-btn print-topbar-btn-icon border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 text-slate-600 hover:text-indigo-600 shadow-2xs" title="ตั้งค่าหรือวาดลายเซ็นครู">
-          <i class='bx bxs-cog text-base'></i>
+        <!-- ปุ่มศูนย์จัดการลายเซ็นทุกฝ่าย (Multi-Signature Studio) -->
+        <button id="btnConfigSignatureAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-white hover:bg-indigo-50 border border-slate-200/90 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 shadow-2xs" title="ศูนย์จัดการและตั้งค่าลายเซ็นครบทุกตำแหน่ง (ครู, หัวหน้าวัดผล, ผอ. นายอธิการ สุขศรี)">
+          <i class='bx bx-slider-alt text-base leading-none'></i>
         </button>
 
-        <div class="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-
-        <!-- Print Action Button -->
-        <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-4 sm:px-5 bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold shadow-md hover:shadow-lg active:scale-95 border-0 gap-2" title="พิมพ์เอกสาร / บันทึกเป็น PDF">
-          <i class='bx bx-printer text-base'></i>
-          <span class="whitespace-nowrap">พิมพ์เอกสาร</span>
+        <!-- ปุ่มพิมพ์เอกสาร / บันทึก PDF (A4) -->
+        <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-2 font-bold border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
+          <i class='bx bx-printer text-base leading-none'></i>
+          <span>พิมพ์เอกสาร</span>
         </button>
 
-        <!-- Close Modal -->
+        <!-- ปุ่มปิดหน้าต่าง -->
         <button id="btnClosePrintModalAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-slate-100 hover:bg-rose-50 hover:border-rose-200 border border-slate-200/80 text-slate-400 hover:text-rose-600" title="ปิดหน้าต่าง">
           <i class='bx bx-x text-2xl leading-none'></i>
         </button>
@@ -1407,30 +1576,38 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   const titleEl = document.getElementById('printDocModalTitle');
   if (titleEl) titleEl.textContent = modal._currentTitle;
 
-  const sigState = getPrintSignatureState();
-
   const updateToggleBtnUI = () => {
+    const multi = getPrintMultiSignatureState();
     const dot = document.getElementById('sigToggleDot');
     const txt = document.getElementById('sigToggleText');
     const btn = document.getElementById('btnToggleSignatureAction');
     if (!btn || !dot || !txt) return;
 
-    if (sigState.enabled && sigState.hasSignature) {
+    const activeList = [];
+    if (multi.teacher.enabled && multi.teacher.signature) activeList.push('ครู');
+    if (multi.evaluator.enabled && multi.evaluator.signature) activeList.push('วัดผล');
+    if (multi.director.enabled && multi.director.signature) activeList.push('ผอ.');
+    if (multi.parent.enabled && multi.parent.signature) activeList.push('ผู้ปกครอง');
+
+    const hasAnyActive = multi.masterEnabled && activeList.length > 0;
+
+    if (hasAnyActive) {
       btn.className = 'print-topbar-btn px-3.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs gap-2 font-bold';
       dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
-      txt.textContent = 'ลายเซ็นครู: เปิดใช้งาน';
-      btn.title = `กำลังใส่ลายเซ็นของ ${sigState.name} ลงในเอกสารทุกหน้าที่พิมพ์ (คลิกเพื่อปิด)`;
+      txt.textContent = activeList.length >= 3 ? 'ลายเซ็น: ครบทุกฝ่าย (เปิด)' : `ลายเซ็น: เปิด (${activeList.join(', ')})`;
+      btn.title = `กำลังประทับลายเซ็น (${activeList.join(', ')}) ลงในเอกสารทุกหน้าที่พิมพ์ (คลิกเพื่อปิด)`;
     } else {
       btn.className = 'print-topbar-btn px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-2 font-semibold';
       dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0';
-      txt.textContent = 'ลายเซ็นครู: ปิดอยู่';
-      btn.title = 'คลิกเพื่อเปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์';
+      txt.textContent = 'ลายเซ็น: ปิดอยู่';
+      btn.title = 'คลิกเพื่อเปิดการใส่ลายเซ็นลงในเอกสาร';
     }
   };
 
   const refreshPreview = () => {
-    if (sigState.enabled && sigState.signature) {
-      modal._currentHtml = applySignatureToDocument(modal._rawHtml, sigState.signature, sigState.name);
+    const multi = getPrintMultiSignatureState();
+    if (multi.masterEnabled) {
+      modal._currentHtml = applySignatureToDocument(modal._rawHtml, multi);
     } else {
       modal._currentHtml = modal._rawHtml;
     }
@@ -1438,7 +1615,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
     const iframe = document.getElementById('printDocIframe');
     if (iframe) {
-      // ซ่อนแถบเครื่องมือสีดำซ้ำซ้อนภายใน iframe เพื่อความสะอาด สวยงาม ดูเป็นทางการ และเซ็ตสไตล์การพิมพ์คมชัดตรงปก 100%
       const cleanOverride = `
         <style id="cleanPreviewOverride">
           .no-print, .no-print-bar { display: none !important; }
@@ -1458,33 +1634,17 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   };
 
   document.getElementById('btnToggleSignatureAction').onclick = () => {
-    if (!sigState.hasSignature && !sigState.enabled) {
-      // ยังไม่มีลายเซ็นในระบบ ให้เปิดหน้าต่างจัดการทันที
-      showSignatureManagerModal((newSig, newName) => {
-        sigState.signature = newSig;
-        sigState.name = newName;
-        sigState.hasSignature = true;
-        sigState.enabled = true;
-        localStorage.setItem('mhc_sig_enabled', 'true');
-        refreshPreview();
-      });
-      return;
-    }
-    sigState.enabled = !sigState.enabled;
-    localStorage.setItem('mhc_sig_enabled', sigState.enabled ? 'true' : 'false');
+    const multi = getPrintMultiSignatureState();
+    multi.masterEnabled = !multi.masterEnabled;
+    savePrintMultiSignatureState(multi);
     refreshPreview();
     if (typeof showToast === 'function') {
-      showToast(sigState.enabled ? 'เปิดการประทับลายเซ็นครูแล้ว' : 'ปิดการประทับลายเซ็นแล้ว', 'info');
+      showToast(multi.masterEnabled ? 'เปิดการประทับลายเซ็นแล้ว' : 'ปิดการประทับลายเซ็นแล้ว', 'info');
     }
   };
 
   document.getElementById('btnConfigSignatureAction').onclick = () => {
-    showSignatureManagerModal((newSig, newName) => {
-      sigState.signature = newSig;
-      sigState.name = newName;
-      sigState.hasSignature = true;
-      sigState.enabled = true;
-      localStorage.setItem('mhc_sig_enabled', 'true');
+    showSignatureManagerModal(() => {
       refreshPreview();
     });
   };
@@ -1492,7 +1652,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   refreshPreview();
   modal.style.display = 'flex';
 }
-
 function openHTMLDocument(html, docTitle, directUrl) {
   if (!html) return;
   const title = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
