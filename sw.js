@@ -1,11 +1,11 @@
 /* ============================================================
  *  MHC Smart School — Service Worker (PWA & Offline Cache)
  *  โรงเรียนมหาชัยพิทยาคาร | ผู้จัดทำ: ครูก้องนที อุ่นเจริญ
- *  Version: 3.1.8
+ *  Version: 3.1.9
  *  Strategy: Network-First for App Code, Cache-First for Assets
  * ============================================================ */
 
-const CACHE_NAME = 'mhc-smart-school-v3.1.8';
+const CACHE_NAME = 'mhc-smart-school-v3.1.9';
 
 const PRECACHE_ASSETS = [
   './',

@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.1.8',
+  APP_VERSION    : '3.1.9',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -4191,32 +4191,38 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
         <!-- ส่วนลงนามทางการ 4 ฝ่าย -->
         <div class="signature-grid">
           <div class="sig-box">
-            <div style="position:relative; display:inline-block;">
-              ${teacher && teacher.signature ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(teacher.signature)}" style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); max-height:48px; max-width:160px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none;">` : ''}
-              <span>ลงชื่อ .............................................................. ครูผู้สอน</span>
+            <div class="sig-header-label">&nbsp;</div>
+            <div class="sig-stamp-zone">
+              ${teacher && teacher.signature ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(teacher.signature)}" style="max-height:42px; max-width:130px; object-fit:contain; mix-blend-mode:multiply;">` : ''}
             </div>
-            <div class="sig-line">( ${escapeHTMLServer_(teacherName)} )</div>
+            <div class="sig-dots">ลงชื่อ ..........................................</div>
+            <div class="sig-name">( ${escapeHTMLServer_(teacherName)} )</div>
             <div class="sig-title">ตำแหน่ง ${escapeHTMLServer_(teacher.position || 'ครูผู้สอน')}</div>
-            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
           </div>
           <div class="sig-box">
-            <div>ลงชื่อ .............................................................. หัวหน้ากลุ่มสาระฯ</div>
-            <div class="sig-line">( .............................................................. )</div>
+            <div class="sig-header-label">&nbsp;</div>
+            <div class="sig-stamp-zone"></div>
+            <div class="sig-dots">ลงชื่อ ..........................................</div>
+            <div class="sig-name">( .......................................... )</div>
             <div class="sig-title">หัวหน้ากลุ่มสาระการเรียนรู้${escapeHTMLServer_(subject.subject_group || '')}</div>
-            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
           </div>
           <div class="sig-box">
-            <div>ลงชื่อ .............................................................. หัวหน้างานวัดผลฯ</div>
-            <div class="sig-line">( .............................................................. )</div>
+            <div class="sig-header-label">&nbsp;</div>
+            <div class="sig-stamp-zone"></div>
+            <div class="sig-dots">ลงชื่อ ..........................................</div>
+            <div class="sig-name">( .......................................... )</div>
             <div class="sig-title">หัวหน้างานวัดและประเมินผลการศึกษา</div>
-            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
           </div>
           <div class="sig-box">
-            <div><b>อนุมัติผลการเรียน</b></div>
-            <div style="margin-top:4px;">ลงชื่อ ..............................................................</div>
-            <div class="sig-line">( ${escapeHTMLServer_(directorName)} )</div>
+            <div class="sig-header-label"><b>อนุมัติผลการเรียน</b></div>
+            <div class="sig-stamp-zone"></div>
+            <div class="sig-dots">ลงชื่อ ..........................................</div>
+            <div class="sig-name">( ${escapeHTMLServer_(directorName)} )</div>
             <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
           </div>
         </div>
       </div>
@@ -4352,31 +4358,59 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
     .signature-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-top: 18px;
+      gap: 6px;
+      margin-top: 14px;
       text-align: center;
-      font-size: 8.5pt;
+      font-size: 8pt;
+      line-height: 1.3;
       page-break-inside: avoid;
     }
     .sig-box {
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
+      min-width: 0;
     }
-    .sig-line {
-      margin-top: 30px;
+    .sig-header-label {
+      font-size: 8pt;
+      font-weight: 700;
+      min-height: 16px;
       margin-bottom: 2px;
-      border-bottom: 1px dotted #000;
-      width: 85%;
+      white-space: nowrap;
+    }
+    .sig-stamp-zone {
+      position: relative;
+      height: 36px;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .sig-dots {
+      white-space: nowrap;
+      font-size: 7.5pt;
+      color: #000;
+      margin-top: 1px;
+    }
+    .sig-name {
+      white-space: nowrap;
+      font-size: 8pt;
+      color: #000;
+      margin-top: 2px;
     }
     .sig-title {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #334155;
+      margin-top: 1px;
+      line-height: 1.2;
+      white-space: nowrap;
     }
     .sig-date {
-      font-size: 7.5pt;
+      font-size: 7pt;
       color: #64748B;
-      margin-top: 1px;
+      margin-top: 2px;
+      white-space: nowrap;
     }
     @media print {
       .no-print { display: none !important; }
@@ -4670,31 +4704,59 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
     .signature-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-top: 18px;
+      gap: 6px;
+      margin-top: 14px;
       text-align: center;
-      font-size: 8.5pt;
+      font-size: 8pt;
+      line-height: 1.3;
       page-break-inside: avoid;
     }
     .sig-box {
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
+      min-width: 0;
     }
-    .sig-line {
-      margin-top: 30px;
+    .sig-header-label {
+      font-size: 8pt;
+      font-weight: 700;
+      min-height: 16px;
       margin-bottom: 2px;
-      border-bottom: 1px dotted #000;
-      width: 85%;
+      white-space: nowrap;
+    }
+    .sig-stamp-zone {
+      position: relative;
+      height: 36px;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .sig-dots {
+      white-space: nowrap;
+      font-size: 7.5pt;
+      color: #000;
+      margin-top: 1px;
+    }
+    .sig-name {
+      white-space: nowrap;
+      font-size: 8pt;
+      color: #000;
+      margin-top: 2px;
     }
     .sig-title {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #334155;
+      margin-top: 1px;
+      line-height: 1.2;
+      white-space: nowrap;
     }
     .sig-date {
-      font-size: 7.5pt;
+      font-size: 7pt;
       color: #64748B;
-      margin-top: 1px;
+      margin-top: 2px;
+      white-space: nowrap;
     }
     @media print {
       .no-print { display: none !important; }
@@ -4859,33 +4921,38 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
     <!-- ส่วนลงนามทางการ 4 ฝ่าย -->
     <div class="signature-grid">
       <div class="sig-box">
-        <div style="position:relative; display:inline-block;">
-          ${homeroomTeacherSig ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(homeroomTeacherSig)}" style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); max-height:48px; max-width:160px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none;">` : ''}
-          <span>ลงชื่อ .............................................................. ครูประจำชั้น</span>
+        <div class="sig-header-label">&nbsp;</div>
+        <div class="sig-stamp-zone">
+          ${homeroomTeacherSig ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(homeroomTeacherSig)}" style="max-height:42px; max-width:130px; object-fit:contain; mix-blend-mode:multiply;">` : ''}
         </div>
-        <div class="sig-line">( ${escapeHTMLServer_(homeroomTeacher || '..............................................................')} )</div>
+        <div class="sig-dots">ลงชื่อ ..........................................</div>
+        <div class="sig-name">( ${escapeHTMLServer_(homeroomTeacher || '..........................................')} )</div>
         <div class="sig-title">ครูประจำชั้น มัธยมศึกษาปีที่ ${escapeHTMLServer_(student.classroom || '')}</div>
-        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
       </div>
       <div class="sig-box">
-        <div>ลงชื่อ .............................................................. นายทะเบียน</div>
-        <div class="sig-line">( .............................................................. )</div>
+        <div class="sig-header-label">&nbsp;</div>
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots">ลงชื่อ ..........................................</div>
+        <div class="sig-name">( .......................................... )</div>
         <div class="sig-title">หัวหน้างานวัดและประเมินผลการศึกษา</div>
-        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
       </div>
       <div class="sig-box">
-        <div><b>ทราบผลการเรียน</b></div>
-        <div style="margin-top:4px;">ลงชื่อ .............................................................. ผู้ปกครอง</div>
-        <div class="sig-line">( ${escapeHTMLServer_(student.parent_name || '..............................................................')} )</div>
+        <div class="sig-header-label"><b>ทราบผลการเรียน</b></div>
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots">ลงชื่อ ..........................................</div>
+        <div class="sig-name">( ${escapeHTMLServer_(student.parent_name || '..........................................')} )</div>
         <div class="sig-title">ผู้ปกครองนักเรียน</div>
-        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
       </div>
       <div class="sig-box">
-        <div><b>อนุมัติผลการเรียน</b></div>
-        <div style="margin-top:4px;">ลงชื่อ ..............................................................</div>
-        <div class="sig-line">( ${escapeHTMLServer_(directorName)} )</div>
+        <div class="sig-header-label"><b>อนุมัติผลการเรียน</b></div>
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots">ลงชื่อ ..........................................</div>
+        <div class="sig-name">( ${escapeHTMLServer_(directorName)} )</div>
         <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ......</div>
       </div>
     </div>
   </div>
@@ -5828,17 +5895,33 @@ function getTeachersForDropdown(sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
-    return getCachedJson_('teachers_dropdown', 1800, function() {
-      const list = readJsonSheet_('Personnel')
-        .filter(p => p.type === 'teacher' && p.status === 'active')
-        .map(p => ({
-          id: p.id,
-          name: (p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||''),
-          department: p.department,
-          signature: p.signature || ''
-        }));
-      return { status:'success', data:list };
-    });
+    
+    // ล้างแคชเก่าเพื่อป้องกันแคชตกค้าง
+    try { CacheService.getScriptCache().remove('teachers_dropdown'); } catch(_) {}
+
+    const personnel = readJsonSheet_('Personnel') || [];
+    const list = personnel
+      .filter(p => {
+        if (!p) return false;
+        const status = String(p.status || '').trim().toLowerCase();
+        if (status === 'inactive' || status === 'ลาออก' || status === 'เกษียณ') return false;
+        const type = String(p.type || '').trim().toLowerCase();
+        const pos = String(p.position || '').trim();
+        // รวมครูทุกคนในโรงเรียน ไม่ว่าจะเป็น ครู, ครูผู้สอน, ครูชำนาญการ, ครูอัตราจ้าง หรือผู้สอน
+        return type === 'teacher' || type === 'ครู' || pos.includes('ครู') || pos.includes('สอน') || pos.includes('อาจารย์') || (!p.type && !pos.includes('ธุรการ') && !pos.includes('ช่าง') && !pos.includes('นักการ'));
+      })
+      .map(p => ({
+        id: p.id,
+        personnel_id: p.personnel_id || '',
+        name: ((p.prefix || '') + (p.first_name || '') + ' ' + (p.last_name || '')).trim(),
+        position: p.position || 'ครูผู้สอน',
+        department: p.department || '',
+        signature: p.signature || ''
+      }))
+      .filter(p => p.name.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name, 'th'));
+
+    return { status:'success', data:list, total:list.length };
   } catch (e) {
     return { status:'error', message:e.message };
   }

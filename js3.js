@@ -415,16 +415,30 @@ function triggerDirectInAppPrint(html) {
 // Global handler called from top bar or from inside the iframe preview
 window.triggerInAppPrint = function() {
   const modal = document.getElementById('printDocModal');
-  const html = modal && modal._currentHtml;
+  const html = (modal && modal._currentHtml) || '';
   const title = (modal && modal._currentTitle) || 'เอกสาร';
 
   const env = getPrintEnv();
   if (env.isIOSStandalone) {
     // บน iPhone หน้าจอโฮม: เปิดแชร์ไฟล์ PDF เข้าเมนูระบบ iOS ทันที (พร้อมปุ่ม AirPrint และ LINE)
     sharePdfDocument(html, title);
-  } else {
-    triggerDirectInAppPrint(html);
+    return;
   }
+
+  // 1. พิมพ์ตรงจาก iframe ทันที เพื่อให้การแสดงผลตัวอักษร เส้นตาราง ลายเซ็น และหน้ากระดาษ A4 เหมือนกับที่เห็นบนหน้าจอ 100%
+  const iframe = document.getElementById('printDocIframe');
+  if (iframe && iframe.contentWindow) {
+    try {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      return;
+    } catch (e) {
+      console.warn('Iframe print failed, fallback to printArea:', e);
+    }
+  }
+
+  // 2. แผนสำรองสำหรับกรณี iframe ไม่รองรับการ print
+  triggerDirectInAppPrint(html);
 };
 
 /* ============================================================
@@ -613,6 +627,27 @@ function applySignatureToDocument(html, sigDataUrl, teacherName) {
     ];
 
     const isExcluded = (txt) => excludeKeywords.some(kw => txt.includes(kw));
+
+    // A0. อัปเดต .sig-stamp-zone ของ ปพ.5 และ ปพ.6 รูปแบบใหม่
+    const stampZones = doc.querySelectorAll('.sig-stamp-zone');
+    stampZones.forEach(sz => {
+      const box = sz.closest('.sig-box');
+      if (!box) return;
+      const boxTxt = box.textContent || '';
+      if (isExcluded(boxTxt)) return;
+      const isTeacher = teacherKeywords.some(kw => boxTxt.includes(kw)) ||
+                        (teacherName && boxTxt.includes(teacherName)) ||
+                        (box.parentElement && box === box.parentElement.firstElementChild);
+      if (isTeacher) {
+        sz.innerHTML = `<img src="${sigDataUrl}" class="teacher-sig-img" alt="ลายเซ็น" style="max-height:42px; max-width:130px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
+        if (teacherName) {
+          const nameEl = box.querySelector('.sig-name');
+          if (nameEl && /^\(\s*[\.]{5,}\s*\)$/.test(nameEl.textContent.trim())) {
+            nameEl.textContent = `( ${teacherName} )`;
+          }
+        }
+      }
+    });
 
     // A. อัปเดต elements ที่มี .teacher-sig-img อยู่แล้ว
     const existingImgs = doc.querySelectorAll('.teacher-sig-img, img[alt="signature"], img[alt="Signature"]');
@@ -831,11 +866,20 @@ function showSignatureManagerModal(onSaved) {
 
         <!-- Pane: เลือกครูในระบบ -->
         <div id="paneSigSelect" class="hidden space-y-2.5">
-          <label class="block text-xs font-semibold text-slate-700">เลือกครูจากรายชื่อในระบบ MHC</label>
-          <select id="sigTeacherSelect" class="form-select w-full text-xs rounded-lg border-slate-200">
-            <option value="">กำลังโหลดรายชื่อครู...</option>
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-semibold text-slate-700">เลือกครูจากรายชื่อในระบบ MHC</label>
+            <span id="sigTeacherCountBadge" class="text-[11px] text-indigo-600 font-semibold">กำลังโหลดข้อมูล...</span>
+          </div>
+          <div class="relative">
+            <input id="sigTeacherSearchInput" type="text" class="form-input w-full text-xs rounded-lg border-slate-200" placeholder="🔍 พิมพ์ชื่อ หรือ นามสกุล เพื่อค้นหาด่วน...">
+          </div>
+          <select id="sigTeacherSelect" size="6" class="form-select w-full text-xs rounded-lg border-slate-200 focus:border-indigo-500 overflow-y-auto" style="min-height:130px;">
+            <option value="" disabled>กำลังโหลดรายชื่อครู...</option>
           </select>
-          <p class="text-[11px] text-slate-500">ระบบจะดึงลายเซ็นที่ครูได้บันทึกไว้ในระบบประวัติบุคลากรมาใช้งาน</p>
+          <p class="text-[11px] text-slate-500 flex items-center gap-1">
+            <i class='bx bx-info-circle text-xs text-indigo-500'></i>
+            คลิกเลือกชื่อครูในรายการ ระบบจะเลือกลายเซ็นมาใช้ทันที (หากยังไม่มีลายเซ็น สามารถวาดเพิ่มได้ที่แท็บ "วาดลายเซ็นสด")
+          </p>
         </div>
 
         <!-- กล่องตัวอย่างลายเซ็นปัจจุบัน -->
@@ -1026,27 +1070,87 @@ function showSignatureManagerModal(onSaved) {
 
   // Teachers in system
   const teacherSelect = modal.querySelector('#sigTeacherSelect');
-  const populateTeacherSelect = (teachers) => {
-    if (!teachers || teachers.length === 0) {
-      teacherSelect.innerHTML = '<option value="">ไม่พบข้อมูลครู</option>';
-      return;
-    }
-    teacherSelect.innerHTML = '<option value="">-- เลือกครูผู้สอนจากระบบ --</option>' +
-      teachers.map(t => {
-        const tName = t.name || (t.prefix||'') + (t.first_name||'') + ' ' + (t.last_name||'');
-        return `<option value="${escapeHTML(tName)}" data-sig="${escapeHTML(t.signature || '')}">${escapeHTML(tName)} ${t.signature ? '✓ มีลายเซ็น' : '(ยังไม่มีลายเซ็น)'}</option>`;
-      }).join('');
+  const searchInput = modal.querySelector('#sigTeacherSearchInput');
+  const countBadge = modal.querySelector('#sigTeacherCountBadge');
+  let allTeachersList = [];
+
+  const normalizePersonnelToTeachers = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(p => {
+      if (!p) return false;
+      const status = String(p.status || '').trim().toLowerCase();
+      if (status === 'inactive' || status === 'ลาออก' || status === 'เกษียณ') return false;
+      const type = String(p.type || '').trim().toLowerCase();
+      const pos = String(p.position || '').trim();
+      return type === 'teacher' || type === 'ครู' || pos.includes('ครู') || pos.includes('สอน') || pos.includes('อาจารย์') || (!p.type && !pos.includes('ธุรการ') && !pos.includes('ช่าง') && !pos.includes('นักการ'));
+    }).map(p => ({
+      id: p.id,
+      name: (p.name || ((p.prefix || '') + (p.first_name || '') + ' ' + (p.last_name || ''))).trim(),
+      position: p.position || 'ครูผู้สอน',
+      department: p.department || '',
+      signature: p.signature || ''
+    })).filter(p => p.name.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name, 'th'));
   };
 
+  const renderTeacherOptions = (teachers) => {
+    if (!teacherSelect) return;
+    if (!teachers || teachers.length === 0) {
+      teacherSelect.innerHTML = '<option value="" disabled>-- ไม่พบรายชื่อครูที่ตรงกับคำค้นหา --</option>';
+      if (countBadge) countBadge.textContent = 'ไม่พบข้อมูล';
+      return;
+    }
+    const withSig = teachers.filter(t => t.signature).length;
+    if (countBadge) {
+      countBadge.textContent = `ครูทั้งหมด ${teachers.length} ท่าน (มีลายเซ็น ${withSig} ท่าน)`;
+    }
+    teacherSelect.innerHTML = teachers.map(t => {
+      const tName = t.name;
+      const pos = t.position || 'ครูผู้สอน';
+      const hasSig = !!t.signature;
+      const sigTag = hasSig ? '✓ มีลายเซ็น' : '○ รอเพิ่มลายเซ็น';
+      return `<option value="${escapeHTML(tName)}" data-sig="${escapeHTML(t.signature || '')}" data-pos="${escapeHTML(pos)}">${escapeHTML(tName)} (${escapeHTML(pos)}) — ${sigTag}</option>`;
+    }).join('');
+  };
+
+  const applyTeacherSearch = () => {
+    const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
+    if (!q) {
+      renderTeacherOptions(allTeachersList);
+      return;
+    }
+    const filtered = allTeachersList.filter(t => {
+      const n = (t.name || '').toLowerCase();
+      const p = (t.position || '').toLowerCase();
+      const d = (t.department || '').toLowerCase();
+      return n.includes(q) || p.includes(q) || d.includes(q);
+    });
+    renderTeacherOptions(filtered);
+  };
+
+  if (searchInput) {
+    searchInput.oninput = applyTeacherSearch;
+  }
+
+  // 1. Initial populate from client cache/memory if available
+  if (typeof APP !== 'undefined' && Array.isArray(APP.personnel) && APP.personnel.length > 0) {
+    allTeachersList = normalizePersonnelToTeachers(APP.personnel);
+    renderTeacherOptions(allTeachersList);
+  }
+
+  // 2. Fetch fresh teacher list from server (all teaching staff)
   if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run.withSuccessHandler((res) => {
-      if (res && res.status === 'success' && res.data) {
-        populateTeacherSelect(res.data);
-      }
-    }).getTeachersForDropdown(APP.token);
-  } else if (typeof APP !== 'undefined' && APP.personnel) {
-    const list = APP.personnel.filter(p => p.type === 'teacher' && p.status === 'active');
-    populateTeacherSelect(list);
+    google.script.run
+      .withSuccessHandler((res) => {
+        if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+          allTeachersList = res.data;
+          applyTeacherSearch();
+        }
+      })
+      .withFailureHandler((err) => {
+        console.warn('Load teachers dropdown failed:', err);
+      })
+      .getTeachersForDropdown(typeof APP !== 'undefined' ? APP.token : '');
   }
 
   teacherSelect.onchange = () => {
@@ -1062,8 +1166,10 @@ function showSignatureManagerModal(onSaved) {
         badge.textContent = 'พบลายเซ็นในระบบ';
         badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold';
       } else {
+        badge.textContent = 'ยังไม่มีลายเซ็น';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold';
         if (typeof showToast === 'function') {
-          showToast('ครูท่านนี้ยังไม่ได้บันทึกลายเซ็นในระบบ ท่านสามารถวาดหรืออัปโหลดรูปภาพได้', 'warning');
+          showToast(`ครู ${opt.value} ยังไม่มีลายเซ็นในระบบ คุณสามารถคลิกแท็บ "วาดลายเซ็นสด" เพื่อวาดได้ทันที`, 'info');
         }
       }
     }
@@ -1201,12 +1307,17 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
     const iframe = document.getElementById('printDocIframe');
     if (iframe) {
-      // ซ่อนแถบเครื่องมือสีดำซ้ำซ้อนภายใน iframe เพื่อความสะอาด สวยงาม ดูเป็นทางการ
+      // ซ่อนแถบเครื่องมือสีดำซ้ำซ้อนภายใน iframe เพื่อความสะอาด สวยงาม ดูเป็นทางการ และเซ็ตสไตล์การพิมพ์คมชัดตรงปก 100%
       const cleanOverride = `
         <style id="cleanPreviewOverride">
           .no-print, .no-print-bar { display: none !important; }
           body { background: #FFFFFF !important; padding: 0 !important; }
           .print-page-wrapper { margin: 8px auto !important; box-shadow: none !important; padding: 12px 14px !important; }
+          @media print {
+            body { background: #FFFFFF !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .print-page-wrapper { margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; }
+            .no-print, .no-print-bar { display: none !important; }
+          }
         </style>
       `;
       iframe.srcdoc = modal._currentHtml.includes('</head>')
