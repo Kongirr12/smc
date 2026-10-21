@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.1.1',
+  APP_VERSION    : '3.1.2',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -3618,6 +3618,9 @@ function getGradeSheet(subjectId, sessionToken, academicYear, semester, classroo
       .sort((a, b) => {
         const c1 = String(a.classroom || '').localeCompare(String(b.classroom || ''), 'th', { numeric: true });
         if (c1 !== 0) return c1;
+        const n1 = Number(a.student_number || a.student_no || 0);
+        const n2 = Number(b.student_number || b.student_no || 0);
+        if (n1 && n2) return n1 - n2;
         return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
       });
 
@@ -3633,6 +3636,7 @@ function getGradeSheet(subjectId, sessionToken, academicYear, semester, classroo
         grade_id      : g.id || null,
         student_id    : s.id,
         student_code  : s.student_id,
+        student_number: s.student_number || s.student_no || '',
         classroom     : s.classroom,
         prefix        : s.prefix,
         first_name    : s.first_name,
@@ -3645,6 +3649,8 @@ function getGradeSheet(subjectId, sessionToken, academicYear, semester, classroo
         character_result: g.character_result || '',
         reading_result: g.reading_result || '',
         activity_result: g.activity_result || '',
+        q_scores      : g.q_scores || null,
+        l_scores      : g.l_scores || null,
         grade_special : g.grade_special || ''
       };
     });
@@ -3698,7 +3704,16 @@ function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester)
     const recordedBy = auth.user.id;
 
     const inserted = (records || [])
-      .filter(r => r.student_id && (r.score_midterm !== '' || r.score_final !== '' || r.grade_special))
+      .filter(r => r.student_id && (
+        (r.score_midterm !== '' && r.score_midterm != null) ||
+        (r.score_final !== '' && r.score_final != null) ||
+        r.grade_special ||
+        (r.attendance_hours !== '' && r.attendance_hours != null) ||
+        r.character_result ||
+        r.reading_result ||
+        r.q_scores ||
+        r.l_scores
+      ))
       .map(r => {
         const sm = (r.score_midterm === '' || r.score_midterm == null) ? null : Number(r.score_midterm);
         const sf = (r.score_final   === '' || r.score_final   == null) ? null : Number(r.score_final);
@@ -3723,6 +3738,26 @@ function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester)
           }
         }
 
+        // คำนวณสรุปคุณลักษณะ (Q) อัตโนมัติถ้ามี q_scores
+        let charRes = r.character_result || '';
+        if (!charRes && r.q_scores && typeof r.q_scores === 'object') {
+          const qVals = Object.values(r.q_scores).map(Number).filter(v => !isNaN(v));
+          if (qVals.length > 0) {
+            const avg = qVals.reduce((a, b) => a + b, 0) / qVals.length;
+            charRes = avg >= 2.5 ? '3' : (avg >= 1.5 ? '2' : (avg >= 1 ? '1' : '0'));
+          }
+        }
+
+        // คำนวณสรุปอ่านคิดวิเคราะห์ (L) อัตโนมัติถ้ามี l_scores
+        let readRes = r.reading_result || '';
+        if (!readRes && r.l_scores && typeof r.l_scores === 'object') {
+          const lVals = Object.values(r.l_scores).map(Number).filter(v => !isNaN(v));
+          if (lVals.length > 0) {
+            const avg = lVals.reduce((a, b) => a + b, 0) / lVals.length;
+            readRes = avg >= 2.5 ? '3' : (avg >= 1.5 ? '2' : (avg >= 1 ? '1' : '0'));
+          }
+        }
+
         return {
           id            : r.grade_id || generateId(),
           _kind         : 'grade',
@@ -3741,9 +3776,11 @@ function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester)
           attendance_hours: attH,
           total_hours   : totH,
           attendance_pct: attPct,
-          character_result: r.character_result || '',
-          reading_result: r.reading_result || '',
+          character_result: charRes,
+          reading_result: readRes,
           activity_result: r.activity_result || '',
+          q_scores      : r.q_scores || null,
+          l_scores      : r.l_scores || null,
           recorded_by   : recordedBy,
           created_at    : now,
           updated_at    : now

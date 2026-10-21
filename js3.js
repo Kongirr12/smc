@@ -524,6 +524,7 @@ function normalizeGradeLevel(str) {
 
 const AcademicState = {
   tab: 'subjects',     // 'subjects' | 'grades' | 'gpa'
+  sgsTab: 'S',         // 'S' (ผลการเรียน) | 'Q' (คุณลักษณะ) | 'L' (อ่านคิดวิเคราะห์) | 'ALL' (ตารางรวม)
   page: 1,
   search: '',
   subject_group: '',
@@ -1504,6 +1505,218 @@ function loadGradeSheet() {
     .getGradeSheet(subjectId, APP.token, year, sem, classroom);
 }
 
+function switchSgsGradeTab(tab) {
+  AcademicState.sgsTab = tab;
+  renderGradeSheetTable();
+}
+
+function calculateAvgQL(scoresObj, count) {
+  if (!scoresObj) return '';
+  let sum = 0;
+  let filled = 0;
+  const prefix = count === 8 ? 'Q' : 'L';
+  for (let i = 1; i <= count; i++) {
+    const v = scoresObj[prefix + i];
+    if (v !== '' && v != null && !isNaN(v)) {
+      sum += Number(v);
+      filled++;
+    }
+  }
+  if (filled === 0) return '';
+  const avg = sum / filled;
+  if (avg >= 2.5) return '3';
+  if (avg >= 1.5) return '2';
+  if (avg >= 1.0) return '1';
+  return '0';
+}
+
+function quickFillQ(val) {
+  if (!AcademicState.gradeRows || AcademicState.gradeRows.length === 0) return;
+  AcademicState.gradeRows.forEach((r, i) => {
+    r.q_scores = r.q_scores || {};
+    for (let q = 1; q <= 8; q++) {
+      r.q_scores['Q' + q] = val === '' ? '' : Number(val);
+      const inp = document.querySelector(`.g-q[data-row="${i}"][data-q="${q}"]`);
+      if (inp) inp.value = val;
+    }
+    r.character_result = val === '' ? '' : String(val);
+    const sumEl = document.querySelector(`.g-q-summary[data-row="${i}"]`);
+    if (sumEl) sumEl.value = r.character_result;
+  });
+  if (val !== '') {
+    const textMap = { 3: 'ดีเยี่ยม (3)', 2: 'ดี (2)', 1: 'ผ่าน (1)', 0: 'ไม่ผ่าน (0)' };
+    showToast('success', `กรอกคุณลักษณะเป็น "${textMap[val] || val}" ให้ทุกคนเรียบร้อย`);
+  } else {
+    showToast('info', 'ล้างค่าคุณลักษณะทั้งหมดแล้ว');
+  }
+}
+
+function quickFillL(val) {
+  if (!AcademicState.gradeRows || AcademicState.gradeRows.length === 0) return;
+  AcademicState.gradeRows.forEach((r, i) => {
+    r.l_scores = r.l_scores || {};
+    for (let l = 1; l <= 5; l++) {
+      r.l_scores['L' + l] = val === '' ? '' : Number(val);
+      const inp = document.querySelector(`.g-l[data-row="${i}"][data-q="${l}"]`);
+      if (inp) inp.value = val;
+    }
+    r.reading_result = val === '' ? '' : String(val);
+    const sumEl = document.querySelector(`.g-l-summary[data-row="${i}"]`);
+    if (sumEl) sumEl.value = r.reading_result;
+  });
+  if (val !== '') {
+    const textMap = { 3: 'ดีเยี่ยม (3)', 2: 'ดี (2)', 1: 'ผ่าน (1)', 0: 'ไม่ผ่าน (0)' };
+    showToast('success', `กรอกการอ่าน คิดวิเคราะห์เป็น "${textMap[val] || val}" ให้ทุกคนเรียบร้อย`);
+  } else {
+    showToast('info', 'ล้างค่าอ่านคิดวิเคราะห์ทั้งหมดแล้ว');
+  }
+}
+
+function quickFillAttendance(pct) {
+  if (!AcademicState.gradeRows || AcademicState.gradeRows.length === 0) return;
+  const defTot = AcademicState.currentSubject?.total_hours || 40;
+  AcademicState.gradeRows.forEach((r, i) => {
+    const tot = Number(r.total_hours) || defTot;
+    const att = Math.round((tot * (pct / 100)) * 10) / 10;
+    r.attendance_hours = att;
+    r.total_hours = tot;
+    const attInp = document.querySelector(`.g-att[data-row="${i}"]`);
+    const totInp = document.querySelector(`.g-tot[data-row="${i}"]`);
+    if (attInp) attInp.value = att;
+    if (totInp) totInp.value = tot;
+    recalcGradeRow(i);
+  });
+  showToast('success', `ตั้งค่าเวลาเรียน ${pct}% ให้ทุกคนเรียบร้อย`);
+}
+
+function recalcQRow(i) {
+  const row = AcademicState.gradeRows[i];
+  if (!row) return;
+  row.q_scores = row.q_scores || {};
+  for (let q = 1; q <= 8; q++) {
+    const inp = document.querySelector(`.g-q[data-row="${i}"][data-q="${q}"]`);
+    if (inp) {
+      const val = inp.value.trim();
+      row.q_scores['Q' + q] = val === '' ? '' : Number(val);
+    }
+  }
+  const summaryEl = document.querySelector(`.g-q-summary[data-row="${i}"]`);
+  const autoVal = calculateAvgQL(row.q_scores, 8);
+  if (summaryEl) {
+    if (summaryEl.dataset.manual !== 'true') {
+      summaryEl.value = autoVal;
+      row.character_result = autoVal;
+    } else {
+      row.character_result = summaryEl.value;
+    }
+  } else {
+    row.character_result = autoVal;
+  }
+}
+
+function recalcLRow(i) {
+  const row = AcademicState.gradeRows[i];
+  if (!row) return;
+  row.l_scores = row.l_scores || {};
+  for (let l = 1; l <= 5; l++) {
+    const inp = document.querySelector(`.g-l[data-row="${i}"][data-q="${l}"]`);
+    if (inp) {
+      const val = inp.value.trim();
+      row.l_scores['L' + l] = val === '' ? '' : Number(val);
+    }
+  }
+  const summaryEl = document.querySelector(`.g-l-summary[data-row="${i}"]`);
+  const autoVal = calculateAvgQL(row.l_scores, 5);
+  if (summaryEl) {
+    if (summaryEl.dataset.manual !== 'true') {
+      summaryEl.value = autoVal;
+      row.reading_result = autoVal;
+    } else {
+      row.reading_result = summaryEl.value;
+    }
+  } else {
+    row.reading_result = autoVal;
+  }
+}
+
+function recalcGradeRow(i) {
+  const get = sel => document.querySelector(`#gradeTable .g-${sel}[data-row="${i}"]`);
+  const row = AcademicState.gradeRows[i];
+  if (!row) return;
+
+  const midEl = get('midterm');
+  const finEl = get('final');
+  const attEl = get('att');
+  const totEl = get('tot');
+  const specialEl = get('special');
+
+  const mid = midEl ? parseFloat(midEl.value) : (row.score_midterm !== '' && row.score_midterm != null ? parseFloat(row.score_midterm) : NaN);
+  const fin = finEl ? parseFloat(finEl.value) : (row.score_final !== '' && row.score_final != null ? parseFloat(row.score_final) : NaN);
+  const att = attEl ? parseFloat(attEl.value) : (row.attendance_hours !== '' && row.attendance_hours != null ? parseFloat(row.attendance_hours) : NaN);
+  const tot = totEl ? parseFloat(totEl.value) : (row.total_hours !== '' && row.total_hours != null ? parseFloat(row.total_hours) : NaN);
+  const special = specialEl ? specialEl.value : (row.grade_special || '');
+
+  let total = null;
+  if (!isNaN(mid) && !isNaN(fin)) total = mid + fin;
+  else if (!isNaN(mid)) total = mid;
+  else if (!isNaN(fin)) total = fin;
+
+  const totalEl = get('total');
+  if (totalEl) totalEl.textContent = (total === null) ? '-' : Number(total).toFixed(total % 1 ? 1 : 0);
+
+  let pct = null;
+  if (!isNaN(att) && !isNaN(tot) && tot > 0) pct = Math.round((att / tot) * 1000) / 10;
+  const pctEl = get('pct');
+  if (pctEl) {
+    pctEl.textContent = (pct === null) ? '-' : pct + '%';
+    pctEl.className = 'grade-output g-pct ' + (pct === null ? '' : (pct < 80 ? 'grade-fail' : 'grade-pass'));
+  }
+
+  let grade = '-';
+  if (special) {
+    grade = special;
+    const gEl = get('grade');
+    if (gEl) {
+      gEl.className = 'grade-output g-grade grade-fail';
+      gEl.textContent = grade;
+    }
+  } else if (pct !== null && pct < 80) {
+    grade = 'มส';
+    const gEl = get('grade');
+    if (gEl) {
+      gEl.className = 'grade-output g-grade grade-fail';
+      gEl.textContent = grade;
+    }
+  } else if (total !== null) {
+    if (total >= 80) grade = '4';
+    else if (total >= 75) grade = '3.5';
+    else if (total >= 70) grade = '3';
+    else if (total >= 65) grade = '2.5';
+    else if (total >= 60) grade = '2';
+    else if (total >= 55) grade = '1.5';
+    else if (total >= 50) grade = '1';
+    else grade = '0';
+    const gEl = get('grade');
+    if (gEl) {
+      gEl.className = 'grade-output g-grade ' + (Number(grade) >= 1 ? 'grade-pass' : 'grade-fail');
+      gEl.textContent = grade;
+    }
+  } else {
+    const gEl = get('grade');
+    if (gEl) {
+      gEl.className = 'grade-output g-grade';
+      gEl.textContent = '-';
+    }
+  }
+
+  // sync state
+  if (midEl) row.score_midterm = isNaN(mid) ? '' : mid;
+  if (finEl) row.score_final   = isNaN(fin) ? '' : fin;
+  if (attEl) row.attendance_hours = isNaN(att) ? '' : att;
+  if (totEl) row.total_hours      = isNaN(tot) ? '' : tot;
+  if (specialEl) row.grade_special = special;
+}
+
 function renderGradeSheetTable() {
   const area = document.getElementById('gradesArea');
   if (!area) return;
@@ -1516,157 +1729,617 @@ function renderGradeSheetTable() {
     return;
   }
 
+  const currentTab = AcademicState.sgsTab || 'S';
   const roomDisplay = AcademicState.currentSubjectClassroom 
     ? ` · ห้อง <b>${escapeHTML(AcademicState.currentSubjectClassroom)}</b>` 
     : ' · <b>ทุกห้องเรียน</b>';
 
+  // Quick toolbar HTML depending on active tab
+  let quickToolbarHtml = '';
+  if (currentTab === 'S') {
+    quickToolbarHtml = `
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg mb-3 text-xs text-blue-900">
+        <div class="flex items-center gap-1.5 font-medium">
+          <i class='bx bx-info-circle text-blue-600 text-base'>\x3c/i>
+          <span><b>โครงสร้างคะแนน SGS:</b> ระหว่างภาค (เต็ม ${subj.midterm_weight||70}) · ปลายภาค (เต็ม ${subj.final_weight||30}) · รวม 100 คะแนน · เวลาเรียนต้องไม่น้อยกว่า 80%</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-slate-500 font-medium">เครื่องมือด่วน:</span>
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-blue-100 border border-blue-300 rounded font-semibold text-blue-800 transition-colors shadow-xs" onclick="quickFillAttendance(100)">
+            ⚡ ตั้งเวลาเรียน 100% ทั้งหมด
+          </button>
+        </div>
+      </div>
+    `;
+  } else if (currentTab === 'Q') {
+    quickToolbarHtml = `
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-amber-50/80 border border-amber-200 rounded-lg mb-3 text-xs text-amber-900">
+        <div class="flex items-center gap-1.5 font-medium">
+          <i class='bx bx-star text-amber-600 text-base'>\x3c/i>
+          <span><b>คุณลักษณะอันพึงประสงค์ (Q1 - Q8):</b> 0 = ไม่ผ่าน, 1 = ผ่าน, 2 = ดี, 3 = ดีเยี่ยม (สอดคล้องกับระบบ SGS และ AutoGrade)</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-slate-500 font-medium">กรอกด่วน:</span>
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded font-semibold text-amber-800 transition-colors shadow-xs" onclick="quickFillQ(3)">
+            ⚡ ให้ 3 (ดีเยี่ยม) ทั้งหมด
+          </button>
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded font-semibold text-amber-800 transition-colors shadow-xs" onclick="quickFillQ(2)">
+            ⚡ ให้ 2 (ดี) ทั้งหมด
+          </button>
+          <button type="button" class="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-600 transition-colors" onclick="quickFillQ('')">
+            🧹 ล้างค่า
+          </button>
+        </div>
+      </div>
+    `;
+  } else if (currentTab === 'L') {
+    quickToolbarHtml = `
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-indigo-50/80 border border-indigo-200 rounded-lg mb-3 text-xs text-indigo-900">
+        <div class="flex items-center gap-1.5 font-medium">
+          <i class='bx bx-book-reader text-indigo-600 text-base'>\x3c/i>
+          <span><b>การอ่าน คิดวิเคราะห์ และเขียน (L1 - L5):</b> 0 = ไม่ผ่าน, 1 = ผ่าน, 2 = ดี, 3 = ดีเยี่ยม (สอดคล้องกับระบบ SGS และ AutoGrade)</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-slate-500 font-medium">กรอกด่วน:</span>
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 rounded font-semibold text-indigo-800 transition-colors shadow-xs" onclick="quickFillL(3)">
+            ⚡ ให้ 3 (ดีเยี่ยม) ทั้งหมด
+          </button>
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 rounded font-semibold text-indigo-800 transition-colors shadow-xs" onclick="quickFillL(2)">
+            ⚡ ให้ 2 (ดี) ทั้งหมด
+          </button>
+          <button type="button" class="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-600 transition-colors" onclick="quickFillL('')">
+            🧹 ล้างค่า
+          </button>
+        </div>
+      </div>
+    `;
+  } else if (currentTab === 'ALL') {
+    quickToolbarHtml = `
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-lg mb-3 text-xs text-emerald-900">
+        <div class="flex items-center gap-1.5 font-medium">
+          <i class='bx bx-grid-alt text-emerald-600 text-base'>\x3c/i>
+          <span><b>ตารางรวมมาตรฐาน SGS:</b> แสดงคะแนนระหว่างภาค, ปลายภาค, คะแนนรวม, เกรด, คุณลักษณะ (Q) และอ่านคิดวิเคราะห์ (L) ในตารางเดียว</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Header Table Columns HTML
+  let theadColsHtml = '';
+  if (currentTab === 'S') {
+    theadColsHtml = `
+      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:90px;" title="คะแนนระหว่างภาค เต็ม ${subj.midterm_weight||70}">ระหว่างภาค (${subj.midterm_weight||70})\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:90px;" title="คะแนนปลายภาค เต็ม ${subj.final_weight||30}">ปลายภาค (${subj.final_weight||30})\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:70px;">รวม (100)\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:70px;">ชม.เรียน\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:65px;">ชม.รวม\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:65px;">%\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:65px;">เกรด\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:80px;">ผลพิเศษ\x3c/th>
+    `;
+  } else if (currentTab === 'Q') {
+    theadColsHtml = `
+      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="รักชาติ ศาสน์ กษัตริย์">Q1<div class="text-[9px] font-normal text-slate-400">รักชาติ\x3c/div>\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="ซื่อสัตย์สุจริต">Q2<div class="text-[9px] font-normal text-slate-400">ซื่อสัตย์\x3c/div>\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="มีวินัย">Q3<div class="text-[9px] font-normal text-slate-400">มีวินัย\x3c/div>\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="ใฝ่เรียนรู้">Q4<div class="text-[9px] font-normal text-slate-400">ใฝ่รู้\x3c/div>\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="อยู่อย่างพอเพียง">Q5<div class="text-[9px] font-normal text-slate-400">พอเพียง\x3c/div>\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="มุ่งมั่นในการทำงาน">Q6<div class="text-[9px] font-normal text-slate-400">มุ่งมั่น\x3c/div>\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="รักความเป็นไทย">Q7<div class="text-[9px] font-normal text-slate-400">รักไทย\x3c/div>\x3c/th>
+      <th class="px-1 py-2.5 text-center" style="width:50px;" title="มีจิตสาธารณะ">Q8<div class="text-[9px] font-normal text-slate-400">สาธารณะ\x3c/div>\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:95px;" title="สรุปผลคุณลักษณะ (0-3)">สรุปผล Q\x3c/th>
+    `;
+  } else if (currentTab === 'L') {
+    theadColsHtml = `
+      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
+      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การอ่านเพื่อค้นคว้า">L1<div class="text-[9px] font-normal text-slate-400">การอ่าน\x3c/div>\x3c/th>
+      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การคิดวิเคราะห์">L2<div class="text-[9px] font-normal text-slate-400">คิดวิเคราะห์\x3c/div>\x3c/th>
+      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การสังเคราะห์/จับประเด็น">L3<div class="text-[9px] font-normal text-slate-400">จับประเด็น\x3c/div>\x3c/th>
+      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การแสดงความคิดเห็น/วิจารณญาณ">L4<div class="text-[9px] font-normal text-slate-400">วิจารณญาณ\x3c/div>\x3c/th>
+      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การเขียนถ่ายทอด/สื่อความ">L5<div class="text-[9px] font-normal text-slate-400">สื่อความ\x3c/div>\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:95px;" title="สรุปผลการอ่านคิดวิเคราะห์ (0-3)">สรุปผล L\x3c/th>
+    `;
+  } else if (currentTab === 'ALL') {
+    theadColsHtml = `
+      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:85px;">ระหว่างภาค\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:85px;">ปลายภาค\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:65px;">รวม\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:60px;">เกรด\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:90px;">คุณลักษณะ (Q)\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:95px;">อ่านวิเคราะห์ (L)\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:65px;">% เวลา\x3c/th>
+      <th class="px-2 py-2.5 text-center" style="width:75px;">ผลพิเศษ\x3c/th>
+    `;
+  }
+
+  // Row Generation HTML
+  const rowsHtml = rows.map((r, i) => {
+    const q = r.q_scores || {};
+    const l = r.l_scores || {};
+    const qSummary = r.character_result || (r.q_scores ? calculateAvgQL(r.q_scores, 8) : '');
+    const lSummary = r.reading_result || (r.l_scores ? calculateAvgQL(r.l_scores, 5) : '');
+
+    const commonCols = `
+      <td class="px-2 py-2 text-center text-slate-500 font-medium">${r.student_number || (i+1)}\x3c/td>
+      <td class="px-2 py-2 text-center font-mono text-xs font-semibold text-slate-700 bg-slate-50/50">${escapeHTML(r.student_code || r.student_id || '-')}\x3c/td>
+      <td class="px-2 py-2">
+        <div class="flex items-center gap-2">
+          ${avatarHTML(r.photo, r.first_name, 28)}
+          <div>
+            <div class="font-semibold text-slate-800 text-xs">
+              ${escapeHTML((r.prefix||'')+(r.first_name||'')+' '+(r.last_name||''))}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td class="px-2 py-2 text-center text-xs text-slate-600 font-medium">${escapeHTML(r.classroom || '-')}\x3c/td>
+    `;
+
+    if (currentTab === 'S') {
+      return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" data-row="${i}">
+          ${commonCols}
+          <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-midterm" data-row="${i}" value="${r.score_midterm===''||r.score_midterm==null?'':r.score_midterm}">\x3c/td>
+          <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-final"   data-row="${i}" value="${r.score_final===''||r.score_final==null?'':r.score_final}">\x3c/td>
+          <td class="px-1 py-1"><div class="grade-output g-total" data-row="${i}">-\x3c/div>\x3c/td>
+          <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-att" data-row="${i}" value="${r.attendance_hours===''||r.attendance_hours==null?'':r.attendance_hours}">\x3c/td>
+          <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-tot" data-row="${i}" value="${r.total_hours===''||r.total_hours==null?'':r.total_hours}">\x3c/td>
+          <td class="px-1 py-1"><div class="grade-output g-pct" data-row="${i}">-\x3c/div>\x3c/td>
+          <td class="px-1 py-1"><div class="grade-output g-grade" data-row="${i}">-\x3c/div>\x3c/td>
+          <td class="px-1 py-1">
+            <select class="grade-input g-special" data-row="${i}">
+              <option value="">-\x3c/option>
+              <option value="มส" ${r.grade_special==='มส'?'selected':''}>มส\x3c/option>
+              <option value="มผ" ${r.grade_special==='มผ'?'selected':''}>มผ\x3c/option>
+              <option value="ร"  ${r.grade_special==='ร'?'selected':''}>ร\x3c/option>
+            \x3c/select>
+          \x3c/td>
+        \x3c/tr>
+      `;
+    } else if (currentTab === 'Q') {
+      const qInputs = [1, 2, 3, 4, 5, 6, 7, 8].map(num => {
+        const val = q['Q' + num] != null ? q['Q' + num] : (r.character_result || '');
+        return `<td class="px-1 py-1"><input type="number" min="0" max="3" step="1" class="grade-input g-q" data-row="${i}" data-q="${num}" value="${val}">\x3c/td>`;
+      }).join('');
+
+      return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" data-row="${i}">
+          ${commonCols}
+          ${qInputs}
+          <td class="px-1 py-1">
+            <select class="ql-select g-q-summary" data-row="${i}" onchange="this.dataset.manual='true'; AcademicState.gradeRows[${i}].character_result = this.value;">
+              <option value="">-\x3c/option>
+              <option value="3" ${qSummary==='3'?'selected':''}>3 (ดีเยี่ยม)\x3c/option>
+              <option value="2" ${qSummary==='2'?'selected':''}>2 (ดี)\x3c/option>
+              <option value="1" ${qSummary==='1'?'selected':''}>1 (ผ่าน)\x3c/option>
+              <option value="0" ${qSummary==='0'?'selected':''}>0 (ไม่ผ่าน)\x3c/option>
+            \x3c/select>
+          \x3c/td>
+        \x3c/tr>
+      `;
+    } else if (currentTab === 'L') {
+      const lInputs = [1, 2, 3, 4, 5].map(num => {
+        const val = l['L' + num] != null ? l['L' + num] : (r.reading_result || '');
+        return `<td class="px-1 py-1"><input type="number" min="0" max="3" step="1" class="grade-input g-l" data-row="${i}" data-q="${num}" value="${val}">\x3c/td>`;
+      }).join('');
+
+      return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" data-row="${i}">
+          ${commonCols}
+          ${lInputs}
+          <td class="px-1 py-1">
+            <select class="ql-select g-l-summary" data-row="${i}" onchange="this.dataset.manual='true'; AcademicState.gradeRows[${i}].reading_result = this.value;">
+              <option value="">-\x3c/option>
+              <option value="3" ${lSummary==='3'?'selected':''}>3 (ดีเยี่ยม)\x3c/option>
+              <option value="2" ${lSummary==='2'?'selected':''}>2 (ดี)\x3c/option>
+              <option value="1" ${lSummary==='1'?'selected':''}>1 (ผ่าน)\x3c/option>
+              <option value="0" ${lSummary==='0'?'selected':''}>0 (ไม่ผ่าน)\x3c/option>
+            \x3c/select>
+          \x3c/td>
+        \x3c/tr>
+      `;
+    } else if (currentTab === 'ALL') {
+      return `
+        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" data-row="${i}">
+          ${commonCols}
+          <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-midterm" data-row="${i}" value="${r.score_midterm===''||r.score_midterm==null?'':r.score_midterm}">\x3c/td>
+          <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-final"   data-row="${i}" value="${r.score_final===''||r.score_final==null?'':r.score_final}">\x3c/td>
+          <td class="px-1 py-1"><div class="grade-output g-total" data-row="${i}">-\x3c/div>\x3c/td>
+          <td class="px-1 py-1"><div class="grade-output g-grade" data-row="${i}">-\x3c/div>\x3c/td>
+          <td class="px-1 py-1">
+            <select class="ql-select g-q-summary" data-row="${i}" onchange="this.dataset.manual='true'; AcademicState.gradeRows[${i}].character_result = this.value;">
+              <option value="">-\x3c/option>
+              <option value="3" ${qSummary==='3'?'selected':''}>3 (ดีเยี่ยม)\x3c/option>
+              <option value="2" ${qSummary==='2'?'selected':''}>2 (ดี)\x3c/option>
+              <option value="1" ${qSummary==='1'?'selected':''}>1 (ผ่าน)\x3c/option>
+              <option value="0" ${qSummary==='0'?'selected':''}>0 (ไม่ผ่าน)\x3c/option>
+            \x3c/select>
+          \x3c/td>
+          <td class="px-1 py-1">
+            <select class="ql-select g-l-summary" data-row="${i}" onchange="this.dataset.manual='true'; AcademicState.gradeRows[${i}].reading_result = this.value;">
+              <option value="">-\x3c/option>
+              <option value="3" ${lSummary==='3'?'selected':''}>3 (ดีเยี่ยม)\x3c/option>
+              <option value="2" ${lSummary==='2'?'selected':''}>2 (ดี)\x3c/option>
+              <option value="1" ${lSummary==='1'?'selected':''}>1 (ผ่าน)\x3c/option>
+              <option value="0" ${lSummary==='0'?'selected':''}>0 (ไม่ผ่าน)\x3c/option>
+            \x3c/select>
+          \x3c/td>
+          <td class="px-1 py-1"><div class="grade-output g-pct" data-row="${i}">-\x3c/div>\x3c/td>
+          <td class="px-1 py-1">
+            <select class="grade-input g-special" data-row="${i}">
+              <option value="">-\x3c/option>
+              <option value="มส" ${r.grade_special==='มส'?'selected':''}>มส\x3c/option>
+              <option value="มผ" ${r.grade_special==='มผ'?'selected':''}>มผ\x3c/option>
+              <option value="ร"  ${r.grade_special==='ร'?'selected':''}>ร\x3c/option>
+            \x3c/select>
+          \x3c/td>
+        \x3c/tr>
+      `;
+    }
+  }).join('');
+
   area.innerHTML = `
+    <!-- หัวข้อมูลรายวิชา -->
     <div class="p-3 rounded-lg mb-3" style="background:#FAF0F2;border:1px solid #BFDBFE;">
-      <div class="font-semibold text-slate-800">
+      <div class="font-semibold text-slate-800 text-sm md:text-base">
         ${escapeHTML(subj.subject_code||'')} · ${escapeHTML(subj.subject_name||'')}
       </div>
       <div class="text-xs text-slate-600 mt-1">
         ระดับชั้น <b>${escapeHTML(subj.grade_level||'-')}</b>${roomDisplay} · เทอม ${escapeHTML(subj.semester||'-')} · ปีการศึกษา ${escapeHTML(subj.academic_year||'-')}
-        · ระหว่างภาค <b>${subj.midterm_weight||70}\x3c/b> · ปลายภาค <b>${subj.final_weight||30}\x3c/b>
+        · ระหว่างภาค <b>${subj.midterm_weight||70}\x3c/b> · ปลายภาค <b>${subj.final_weight||30}\x3c/b> · รวม <b>100\x3c/b> คะแนน
       </div>
     </div>
 
-    <div class="flex flex-wrap gap-2 justify-end mb-2">
-      <button class="btn btn-light" onclick="printPP5()">
-        <i class='bx bx-printer'>\x3c/i> พิมพ์ ปพ.5
-      </button>
-      <button class="btn btn-blue" onclick="saveGradeSheet()">
-        <i class='bx bx-save'>\x3c/i> บันทึกคะแนน
-      </button>
+    <!-- แถบสลับแท็บ SGS + ปุ่ม Actions -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <!-- ตัวสลับแท็บ SGS -->
+      <div class="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+        <button type="button" class="sgs-tab-btn ${currentTab==='S'?'active':''}" onclick="switchSgsGradeTab('S')">
+          <i class='bx bx-edit-alt mr-1 text-blue-600'>\x3c/i> 📝 ผลการเรียน (SGS)
+        </button>
+        <button type="button" class="sgs-tab-btn ${currentTab==='Q'?'active':''}" onclick="switchSgsGradeTab('Q')">
+          <i class='bx bx-star mr-1 text-amber-500'>\x3c/i> 🌟 คุณลักษณะ (Q1-Q8)
+        </button>
+        <button type="button" class="sgs-tab-btn ${currentTab==='L'?'active':''}" onclick="switchSgsGradeTab('L')">
+          <i class='bx bx-book-reader mr-1 text-indigo-500'>\x3c/i> 📚 อ่าน คิดวิเคราะห์ (L1-L5)
+        </button>
+        <button type="button" class="sgs-tab-btn ${currentTab==='ALL'?'active':''}" onclick="switchSgsGradeTab('ALL')">
+          <i class='bx bx-grid-alt mr-1 text-emerald-600'>\x3c/i> 📋 ตารางรวม
+        </button>
+      </div>
+
+      <!-- ปุ่มดำเนินการหลัก -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button class="btn btn-outline-success text-xs font-semibold" onclick="exportPP5ToExcel()" title="ส่งออกไฟล์ Excel (.xlsx) รูปแบบตรงกับโปรแกรม SGS AutoGrade และสรุป ปพ.5">
+          <i class='bx bx-file mr-1 text-emerald-600'>\x3c/i> โหลด Excel (SGS .xlsx)
+        </button>
+        <button class="btn btn-light text-xs font-semibold" onclick="exportPP5ToCsv()" title="ส่งออกไฟล์ CSV (.csv) สำหรับระบบ SGS">
+          <i class='bx bx-table mr-1 text-blue-600'>\x3c/i> โหลด CSV (SGS .csv)
+        </button>
+        <button class="btn btn-light text-xs font-semibold" onclick="printPP5()">
+          <i class='bx bx-printer mr-1'>\x3c/i> พิมพ์ ปพ.5
+        </button>
+        <button class="btn btn-blue text-xs font-semibold shadow-sm" onclick="saveGradeSheet()">
+          <i class='bx bx-save mr-1'>\x3c/i> บันทึกคะแนน
+        </button>
+      </div>
     </div>
 
-    <div style="overflow-x:auto;">
+    <!-- แถบเครื่องมือช่วยกรอกด่วนตามแท็บ -->
+    ${quickToolbarHtml}
+
+    <!-- ตารางคะแนน -->
+    <div style="overflow-x:auto;" class="rounded-xl border border-slate-200 bg-white shadow-xs">
       <table class="min-w-full text-sm" id="gradeTable">
         <thead>
-          <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
-            <th class="px-2 py-2.5 text-center rounded-l-lg" style="width:40px;">ที่\x3c/th>
-            <th class="px-2 py-2.5 text-left">นักเรียน\x3c/th>
-            <th class="px-2 py-2.5 text-center" style="width:90px;">ระหว่างภาค\x3c/th>
-            <th class="px-2 py-2.5 text-center" style="width:90px;">ปลายภาค\x3c/th>
-            <th class="px-2 py-2.5 text-center" style="width:70px;">รวม\x3c/th>
-            <th class="px-2 py-2.5 text-center" style="width:75px;">ชม.เรียน\x3c/th>
-            <th class="px-2 py-2.5 text-center" style="width:65px;">ชม.รวม\x3c/th>
-            <th class="px-2 py-2.5 text-center" style="width:65px;">%\x3c/th>
-            <th class="px-2 py-2.5 text-center" style="width:65px;">เกรด\x3c/th>
-            <th class="px-2 py-2.5 text-center rounded-r-lg" style="width:85px;">พิเศษ\x3c/th>
+          <tr class="bg-slate-50/90 text-slate-600 text-xs uppercase border-b border-slate-200">
+            ${theadColsHtml}
           \x3c/tr>
         \x3c/thead>
         <tbody>
-          ${rows.map((r, i) => `
-            <tr class="border-b border-slate-100" data-row="${i}">
-              <td class="px-2 py-2 text-center text-slate-500">${i+1}\x3c/td>
-              <td class="px-2 py-2">
-                <div class="flex items-center gap-2">
-                  ${avatarHTML(r.photo, r.first_name, 28)}
-                  <div>
-                    <div class="font-semibold text-slate-800 text-xs">
-                      ${escapeHTML((r.prefix||'')+(r.first_name||'')+' '+(r.last_name||''))}
-                      ${r.classroom ? `<span class="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-normal">ห้อง ${escapeHTML(r.classroom)}</span>` : ''}
-                    </div>
-                    <div class="text-xs text-slate-400 font-mono">${escapeHTML(r.student_code||'')}\x3c/div>
-                  </div>
-                </div>
-              </td>
-              <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-midterm" data-row="${i}" value="${r.score_midterm===''||r.score_midterm==null?'':r.score_midterm}">\x3c/td>
-              <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-final"   data-row="${i}" value="${r.score_final===''||r.score_final==null?'':r.score_final}">\x3c/td>
-              <td class="px-1 py-1"><div class="grade-output g-total" data-row="${i}">-\x3c/div>\x3c/td>
-              <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-att" data-row="${i}" value="${r.attendance_hours===''||r.attendance_hours==null?'':r.attendance_hours}">\x3c/td>
-              <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-tot" data-row="${i}" value="${r.total_hours===''||r.total_hours==null?'':r.total_hours}">\x3c/td>
-              <td class="px-1 py-1"><div class="grade-output g-pct" data-row="${i}">-\x3c/div>\x3c/td>
-              <td class="px-1 py-1"><div class="grade-output g-grade" data-row="${i}">-\x3c/div>\x3c/td>
-              <td class="px-1 py-1">
-                <select class="grade-input g-special" data-row="${i}">
-                  <option value="">-\x3c/option>
-                  <option value="มส" ${r.grade_special==='มส'?'selected':''}>มส\x3c/option>
-                  <option value="มผ" ${r.grade_special==='มผ'?'selected':''}>มผ\x3c/option>
-                  <option value="ร"  ${r.grade_special==='ร'?'selected':''}>ร\x3c/option>
-                \x3c/select>
-              \x3c/td>
-            \x3c/tr>
-          `).join('')}
+          ${rowsHtml}
         \x3c/tbody>
       \x3c/table>
-    \x3c/div>
+    </div>
 
     <style>
+      .sgs-tab-btn {
+        padding: 6px 13px;
+        font-size: 12.5px;
+        font-weight: 500;
+        border-radius: 8px;
+        color: #475569;
+        transition: all 0.15s ease;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+      }
+      .sgs-tab-btn:hover {
+        color: #0F172A;
+        background: rgba(255, 255, 255, 0.6);
+      }
+      .sgs-tab-btn.active {
+        background: #FFFFFF;
+        color: #2563EB;
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
       .grade-input {
-        width:100%; padding:5px 6px; border:1.5px solid #E2E8F0;
-        border-radius:6px; font-family:inherit; font-size:12px;
-        background:#F8FAFC; text-align:center; box-sizing:border-box;
+        width: 100%; padding: 5px 6px; border: 1.5px solid #CBD5E1;
+        border-radius: 6px; font-family: inherit; font-size: 12px;
+        background: #FFFFFF; text-align: center; box-sizing: border-box;
       }
-      .grade-input:focus { outline:none; border-color:#4F46E5; background:white; }
+      .grade-input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
       .grade-output {
-        padding:5px; text-align:center; font-size:12px; font-weight:600;
-        background:#F1F5F9; border-radius:6px; color:#3730A3; min-height:26px;
+        padding: 5px; text-align: center; font-size: 12px; font-weight: 600;
+        background: #F1F5F9; border-radius: 6px; color: #1E293B; min-height: 26px;
       }
-      .grade-output.grade-fail { background:#FEE2E2; color:#B91C1C; }
-      .grade-output.grade-pass { background:#DCFCE7; color:#15803D; }
-    \x3c/style>
+      .grade-output.grade-fail { background: #FEE2E2; color: #B91C1C; font-weight: 700; }
+      .grade-output.grade-pass { background: #DCFCE7; color: #15803D; }
+      .ql-select {
+        width: 100%; padding: 4.5px 4px; border: 1.5px solid #CBD5E1;
+        border-radius: 6px; font-family: inherit; font-size: 12px;
+        background: #FFFFFF; text-align: center; box-sizing: border-box; font-weight: 600;
+      }
+      .ql-select:focus { outline: none; border-color: #2563EB; }
+    </style>
   `;
 
-  // bind events
+  // ผูก Event การเปลี่ยนแปลงค่าของช่อง Input
   document.querySelectorAll('#gradeTable .grade-input').forEach(inp => {
-    inp.addEventListener('input', e => recalcGradeRow(+e.target.dataset.row));
-    inp.addEventListener('change', e => recalcGradeRow(+e.target.dataset.row));
+    inp.addEventListener('input', e => {
+      const rowIdx = +e.target.dataset.row;
+      if (e.target.classList.contains('g-q')) recalcQRow(rowIdx);
+      else if (e.target.classList.contains('g-l')) recalcLRow(rowIdx);
+      else recalcGradeRow(rowIdx);
+    });
+    inp.addEventListener('change', e => {
+      const rowIdx = +e.target.dataset.row;
+      if (e.target.classList.contains('g-q')) recalcQRow(rowIdx);
+      else if (e.target.classList.contains('g-l')) recalcLRow(rowIdx);
+      else recalcGradeRow(rowIdx);
+    });
   });
 
-  // คำนวณรอบแรก
-  rows.forEach((_, i) => recalcGradeRow(i));
+  // คำนวณค่ารอบแรกสำหรับทุกแถว
+  rows.forEach((_, i) => {
+    recalcGradeRow(i);
+    if (currentTab === 'Q') recalcQRow(i);
+    if (currentTab === 'L') recalcLRow(i);
+  });
 }
 
-function recalcGradeRow(i) {
-  const get = sel => document.querySelector(`#gradeTable .g-${sel}[data-row="${i}"]`);
-  const mid = parseFloat(get('midterm').value);
-  const fin = parseFloat(get('final').value);
-  const att = parseFloat(get('att').value);
-  const tot = parseFloat(get('tot').value);
-  const special = get('special').value;
-
-  let total = null;
-  if (!isNaN(mid) && !isNaN(fin)) total = mid + fin;
-  else if (!isNaN(mid)) total = mid;
-  else if (!isNaN(fin)) total = fin;
-  get('total').textContent = (total === null) ? '-' : Number(total).toFixed(total % 1 ? 1 : 0);
-
-  let pct = null;
-  if (!isNaN(att) && !isNaN(tot) && tot > 0) pct = Math.round((att / tot) * 1000) / 10;
-  const pctEl = get('pct');
-  pctEl.textContent = (pct === null) ? '-' : pct + '%';
-  pctEl.className = 'grade-output g-pct ' + (pct === null ? '' : (pct < 80 ? 'grade-fail' : 'grade-pass'));
-
-  let grade = '-';
-  if (special) {
-    grade = special;
-    get('grade').className = 'grade-output g-grade grade-fail';
-  } else if (pct !== null && pct < 80) {
-    grade = 'มส';
-    get('grade').className = 'grade-output g-grade grade-fail';
-  } else if (total !== null) {
-    if (total >= 80) grade = '4';
-    else if (total >= 75) grade = '3.5';
-    else if (total >= 70) grade = '3';
-    else if (total >= 65) grade = '2.5';
-    else if (total >= 60) grade = '2';
-    else if (total >= 55) grade = '1.5';
-    else if (total >= 50) grade = '1';
-    else                  grade = '0';
-    get('grade').className = 'grade-output g-grade ' + (Number(grade) >= 1 ? 'grade-pass' : 'grade-fail');
-  } else {
-    get('grade').className = 'grade-output g-grade';
+function exportPP5ToExcel() {
+  if (!AcademicState.currentSubject || !AcademicState.gradeRows || AcademicState.gradeRows.length === 0) {
+    showToast('warning', 'ไม่มีข้อมูลคะแนนที่จะส่งออก');
+    return;
   }
-  get('grade').textContent = grade;
+  if (typeof XLSX === 'undefined') {
+    showToast('error', 'ไม่พบไลบรารี SheetJS (XLSX) โปรดรีเฟรชหน้าเว็บ');
+    return;
+  }
+  const subj = AcademicState.currentSubject;
+  const rows = AcademicState.gradeRows;
+  const year = AcademicState.currentSubjectYear || subj.academic_year || '';
+  const sem  = AcademicState.currentSubjectSem || subj.semester || '1';
+  const room = AcademicState.currentSubjectClassroom || '';
 
-  // sync state
-  AcademicState.gradeRows[i].score_midterm    = isNaN(mid) ? '' : mid;
-  AcademicState.gradeRows[i].score_final      = isNaN(fin) ? '' : fin;
-  AcademicState.gradeRows[i].attendance_hours = isNaN(att) ? '' : att;
-  AcademicState.gradeRows[i].total_hours      = isNaN(tot) ? '' : tot;
-  AcademicState.gradeRows[i].grade_special    = special;
+  // 1. Sheet 1: Template สำหรับระบบ SGS และโปรแกรม SGS AutoGrade
+  const sgsData = rows.map(r => {
+    const fullName = `${r.prefix || ''}${r.first_name || ''} ${r.last_name || ''}`.trim();
+    const q = r.q_scores || {};
+    const l = r.l_scores || {};
+    const charDef = r.character_result || '';
+    const readDef = r.reading_result || '';
+
+    return {
+      stdID: String(r.student_code || r.student_id || '').trim(),
+      'student Name': fullName,
+      S1: '', S2: '', S3: '', S4: '', S5: '',
+      S6: '', S7: '', S8: '', S9: '', S10: '',
+      S11: '', S12: '', S13: '', S14: '', S15: '',
+      S16: '', S17: '', S18: '', S19: '', S20: '',
+      Midterm: (r.score_midterm !== '' && r.score_midterm != null) ? Number(r.score_midterm) : '',
+      Final: (r.score_final !== '' && r.score_final != null) ? Number(r.score_final) : '',
+      Q1: q.Q1 != null ? q.Q1 : charDef,
+      Q2: q.Q2 != null ? q.Q2 : charDef,
+      Q3: q.Q3 != null ? q.Q3 : charDef,
+      Q4: q.Q4 != null ? q.Q4 : charDef,
+      Q5: q.Q5 != null ? q.Q5 : charDef,
+      Q6: q.Q6 != null ? q.Q6 : charDef,
+      Q7: q.Q7 != null ? q.Q7 : charDef,
+      Q8: q.Q8 != null ? q.Q8 : charDef,
+      L1: l.L1 != null ? l.L1 : readDef,
+      L2: l.L2 != null ? l.L2 : readDef,
+      L3: l.L3 != null ? l.L3 : readDef,
+      L4: l.L4 != null ? l.L4 : readDef,
+      L5: l.L5 != null ? l.L5 : readDef
+    };
+  });
+
+  // 2. Sheet 2: สรุปคะแนน_ปพ5 (แบบรายงานทางการภาษาไทย)
+  const reportData = rows.map((r, idx) => {
+    const fullName = `${r.prefix || ''}${r.first_name || ''} ${r.last_name || ''}`.trim();
+    const mid = parseFloat(r.score_midterm);
+    const fin = parseFloat(r.score_final);
+    let total = null;
+    if (!isNaN(mid) && !isNaN(fin)) total = mid + fin;
+    else if (!isNaN(mid)) total = mid;
+    else if (!isNaN(fin)) total = fin;
+
+    const att = parseFloat(r.attendance_hours);
+    const tot = parseFloat(r.total_hours);
+    let attPct = null;
+    if (!isNaN(att) && !isNaN(tot) && tot > 0) attPct = Math.round((att / tot) * 1000) / 10;
+
+    let grade = '-';
+    if (r.grade_special) grade = r.grade_special;
+    else if (attPct !== null && attPct < 80) grade = 'มส';
+    else if (total !== null) {
+      if (total >= 80) grade = '4';
+      else if (total >= 75) grade = '3.5';
+      else if (total >= 70) grade = '3';
+      else if (total >= 65) grade = '2.5';
+      else if (total >= 60) grade = '2';
+      else if (total >= 55) grade = '1.5';
+      else if (total >= 50) grade = '1';
+      else grade = '0';
+    }
+
+    const qSummary = r.character_result || (r.q_scores ? calculateAvgQL(r.q_scores, 8) : '');
+    const lSummary = r.reading_result || (r.l_scores ? calculateAvgQL(r.l_scores, 5) : '');
+
+    return {
+      'ที่': r.student_number || (idx + 1),
+      'เลขประจำตัว': String(r.student_code || r.student_id || '').trim(),
+      'ชื่อ-สกุล': fullName,
+      'ห้อง': r.classroom || room || '',
+      ['ระหว่างภาค (เต็ม ' + (subj.midterm_weight || 70) + ')']: (r.score_midterm !== '' && r.score_midterm != null) ? Number(r.score_midterm) : '',
+      ['ปลายภาค (เต็ม ' + (subj.final_weight || 30) + ')']: (r.score_final !== '' && r.score_final != null) ? Number(r.score_final) : '',
+      'รวม (100)': total !== null ? total : '',
+      'เวลาเรียน(%)': attPct !== null ? attPct + '%' : '',
+      'ผลการเรียน': grade,
+      'คุณลักษณะฯ (0-3)': qSummary,
+      'อ่านคิดวิเคราะห์ฯ (0-3)': lSummary,
+      'หมายเหตุ': r.grade_special || ''
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+
+  // Template Sheet
+  const wsSgs = XLSX.utils.json_to_sheet(sgsData);
+  wsSgs['!cols'] = [
+    { wch: 10 }, // stdID
+    { wch: 28 }, // student Name
+    ...Array(20).fill({ wch: 6 }), // S1-S20
+    { wch: 10 }, // Midterm
+    { wch: 10 }, // Final
+    ...Array(8).fill({ wch: 6 }), // Q1-Q8
+    ...Array(5).fill({ wch: 6 })  // L1-L5
+  ];
+  XLSX.utils.book_append_sheet(wb, wsSgs, 'Template');
+
+  // Summary Report Sheet
+  const wsReport = XLSX.utils.json_to_sheet(reportData);
+  wsReport['!cols'] = [
+    { wch: 6 },  // ที่
+    { wch: 12 }, // เลขประจำตัว
+    { wch: 28 }, // ชื่อ-สกุล
+    { wch: 8 },  // ห้อง
+    { wch: 20 }, // ระหว่างภาค
+    { wch: 20 }, // ปลายภาค
+    { wch: 12 }, // รวม
+    { wch: 14 }, // เวลาเรียน
+    { wch: 12 }, // ผลการเรียน
+    { wch: 18 }, // คุณลักษณะ
+    { wch: 22 }, // อ่านคิดวิเคราะห์
+    { wch: 12 }  // หมายเหตุ
+  ];
+  XLSX.utils.book_append_sheet(wb, wsReport, 'สรุปคะแนน_ปพ5');
+
+  const roomSuffix = room ? `_ห้อง${room}` : (subj.grade_level ? `_${subj.grade_level}` : '');
+  const fileName = `SGS_คะแนน_${subj.subject_code || 'วิชา'}${roomSuffix}_ปี${year}_เทอม${sem}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  showToast('success', `ส่งออกไฟล์ Excel (${fileName}) เรียบร้อยแล้ว`);
+}
+
+function exportPP5ToCsv() {
+  if (!AcademicState.currentSubject || !AcademicState.gradeRows || AcademicState.gradeRows.length === 0) {
+    showToast('warning', 'ไม่มีข้อมูลคะแนนที่จะส่งออก');
+    return;
+  }
+  const subj = AcademicState.currentSubject;
+  const rows = AcademicState.gradeRows;
+  const year = AcademicState.currentSubjectYear || subj.academic_year || '';
+  const sem  = AcademicState.currentSubjectSem || subj.semester || '1';
+  const room = AcademicState.currentSubjectClassroom || '';
+
+  const headers = [
+    'stdID', 'student Name',
+    'S1','S2','S3','S4','S5','S6','S7','S8','S9','S10',
+    'S11','S12','S13','S14','S15','S16','S17','S18','S19','S20',
+    'Midterm', 'Final',
+    'Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8',
+    'L1','L2','L3','L4','L5'
+  ];
+
+  const escapeCsv = val => {
+    const s = String(val == null ? '' : val);
+    return s.includes(',') || s.includes('"') || s.includes('\n') 
+      ? `"${s.replace(/"/g, '""')}"` 
+      : s;
+  };
+
+  const csvLines = [headers.join(',')];
+
+  rows.forEach(r => {
+    const fullName = `${r.prefix || ''}${r.first_name || ''} ${r.last_name || ''}`.trim();
+    const q = r.q_scores || {};
+    const l = r.l_scores || {};
+    const charDef = r.character_result || '';
+    const readDef = r.reading_result || '';
+
+    const mid = (r.score_midterm !== '' && r.score_midterm != null) ? r.score_midterm : '';
+    const fin = (r.score_final !== '' && r.score_final != null) ? r.score_final : '';
+
+    const row = [
+      escapeCsv(String(r.student_code || r.student_id || '').trim()),
+      escapeCsv(fullName),
+      // S1-S20
+      '', '', '', '', '', '', '', '', '', '',
+      '', '', '', '', '', '', '', '', '', '',
+      escapeCsv(mid),
+      escapeCsv(fin),
+      // Q1-Q8
+      escapeCsv(q.Q1 != null ? q.Q1 : charDef),
+      escapeCsv(q.Q2 != null ? q.Q2 : charDef),
+      escapeCsv(q.Q3 != null ? q.Q3 : charDef),
+      escapeCsv(q.Q4 != null ? q.Q4 : charDef),
+      escapeCsv(q.Q5 != null ? q.Q5 : charDef),
+      escapeCsv(q.Q6 != null ? q.Q6 : charDef),
+      escapeCsv(q.Q7 != null ? q.Q7 : charDef),
+      escapeCsv(q.Q8 != null ? q.Q8 : charDef),
+      // L1-L5
+      escapeCsv(l.L1 != null ? l.L1 : readDef),
+      escapeCsv(l.L2 != null ? l.L2 : readDef),
+      escapeCsv(l.L3 != null ? l.L3 : readDef),
+      escapeCsv(l.L4 != null ? l.L4 : readDef),
+      escapeCsv(l.L5 != null ? l.L5 : readDef)
+    ];
+    csvLines.push(row.join(','));
+  });
+
+  const csvString = '\uFEFF' + csvLines.join('\r\n');
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const roomSuffix = room ? `_ห้อง${room}` : (subj.grade_level ? `_${subj.grade_level}` : '');
+  const fileName = `SGS_คะแนน_${subj.subject_code || 'วิชา'}${roomSuffix}_ปี${year}_เทอม${sem}.csv`;
+
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+  showToast('success', `ส่งออกไฟล์ CSV (${fileName}) เรียบร้อยแล้ว`);
 }
 
 function saveGradeSheet() {
