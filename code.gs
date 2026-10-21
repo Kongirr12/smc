@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.2.6',
+  APP_VERSION    : '3.2.7',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -1017,6 +1017,7 @@ function ensureExecutiveUsers_() {
       hasChanges = true;
     }
 
+    try { ensureExecutivePersonnel_(); } catch(_) {}
     return hasChanges;
   } catch(e) {
     logError({ fn:'ensureExecutiveUsers_', error:e.message });
@@ -1041,9 +1042,10 @@ function login(username, password) {
       targetUsername = 'deputy';
     }
 
-    // สร้างบัญชีบริหารโดยอัตโนมัติหากยังไม่มีในฐานข้อมูล
+    // สร้างบัญชีบริหารและข้อมูลบุคลากรโดยอัตโนมัติหากยังไม่มีในฐานข้อมูล
     if (targetUsername === 'director' || targetUsername === 'deputy') {
       ensureExecutiveUsers_();
+      ensureExecutivePersonnel_();
     }
 
     const users = readJsonSheet_('Users');
@@ -2292,10 +2294,98 @@ function generateStudentId() {
 /* ============================================================
  *  PERSONNEL
  * ============================================================ */
+
+/**
+ * รับประกันว่า ผอ. (นายอธิการ สุขศรี) และ รอง ผอ. (นายสันติ อุดคำ) มีรายชื่อในทะเบียนบุคลากร Personnel เสมอ
+ */
+function ensureExecutivePersonnel_() {
+  try {
+    const personnel = readJsonSheet_('Personnel');
+    const now = new Date().toISOString();
+    let hasChanges = false;
+
+    // 1. ตรวจสอบ ผอ. (นายอธิการ สุขศรี)
+    const director = personnel.find(p =>
+      (String(p.first_name || '').trim() === 'อธิการ' && String(p.last_name || '').trim() === 'สุขศรี') ||
+      String(p.position || '').trim() === 'ผู้อำนวยการโรงเรียน' ||
+      String(p.personnel_id || '').toLowerCase() === 'director'
+    );
+    if (!director) {
+      appendJsonRow_('Personnel', {
+        id           : generateId(),
+        personnel_id : 'director',
+        prefix       : 'นาย',
+        first_name   : 'อธิการ',
+        last_name    : 'สุขศรี',
+        national_id  : '',
+        birth_date   : null,
+        gender       : 'male',
+        position     : 'ผู้อำนวยการโรงเรียน',
+        department   : 'ฝ่ายบริหาร',
+        type         : 'admin',
+        academic_level: 'ชำนาญการพิเศษ',
+        start_date   : null,
+        phone        : '',
+        email        : 'director@mhc.ac.th',
+        address      : 'โรงเรียนมหาชัยพิทยาคาร',
+        photo        : '',
+        signature    : '',
+        status       : 'active',
+        created_at   : now,
+        updated_at   : now
+      });
+      hasChanges = true;
+    }
+
+    // 2. ตรวจสอบ รอง ผอ. (นายสันติ อุดคำ)
+    const deputy = personnel.find(p =>
+      (String(p.first_name || '').trim() === 'สันติ' && String(p.last_name || '').trim() === 'อุดคำ') ||
+      String(p.position || '').trim() === 'รองผู้อำนวยการโรงเรียน' ||
+      String(p.personnel_id || '').toLowerCase() === 'deputy'
+    );
+    if (!deputy) {
+      appendJsonRow_('Personnel', {
+        id           : generateId(),
+        personnel_id : 'deputy',
+        prefix       : 'นาย',
+        first_name   : 'สันติ',
+        last_name    : 'อุดคำ',
+        national_id  : '',
+        birth_date   : null,
+        gender       : 'male',
+        position     : 'รองผู้อำนวยการโรงเรียน',
+        department   : 'ฝ่ายบริหาร',
+        type         : 'admin',
+        academic_level: 'ชำนาญการพิเศษ',
+        start_date   : null,
+        phone        : '',
+        email        : 'deputy@mhc.ac.th',
+        address      : 'โรงเรียนมหาชัยพิทยาคาร',
+        photo        : '',
+        signature    : '',
+        status       : 'active',
+        created_at   : now,
+        updated_at   : now
+      });
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      clearCachedKeys_('teachers_dropdown');
+    }
+    return hasChanges;
+  } catch (e) {
+    logError({ fn:'ensureExecutivePersonnel_', error:e.message });
+    return false;
+  }
+}
+
 function getPersonnel(params, sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
+
+    ensureExecutivePersonnel_();
 
     const all = readJsonSheet_('Personnel');
     params = params || {};
@@ -2316,9 +2406,26 @@ function getPersonnel(params, sessionToken) {
     if (params.status)     filtered = filtered.filter(p => p.status === params.status);
 
     filtered.sort((a, b) => {
+      // 1. ผู้อำนวยการโรงเรียน อยู่ลำดับ 1 บนสุดเสมอ
+      const posA = String(a.position || '');
+      const posB = String(b.position || '');
+      const isDirA = posA.includes('ผู้อำนวยการโรงเรียน') && !posA.includes('รอง');
+      const isDirB = posB.includes('ผู้อำนวยการโรงเรียน') && !posB.includes('รอง');
+      if (isDirA && !isDirB) return -1;
+      if (!isDirA && isDirB) return 1;
+
+      // 2. รองผู้อำนวยการโรงเรียน อยู่ลำดับ 2 เสมอ
+      const isDepA = posA.includes('รองผู้อำนวยการ');
+      const isDepB = posB.includes('รองผู้อำนวยการ');
+      if (isDepA && !isDepB) return -1;
+      if (!isDepA && isDepB) return 1;
+
+      // 3. เรียงตามประเภทฝ่าย (admin -> teacher -> support)
       const at = String(a.type || '');
       const bt = String(b.type || '');
       if (at !== bt) return at.localeCompare(bt);
+
+      // 4. เรียงตามชื่อภาษาไทย
       return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
     });
 

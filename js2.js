@@ -1273,9 +1273,9 @@ function renderPersonnel(container) {
           <select id="pType" onchange="onPersonnelFilter()"
                   class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
             <option value="">ทุกประเภท\x3c/option>
-            <option value="teacher">ครู\x3c/option>
-            <option value="support">สนับสนุน\x3c/option>
-            <option value="admin">บริหาร\x3c/option>
+            <option value="admin">ฝ่ายบริหาร\x3c/option>
+            <option value="teacher">ครูผู้สอน\x3c/option>
+            <option value="support">สายสนับสนุน\x3c/option>
           \x3c/select>
           <select id="pStatus" onchange="onPersonnelFilter()"
                   class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
@@ -1362,7 +1362,7 @@ function renderPersonnelTable(res) {
     return;
   }
 
-  const typeLabel = { teacher:'ครู', support:'สนับสนุน', admin:'บริหาร' };
+  const typeLabel = { teacher:'ครู', support:'สนับสนุน', admin:'ฝ่ายบริหาร' };
   const statusMap = { active:'status-active', inactive:'status-inactive', retired:'status-pending' };
   const statusLabel = { active:'ปฏิบัติงาน', inactive:'ไม่ปฏิบัติงาน', retired:'เกษียณ' };
 
@@ -1552,9 +1552,9 @@ function showPersonnelForm(data) {
           <div class="col-span-4">
             <label class="form-label">ประเภท\x3c/label>
             <select id="pf_type" class="form-input">
-              <option value="teacher" ${p.type==='teacher'?'selected':''}>ครู\x3c/option>
-              <option value="support" ${p.type==='support'?'selected':''}>สนับสนุน\x3c/option>
-              <option value="admin"   ${p.type==='admin'?'selected':''}>บริหาร\x3c/option>
+              <option value="admin"   ${p.type==='admin'?'selected':''}>ฝ่ายบริหาร\x3c/option>
+              <option value="teacher" ${p.type==='teacher'?'selected':''}>ครูผู้สอน\x3c/option>
+              <option value="support" ${p.type==='support'?'selected':''}>สายสนับสนุน\x3c/option>
             \x3c/select>
           \x3c/div>
           <div class="col-span-4">
@@ -1679,7 +1679,7 @@ function viewPersonnel(id) {
     .withSuccessHandler(res => {
       if (res.status !== 'success') return showToast('error', res.message);
       const p = res.data;
-      const typeLabel = { teacher:'ครู', support:'สนับสนุน', admin:'บริหาร' };
+      const typeLabel = { teacher:'ครู', support:'สนับสนุน', admin:'ฝ่ายบริหาร' };
       Swal.fire({
         title: 'ข้อมูลบุคลากร',
         width: 600,
