@@ -1330,64 +1330,75 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     modal.className = 'fixed inset-0 z-[99999] bg-slate-900/80 backdrop-blur-sm flex flex-col';
     modal.style.paddingTop = 'env(safe-area-inset-top, 0px)';
     modal.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
-    modal.innerHTML = `
-      <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shadow-2xs gap-3 flex-shrink-0">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg shadow-2xs border border-indigo-100 flex-shrink-0">
-            <i class='bx bxs-printer'></i>
-          </div>
-          <div>
-            <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate block">ตัวอย่างเอกสารสำหรับพิมพ์</span>
-            <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบลายเซ็นและข้อมูลก่อนพิมพ์หรือบันทึกเป็น PDF</span>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- ปุ่มเปิด/ปิดลายเซ็นครู -->
-          <button id="btnToggleSignatureAction" type="button" class="btn flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer shadow-2xs" title="เปิด/ปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์">
-            <span id="sigToggleDot" class="w-2 h-2 rounded-full"></span>
-            <i class='bx bx-edit-alt text-sm'></i>
-            <span id="sigToggleText">ลายเซ็นครู</span>
-          </button>
-          <!-- ปุ่มจัดการลายเซ็น -->
-          <button id="btnConfigSignatureAction" type="button" class="btn p-2 text-slate-600 hover:text-indigo-600 rounded-xl border border-slate-200/80 hover:bg-indigo-50/50 hover:border-indigo-200 transition-all cursor-pointer" title="ตั้งค่าหรือวาดลายเซ็นครู">
-            <i class='bx bx-slider-alt text-base'></i>
-          </button>
-          <!-- ปุ่มพิมพ์เอกสาร -->
-          <button id="btnPrintModalAction" type="button" class="btn flex items-center gap-1.5 px-4 py-1.5 text-xs sm:text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 shadow-sm active:scale-95 transition-all cursor-pointer border-0" title="พิมพ์เอกสาร / บันทึกเป็น PDF">
-            <i class='bx bx-printer text-base'></i>
-            <span>พิมพ์เอกสาร</span>
-          </button>
-          <!-- ปุ่มปิด -->
-          <button id="btnClosePrintModalAction" type="button" class="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-all cursor-pointer border border-transparent hover:border-slate-200" title="ปิดหน้าต่าง">
-            <i class='bx bx-x text-xl leading-none'></i>
-          </button>
-        </div>
-      </div>
-      <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex justify-center items-center p-0 sm:p-2">
-        <iframe id="printDocIframe" class="w-full h-full border-0 bg-white sm:rounded-lg sm:shadow-lg"></iframe>
-      </div>
-    `;
     document.body.appendChild(modal);
-
-    const closeHandler = () => {
-      modal.style.display = 'none';
-      const printArea = document.getElementById('inAppPrintArea');
-      if (printArea) printArea.innerHTML = '';
-      document.body.classList.remove('is-printing-doc');
-    };
-
-    document.getElementById('btnClosePrintModalAction').onclick = closeHandler;
-
-    document.getElementById('btnPrintModalAction').onclick = () => {
-      window.triggerInAppPrint();
-    };
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modal.style.display !== 'none') {
-        closeHandler();
-      }
-    });
   }
+
+  // สร้างและอัปเดต Toolbar ด้านบนให้สวยงาม คมชัด และได้สัดส่วนสมบูรณ์แบบเสมอ
+  modal.innerHTML = `
+    <!-- Universal Executive Print Toolbar (Height 56px with aligned 38px buttons) -->
+    <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 sm:px-6 py-2 flex items-center justify-between shadow-2xs gap-3 flex-shrink-0 z-20 h-14 select-none">
+      <!-- Left: Document Information -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center text-lg shadow-2xs flex-shrink-0">
+          <i class='bx bxs-file-pdf'></i>
+        </div>
+        <div class="min-w-0">
+          <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate block">ตัวอย่างเอกสารสำหรับพิมพ์</span>
+          <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบความถูกต้องและลายเซ็นก่อนสั่งพิมพ์หรือส่งออก PDF (A4)</span>
+        </div>
+      </div>
+
+      <!-- Right: Action Buttons with Unified 38px Height & whitespace-nowrap -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <!-- Toggle Signature -->
+        <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-3.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs gap-2" title="เปิด/ปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์">
+          <span id="sigToggleDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></span>
+          <i class='bx bx-edit-alt text-sm'></i>
+          <span id="sigToggleText" class="font-semibold text-xs whitespace-nowrap">ลายเซ็นครู: ปิดอยู่</span>
+        </button>
+
+        <!-- Config Signature Studio -->
+        <button id="btnConfigSignatureAction" type="button" class="print-topbar-btn print-topbar-btn-icon border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 text-slate-600 hover:text-indigo-600 shadow-2xs" title="ตั้งค่าหรือวาดลายเซ็นครู">
+          <i class='bx bxs-cog text-base'></i>
+        </button>
+
+        <div class="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+
+        <!-- Print Action Button -->
+        <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-4 sm:px-5 bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold shadow-md hover:shadow-lg active:scale-95 border-0 gap-2" title="พิมพ์เอกสาร / บันทึกเป็น PDF">
+          <i class='bx bx-printer text-base'></i>
+          <span class="whitespace-nowrap">พิมพ์เอกสาร</span>
+        </button>
+
+        <!-- Close Modal -->
+        <button id="btnClosePrintModalAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-slate-100 hover:bg-rose-50 hover:border-rose-200 border border-slate-200/80 text-slate-400 hover:text-rose-600" title="ปิดหน้าต่าง">
+          <i class='bx bx-x text-2xl leading-none'></i>
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex justify-center items-center p-0 sm:p-2">
+      <iframe id="printDocIframe" class="w-full h-full border-0 bg-white sm:rounded-lg sm:shadow-lg"></iframe>
+    </div>
+  `;
+
+  const closeHandler = () => {
+    modal.style.display = 'none';
+    const printArea = document.getElementById('inAppPrintArea');
+    if (printArea) printArea.innerHTML = '';
+    document.body.classList.remove('is-printing-doc');
+  };
+
+  document.getElementById('btnClosePrintModalAction').onclick = closeHandler;
+
+  document.getElementById('btnPrintModalAction').onclick = () => {
+    window.triggerInAppPrint();
+  };
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.style.display !== 'none') {
+      closeHandler();
+    }
+  });
 
   modal._rawHtml = html;
   modal._currentTitle = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
@@ -1405,14 +1416,14 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     if (!btn || !dot || !txt) return;
 
     if (sigState.enabled && sigState.hasSignature) {
-      btn.className = 'btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 shadow-2xs hover:bg-emerald-100 transition-all';
-      dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
-      txt.textContent = 'ลายเซ็นครู: เปิด';
+      btn.className = 'print-topbar-btn px-3.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs gap-2 font-bold';
+      dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
+      txt.textContent = 'ลายเซ็นครู: เปิดใช้งาน';
       btn.title = `กำลังใส่ลายเซ็นของ ${sigState.name} ลงในเอกสารทุกหน้าที่พิมพ์ (คลิกเพื่อปิด)`;
     } else {
-      btn.className = 'btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all';
-      dot.className = 'w-2 h-2 rounded-full bg-slate-300';
-      txt.textContent = 'ลายเซ็นครู: ปิด';
+      btn.className = 'print-topbar-btn px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-2 font-semibold';
+      dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0';
+      txt.textContent = 'ลายเซ็นครู: ปิดอยู่';
       btn.title = 'คลิกเพื่อเปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์';
     }
   };

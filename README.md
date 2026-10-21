@@ -7,7 +7,7 @@
   *โรงเรียนมหาชัยพิทยาคาร ตำบลท่าสองคอน อำเภอเมือง จังหวัดมหาสารคาม ๔๔๐๐๐*  
   *สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม (สพม.มหาสารคาม)*
 
-  [![Version](https://img.shields.io/badge/Version-v3.2.1%20(Latest)-indigo.svg)](CHANGELOG.md)
+  [![Version](https://img.shields.io/badge/Version-v3.2.2%20(Latest)-indigo.svg)](CHANGELOG.md)
   [![Frontend](https://img.shields.io/badge/Frontend-HTML5%20%7C%20Tailwind%20%7C%20Vanilla%20JS-blue.svg)](https://kongirr12.github.io/smc/)
   [![Backend](https://img.shields.io/badge/Backend-Google%20Apps%20Script%20(GAS)-green.svg)](https://developers.google.com/apps-script)
   [![Database](https://img.shields.io/badge/Database-Google%20Sheets-109D59.svg)](https://google.com/sheets)
@@ -15,11 +15,11 @@
   [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 </div>
 
-> 🚀 **เวอร์ชันพัฒนาล่าสุด (Latest Production Release):** **`v3.2.1`** (21 ตุลาคม 2569)  
+> 🚀 **เวอร์ชันพัฒนาล่าสุด (Latest Production Release):** **`v3.2.2`** (21 ตุลาคม 2569)  
 > • **ผู้อำนวยการโรงเรียน:** **นายอธิการ สุขศรี**  
 > • **ผู้จัดทำ / ผู้พัฒนาระบบ:** **ครูก้องนที อุ่นเจริญ**  
 > • **GitHub Repository:** `https://github.com/Kongirr12/smc.git`  
-> • **PWA Cache Name:** `mhc-smart-school-v3.2.1`
+> • **PWA Cache Name:** `mhc-smart-school-v3.2.2`
 
 ---
 
