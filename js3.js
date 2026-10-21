@@ -1082,6 +1082,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
     modal = document.createElement('div');
     modal.id = 'mhcSignatureManagerModal';
     modal.className = 'fixed inset-0 z-[100000] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 transition-all duration-300';
+    modal.style.display = 'none';
     document.body.appendChild(modal);
   }
 
@@ -1090,13 +1091,6 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
   let selectedGrade = null; // null = ค่าเริ่มต้น/ทั่วไป, 'ม.1' - 'ม.6' = เฉพาะระดับชั้น
   let penColor = '#002B9E';
   let penWidth = 2.4;
-
-  // โหลดแคชข้อมูลห้องเรียนและครูประจำชั้นเตรียมไว้
-  ensureClassroomTeachersMap(() => {
-    if (modal && modal.style.display !== 'none' && currentRoleId === 'teacher') {
-      renderModalUI();
-    }
-  });
 
   const renderModalUI = () => {
     let curRole = null;
@@ -1813,6 +1807,19 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
     if (btnClose) btnClose.onclick = closeModal;
     if (btnCancel) btnCancel.onclick = closeModal;
 
+    // คลิกพื้นหลังสีเข้มภายนอกเพื่อปิดหน้าต่างได้
+    modal.onclick = (e) => {
+      if (e.target === modal) closeModal();
+    };
+
+    const escHandler = (e) => {
+      if (e.key === 'Escape' && modal.style.display !== 'none') {
+        closeModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
     const btnSave = modal.querySelector('#btnSaveSigManager');
     if (btnSave) {
       btnSave.onclick = () => {
@@ -1831,8 +1838,24 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
     }
   };
 
-  renderModalUI();
-  modal.style.display = 'flex';
+  try {
+    renderModalUI();
+    modal.style.display = 'flex';
+  } catch (err) {
+    console.error('Error rendering signature manager modal:', err);
+    modal.style.display = 'none';
+  }
+
+  // โหลดแคชข้อมูลห้องเรียนและครูประจำชั้นเตรียมไว้ (เมื่อพร้อมจะรีเฟรช UI ให้ทันที)
+  ensureClassroomTeachersMap(() => {
+    if (modal && modal.style.display !== 'none' && currentRoleId === 'teacher') {
+      try {
+        renderModalUI();
+      } catch (e) {
+        console.error('Error updating signature modal after map load:', e);
+      }
+    }
+  });
 }
 
 // 7. หน้าต่างตัวอย่างเอกสารสำหรับพิมพ์ (Universal Executive Print Preview Modal)
