@@ -510,34 +510,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 function openHTMLDocument(html, docTitle, directUrl) {
   if (!html) return;
   const title = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
-  const env = getPrintEnv();
-
-  // สำหรับมือถือ และ PWA หน้าจอโฮม: แสดงใน In-App Print Preview Modal ทันที
-  if (env.isMobile || env.isStandalone) {
-    showPrintPreviewModal(html, title, directUrl);
-    return;
-  }
-
-  // สำหรับคอมพิวเตอร์ทั่วไป: ลองเปิดหน้าต่างใหม่ก่อน
-  try {
-    const w = window.open('', '_blank');
-    if (w && !w.closed) {
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      try {
-        w.focus();
-        setTimeout(() => {
-          try { w.print(); } catch (_) {}
-        }, 500);
-      } catch (_) {}
-      return;
-    }
-  } catch (err) {
-    console.warn('Popup blocked or failed, fallback to preview modal', err);
-  }
-
-  // Fallback เปิดใน Modal
   showPrintPreviewModal(html, title, directUrl);
 }
 

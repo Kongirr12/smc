@@ -3785,8 +3785,17 @@ function printDailyAttendanceRecord() {
   if (isSubject) {
     const subjects = AttendanceState.subjects || [];
     const sub = subjects.find(s => s.id === AttendanceState.subject_id);
-    const sName = sub ? ((sub.subject_code ? sub.subject_code + ' ' : '') + sub.subject_name) : 'รายวิชา';
-    const teacher = sub?.teacher_name || '';
+    const cachedEntry = (AttendanceState.scheduleCache || []).find(e => e.subject_id === AttendanceState.subject_id);
+    const subjectName = (sub && sub.subject_name) 
+      || (cachedEntry && cachedEntry.subject_name) 
+      || document.getElementById('attSubjectName')?.textContent?.split('•')[0]?.trim() 
+      || 'รายวิชา';
+    const subjectCode = (sub && sub.subject_code) || (cachedEntry && cachedEntry.subject_code) || '';
+    const sName = (subjectCode ? subjectCode + ' ' : '') + subjectName;
+    const teacher = (sub && sub.teacher_name) 
+      || (cachedEntry && cachedEntry.teacher_name) 
+      || document.getElementById('attSubjectName')?.textContent?.split('•')[1]?.trim() 
+      || '';
     const checkedPeriods = Array.from(document.querySelectorAll('input[name="att_period"]:checked')).map(cb => cb.value).join(', ');
     const periodStr = checkedPeriods ? (`คาบที่ ${checkedPeriods}`) : '';
     subTitle = `วิชา: ${sName} | ${periodStr ? periodStr + ' | ' : ''}${teacher ? 'ครูผู้สอน: ' + teacher + ' | ' : ''}ชั้น ${classroom}`;
@@ -4028,49 +4037,6 @@ function printDailyAttendanceRecord() {
   </div>
 
   ${pagesHtml}
-    </div>
-
-    <div class="summary-bar">
-      <div><b>นักเรียนทั้งหมด:</b> ${total} คน</div>
-      <div style="color:#15803D;"><b>มา:</b> ${pCnt} คน</div>
-      <div style="color:#B91C1C;"><b>ขาด:</b> ${aCnt} คน</div>
-      <div style="color:#B45309;"><b>ลา:</b> ${lCnt} คน</div>
-      <div style="color:#1D4ED8;"><b>สาย:</b> ${ltCnt} คน</div>
-      <div><b>ร้อยละ:</b> ${pct}%</div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="width:7%; text-align:center;">เลขที่</th>
-          <th style="width:14%; text-align:center;">รหัสนักเรียน</th>
-          <th style="width:35%; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
-          <th style="width:12%; text-align:center;">ระดับชั้น</th>
-          <th style="width:14%; text-align:center;">สถานะ</th>
-          <th style="width:18%; text-align:center;">หมายเหตุ / ลายมือชื่อ</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHtml}
-      </tbody>
-    </table>
-
-    <div class="signatures">
-      <div class="sig-box">
-        <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
-        <div class="sig-line">( .............................................................. )</div>
-        <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
-        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
-      </div>
-      <div class="sig-box">
-        <div>ทราบ / อนุมัติ</div>
-        <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
-        <div class="sig-line">( นายอธิการ สุขศรี )</div>
-        <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
-      </div>
-    </div>
-  </div>
 
   <div class="footer">
     <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
