@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.2.7',
+  APP_VERSION    : '3.2.8',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -8267,6 +8267,7 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     });
     const html = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ตารางสอน ${escapeHTMLServer_(classroom)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -8276,12 +8277,14 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     font-size: 12px; color: #0F172A; margin: 0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   @media screen {
-    body { min-width: 860px; padding: 12px; background: #F8FAFC; }
+    body { padding: 12px; background: #F8FAFC; }
   }
   @media print {
-    body { min-width: 100% !important; padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    body { padding: 0 !important; background: #FFF !important; font-size: 11px; }
     .no-print { display: none !important; }
   }
   .header {
@@ -8291,6 +8294,7 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     width: 100%; border-collapse: collapse;
     border: 2px solid #000;
     table-layout: fixed;
+    min-width: 680px;
   }
   th, td {
     border: 1px solid #000;
@@ -8304,14 +8308,24 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   .signature-row {
     display: flex; justify-content: space-around;
     margin-top: 24px; text-align: center; font-size: 11px;
+    gap: 16px; flex-wrap: wrap;
   }
-  .sig-line { border-bottom: 1px dotted #000; width: 180px; margin: 0 auto 4px; padding-bottom: 20px; }
+  .signature-row > div {
+    min-width: 160px; max-width: 260px; flex: 1;
+  }
+  .sig-stamp-zone {
+    min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .sig-line { border-bottom: 1px dotted #000; width: 170px; margin: 0 auto 4px; padding-bottom: 6px; }
   .no-print {
     position: fixed; top: 10px; right: 10px;
     background: #4F46E5; color: white; padding: 8px 16px;
     border-radius: 8px; cursor: pointer; border: none;
     font-family: inherit; font-weight: 700; font-size: 13px;
     z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  @media print {
+    .signature-row { flex-wrap: nowrap !important; }
   }
 </style></head><body>
 <button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
@@ -8332,14 +8346,17 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
 </table>
 <div class="signature-row">
   <div>
+    <div class="sig-stamp-zone"></div>
     <div class="sig-line"></div>
     <div>ครูที่ปรึกษา</div>
   </div>
   <div>
+    <div class="sig-stamp-zone"></div>
     <div class="sig-line"></div>
     <div>หัวหน้างานวิชาการ</div>
   </div>
   <div>
+    <div class="sig-stamp-zone"></div>
     <div class="sig-line"></div>
     <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
     <div>ผู้อำนวยการโรงเรียน</div>
@@ -8462,31 +8479,42 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
         </tr>`;
     });
     const html = `<!DOCTYPE html><html lang="th"><head>
-<meta charset="UTF-8"><title>ตารางสอน ${escapeHTMLServer_(teacherName)}</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ตารางสอน ${escapeHTMLServer_(teacherName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   @page { size: A4 landscape; margin: 8mm; }
-  body { font-family:'Sarabun',sans-serif; font-size:12px; color:#0F172A; margin:0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family:'Sarabun',sans-serif; font-size:12px; color:#0F172A; margin:0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
   @media screen {
-    body { min-width: 860px; padding: 12px; background: #F8FAFC; }
+    body { padding: 12px; background: #F8FAFC; }
   }
   @media print {
-    body { min-width: 100% !important; padding: 0 !important; background: #FFF !important; font-size: 11px; }
+    body { padding: 0 !important; background: #FFF !important; font-size: 11px; }
     .no-print { display: none !important; }
   }
   .header { text-align:center; margin-bottom:16px; }
   .workload { text-align:right; font-size:11px; color:#64748B; margin-bottom:6px; }
-  table { width:100%; border-collapse:collapse; border:2px solid #000; table-layout:fixed; }
+  table { width:100%; border-collapse:collapse; border:2px solid #000; table-layout:fixed; min-width: 680px; }
   th,td { border:1px solid #000; vertical-align:top; }
   th { background:#FFF !important; color:#000 !important; text-align:center; padding:8px 6px; font-size:12px; font-weight:700; border-bottom:2px solid #000; }
-  .sig-row { display:flex; justify-content:space-around; margin-top:24px; text-align:center; font-size:11px; }
-  .sig-line { border-bottom:1px dotted #000; width:180px; margin:0 auto 4px; padding-bottom:20px; }
+  .sig-row { display:flex; justify-content:space-around; margin-top:24px; text-align:center; font-size:11px; gap: 16px; flex-wrap: wrap; }
+  .sig-row > div { min-width: 160px; max-width: 260px; flex: 1; }
+  .sig-stamp-zone { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .sig-line { border-bottom:1px dotted #000; width:170px; margin:0 auto 4px; padding-bottom:6px; }
   .no-print {
     position:fixed; top:10px; right:10px;
     background:#4F46E5; color:white; padding:8px 16px;
     border-radius:8px; cursor:pointer; border:none;
     font-family:inherit; font-weight:700; font-size:13px;
     z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  }
+  @media print {
+    .sig-row { flex-wrap: nowrap !important; }
   }
 </style></head><body>
 <button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
@@ -8508,11 +8536,13 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
 </table>
 <div class="sig-row">
   <div>
-    <div class="sig-line">${per.signature ? `<img src="${escapeHTMLServer_(per.signature)}" style="max-height:40px;">` : ''}</div>
+    <div class="sig-stamp-zone">${per.signature ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(per.signature)}" style="max-height:44px; max-width:145px; object-fit:contain;">` : ''}</div>
+    <div class="sig-line"></div>
     <div>(${escapeHTMLServer_(teacherName)})</div>
     <div>ครูผู้สอน</div>
   </div>
   <div>
+    <div class="sig-stamp-zone"></div>
     <div class="sig-line"></div>
     <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
     <div>ผู้อำนวยการโรงเรียน</div>

@@ -673,47 +673,39 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // ฝัง CSS สไตล์ลายเซ็น
+    // ฝัง CSS สไตล์ลายเซ็นแบบคมชัด สวยงาม ไม่ซ้อนทับตัวหนังสือ
     let style = doc.querySelector('style#mhcSigStyle');
     if (!style) {
       style = doc.createElement('style');
       style.id = 'mhcSigStyle';
       style.textContent = `
-        .mhc-sig-wrap {
-          position: relative !important;
+        .sig-stamp-zone {
+          min-height: 46px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          margin: 3px auto !important;
+        }
+        .teacher-sig-img, .mhc-sig-img {
+          max-height: 46px !important;
+          max-width: 145px !important;
+          object-fit: contain !important;
+          pointer-events: none !important;
           display: inline-block !important;
           vertical-align: middle !important;
-          text-align: center !important;
-        }
-        .mhc-sig-img {
-          position: absolute !important;
-          bottom: 2px !important;
-          left: 45px !important;
-          max-height: 48px !important;
-          max-width: 170px !important;
-          object-fit: contain !important;
-          mix-blend-mode: multiply !important;
-          pointer-events: none !important;
-          z-index: 10 !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
-        .mhc-sig-center-img {
-          position: absolute !important;
-          bottom: 2px !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          max-height: 48px !important;
-          max-width: 170px !important;
-          object-fit: contain !important;
-          mix-blend-mode: multiply !important;
-          pointer-events: none !important;
-          z-index: 10 !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+        .mhc-sig-inline-wrap {
+          display: inline-flex !important;
+          align-items: flex-end !important;
+          gap: 6px !important;
+          vertical-align: bottom !important;
+          margin: 2px 0 !important;
         }
         @media print {
-          .mhc-sig-img, .mhc-sig-center-img, .teacher-sig-img {
+          .teacher-sig-img, .mhc-sig-img {
             display: inline-block !important;
             visibility: visible !important;
             opacity: 1 !important;
@@ -727,57 +719,87 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
     }
 
     const tSig = (multiState.teacher && multiState.teacher.enabled && multiState.teacher.signature) ? multiState.teacher.signature : '';
-    const tName = (multiState.teacher && multiState.teacher.name) ? multiState.teacher.name : '';
+    const tName = (multiState.teacher && multiState.teacher.name) ? multiState.teacher.name : 'ครูก้องนที อุ่นเจริญ';
 
     const dSig = (multiState.director && multiState.director.enabled && multiState.director.signature) ? multiState.director.signature : '';
     const dName = 'นายอธิการ สุขศรี';
 
     const eSig = (multiState.evaluator && multiState.evaluator.enabled && multiState.evaluator.signature) ? multiState.evaluator.signature : '';
-    const eName = (multiState.evaluator && multiState.evaluator.name) ? multiState.evaluator.name : '';
+    const eName = (multiState.evaluator && multiState.evaluator.name) ? multiState.evaluator.name : 'หัวหน้างานวัดและประเมินผลการศึกษา';
 
     const pSig = (multiState.parent && multiState.parent.enabled && multiState.parent.signature) ? multiState.parent.signature : '';
+    const pName = (multiState.parent && multiState.parent.name) ? multiState.parent.name : 'ผู้ปกครองนักเรียน';
 
-    // A. ปพ.5 และ ปพ.6 โครงสร้าง .signature-grid และ .sig-box
-    const stampBoxes = doc.querySelectorAll('.sig-box, .signature-grid > div');
+    // A. ปพ.5, ปพ.6, ตารางเรียน/สอน และรายงาน: โครงสร้าง .sig-box, .signature-grid, .signature-row
+    const stampBoxes = doc.querySelectorAll('.sig-box, .signature-grid > div, .signature-row > div');
     stampBoxes.forEach((box, idx) => {
       const boxTxt = box.textContent || '';
-      const isDirector = boxTxt.includes('ผู้อำนวยการ') || boxTxt.includes('อธิการ') || boxTxt.includes('สุขศรี');
-      const isEvaluator = boxTxt.includes('หัวหน้างานวัด') || boxTxt.includes('หัวหน้ากลุ่มสาระ') || boxTxt.includes('วัดและประเมินผล');
+      const isDirector = boxTxt.includes('ผู้อำนวยการ') || boxTxt.includes('อธิการ') || boxTxt.includes('สุขศรี') || boxTxt.includes('อนุมัติผล') || boxTxt.includes('ทราบ / อนุมัติ');
+      const isEvaluator = boxTxt.includes('หัวหน้างานวัด') || boxTxt.includes('หัวหน้ากลุ่มสาระ') || boxTxt.includes('วัดและประเมินผล') || boxTxt.includes('วิชาการ') || boxTxt.includes('หัวหน้างานวิชาการ');
       const isParent = boxTxt.includes('ผู้ปกครอง');
       const isTeacher = !isDirector && !isEvaluator && !isParent && (
-        boxTxt.includes('ครูประจำชั้น') || boxTxt.includes('ครูผู้สอน') || boxTxt.includes('ตำแหน่ง') || idx === 0
+        boxTxt.includes('ครูประจำชั้น') || boxTxt.includes('ครูผู้สอน') || boxTxt.includes('ผู้รายงาน') || 
+        boxTxt.includes('ผู้สรุปรายงาน') || boxTxt.includes('ผู้ตรวจเช็ค') || boxTxt.includes('ผู้จัดทำ') || 
+        boxTxt.includes('ครูที่ปรึกษา') || boxTxt.includes('ตำแหน่ง') || idx === 0
       );
 
+      let targetSig = '';
+      let targetName = '';
       if (isDirector && dSig) {
-        const sz = box.querySelector('.sig-stamp-zone');
-        if (sz) {
-          sz.innerHTML = `<img src="${dSig}" class="teacher-sig-img" alt="ลายเซ็น ผอ." style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
-        }
-        const nameEl = box.querySelector('.sig-name');
-        if (nameEl) nameEl.textContent = `( ${dName} )`;
+        targetSig = dSig;
+        targetName = dName;
       } else if (isEvaluator && eSig) {
-        const sz = box.querySelector('.sig-stamp-zone');
-        if (sz) {
-          sz.innerHTML = `<img src="${eSig}" class="teacher-sig-img" alt="ลายเซ็น หัวหน้าวัดผล" style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
-        }
-        const nameEl = box.querySelector('.sig-name');
-        if (nameEl && (/^\(\s*[\.]{4,}\s*\)$/.test(nameEl.textContent.trim()) || eName)) {
-          nameEl.textContent = `( ${eName || 'หัวหน้างานวัดและประเมินผลการศึกษา'} )`;
-        }
+        targetSig = eSig;
+        targetName = eName;
       } else if (isParent && pSig) {
-        const sz = box.querySelector('.sig-stamp-zone');
-        if (sz) {
-          sz.innerHTML = `<img src="${pSig}" class="teacher-sig-img" alt="ลายเซ็น ผู้ปกครอง" style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
-        }
+        targetSig = pSig;
+        targetName = pName;
       } else if (isTeacher && tSig) {
+        targetSig = tSig;
+        targetName = tName;
+      }
+
+      if (targetSig) {
         const sz = box.querySelector('.sig-stamp-zone');
         if (sz) {
-          sz.innerHTML = `<img src="${tSig}" class="teacher-sig-img" alt="ลายเซ็น ครู" style="max-height:44px; max-width:140px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none; display:inline-block;">`;
+          sz.innerHTML = `<img src="${targetSig}" class="teacher-sig-img" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` +
+                         `<div style="border-bottom:1px dotted #94A3B8; width:130px; margin:2px auto 0 auto;"></div>`;
+          const dots = box.querySelector('.sig-dots');
+          if (dots) dots.style.display = 'none';
+        } else {
+          // หากไม่มี .sig-stamp-zone ค้นหาแถวที่มี "ลงชื่อ" หรือ .sig-line แล้วแทนที่ด้วยกล่องลายเซ็นสะอาด
+          let foundTarget = null;
+          const candidates = Array.from(box.querySelectorAll('div, p, span'));
+          for (const c of candidates) {
+            if (c.textContent && (c.textContent.includes('ลงชื่อ') || c.classList.contains('sig-line'))) {
+              foundTarget = c;
+              break;
+            }
+          }
+          if (foundTarget) {
+            foundTarget.outerHTML = `
+              <div class="sig-stamp-zone" style="min-height:46px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin:3px auto;">
+                <img src="${targetSig}" class="teacher-sig-img" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />
+                <div style="border-bottom:1px dotted #94A3B8; width:130px; margin:2px auto 0 auto;"></div>
+              </div>
+            `;
+          }
         }
+
+        // อัปเดตชื่อผู้ลงนาม
         const nameEl = box.querySelector('.sig-name');
-        if (nameEl && (/^\(\s*[\.]{4,}\s*\)$/.test(nameEl.textContent.trim()) || !nameEl.textContent.trim() || tName)) {
-          if (tName) nameEl.textContent = `( ${tName} )`;
+        if (nameEl) {
+          nameEl.textContent = `( ${targetName} )`;
+        } else {
+          const allEls = box.querySelectorAll('div, p, span');
+          allEls.forEach(el => {
+            const t = (el.textContent || '').trim();
+            if (/^\(\s*[\.]{3,}\s*\)$/.test(t) || /^\(\s*…+\s*\)$/.test(t) || /^\(\s*_{3,}\s*\)$/.test(t) || /^\(\s*\)$/.test(t)) {
+              el.textContent = `( ${targetName} )`;
+            }
+          });
         }
+        box.setAttribute('data-mhc-signed', 'true');
       }
     });
 
@@ -795,11 +817,12 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
       }
     });
 
-    // C. แทรกในบล็อกข้อความราชการที่มี "ลงชื่อ" (แบบฟอร์ม 4 ฝ่าย / บันทึกข้อความ)
+    // C. แทรกในบล็อกข้อความราชการที่มี "ลงชื่อ" (แบบฟอร์ม 4 ฝ่าย / บันทึกข้อความ) ที่อยู่นอก .sig-box
     const allDivs = doc.querySelectorAll('div, p, td');
     allDivs.forEach(el => {
+      if (el.closest('[data-mhc-signed], .sig-box, .signature-grid, .signature-row')) return;
       if (!el.textContent || !el.textContent.includes('ลงชื่อ')) return;
-      if (el.querySelector('.mhc-sig-img, .mhc-sig-center-img, .teacher-sig-img')) return;
+      if (el.querySelector('.teacher-sig-img, [data-mhc-signed]')) return;
       const hasChildWithSig = Array.from(el.children).some(c => c.textContent && c.textContent.includes('ลงชื่อ'));
       if (hasChildWithSig) return;
 
@@ -811,26 +834,27 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
       if ((contextTxt.includes('ผู้อำนวยการ') || contextTxt.includes('อธิการ') || contextTxt.includes('สุขศรี')) && dSig) {
         targetSig = dSig;
         targetName = dName;
-      } else if ((contextTxt.includes('หัวหน้างาน') || contextTxt.includes('หัวหน้ากลุ่มสาระ') || contextTxt.includes('วัดผล')) && eSig) {
+      } else if ((contextTxt.includes('หัวหน้างาน') || contextTxt.includes('หัวหน้ากลุ่มสาระ') || contextTxt.includes('วัดผล') || contextTxt.includes('วิชาการ')) && eSig) {
         targetSig = eSig;
         targetName = eName;
       } else if (contextTxt.includes('ผู้ปกครอง') && pSig) {
         targetSig = pSig;
+        targetName = pName;
       } else if (tSig) {
         targetSig = tSig;
         targetName = tName;
       }
 
       if (targetSig) {
-        const isCentered = (el.style.textAlign === 'center') || (el.closest('.sig-box') != null);
         const sigRegex = /(ลงชื่อ\s*[\.]{4,}|ลงชื่อ\s*…+|ลงชื่อ\s*_{4,}|\(ลงชื่อ\)\s*[\.]{4,})/g;
         if (sigRegex.test(el.innerHTML)) {
-          el.innerHTML = el.innerHTML.replace(sigRegex, (m) => {
-            return `<span class="mhc-sig-wrap">` +
-                     `<img src="${targetSig}" class="${isCentered ? 'mhc-sig-center-img' : 'mhc-sig-img'}" alt="ลายเซ็น" />` +
-                     `<span>${m}</span>` +
+          el.innerHTML = el.innerHTML.replace(sigRegex, () => {
+            return `<span class="mhc-sig-inline-wrap">` +
+                     `<span style="font-size:inherit;">ลงชื่อ</span>` +
+                     `<img src="${targetSig}" class="teacher-sig-img" alt="ลายเซ็น" />` +
                    `</span>`;
           });
+          el.setAttribute('data-mhc-signed', 'true');
         }
         if (targetName) {
           const nextEl = el.nextElementSibling;
@@ -1531,50 +1555,80 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   modal._currentDirectUrl = directUrl || '';
   modal._currentOrientation = detectDocOrientation(html, docTitle);
 
-  // สร้างและอัปเดต Toolbar ด้านบนให้สวยงาม คมชัด และได้สัดส่วนสมบูรณ์แบบเสมอ
+  // สร้างและอัปเดต Toolbar ด้านบนให้สวยงาม คมชัด และรองรับ Responsive บนมือถือ 100%
   modal.innerHTML = `
-    <!-- Universal Executive Print Toolbar (Height 56px with aligned 38px buttons) -->
-    <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 sm:px-6 py-2 flex items-center justify-between shadow-2xs gap-3 flex-shrink-0 z-20 h-14 select-none">
-      <!-- Left: Document Information -->
-      <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center text-lg shadow-2xs flex-shrink-0">
-          <i class='bx bxs-file-pdf'></i>
+    <!-- Universal Executive Print Toolbar (Responsive Header: Desktop 56px, Mobile 2-tier) -->
+    <div class="bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-3 sm:px-6 py-2 shadow-2xs z-20 flex-shrink-0 select-none">
+      <div class="flex items-center justify-between gap-2">
+        <!-- Left: Document Information (Title & Status) -->
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center text-base sm:text-lg shadow-2xs flex-shrink-0">
+            <i class='bx bxs-file-pdf'></i>
+          </div>
+          <div class="min-w-0">
+            <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate block">ตัวอย่างเอกสารสำหรับพิมพ์</span>
+            <span class="text-[10px] text-slate-400 font-normal hidden md:block">ตรวจสอบความถูกต้อง ทิศทางหน้ากระดาษ และลายเซ็นทุกฝ่ายก่อนสั่งพิมพ์ (A4)</span>
+          </div>
         </div>
-        <div class="min-w-0">
-          <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate block">ตัวอย่างเอกสารสำหรับพิมพ์</span>
-          <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบความถูกต้อง ทิศทางหน้ากระดาษ และลายเซ็นทุกฝ่ายก่อนสั่งพิมพ์ (A4)</span>
+
+        <!-- Right / Desktop Action Buttons (Visible on sm and up) -->
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div class="hidden sm:flex items-center gap-1.5 sm:gap-2">
+            <!-- ปุ่มสลับทิศทางหน้ากระดาษ -->
+            <button id="btnToggleOrientationAction" type="button" class="print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs" title="คลิกเพื่อสลับทิศทางหน้ากระดาษ">
+              <i id="orientationIcon" class='bx bx-layout text-sm text-indigo-600'></i>
+              <span id="orientationText">แนวนอน (A4)</span>
+            </button>
+
+            <!-- ปุ่มเปิด/ปิดลายเซ็น -->
+            <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs" title="คลิกเพื่อเปิด/ปิดการใส่ลายเซ็น">
+              <span id="sigToggleDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></span>
+              <i class='bx bx-edit-alt text-sm'></i>
+              <span id="sigToggleText">ลายเซ็น: ปิดอยู่</span>
+            </button>
+
+            <!-- ปุ่มตั้งค่าลายเซ็นทุกฝ่าย -->
+            <button id="btnConfigSignatureAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-white hover:bg-indigo-50 border border-slate-200/90 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 shadow-2xs" title="ศูนย์จัดการลายเซ็นทุกฝ่าย">
+              <i class='bx bx-slider-alt text-base leading-none'></i>
+            </button>
+
+            <!-- ปุ่มพิมพ์เอกสาร / บันทึก PDF -->
+            <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
+              <i class='bx bx-printer text-base leading-none'></i>
+              <span>พิมพ์เอกสาร</span>
+            </button>
+          </div>
+
+          <!-- Close Button (Always visible on BOTH Mobile and Desktop, fixed at top-right) -->
+          <button id="btnClosePrintModalAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-slate-100 hover:bg-rose-50 hover:border-rose-200 border border-slate-200/80 text-slate-500 hover:text-rose-600 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg" title="ปิดหน้าต่าง">
+            <i class='bx bx-x text-2xl leading-none'></i>
+          </button>
         </div>
       </div>
 
-      <!-- Right: Standardized 38px Executive Control Buttons -->
-      <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-        <!-- ปุ่มสลับทิศทางหน้ากระดาษ (Landscape / Portrait Switcher) -->
-        <button id="btnToggleOrientationAction" type="button" class="print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs" title="คลิกเพื่อสลับทิศทางหน้ากระดาษระหว่าง แนวนอน (Landscape) และ แนวตั้ง (Portrait)">
-          <i id="orientationIcon" class='bx bx-layout text-sm text-indigo-600'></i>
-          <span id="orientationText">แนวนอน (A4)</span>
-        </button>
-
-        <!-- ปุ่มเปิด/ปิดลายเซ็น (Multi-Signature State Aware) -->
-        <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs" title="คลิกเพื่อเปิด/ปิดการใส่ลายเซ็นลงในเอกสาร">
-          <span id="sigToggleDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></span>
-          <i class='bx bx-edit-alt text-sm'></i>
-          <span id="sigToggleText">ลายเซ็น: ปิดอยู่</span>
-        </button>
-
-        <!-- ปุ่มศูนย์จัดการลายเซ็นทุกฝ่าย (Multi-Signature Studio) -->
-        <button id="btnConfigSignatureAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-white hover:bg-indigo-50 border border-slate-200/90 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 shadow-2xs" title="ศูนย์จัดการและตั้งค่าลายเซ็นครบทุกตำแหน่ง (ครู, หัวหน้าวัดผล, ผอ. นายอธิการ สุขศรี)">
-          <i class='bx bx-slider-alt text-base leading-none'></i>
-        </button>
-
-        <!-- ปุ่มพิมพ์เอกสาร / บันทึก PDF (A4) -->
-        <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
-          <i class='bx bx-printer text-base leading-none'></i>
+      <!-- Mobile Sub-Toolbar (Row 2, visible on < 640px) -->
+      <div class="flex sm:hidden items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 overflow-x-auto no-scrollbar py-0.5">
+        <!-- ปุ่มพิมพ์เอกสาร เด่นชัดบนมือถือ -->
+        <button id="btnPrintModalActionMobile" type="button" class="flex-shrink-0 h-8 px-3 text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow-xs flex items-center gap-1.5 font-bold text-xs active:scale-95 border-0">
+          <i class='bx bx-printer text-sm'></i>
           <span>พิมพ์เอกสาร</span>
         </button>
 
-        <!-- ปุ่มปิดหน้าต่าง -->
-        <button id="btnClosePrintModalAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-slate-100 hover:bg-rose-50 hover:border-rose-200 border border-slate-200/80 text-slate-400 hover:text-rose-600" title="ปิดหน้าต่าง">
-          <i class='bx bx-x text-2xl leading-none'></i>
+        <!-- สลับทิศทางหน้ากระดาษ -->
+        <button id="btnToggleOrientationActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white rounded-lg text-slate-700 font-semibold text-xs flex items-center gap-1 shadow-2xs">
+          <i id="orientationIconMobile" class='bx bx-layout text-sm text-indigo-600'></i>
+          <span id="orientationTextMobile">แนวนอน</span>
+        </button>
+
+        <!-- เปิด/ปิดลายเซ็น -->
+        <button id="btnToggleSignatureActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white rounded-lg text-slate-700 font-semibold text-xs flex items-center gap-1.5 shadow-2xs">
+          <span id="sigToggleDotMobile" class="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0"></span>
+          <span id="sigToggleTextMobile">ลายเซ็น</span>
+        </button>
+
+        <!-- ตั้งค่าลายเซ็น -->
+        <button id="btnConfigSignatureActionMobile" type="button" class="flex-shrink-0 w-8 h-8 bg-white border border-slate-200 rounded-lg text-slate-600 flex items-center justify-center shadow-2xs">
+          <i class='bx bx-slider-alt text-base'></i>
         </button>
       </div>
     </div>
@@ -1592,9 +1646,14 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
   document.getElementById('btnClosePrintModalAction').onclick = closeHandler;
 
-  document.getElementById('btnPrintModalAction').onclick = () => {
+  const triggerPrintAction = () => {
     window.triggerInAppPrint();
   };
+
+  const btnPrintDesktop = document.getElementById('btnPrintModalAction');
+  const btnPrintMobile = document.getElementById('btnPrintModalActionMobile');
+  if (btnPrintDesktop) btnPrintDesktop.onclick = triggerPrintAction;
+  if (btnPrintMobile) btnPrintMobile.onclick = triggerPrintAction;
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.style.display !== 'none') {
@@ -1610,18 +1669,24 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const icon = document.getElementById('orientationIcon');
     const txt = document.getElementById('orientationText');
     const btn = document.getElementById('btnToggleOrientationAction');
-    if (!btn || !icon || !txt) return;
+    const iconM = document.getElementById('orientationIconMobile');
+    const txtM = document.getElementById('orientationTextMobile');
+    const btnM = document.getElementById('btnToggleOrientationActionMobile');
 
     if (isLand) {
-      btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 shadow-2xs gap-1.5 font-bold text-xs';
-      icon.className = 'bx bx-layout text-sm text-indigo-600';
-      txt.textContent = 'แนวนอน (A4)';
-      btn.title = 'หน้ากระดาษปัจจุบัน: แนวนอน (A4 Landscape) — คลิกเพื่อสลับเป็นแนวตั้ง (Portrait)';
+      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 shadow-2xs gap-1.5 font-bold text-xs';
+      if (icon) icon.className = 'bx bx-layout text-sm text-indigo-600';
+      if (txt) txt.textContent = 'แนวนอน (A4)';
+      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-indigo-300 bg-indigo-50 text-indigo-900 rounded-lg font-bold text-xs flex items-center gap-1 shadow-2xs';
+      if (iconM) iconM.className = 'bx bx-layout text-sm text-indigo-600';
+      if (txtM) txtM.textContent = 'แนวนอน';
     } else {
-      btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs';
-      icon.className = 'bx bx-file text-sm text-slate-500';
-      txt.textContent = 'แนวตั้ง (A4)';
-      btn.title = 'หน้ากระดาษปัจจุบัน: แนวตั้ง (A4 Portrait) — คลิกเพื่อสลับเป็นแนวนอน (Landscape)';
+      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs';
+      if (icon) icon.className = 'bx bx-file text-sm text-slate-500';
+      if (txt) txt.textContent = 'แนวตั้ง (A4)';
+      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white text-slate-700 rounded-lg font-semibold text-xs flex items-center gap-1 shadow-2xs';
+      if (iconM) iconM.className = 'bx bx-file text-sm text-slate-500';
+      if (txtM) txtM.textContent = 'แนวตั้ง';
     }
   };
 
@@ -1630,7 +1695,9 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const dot = document.getElementById('sigToggleDot');
     const txt = document.getElementById('sigToggleText');
     const btn = document.getElementById('btnToggleSignatureAction');
-    if (!btn || !dot || !txt) return;
+    const dotM = document.getElementById('sigToggleDotMobile');
+    const txtM = document.getElementById('sigToggleTextMobile');
+    const btnM = document.getElementById('btnToggleSignatureActionMobile');
 
     const activeList = [];
     if (multi.teacher.enabled && multi.teacher.signature) activeList.push('ครู');
@@ -1641,15 +1708,19 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const hasAnyActive = multi.masterEnabled && activeList.length > 0;
 
     if (hasAnyActive) {
-      btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs gap-1.5 sm:gap-2 font-bold text-xs';
-      dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
-      txt.textContent = activeList.length >= 3 ? 'ลายเซ็น: ครบทุกฝ่าย (เปิด)' : `ลายเซ็น: เปิด (${activeList.join(', ')})`;
-      btn.title = `กำลังประทับลายเซ็น (${activeList.join(', ')}) ลงในเอกสารทุกหน้าที่พิมพ์ (คลิกเพื่อปิด)`;
+      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs gap-1.5 sm:gap-2 font-bold text-xs';
+      if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
+      if (txt) txt.textContent = activeList.length >= 3 ? 'ลายเซ็น: ครบทุกฝ่าย (เปิด)' : `ลายเซ็น: เปิด (${activeList.join(', ')})`;
+      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-emerald-300 bg-emerald-50 text-emerald-800 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-2xs';
+      if (dotM) dotM.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
+      if (txtM) txtM.textContent = `ลายเซ็น (${activeList.length} ฝ่าย)`;
     } else {
-      btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs';
-      dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0';
-      txt.textContent = 'ลายเซ็น: ปิดอยู่';
-      btn.title = 'คลิกเพื่อเปิดการใส่ลายเซ็นลงในเอกสาร';
+      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs';
+      if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0';
+      if (txt) txt.textContent = 'ลายเซ็น: ปิดอยู่';
+      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white text-slate-600 rounded-lg font-semibold text-xs flex items-center gap-1.5 shadow-2xs';
+      if (dotM) dotM.className = 'w-2 h-2 rounded-full bg-slate-300 flex-shrink-0';
+      if (txtM) txtM.textContent = 'ลายเซ็น: ปิด';
     }
   };
 
@@ -1667,29 +1738,79 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const iframe = document.getElementById('printDocIframe');
     if (iframe) {
       const cleanOverride = `
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
         <style id="cleanPreviewOverride">
           @page {
             size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
             margin: ${isLand ? '8mm 10mm 10mm 10mm' : '10mm 12mm 12mm 12mm'} !important;
           }
           .no-print, .no-print-bar { display: none !important; }
+          html, body {
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
+          }
           body {
-            background: #FFFFFF !important;
+            background: #F1F5F9 !important;
             padding: 0 !important;
             margin: 0 auto !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
           }
           .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container {
             margin: 8px auto !important;
-            box-shadow: none !important;
-            padding: ${isLand ? '10px 14px' : '12px 16px'} !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+            padding: ${isLand ? '10px 14px' : '14px 18px'} !important;
             max-width: ${isLand ? '285mm' : '205mm'} !important;
             width: 100% !important;
             box-sizing: border-box !important;
+            background: #FFFFFF !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
           }
           table {
-            max-width: 100% !important;
+            max-width: 100%;
+          }
+          .teacher-sig-img, .mhc-sig-img {
+            max-height: 46px !important;
+            max-width: 145px !important;
+            object-fit: contain !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+          }
+          .sig-stamp-zone {
+            min-height: 44px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          /* ป้องกันการทับซ้อนข้อความท้ายเอกสารกับชื่อผู้บริหาร */
+          .footer, .print-footer {
+            position: static !important;
+            margin-top: 18px !important;
+            padding-top: 6px !important;
+            border-top: 1px solid #CBD5E1 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            font-size: 7.5pt !important;
+            color: #64748B !important;
+            clear: both !important;
+            page-break-inside: avoid !important;
+          }
+          @media screen and (max-width: 640px) {
+            .signatures, .sig-container {
+              display: flex !important;
+              flex-wrap: wrap !important;
+              gap: 14px !important;
+              justify-content: space-around !important;
+            }
+            .sig-box {
+              min-width: 160px !important;
+              max-width: 280px !important;
+              margin: 4px 0 !important;
+            }
           }
           @media print {
             @page {
@@ -1711,6 +1832,15 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               width: 100% !important;
               max-width: 100% !important;
             }
+            .signatures, .sig-container, .signature-grid {
+              display: flex !important;
+              justify-content: space-between !important;
+              flex-wrap: nowrap !important;
+            }
+            .footer, .print-footer {
+              position: static !important;
+              margin-top: 16px !important;
+            }
             .no-print, .no-print-bar { display: none !important; }
           }
         </style>
@@ -1721,7 +1851,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     }
   };
 
-  document.getElementById('btnToggleOrientationAction').onclick = () => {
+  const toggleOrientationHandler = () => {
     modal._currentOrientation = (modal._currentOrientation === 'landscape') ? 'portrait' : 'landscape';
     updateOrientationBtnUI();
     refreshPreview();
@@ -1735,7 +1865,12 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     }
   };
 
-  document.getElementById('btnToggleSignatureAction').onclick = () => {
+  const btnOriDesktop = document.getElementById('btnToggleOrientationAction');
+  const btnOriMobile = document.getElementById('btnToggleOrientationActionMobile');
+  if (btnOriDesktop) btnOriDesktop.onclick = toggleOrientationHandler;
+  if (btnOriMobile) btnOriMobile.onclick = toggleOrientationHandler;
+
+  const toggleSignatureHandler = () => {
     const multi = getPrintMultiSignatureState();
     multi.masterEnabled = !multi.masterEnabled;
     savePrintMultiSignatureState(multi);
@@ -1745,11 +1880,21 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     }
   };
 
-  document.getElementById('btnConfigSignatureAction').onclick = () => {
+  const btnSigDesktop = document.getElementById('btnToggleSignatureAction');
+  const btnSigMobile = document.getElementById('btnToggleSignatureActionMobile');
+  if (btnSigDesktop) btnSigDesktop.onclick = toggleSignatureHandler;
+  if (btnSigMobile) btnSigMobile.onclick = toggleSignatureHandler;
+
+  const configSignatureHandler = () => {
     showSignatureManagerModal(() => {
       refreshPreview();
     });
   };
+
+  const btnCfgDesktop = document.getElementById('btnConfigSignatureAction');
+  const btnCfgMobile = document.getElementById('btnConfigSignatureActionMobile');
+  if (btnCfgDesktop) btnCfgDesktop.onclick = configSignatureHandler;
+  if (btnCfgMobile) btnCfgMobile.onclick = configSignatureHandler;
 
   refreshPreview();
   modal.style.display = 'flex';

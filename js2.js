@@ -3638,13 +3638,14 @@ function printAttendanceDashboardOverview() {
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHTML(docTitle)}</title>
   <style>
     @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 10pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 10pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .print-page-wrapper { max-width: 195mm; margin: 15px auto; padding: 10mm 12mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; }
+    .print-page-wrapper { max-width: 195mm; margin: 15px auto; padding: 10mm 12mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; overflow-x: auto; box-sizing: border-box; }
     .header { text-align: center; margin-bottom: 12px; }
     .logo { width: 52px; height: 52px; object-fit: contain; margin: 0 auto 4px auto; display: block; }
     .title { font-size: 13.5pt; font-weight: bold; margin: 0; color: #1E293B; }
@@ -3653,14 +3654,17 @@ function printAttendanceDashboardOverview() {
     .kpi-box { background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 8px; text-align: center; }
     .kpi-title { font-size: 9pt; color: #64748B; font-weight: bold; margin-bottom: 3px; }
     .kpi-val { font-size: 14pt; font-weight: 800; }
-    .signatures { margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-box { text-align: center; min-width: 220px; font-size: 9.5pt; }
-    .sig-line { margin-top: 5px; color: #334155; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 4px; }
+    .signatures { margin-top: 30px; display: flex; justify-content: space-between; page-break-inside: avoid; gap: 16px; flex-wrap: wrap; }
+    .sig-box { text-align: center; min-width: 180px; max-width: 280px; flex: 1; font-size: 9pt; }
+    .sig-stamp-zone { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .sig-dots { font-size: 9pt; color: #334155; }
+    .sig-line { margin-top: 4px; color: #334155; font-size: 9pt; }
+    .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
       body { margin: 0; background: #FFFFFF; }
       .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      .signatures { flex-wrap: nowrap !important; }
     }
   </style>
 </head>
@@ -3725,17 +3729,18 @@ function printAttendanceDashboardOverview() {
       </div>
       <div class="sig-box">
         <div>ทราบ / อนุมัติ</div>
-        <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
         <div class="sig-line">( นายอธิการ สุขศรี )</div>
         <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
         <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
       </div>
     </div>
-  </div>
 
-  <div class="footer">
-    <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
-    <span>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')} เวลา ${new Date().toLocaleTimeString('th-TH')} น.</span>
+    <div class="footer">
+      <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
+      <span>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')} เวลา ${new Date().toLocaleTimeString('th-TH')} น.</span>
+    </div>
   </div>
 
   <script>
@@ -3891,11 +3896,17 @@ function printDailyAttendanceRecord() {
             </div>
             <div class="sig-box">
               <div>ทราบ / อนุมัติ</div>
-              <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+              <div class="sig-stamp-zone"></div>
+              <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
               <div class="sig-line">( นายอธิการ สุขศรี )</div>
               <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
               <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
             </div>
+          </div>
+
+          <div class="footer">
+            <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
+            <span>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')} เวลา ${new Date().toLocaleTimeString('th-TH')} น.</span>
           </div>
         </div>
       `;
@@ -3975,11 +3986,17 @@ function printDailyAttendanceRecord() {
           </div>
           <div class="sig-box">
             <div>ทราบ / อนุมัติ</div>
-            <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+            <div class="sig-stamp-zone"></div>
+            <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
             <div class="sig-line">( นายอธิการ สุขศรี )</div>
             <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
             <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
+        </div>
+
+        <div class="footer">
+          <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
+          <span>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')} เวลา ${new Date().toLocaleTimeString('th-TH')} น.</span>
         </div>
       </div>
     `;
@@ -3989,11 +4006,12 @@ function printDailyAttendanceRecord() {
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHTML(docTitle)}</title>
   <style>
     @page { size: A4 portrait; margin: 8mm 8mm 10mm 8mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9.5pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9.5pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
     .print-page-wrapper { max-width: 195mm; width: 100%; margin: 12px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; overflow-x: auto; box-sizing: border-box; }
     .header { text-align: center; margin-bottom: 10px; }
@@ -4005,10 +4023,12 @@ function printDailyAttendanceRecord() {
     th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 5px 3px; text-align: center; font-weight: bold; font-size: 8.5pt; }
     td { border: 1px solid #CBD5E1; padding: 4px 4px; line-height: 1.3; font-size: 8.5pt; vertical-align: middle; }
     tr:nth-child(even) { background: #FAFAFA; }
-    .signatures { margin-top: 24px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-box { text-align: center; min-width: 200px; font-size: 9pt; }
-    .sig-line { margin-top: 5px; color: #334155; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 3px; }
+    .signatures { margin-top: 24px; display: flex; justify-content: space-between; page-break-inside: avoid; gap: 16px; flex-wrap: wrap; }
+    .sig-box { text-align: center; min-width: 180px; max-width: 280px; flex: 1; font-size: 9pt; }
+    .sig-stamp-zone { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .sig-dots { font-size: 9pt; color: #334155; }
+    .sig-line { margin-top: 4px; color: #334155; font-size: 9pt; }
+    .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
       body { margin: 0; background: #FFFFFF; }
@@ -4016,7 +4036,7 @@ function printDailyAttendanceRecord() {
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
       thead { display: table-header-group; }
-      .signatures { page-break-inside: avoid; }
+      .signatures { page-break-inside: avoid; flex-wrap: nowrap !important; }
     }
   </style>
 </head>
@@ -4037,11 +4057,6 @@ function printDailyAttendanceRecord() {
   </div>
 
   ${pagesHtml}
-
-  <div class="footer">
-    <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
-    <span>พิมพ์เมื่อ: ${new Date().toLocaleDateString('th-TH')} เวลา ${new Date().toLocaleTimeString('th-TH')} น.</span>
-  </div>
 
   <script>
     if (window.self === window.top) {
@@ -4500,11 +4515,17 @@ function printAttendanceReport() {
           </div>
           <div class="sig-box">
             <div>ทราบ / อนุมัติ</div>
-            <div style="margin-top:10px;">ลงชื่อ ..............................................................</div>
+            <div class="sig-stamp-zone"></div>
+            <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
             <div class="sig-line">( นายอธิการ สุขศรี )</div>
             <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
             <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
+        </div>
+
+        <div class="footer">
+          <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
+          <span>พิมพ์เมื่อ: ${printTimestamp}</span>
         </div>
       </div>
     `;
@@ -4514,6 +4535,7 @@ function printAttendanceReport() {
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHTML(reportTitle)}</title>
   <style>
     @page {
@@ -4528,6 +4550,8 @@ function printAttendanceReport() {
       margin: 0;
       padding: 0;
       background: #F8FAFC;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
     .print-page-wrapper {
@@ -4540,6 +4564,7 @@ function printAttendanceReport() {
       border-radius: 4px;
       overflow-x: auto;
       box-sizing: border-box;
+      -webkit-overflow-scrolling: touch;
     }
     .header { text-align: center; margin-bottom: 8px; }
     .logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
@@ -4550,10 +4575,12 @@ function printAttendanceReport() {
     th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '3px 2px'}; text-align: center; font-weight: bold; }
     td { border: 1px solid #CBD5E1; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '2.5px 3px'}; line-height: 1.25; }
     tr:nth-child(even) { background: #FAFAFA; }
-    .signatures { margin-top: 20px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-    .sig-box { text-align: center; min-width: 190px; font-size: 9pt; }
-    .sig-line { margin-top: 5px; color: #334155; }
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 2px; }
+    .signatures { margin-top: 20px; display: flex; justify-content: space-between; page-break-inside: avoid; gap: 16px; flex-wrap: wrap; }
+    .sig-box { text-align: center; min-width: 180px; max-width: 280px; flex: 1; font-size: 9pt; }
+    .sig-stamp-zone { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .sig-dots { font-size: 9pt; color: #334155; }
+    .sig-line { margin-top: 4px; color: #334155; font-size: 9pt; }
+    .footer { margin-top: 18px; padding-top: 6px; border-top: 1px solid #CBD5E1; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
       body { margin: 0; background: #FFFFFF; }
@@ -4563,7 +4590,7 @@ function printAttendanceReport() {
       table { page-break-inside: auto; }
       tr { page-break-inside: avoid; page-break-after: auto; }
       thead { display: table-header-group; }
-      .signatures { page-break-inside: avoid; }
+      .signatures { page-break-inside: avoid; flex-wrap: nowrap !important; }
     }
   </style>
 </head>
@@ -4586,11 +4613,6 @@ function printAttendanceReport() {
   </div>
 
   ${gradeSectionsHtml}
-
-  <div class="footer">
-    <span>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</span>
-    <span>พิมพ์เมื่อ: ${printTimestamp}</span>
-  </div>
 
   <script>
     if (window.self === window.top) {
