@@ -226,7 +226,10 @@ function manualContent() {
         <div class="num">2\x3c/div>
         <div class="text">
           <div class="title">กรอก Username และรหัสผ่าน\x3c/div>
-          <div class="desc">บัญชีเริ่มต้น: <span class="kbd">admin\x3c/span> / <span class="kbd">Admin@2024\x3c/span>
+          <div class="desc">บัญชีเริ่มต้น: 
+          <br>• <b>ผอ. (นายอธิการ สุขศรี):</b> <span class="kbd">director\x3c/span> / <span class="kbd">Director@2024\x3c/span>
+          <br>• <b>รอง ผอ. (นายสันติ อุดคำ):</b> <span class="kbd">deputy\x3c/span> / <span class="kbd">Deputy@2024\x3c/span>
+          <br>• <b>ผู้ดูแลระบบ:</b> <span class="kbd">admin\x3c/span> / <span class="kbd">Admin@2024\x3c/span>
           <br>กดไอคอน 👁 เพื่อแสดง/ซ่อนรหัสผ่าน\x3c/div>
         \x3c/div>
       \x3c/div>

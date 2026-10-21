@@ -127,12 +127,90 @@ function doLogin() {
     .login(u, p);
 }
 
+function quickFillLogin(role) {
+  const uInp = document.getElementById('loginUsername');
+  const pInp = document.getElementById('loginPassword');
+  if (!uInp || !pInp) return;
+
+  if (role === 'director') {
+    uInp.value = 'director';
+    pInp.value = 'Director@2024';
+    if (typeof showToast === 'function') showToast('info', 'กรอกบัญชี ผอ. นายอธิการ สุขศรี');
+  } else if (role === 'deputy') {
+    uInp.value = 'deputy';
+    pInp.value = 'Deputy@2024';
+    if (typeof showToast === 'function') showToast('info', 'กรอกบัญชี รอง ผอ. นายสันติ อุดคำ');
+  } else if (role === 'admin') {
+    uInp.value = 'admin';
+    pInp.value = 'Admin@2024';
+    if (typeof showToast === 'function') showToast('info', 'กรอกบัญชี ผู้ดูแลระบบ (admin)');
+  } else if (role === 'executive_picker') {
+    Swal.fire({
+      title: '<div class="text-base font-bold flex items-center justify-center gap-2"><i class="bx bx-shield-quarter text-amber-500 text-xl"></i> เลือกบัญชีฝ่ายบริหารสำหรับเข้าสู่ระบบ</div>',
+      html: `
+        <div class="space-y-2 text-left pt-2">
+          <button type="button" onclick="Swal.close(); quickFillLogin('director');" class="w-full p-3 rounded-xl border border-indigo-200 hover:border-indigo-400 bg-indigo-50/70 hover:bg-indigo-100 flex items-center justify-between text-left transition-all cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+                ผอ
+              </div>
+              <div>
+                <div class="font-bold text-slate-800 text-sm">ผอ. นายอธิการ สุขศรี</div>
+                <div class="text-xs text-slate-500">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+              </div>
+            </div>
+            <span class="text-xs font-mono font-bold bg-white text-indigo-700 px-2 py-1 rounded-md border border-indigo-200">director</span>
+          </button>
+
+          <button type="button" onclick="Swal.close(); quickFillLogin('deputy');" class="w-full p-3 rounded-xl border border-purple-200 hover:border-purple-400 bg-purple-50/70 hover:bg-purple-100 flex items-center justify-between text-left transition-all cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+                รอง
+              </div>
+              <div>
+                <div class="font-bold text-slate-800 text-sm">รอง ผอ. นายสันติ อุดคำ</div>
+                <div class="text-xs text-slate-500">รองผู้อำนวยการโรงเรียน</div>
+              </div>
+            </div>
+            <span class="text-xs font-mono font-bold bg-white text-purple-700 px-2 py-1 rounded-md border border-purple-200">deputy</span>
+          </button>
+
+          <button type="button" onclick="Swal.close(); quickFillLogin('admin');" class="w-full p-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-left transition-all cursor-pointer">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+                <i class='bx bx-cog text-lg'></i>
+              </div>
+              <div>
+                <div class="font-bold text-slate-800 text-sm">ผู้ดูแลระบบ (Admin)</div>
+                <div class="text-xs text-slate-500">จัดการข้อมูลและโครงสร้างระบบ</div>
+              </div>
+            </div>
+            <span class="text-xs font-mono font-bold bg-white text-slate-700 px-2 py-1 rounded-md border border-slate-200">admin</span>
+          </button>
+        </div>
+      `,
+      showConfirmButton: false,
+      showCloseButton: true
+    });
+  }
+}
+
 function forgotPassword() {
   Swal.fire({
     icon: 'info',
-    title: 'ลืมรหัสผ่าน',
-    html: 'กรุณาติดต่อผู้ดูแลระบบ<br>หรือ Reset รหัสผ่านในหน้าตั้งค่า',
-    confirmButtonText: 'ตกลง'
+    title: 'ข้อมูลบัญชีและการเข้าสู่ระบบ',
+    html: `
+      <div class="text-left text-sm space-y-2 text-slate-700">
+        <div><b>บัญชีมาตรฐานฝ่ายบริหาร:</b></div>
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1.5 font-mono text-xs">
+          <div>• <b>ผอ. นายอธิการ สุขศรี:</b> director / Director@2024</div>
+          <div>• <b>รอง ผอ. นายสันติ อุดคำ:</b> deputy / Deputy@2024</div>
+          <div>• <b>ผู้ดูแลระบบ:</b> admin / Admin@2024</div>
+        </div>
+        <div class="text-xs text-slate-500 pt-1">* หากเปลี่ยนรหัสผ่านแล้วลืม สามารถติดต่อผู้ดูแลระบบเพื่อรีเซ็ตได้ที่เมนู "จัดการผู้ใช้งาน"</div>
+      </div>
+    `,
+    confirmButtonText: 'รับทราบ'
   });
 }
 
@@ -212,7 +290,7 @@ function enterApp() {
   if (sidebarName) sidebarName.textContent = APP.user.name || APP.user.username;
   
   const sidebarRole = document.getElementById('sidebarUserRole');
-  if (sidebarRole) sidebarRole.textContent = ({ admin:'ผู้ดูแลระบบ', staff:'เจ้าหน้าที่', teacher:'ครู' })[APP.role] || APP.role;
+  if (sidebarRole) sidebarRole.textContent = ({ admin:'ผู้ดูแลระบบ', director:'ผู้อำนวยการโรงเรียน', deputy:'รองผู้อำนวยการโรงเรียน', staff:'เจ้าหน้าที่', teacher:'ครู' })[APP.role] || APP.role;
 
   const av = document.getElementById('sidebarAvatar');
   if (av) {
@@ -224,8 +302,8 @@ function enterApp() {
     }
   }
 
-  // ซ่อนเมนู admin ถ้าไม่ใช่ admin
-  const isAdmin = APP.role === 'admin';
+  // ซ่อนเมนู admin ถ้าไม่ใช่ admin หรือผู้บริหาร
+  const isAdmin = APP.role === 'admin' || APP.role === 'director' || APP.role === 'deputy';
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
   const divAdmin = document.getElementById('adminDivider');
   if (divAdmin) divAdmin.style.display = isAdmin ? '' : 'none';
@@ -308,10 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
  * ============================================================ */
 function canEditModule(moduleName) {
   if (moduleName === 'personnel') {
-    return APP.role === 'admin';
+    return APP.role === 'admin' || APP.role === 'director' || APP.role === 'deputy';
   }
   
-  if (APP.role === 'admin' || APP.role === 'staff') return true;
+  if (APP.role === 'admin' || APP.role === 'director' || APP.role === 'deputy' || APP.role === 'staff') return true;
   if (APP.role !== 'teacher') return false;
   
   const dept = (APP.user.department || '').toLowerCase();
@@ -461,7 +539,7 @@ window.openGlobalSearch = function() {
     { title: 'ระบบเก็บผลงานและข้อมูลการอบรม (Portfolio)', icon: 'bxs-briefcase', page: 'ext_portfolio', cat: 'ส่วนเสริม' },
     { title: 'คู่มือการใช้งานระบบ', icon: 'bxs-book-reader', page: 'manual', cat: 'ช่วยเหลือ' },
   ];
-  if (APP.role === 'admin') {
+  if (APP.role === 'admin' || APP.role === 'director' || APP.role === 'deputy') {
     menuPages.push({ title: 'จัดการผู้ใช้งาน', icon: 'bxs-user-account', page: 'users', cat: 'ผู้ดูแล' });
     menuPages.push({ title: 'ตั้งค่าระบบโรงเรียน', icon: 'bxs-cog', page: 'settings', cat: 'ผู้ดูแล' });
   }
@@ -1536,7 +1614,7 @@ function openProfile() {
         \x3c/div>
         <div style="display:grid; grid-template-columns:auto 1fr; gap:8px 14px; color:#334155;">
           <span style="color:#64748B;">บทบาท:\x3c/span>
-          <span><span class="status-badge status-active">${({admin:'ผู้ดูแลระบบ',staff:'เจ้าหน้าที่',teacher:'ครู'})[APP.role] || APP.role}\x3c/span>\x3c/span>
+          <span><span class="status-badge status-active">${({admin:'ผู้ดูแลระบบ', director:'ผู้อำนวยการโรงเรียน', deputy:'รองผู้อำนวยการโรงเรียน', staff:'เจ้าหน้าที่', teacher:'ครู'})[APP.role] || APP.role}\x3c/span>\x3c/span>
           <span style="color:#64748B;">อีเมล:\x3c/span>      <span>${escapeHTML(APP.user.email || '-')}\x3c/span>
           <span style="color:#64748B;">โทรศัพท์:\x3c/span>   <span>${escapeHTML(APP.user.phone || '-')}\x3c/span>
           <span style="color:#64748B;">ฝ่าย/กลุ่ม:\x3c/span> <span>${escapeHTML(APP.user.department || '-')}\x3c/span>

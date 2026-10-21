@@ -1279,8 +1279,8 @@ function deleteFileConfirm(fileId, fileName) {
 const UsersState = { page:1, search:'', role:'', active:'', data:null };
 
 function renderUsers(container) {
-  if (APP.role !== 'admin') {
-    container.innerHTML = `<div class="empty-state"><i class='bx bx-lock'>\x3c/i><h3>เฉพาะผู้ดูแลระบบเท่านั้น\x3c/h3>\x3c/div>`;
+  if (APP.role !== 'admin' && APP.role !== 'director' && APP.role !== 'deputy') {
+    container.innerHTML = `<div class="empty-state"><i class='bx bx-lock'>\x3c/i><h3>เฉพาะผู้ดูแลระบบและฝ่ายบริหารเท่านั้น\x3c/h3>\x3c/div>`;
     return;
   }
   container.innerHTML = `
@@ -1302,9 +1302,11 @@ function renderUsers(container) {
           <select id="userRole" onchange="onUserFilter()"
                   class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
             <option value="">ทุกบทบาท\x3c/option>
+            <option value="director">ผู้อำนวยการโรงเรียน\x3c/option>
+            <option value="deputy">รองผู้อำนวยการโรงเรียน\x3c/option>
             <option value="admin">ผู้ดูแลระบบ\x3c/option>
-            <option value="staff">เจ้าหน้าที่\x3c/option>
             <option value="teacher">ครู\x3c/option>
+            <option value="staff">เจ้าหน้าที่\x3c/option>
           \x3c/select>
           <select id="userActive" onchange="onUserFilter()"
                   class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
@@ -1361,7 +1363,7 @@ function renderUsersTable(res) {
     area.innerHTML = `<div class="empty-state"><i class='bx bx-user-x'>\x3c/i>ไม่พบผู้ใช้\x3c/div>`;
     return;
   }
-  const roleLabel = { admin:'ผู้ดูแลระบบ', staff:'เจ้าหน้าที่', teacher:'ครู' };
+  const roleLabel = { admin:'ผู้ดูแลระบบ', director:'ผู้อำนวยการโรงเรียน', deputy:'รองผู้อำนวยการโรงเรียน', staff:'เจ้าหน้าที่', teacher:'ครู' };
   area.innerHTML = `
     <div style="overflow-x:auto;">
       <table class="min-w-full text-sm">
@@ -1472,9 +1474,11 @@ function openUserForm(id) {
           <div class="col-span-6">
             <label class="form-label">บทบาท <span class="text-red-500">*\x3c/span>\x3c/label>
             <select id="uf_role" class="form-input">
-              <option value="staff"   ${(u.role||'staff')==='staff'?'selected':''}>เจ้าหน้าที่\x3c/option>
-              <option value="teacher" ${u.role==='teacher'?'selected':''}>ครู\x3c/option>
-              <option value="admin"   ${u.role==='admin'?'selected':''}>ผู้ดูแลระบบ\x3c/option>
+              <option value="director" ${u.role==='director'?'selected':''}>ผู้อำนวยการโรงเรียน\x3c/option>
+              <option value="deputy"   ${u.role==='deputy'?'selected':''}>รองผู้อำนวยการโรงเรียน\x3c/option>
+              <option value="admin"    ${u.role==='admin'?'selected':''}>ผู้ดูแลระบบ\x3c/option>
+              <option value="teacher"  ${u.role==='teacher'?'selected':''}>ครู\x3c/option>
+              <option value="staff"    ${(u.role||'staff')==='staff'?'selected':''}>เจ้าหน้าที่\x3c/option>
             \x3c/select>
           \x3c/div>
           <div class="col-span-12">
@@ -1619,8 +1623,8 @@ function deleteUserConfirm(id, username) {
  *  SETTINGS
  * ============================================================ */
 function renderSettings(container) {
-  if (APP.role !== 'admin') {
-    container.innerHTML = `<div class="empty-state"><i class='bx bx-lock'>\x3c/i><h3>เฉพาะผู้ดูแลระบบเท่านั้น\x3c/h3>\x3c/div>`;
+  if (APP.role !== 'admin' && APP.role !== 'director') {
+    container.innerHTML = `<div class="empty-state"><i class='bx bx-lock'>\x3c/i><h3>เฉพาะผู้ดูแลระบบและผู้อำนวยการโรงเรียนเท่านั้น\x3c/h3>\x3c/div>`;
     return;
   }
 

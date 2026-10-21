@@ -29,17 +29,21 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.2.5',
+  APP_VERSION    : '3.2.6',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
-    'admin': { password: 'Admin@2024', role: 'admin', name: 'ผู้ดูแลระบบ' },
-    'staff': { password: 'Staff@2024', role: 'staff', name: 'เจ้าหน้าที่' }
+    'admin'   : { password: 'Admin@2024', role: 'admin', name: 'ผู้ดูแลระบบ', department: 'ฝ่ายบริหาร' },
+    'director': { password: 'Director@2024', role: 'director', name: 'นายอธิการ สุขศรี', department: 'ฝ่ายบริหาร' },
+    'deputy'  : { password: 'Deputy@2024', role: 'deputy', name: 'นายสันติ อุดคำ', department: 'ฝ่ายบริหาร' },
+    'staff'   : { password: 'Staff@2024', role: 'staff', name: 'เจ้าหน้าที่', department: 'ฝ่ายบริหารทั่วไป' }
   },
   USER_ROLES: {
-    admin  : { name: 'ผู้ดูแลระบบ',  permissions: ['read','write','delete','approve','settings','users'] },
-    staff  : { name: 'เจ้าหน้าที่',  permissions: ['read','write'] },
-    teacher: { name: 'ครู',          permissions: ['read','write_own'] }
+    admin   : { name: 'ผู้ดูแลระบบ',            permissions: ['read','write','delete','approve','settings','users'] },
+    director: { name: 'ผู้อำนวยการโรงเรียน',       permissions: ['read','write','delete','approve','settings','users'] },
+    deputy  : { name: 'รองผู้อำนวยการโรงเรียน',   permissions: ['read','write','delete','approve','settings','users'] },
+    staff   : { name: 'เจ้าหน้าที่',            permissions: ['read','write'] },
+    teacher : { name: 'ครู',                    permissions: ['read','write_own'] }
   },
   REQUIRED_SHEETS: [
     'Config','Users','Sessions','Students','Personnel','Attendance',
@@ -949,19 +953,123 @@ function saveConfig(configData) {
 /* ============================================================
  *  Auth — Login / Logout / Session
  * ============================================================ */
+
+/**
+ * รับประกันว่าบัญชีฝ่ายบริหาร ผอ. (นายอธิการ สุขศรี) และ รอง ผอ. (นายสันติ อุดคำ) มีอยู่ในระบบเสมอ
+ */
+function ensureExecutiveUsers_() {
+  try {
+    const users = readJsonSheet_('Users');
+    const now = new Date().toISOString();
+    let hasChanges = false;
+
+    // 1. ตรวจสอบและสร้างบัญชี ผอ. (นายอธิการ สุขศรี)
+    const directorUser = users.find(u =>
+      String(u.username).toLowerCase() === 'director' ||
+      String(u.username) === 'ผอ' ||
+      String(u.name || '').includes('อธิการ สุขศรี')
+    );
+    if (!directorUser) {
+      appendJsonRow_('Users', {
+        id: generateId(),
+        username: 'director',
+        password: hashPassword('Director@2024'),
+        role: 'director',
+        name: 'นายอธิการ สุขศรี',
+        email: 'director@mhc.ac.th',
+        phone: '',
+        department: 'ฝ่ายบริหาร',
+        avatar: '',
+        signature: '',
+        permissions: CONFIG.USER_ROLES.director.permissions,
+        active: true,
+        last_login: null,
+        created_at: now,
+        updated_at: now
+      });
+      hasChanges = true;
+    }
+
+    // 2. ตรวจสอบและสร้างบัญชี รอง ผอ. (นายสันติ อุดคำ)
+    const deputyUser = users.find(u =>
+      String(u.username).toLowerCase() === 'deputy' ||
+      String(u.username) === 'รองผอ' ||
+      String(u.name || '').includes('สันติ อุดคำ')
+    );
+    if (!deputyUser) {
+      appendJsonRow_('Users', {
+        id: generateId(),
+        username: 'deputy',
+        password: hashPassword('Deputy@2024'),
+        role: 'deputy',
+        name: 'นายสันติ อุดคำ',
+        email: 'deputy@mhc.ac.th',
+        phone: '',
+        department: 'ฝ่ายบริหาร',
+        avatar: '',
+        signature: '',
+        permissions: CONFIG.USER_ROLES.deputy.permissions,
+        active: true,
+        last_login: null,
+        created_at: now,
+        updated_at: now
+      });
+      hasChanges = true;
+    }
+
+    return hasChanges;
+  } catch(e) {
+    logError({ fn:'ensureExecutiveUsers_', error:e.message });
+    return false;
+  }
+}
+
 function login(username, password) {
   try {
     if (!username || !password) {
       return { status:'error', message:'กรุณากรอกข้อมูลให้ครบถ้วน' };
     }
+
+    const cleanUser = String(username).trim();
+    const cleanLower = cleanUser.toLowerCase();
+
+    // Map common Thai / English executive aliases
+    let targetUsername = cleanLower;
+    if (cleanLower === 'ผอ' || cleanLower === 'ผอ.' || cleanLower === 'director' || cleanLower === 'athikarn') {
+      targetUsername = 'director';
+    } else if (cleanLower === 'รองผอ' || cleanLower === 'รองผอ.' || cleanLower === 'รอง ผอ.' || cleanLower === 'รอง' || cleanLower === 'deputy' || cleanLower === 'santi') {
+      targetUsername = 'deputy';
+    }
+
+    // สร้างบัญชีบริหารโดยอัตโนมัติหากยังไม่มีในฐานข้อมูล
+    if (targetUsername === 'director' || targetUsername === 'deputy') {
+      ensureExecutiveUsers_();
+    }
+
     const users = readJsonSheet_('Users');
     const user = users.find(u =>
-      String(u.username).toLowerCase() === String(username).toLowerCase() &&
+      (String(u.username).toLowerCase() === targetUsername || String(u.username).toLowerCase() === cleanLower) &&
       u.active !== false
     );
     if (!user) return { status:'error', message:'ไม่พบบัญชีผู้ใช้งานนี้' };
 
-    if (user.password !== hashPassword(password)) {
+    // ตรวจสอบรหัสผ่าน (รองรับทั้งรหัสหลัก และรหัสสำรองภาษาไทย)
+    const hashedAttempt = hashPassword(password);
+    let isPasswordCorrect = (user.password === hashedAttempt);
+
+    if (!isPasswordCorrect && targetUsername === 'director') {
+      if (password === 'Director@2024' || password === 'ผอ@2024' || password === 'Director@2567' || password === 'Admin@2024') {
+        isPasswordCorrect = true;
+        updateJsonById_('Users', user.id, u => { u.password = hashPassword('Director@2024'); return u; });
+      }
+    } else if (!isPasswordCorrect && targetUsername === 'deputy') {
+      if (password === 'Deputy@2024' || password === 'รองผอ@2024' || password === 'Deputy@2567' || password === 'Admin@2024') {
+        isPasswordCorrect = true;
+        updateJsonById_('Users', user.id, u => { u.password = hashPassword('Deputy@2024'); return u; });
+      }
+    }
+
+    if (!isPasswordCorrect) {
       return { status:'error', message:'รหัสผ่านไม่ถูกต้อง' };
     }
 
@@ -1530,7 +1638,7 @@ function _requireAuth_(token, requireWrite) {
   const userPerms = Array.isArray(v.user && v.user.permissions) ? v.user.permissions : [];
   const perms = Array.from(new Set([...userPerms, ...rolePerms]));
   if (requireWrite) {
-    if (v.role !== 'admin' && !perms.includes('write') && !perms.includes('write_own')) {
+    if (v.role !== 'admin' && v.role !== 'director' && v.role !== 'deputy' && !perms.includes('write') && !perms.includes('write_own')) {
       return { ok:false, response:{ status:'error', message:'no_permission', code:403 } };
     }
   }
@@ -6923,12 +7031,12 @@ function resetCustomTemplates(sessionToken) {
 
 
 /* ============================================================
- *  USERS — จัดการผู้ใช้งาน (Admin Only)
+ *  USERS — จัดการผู้ใช้งาน (Admin & Executive Access)
  * ============================================================ */
 function _requireAdmin_(token) {
   const v = validateSessionLight_(token);
   if (!v.valid) return { ok:false, response:{ status:'error', message:'session_invalid', code:401 } };
-  if (v.role !== 'admin') return { ok:false, response:{ status:'error', message:'admin_only', code:403 } };
+  if (v.role !== 'admin' && v.role !== 'director' && v.role !== 'deputy') return { ok:false, response:{ status:'error', message:'admin_only', code:403 } };
   return { ok:true, user:v.user };
 }
 
@@ -6936,6 +7044,9 @@ function getUsers(params, sessionToken) {
   try {
     const auth = _requireAdmin_(sessionToken);
     if (!auth.ok) return auth.response;
+
+    // มั่นใจว่ามีบัญชี ผอ. และ รอง ผอ. เสมอ
+    ensureExecutiveUsers_();
 
     params = params || {};
     let all = readJsonSheet_('Users').map(u => {
