@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.1.9',
+  APP_VERSION    : '3.2.0',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -45,7 +45,7 @@ const CONFIG = {
     'Config','Users','Sessions','Students','Personnel','Attendance',
     'Academic','Registration','Finance','Documents','Approvals',
     'Calendar','Files','Errors',
-    'Schedule','Classrooms','Behavior','Notifications'
+    'Schedule','Classrooms','Behavior','Notifications','Messages'
   ]
 };
 
@@ -516,6 +516,13 @@ function routeApi(action, params, token) {
       
       // ---------- NOTIFICATIONS ----------
       case 'markNotificationRead': return markNotificationRead(params.id, token);
+
+      // ---------- CHAT & ONLINE PRESENCE ----------
+      case 'pingOnlineStatus': return pingOnlineStatus(token);
+      case 'getOnlineUsers': return getOnlineUsers(token);
+      case 'getChatMessages': return getChatMessages(token, params.recipientId, params.sinceTimestamp);
+      case 'sendChatMessage': return sendChatMessage(token, params.recipientId, params.content, params.type);
+      case 'clearOldChatMessages': return clearOldChatMessages(token);
 
 
       // ---------- DEFAULT ----------
@@ -9795,5 +9802,354 @@ ${combinedBody}
   } catch (e) {
     logError({ fn:'generateAllSchedulesPrintHTML', error:e.message });
     return { status:'error', message:e.message };
+  }
+}
+
+/* ============================================================
+ *  Part 19 — MHC Smart Messenger & Online Presence Engine
+ *  โรงเรียนมหาชัยพิทยาคาร | ผู้จัดทำ: ครูก้องนที อุ่นเจริญ
+ * ============================================================ */
+
+function pingOnlineStatus(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    const user = auth.user;
+
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'mhc_active_online_map';
+    let map = {};
+    try {
+      const cached = cache.get(cacheKey);
+      if (cached) map = JSON.parse(cached);
+    } catch (_) {}
+
+    const now = Date.now();
+    let pos = user.position || '';
+    let avatar = user.avatar || user.photo || '';
+    if (!pos || !avatar) {
+      try {
+        const personnel = readJsonSheet_('Personnel') || [];
+        const p = personnel.find(px => 
+          px.id === user.id || 
+          String(px.personnel_id || '').toLowerCase() === String(user.username || '').toLowerCase() ||
+          ((px.prefix || '') + (px.first_name || '') + ' ' + (px.last_name || '')).trim() === (user.name || '').trim()
+        );
+        if (p) {
+          if (!pos) pos = p.position || 'ครูผู้สอน';
+          if (!avatar) avatar = p.photo || '';
+        }
+      } catch (_) {}
+    }
+    if (!pos) {
+      pos = (user.role === 'admin') ? 'ผู้บริหาร / ผู้ดูแลระบบ' : 'ครูผู้สอน';
+    }
+
+    map[user.id] = {
+      id: user.id,
+      username: user.username || '',
+      name: user.name || 'คุณครู',
+      role: user.role || 'teacher',
+      position: pos,
+      avatar: avatar,
+      lastActive: now
+    };
+
+    // ลบรายการที่ไม่ได้เชื่อมต่อนานเกิน 5 นาที (300 วินาที)
+    const activeList = [];
+    const cleanMap = {};
+    for (const uid in map) {
+      if (now - map[uid].lastActive <= 300000) {
+        cleanMap[uid] = map[uid];
+        activeList.push({
+          ...map[uid],
+          isOnline: (now - map[uid].lastActive <= 120000),
+          minutesAgo: Math.max(0, Math.floor((now - map[uid].lastActive) / 60000))
+        });
+      }
+    }
+
+    try {
+      cache.put(cacheKey, JSON.stringify(cleanMap), 600);
+    } catch (_) {}
+
+    return {
+      status: 'success',
+      onlineCount: activeList.filter(u => u.isOnline).length,
+      activeUsers: activeList
+    };
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+}
+
+function getOnlineUsers(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    const currentUserId = auth.user.id;
+
+    // อัปเดตสถานะของตัวเองทันที
+    try { pingOnlineStatus(sessionToken); } catch (_) {}
+
+    const cache = CacheService.getScriptCache();
+    let onlineMap = {};
+    try {
+      const cached = cache.get('mhc_active_online_map');
+      if (cached) onlineMap = JSON.parse(cached);
+    } catch (_) {}
+
+    const now = Date.now();
+    const personnel = readJsonSheet_('Personnel') || [];
+    const users = readJsonSheet_('Users') || [];
+
+    const roster = [];
+    const addedIds = new Set();
+
+    // 1. ผู้อำนวยการโรงเรียน (นายอธิการ สุขศรี)
+    const directorName = 'นายอธิการ สุขศรี';
+    let directorEntry = personnel.find(p => {
+      const fn = ((p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||'')).trim();
+      return fn.includes('อธิการ') || (p.position && p.position.includes('ผู้อำนวยการ'));
+    });
+
+    const isDirActive = Object.values(onlineMap).find(u => u.name && u.name.includes('อธิการ'));
+    roster.push({
+      id: directorEntry ? directorEntry.id : 'dir_mhc',
+      name: directorName,
+      position: 'ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร',
+      department: 'ฝ่ายบริหารโรงเรียน',
+      role: 'director',
+      avatar: (directorEntry && directorEntry.photo) || (isDirActive && isDirActive.avatar) || '',
+      isDirector: true,
+      isOnline: !!(isDirActive && (now - isDirActive.lastActive <= 120000)),
+      lastActive: isDirActive ? isDirActive.lastActive : 0,
+      minutesAgo: isDirActive ? Math.floor((now - isDirActive.lastActive) / 60000) : null
+    });
+    if (directorEntry) addedIds.add(directorEntry.id);
+    if (isDirActive) addedIds.add(isDirActive.id);
+
+    // 2. บุคลากรครูและเจ้าหน้าที่ในโรงเรียน
+    personnel.forEach(p => {
+      if (!p || addedIds.has(p.id)) return;
+      const pName = ((p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||'')).trim();
+      if (!pName || pName.includes('อธิการ')) return;
+
+      const activeInfo = onlineMap[p.id] || Object.values(onlineMap).find(u => u.name === pName || (p.personnel_id && u.username === p.personnel_id));
+      const isOnline = !!(activeInfo && (now - activeInfo.lastActive <= 120000));
+      const lastActive = activeInfo ? activeInfo.lastActive : 0;
+
+      roster.push({
+        id: p.id,
+        name: pName,
+        position: p.position || 'ครูผู้สอน',
+        department: p.department || '',
+        role: p.type || 'teacher',
+        avatar: p.photo || (activeInfo ? activeInfo.avatar : '') || '',
+        isOnline: isOnline,
+        lastActive: lastActive,
+        minutesAgo: activeInfo ? Math.floor((now - activeInfo.lastActive) / 60000) : null
+      });
+      addedIds.add(p.id);
+    });
+
+    // 3. ผู้ใช้งานระบบเพิ่มเติม
+    users.forEach(u => {
+      if (!u || addedIds.has(u.id) || u.name.includes('อธิการ')) return;
+      const activeInfo = onlineMap[u.id];
+      const isOnline = !!(activeInfo && (now - activeInfo.lastActive <= 120000));
+      roster.push({
+        id: u.id,
+        name: u.name,
+        position: (u.role === 'admin') ? 'ผู้บริหาร / ผู้ดูแลระบบ' : 'เจ้าหน้าที่',
+        department: '',
+        role: u.role || 'staff',
+        avatar: u.avatar || (activeInfo ? activeInfo.avatar : '') || '',
+        isOnline: isOnline,
+        lastActive: activeInfo ? activeInfo.lastActive : 0,
+        minutesAgo: activeInfo ? Math.floor((now - activeInfo.lastActive) / 60000) : null
+      });
+      addedIds.add(u.id);
+    });
+
+    // จัดเรียง: ผู้อำนวยการ -> คนที่กำลังออนไลน์ -> เรียงชื่อ ก-ฮ
+    roster.sort((a, b) => {
+      if (a.isDirector) return -1;
+      if (b.isDirector) return 1;
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+      return (a.name || '').localeCompare(b.name || '', 'th');
+    });
+
+    const onlineCount = roster.filter(u => u.isOnline).length;
+
+    return {
+      status: 'success',
+      onlineCount: onlineCount,
+      users: roster,
+      currentUser: {
+        id: currentUserId,
+        name: auth.user.name,
+        role: auth.user.role
+      }
+    };
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+}
+
+function getChatMessages(sessionToken, recipientId, sinceTimestamp) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    const myId = auth.user.id;
+
+    try { pingOnlineStatus(sessionToken); } catch (_) {}
+
+    const targetRecipient = (recipientId && String(recipientId).trim() !== '' && recipientId !== 'all') ? String(recipientId) : 'all';
+
+    const allMsgs = readJsonSheet_('Messages') || [];
+
+    let filtered = [];
+    if (targetRecipient === 'all') {
+      filtered = allMsgs.filter(m => !m.recipient_id || m.recipient_id === 'all');
+    } else {
+      filtered = allMsgs.filter(m => 
+        (m.sender_id === myId && m.recipient_id === targetRecipient) ||
+        (m.sender_id === targetRecipient && m.recipient_id === myId)
+      );
+    }
+
+    if (sinceTimestamp) {
+      const sinceDate = new Date(sinceTimestamp).getTime();
+      if (!isNaN(sinceDate)) {
+        filtered = filtered.filter(m => new Date(m.created_at).getTime() > sinceDate);
+      }
+    }
+
+    if (filtered.length > 100) {
+      filtered = filtered.slice(filtered.length - 100);
+    }
+
+    return {
+      status: 'success',
+      recipientId: targetRecipient,
+      count: filtered.length,
+      messages: filtered,
+      serverTime: new Date().toISOString()
+    };
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+}
+
+function sendChatMessage(sessionToken, recipientId, content, type) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    const user = auth.user;
+
+    if (!content || String(content).trim() === '') {
+      return { status: 'error', message: 'กรุณากรอกข้อความที่ต้องการส่ง' };
+    }
+
+    const text = String(content).trim();
+    if (text.length > 3000) {
+      return { status: 'error', message: 'ข้อความมีความยาวเกินกำหนด (สูงสุด 3,000 ตัวอักษร)' };
+    }
+
+    let pos = user.position || '';
+    let avatar = user.avatar || user.photo || '';
+    if (!pos || !avatar) {
+      try {
+        const personnel = readJsonSheet_('Personnel') || [];
+        const p = personnel.find(px => 
+          px.id === user.id || 
+          String(px.personnel_id || '').toLowerCase() === String(user.username || '').toLowerCase() ||
+          ((px.prefix || '') + (px.first_name || '') + ' ' + (px.last_name || '')).trim() === (user.name || '').trim()
+        );
+        if (p) {
+          if (!pos) pos = p.position || 'ครูผู้สอน';
+          if (!avatar) avatar = p.photo || '';
+        }
+      } catch (_) {}
+    }
+    if (!pos) pos = (user.role === 'admin') ? 'ผู้บริหาร / ผู้ดูแลระบบ' : 'ครูผู้สอน';
+
+    const targetRecipient = (recipientId && String(recipientId).trim() !== '' && recipientId !== 'all') ? String(recipientId) : 'all';
+
+    let recipientName = 'ทุกคนในโรงเรียน';
+    if (targetRecipient !== 'all') {
+      try {
+        const personnel = readJsonSheet_('Personnel') || [];
+        const users = readJsonSheet_('Users') || [];
+        const p = personnel.find(x => x.id === targetRecipient);
+        if (p) {
+          recipientName = ((p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||'')).trim();
+        } else {
+          const u = users.find(x => x.id === targetRecipient);
+          if (u) recipientName = u.name;
+        }
+      } catch (_) {}
+    }
+
+    const newMsg = {
+      id: 'msg_' + generateId() + '_' + Date.now(),
+      sender_id: user.id,
+      sender_name: user.name || 'คุณครู',
+      sender_role: user.role || 'teacher',
+      sender_position: pos,
+      sender_avatar: avatar,
+      recipient_id: targetRecipient,
+      recipient_name: recipientName,
+      content: text,
+      type: type || 'text',
+      created_at: new Date().toISOString()
+    };
+
+    appendJsonRow_('Messages', newMsg);
+
+    if (targetRecipient !== 'all') {
+      try {
+        const notif = {
+          id: 'notif_' + generateId() + '_' + Date.now(),
+          user_id: targetRecipient,
+          title: `💬 ข้อความใหม่จาก ${user.name}`,
+          message: text.length > 60 ? text.substring(0, 57) + '...' : text,
+          type: 'chat',
+          read: false,
+          created_at: new Date().toISOString(),
+          link: '#chat'
+        };
+        appendJsonRow_('Notifications', notif);
+      } catch (_) {}
+    }
+
+    return {
+      status: 'success',
+      message: newMsg
+    };
+  } catch (e) {
+    return { status: 'error', message: e.message };
+  }
+}
+
+function clearOldChatMessages(sessionToken) {
+  try {
+    const auth = _requireAdmin_(sessionToken);
+    if (!auth.ok) return auth.response;
+
+    const msgs = readJsonSheet_('Messages') || [];
+    const cutoff = Date.now() - (60 * 24 * 60 * 60 * 1000);
+    const keep = msgs.filter((m, idx) => {
+      if (idx >= msgs.length - 100) return true;
+      const d = new Date(m.created_at).getTime();
+      return !isNaN(d) && d >= cutoff;
+    });
+
+    writeJsonSheet_('Messages', keep);
+    return { status: 'success', deleted: msgs.length - keep.length, remaining: keep.length };
+  } catch (e) {
+    return { status: 'error', message: e.message };
   }
 }

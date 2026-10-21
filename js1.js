@@ -241,6 +241,8 @@ function enterApp() {
   refreshBadges();
   if (APP._badgeInterval) clearInterval(APP._badgeInterval);
   APP._badgeInterval = setInterval(refreshBadges, 120000);
+  if (typeof startChatHeartbeat === 'function') startChatHeartbeat();
+  if (typeof fetchOnlineUsersList === 'function') fetchOnlineUsersList();
 }
 
 /* ============================================================
@@ -339,6 +341,7 @@ function navigate(page) {
 
   const titles = {
     dashboard: 'หน้าหลัก',
+    chat: 'สนทนาครูและบุคลากร',
     students: 'ข้อมูลนักเรียน',
     classroom_mgmt: 'จัดการห้องเรียน',
     behavior: 'พฤติกรรมนักเรียน',
@@ -379,6 +382,7 @@ function navigate(page) {
   const content = document.getElementById('pageContent');
   switch (page) {
     case 'dashboard': return renderDashboard(content);
+    case 'chat':      if (typeof renderChat === 'function') return renderChat(content); break;
     case 'students':  if (typeof renderStudents  === 'function') return renderStudents(content);  break;
     case 'classroom_mgmt': if (typeof renderClassroomMgmt === 'function') return renderClassroomMgmt(content); break;
     case 'behavior':  if (typeof renderBehavior  === 'function') return renderBehavior(content);  break;

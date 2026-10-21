@@ -2299,4 +2299,40 @@ input[type=number].no-spin,
   border-radius: 0px !important;
 }
 
+/* ─── MHC Smart Messenger & Chat Floating Styles ───────────── */
+#mhcChatFloatingWindow {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  transform-origin: bottom right;
+}
+
+#mhcChatFloatingWindow.hidden {
+  display: none !important;
+}
+
+#chatFloatingMessageArea::-webkit-scrollbar,
+#chatFullPageMessageArea::-webkit-scrollbar,
+#chatFloatingOnlineListArea::-webkit-scrollbar,
+#chatFloatingContactsArea::-webkit-scrollbar,
+#chatFullPageRosterArea::-webkit-scrollbar {
+  width: 5px;
+}
+
+#chatFloatingMessageArea::-webkit-scrollbar-thumb,
+#chatFullPageMessageArea::-webkit-scrollbar-thumb,
+#chatFloatingOnlineListArea::-webkit-scrollbar-thumb,
+#chatFloatingContactsArea::-webkit-scrollbar-thumb,
+#chatFullPageRosterArea::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
 
