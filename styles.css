@@ -2289,9 +2289,14 @@ input[type=number].no-spin::-webkit-outer-spin-button,
 
 input[type=number].no-spin,
 #gradeTable input[type=number],
-.grade-input {
+#gradeTable input,
+#gradeTable select,
+#gradeTable .grade-output,
+.grade-input,
+.ql-select {
   -moz-appearance: textfield !important;
   appearance: textfield !important;
+  border-radius: 0px !important;
 }
 
 

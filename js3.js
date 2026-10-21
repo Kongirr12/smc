@@ -3037,8 +3037,8 @@ function renderGradeSheetTable() {
         box-shadow: 0 1px 2px rgba(37,99,235,0.25);
       }
       .grade-input {
-        width: 100%; padding: 4.5px 5px; border: 1.5px solid #CBD5E1;
-        border-radius: 6px; font-family: inherit; font-size: 12px;
+        width: 100%; padding: 4.5px 2px; border: 1.5px solid #CBD5E1;
+        border-radius: 0px !important; font-family: inherit; font-size: 12px;
         background: #FFFFFF; text-align: center; box-sizing: border-box;
         -moz-appearance: textfield;
         appearance: textfield;
@@ -3048,16 +3048,17 @@ function renderGradeSheetTable() {
         -webkit-appearance: none;
         margin: 0;
       }
-      .grade-input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+      .grade-input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 1.5px #2563EB; }
       .grade-output {
-        padding: 4.5px 3px; text-align: center; font-size: 12px; font-weight: 600;
-        background: #F1F5F9; border-radius: 6px; color: #1E293B; min-height: 25px;
+        padding: 4.5px 2px; text-align: center; font-size: 12px; font-weight: 600;
+        background: #F1F5F9; border-radius: 0px !important; color: #1E293B; min-height: 25px;
+        border: 1px solid #E2E8F0;
       }
-      .grade-output.grade-fail { background: #FEE2E2; color: #B91C1C; font-weight: 700; }
-      .grade-output.grade-pass { background: #DCFCE7; color: #15803D; }
+      .grade-output.grade-fail { background: #FEE2E2; color: #B91C1C; font-weight: 700; border-color: #FECACA; }
+      .grade-output.grade-pass { background: #DCFCE7; color: #15803D; border-color: #BBF7D0; }
       .ql-select {
-        width: 100%; padding: 4px 3px; border: 1.5px solid #CBD5E1;
-        border-radius: 6px; font-family: inherit; font-size: 12px;
+        width: 100%; padding: 4px 2px; border: 1.5px solid #CBD5E1;
+        border-radius: 0px !important; font-family: inherit; font-size: 12px;
         background: #FFFFFF; text-align: center; box-sizing: border-box; font-weight: 600;
       }
       .ql-select:focus { outline: none; border-color: #2563EB; }
