@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.1.6',
+  APP_VERSION    : '3.1.7',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -984,6 +984,13 @@ function login(username, password) {
     if (!safeUser.permissions && CONFIG.USER_ROLES[user.role]) {
       safeUser.permissions = CONFIG.USER_ROLES[user.role].permissions;
     }
+    if (!safeUser.signature) {
+      try {
+        const personnel = readJsonSheet_('Personnel');
+        const p = personnel.find(px => String(px.personnel_id || '').toLowerCase() === String(user.username || '').toLowerCase() || px.id === user.id);
+        if (p && p.signature) safeUser.signature = p.signature;
+      } catch (_) {}
+    }
 
     // Pre-populate fast_sess_ cache immediately so subsequent calls hit cache in 5ms
     try {
@@ -1042,6 +1049,13 @@ function validateSession(sessionToken) {
     if (!user) return { valid:false, message:'session_invalid', code:401 };
     const safe = Object.assign({}, user);
     delete safe.password;
+    if (!safe.signature) {
+      try {
+        const personnel = readJsonSheet_('Personnel');
+        const p = personnel.find(px => String(px.personnel_id || '').toLowerCase() === String(user.username || '').toLowerCase() || px.id === user.id);
+        if (p && p.signature) safe.signature = p.signature;
+      } catch (_) {}
+    }
 
     let dashboardData = null;
     try {
@@ -1090,6 +1104,13 @@ function validateSessionLight_(sessionToken) {
     if (!user) return { valid:false, message:'session_invalid', code:401 };
     const safe = Object.assign({}, user);
     delete safe.password;
+    if (!safe.signature) {
+      try {
+        const personnel = readJsonSheet_('Personnel');
+        const p = personnel.find(px => String(px.personnel_id || '').toLowerCase() === String(user.username || '').toLowerCase() || px.id === user.id);
+        if (p && p.signature) safe.signature = p.signature;
+      } catch (_) {}
+    }
     if (!safe.permissions && CONFIG.USER_ROLES[s.role]) {
       safe.permissions = CONFIG.USER_ROLES[s.role].permissions;
     }
@@ -4170,7 +4191,10 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
         <!-- ส่วนลงนามทางการ 4 ฝ่าย -->
         <div class="signature-grid">
           <div class="sig-box">
-            <div>ลงชื่อ .............................................................. ครูผู้สอน</div>
+            <div style="position:relative; display:inline-block;">
+              ${teacher && teacher.signature ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(teacher.signature)}" style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); max-height:48px; max-width:160px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none;">` : ''}
+              <span>ลงชื่อ .............................................................. ครูผู้สอน</span>
+            </div>
             <div class="sig-line">( ${escapeHTMLServer_(teacherName)} )</div>
             <div class="sig-title">ตำแหน่ง ${escapeHTMLServer_(teacher.position || 'ครูผู้สอน')}</div>
             <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
@@ -4406,8 +4430,15 @@ function generatePP6HTML(studentId, semester, academicYear, sessionToken) {
     const classrooms = readJsonSheet_('Classrooms');
     const myClassroom = classrooms.find(c => c.name === student.classroom && (!c.academic_year || String(c.academic_year) === String(targetYear)));
     const homeroomTeacher = myClassroom?.teacher_name || '';
+    let homeroomTeacherSig = '';
+    try {
+      const personnel = readJsonSheet_('Personnel');
+      const hp = personnel.find(p => (myClassroom?.teacher_id && p.id === myClassroom.teacher_id) ||
+        ((p.prefix||'')+(p.first_name||'')+' '+(p.last_name||'')).trim() === String(homeroomTeacher).trim());
+      if (hp && hp.signature) homeroomTeacherSig = hp.signature;
+    } catch (_) {}
 
-    const html = renderPP6Template_(config, student, grades, subMap, targetSem, targetYear, homeroomTeacher);
+    const html = renderPP6Template_(config, student, grades, subMap, targetSem, targetYear, homeroomTeacher, homeroomTeacherSig);
     return { status:'success', html: html };
 
   } catch (e) {
@@ -4416,7 +4447,7 @@ function generatePP6HTML(studentId, semester, academicYear, sessionToken) {
   }
 }
 
-function renderPP6Template_(config, student, grades, subMap, targetSem, targetYear, homeroomTeacher) {
+function renderPP6Template_(config, student, grades, subMap, targetSem, targetYear, homeroomTeacher, homeroomTeacherSig) {
   const schoolLogo = config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
   const schoolName = config.school_name || 'โรงเรียนมหาชัยพิทยาคาร';
   const directorName = config.director_name || 'นายอธิการ สุขศรี';
@@ -4828,7 +4859,10 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
     <!-- ส่วนลงนามทางการ 4 ฝ่าย -->
     <div class="signature-grid">
       <div class="sig-box">
-        <div>ลงชื่อ .............................................................. ครูประจำชั้น</div>
+        <div style="position:relative; display:inline-block;">
+          ${homeroomTeacherSig ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(homeroomTeacherSig)}" style="position:absolute; bottom:2px; left:50%; transform:translateX(-50%); max-height:48px; max-width:160px; object-fit:contain; mix-blend-mode:multiply; pointer-events:none;">` : ''}
+          <span>ลงชื่อ .............................................................. ครูประจำชั้น</span>
+        </div>
         <div class="sig-line">( ${escapeHTMLServer_(homeroomTeacher || '..............................................................')} )</div>
         <div class="sig-title">ครูประจำชั้น มัธยมศึกษาปีที่ ${escapeHTMLServer_(student.classroom || '')}</div>
         <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
@@ -5800,7 +5834,8 @@ function getTeachersForDropdown(sessionToken) {
         .map(p => ({
           id: p.id,
           name: (p.prefix||'') + (p.first_name||'') + ' ' + (p.last_name||''),
-          department: p.department
+          department: p.department,
+          signature: p.signature || ''
         }));
       return { status:'success', data:list };
     });

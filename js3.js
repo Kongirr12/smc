@@ -349,28 +349,33 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
       const bSafari = document.getElementById('swalBtnSafari');
       const bPreview = document.getElementById('swalBtnPreviewPdf');
 
+      const getActiveHtml = () => {
+        const modal = document.getElementById('printDocModal');
+        return (modal && modal._currentHtml) || html;
+      };
+
       if (bDownload) {
         bDownload.onclick = () => {
           Swal.close();
-          downloadPdfDocument(html, title);
+          downloadPdfDocument(getActiveHtml(), title);
         };
       }
       if (bShare) {
         bShare.onclick = () => {
           Swal.close();
-          sharePdfDocument(html, title);
+          sharePdfDocument(getActiveHtml(), title);
         };
       }
       if (bSafari) {
         bSafari.onclick = () => {
           Swal.close();
-          openInExternalSafari(directUrl, html, title);
+          openInExternalSafari(directUrl, getActiveHtml(), title);
         };
       }
       if (bPreview) {
         bPreview.onclick = () => {
           Swal.close();
-          openPdfPreview(html, title);
+          openPdfPreview(getActiveHtml(), title);
         };
       }
     }
@@ -422,6 +427,678 @@ window.triggerInAppPrint = function() {
   }
 };
 
+/* ============================================================
+ *  UNIVERSAL PRINT SIGNATURE ENGINE
+ * ============================================================ */
+
+// 1. ตัดขอบขาวของ Canvas ลายเซ็นอัตโนมัติ (GAS Best Practice Rule #6)
+function trimCanvasWhitespace(canvas) {
+  try {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const data = imgData.data;
+
+    let minX = width, minY = height, maxX = 0, maxY = 0;
+    let hasPixel = false;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const alpha = data[idx + 3];
+        const isWhite = data[idx] > 240 && data[idx + 1] > 240 && data[idx + 2] > 240;
+        if (alpha > 20 && !isWhite) {
+          hasPixel = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (!hasPixel) return null;
+
+    const pad = 6;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(width, maxX + pad);
+    maxY = Math.min(height, maxY + pad);
+
+    const cropW = maxX - minX;
+    const cropH = maxY - minY;
+
+    const trimmed = document.createElement('canvas');
+    trimmed.width = cropW;
+    trimmed.height = cropH;
+    const tCtx = trimmed.getContext('2d');
+    tCtx.drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+    return trimmed.toDataURL('image/png');
+  } catch (e) {
+    console.warn('Trim whitespace error:', e);
+    return canvas.toDataURL('image/png');
+  }
+}
+
+// 2. แปลงรูปถ่ายลายเซ็นให้โปร่งแสงและตัดขอบขาว
+function makeImageTransparent(imgElement, callback) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = imgElement.naturalWidth || imgElement.width || 400;
+    c.height = imgElement.naturalHeight || imgElement.height || 160;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(imgElement, 0, 0);
+    const imgData = ctx.getImageData(0, 0, c.width, c.height);
+    const d = imgData.data;
+
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i+1], b = d[i+2];
+      if (r > 215 && g > 215 && b > 215) {
+        d[i+3] = 0;
+      } else {
+        const avg = (r + g + b) / 3;
+        if (avg < 180) {
+          d[i] = Math.max(0, r - 35);
+          d[i+1] = Math.max(0, g - 35);
+          d[i+2] = Math.max(0, b - 35);
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    const trimmed = trimCanvasWhitespace(c);
+    callback(trimmed || c.toDataURL('image/png'));
+  } catch (e) {
+    callback(imgElement.src);
+  }
+}
+
+// 3. อ่านสถานะและข้อมูลลายเซ็นสำหรับพิมพ์
+function getPrintSignatureState() {
+  const savedEnabled = localStorage.getItem('mhc_sig_enabled');
+  const customSig = localStorage.getItem('mhc_custom_signature') || '';
+  const customName = localStorage.getItem('mhc_custom_signature_name') || '';
+
+  const userSig = (typeof APP !== 'undefined' && APP.user && APP.user.signature) ? APP.user.signature : '';
+  const userName = (typeof APP !== 'undefined' && APP.user && (APP.user.name || APP.user.username)) ? (APP.user.name || APP.user.username) : '';
+
+  const activeSig = customSig || userSig || '';
+  const activeName = customName || userName || 'ครูก้องนที อุ่นเจริญ';
+
+  // Default to enabled if a signature exists and user hasn't explicitly disabled it
+  const enabled = savedEnabled !== null ? (savedEnabled === 'true') : (activeSig !== '');
+
+  return {
+    enabled: enabled && !!activeSig,
+    hasSignature: !!activeSig,
+    signature: activeSig,
+    name: activeName
+  };
+}
+
+// 4. แทรกรูปภาพลายเซ็นลงใน HTML เอกสารทุกรูปแบบ ทุกหน้าที่พิมพ์
+function applySignatureToDocument(html, sigDataUrl, teacherName) {
+  if (!html || !sigDataUrl) return html;
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // ฝัง CSS สไตล์ลายเซ็น
+    let style = doc.querySelector('style#mhcSigStyle');
+    if (!style) {
+      style = doc.createElement('style');
+      style.id = 'mhcSigStyle';
+      style.textContent = `
+        .mhc-sig-wrap {
+          position: relative !important;
+          display: inline-block !important;
+          vertical-align: middle !important;
+          text-align: center !important;
+        }
+        .mhc-sig-img {
+          position: absolute !important;
+          bottom: 2px !important;
+          left: 45px !important;
+          max-height: 48px !important;
+          max-width: 170px !important;
+          object-fit: contain !important;
+          mix-blend-mode: multiply !important;
+          pointer-events: none !important;
+          z-index: 10 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .mhc-sig-center-img {
+          position: absolute !important;
+          bottom: 2px !important;
+          left: 50% !important;
+          transform: translateX(-50%) !important;
+          max-height: 48px !important;
+          max-width: 170px !important;
+          object-fit: contain !important;
+          mix-blend-mode: multiply !important;
+          pointer-events: none !important;
+          z-index: 10 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        @media print {
+          .mhc-sig-img, .mhc-sig-center-img {
+            display: inline-block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `;
+      if (doc.head) doc.head.appendChild(style);
+      else if (doc.body) doc.body.insertBefore(style, doc.body.firstChild);
+    }
+
+    const teacherKeywords = [
+      'ครูผู้สอน', 'ครูประจำชั้น', 'ครูที่ปรึกษา', 'ผู้สรุปรายงาน', 'ผู้รายงาน',
+      'ผู้ตรวจเช็ค', 'ผู้ขออนุญาต', 'ผู้ยื่นคำร้อง', 'ผู้จัดทำ', 'ผู้บันทึกข้อมูล',
+      'ผู้วิจัย', 'ผู้ชี้แจง', 'ผู้แจ้งซ่อม', 'ผู้ขอรับบริการ', 'ผู้ขออนุเคราะห์',
+      'ผู้ขอยืม', 'ผู้ยินยอมเปลี่ยนเวร', 'ครูผู้รายงาน', 'ครูเวรประจำวัน'
+    ];
+
+    const excludeKeywords = [
+      'ผู้อำนวยการ', 'อธิการ', 'สุขศรี', 'นายทะเบียน', 'ผู้ปกครอง',
+      'หัวหน้ากลุ่มสาระ', 'หัวหน้างานวัดผล', 'เจ้าหน้าที่ผู้จ่ายพัสดุ',
+      'ผู้ตรวจรับงานซ่อม', 'ผู้ผลิตเอกสาร', 'ผู้รับงานเอกสาร', 'ผู้รับคืน',
+      'ผู้อนุมัติ', 'รองผู้อำนวยการ'
+    ];
+
+    const isExcluded = (txt) => excludeKeywords.some(kw => txt.includes(kw));
+
+    // A. อัปเดต elements ที่มี .teacher-sig-img อยู่แล้ว
+    const existingImgs = doc.querySelectorAll('.teacher-sig-img, img[alt="signature"], img[alt="Signature"]');
+    existingImgs.forEach(img => {
+      const parentTxt = (img.closest('.sig-box, .sig-row, div, td') || {}).textContent || '';
+      if (!isExcluded(parentTxt)) {
+        img.src = sigDataUrl;
+        img.style.mixBlendMode = 'multiply';
+        img.style.maxHeight = '48px';
+      }
+    });
+
+    // B. อัปเดต .sig-line ของตารางสอนและเอกสารทั่วไป
+    const sigLines = doc.querySelectorAll('.sig-line');
+    sigLines.forEach(sl => {
+      const parent = sl.parentElement;
+      if (!parent) return;
+      const parentTxt = parent.textContent || '';
+      if (isExcluded(parentTxt)) return;
+
+      const hasTeacherWord = teacherKeywords.some(kw => parentTxt.includes(kw)) ||
+                             (teacherName && parentTxt.includes(teacherName));
+      if (hasTeacherWord && (!sl.querySelector('img') || sl.innerHTML.trim() === '')) {
+        sl.innerHTML = `<img src="${sigDataUrl}" class="mhc-sig-img" style="position:static !important; max-height:46px; mix-blend-mode:multiply; object-fit:contain; display:inline-block;">`;
+      }
+    });
+
+    // C. แทรกใน element ที่มีข้อความ "ลงชื่อ"
+    const allElements = doc.body ? Array.from(doc.body.querySelectorAll('*')) : [];
+    const sigElements = allElements.filter(el => {
+      if (!el.textContent || !el.textContent.includes('ลงชื่อ')) return false;
+      if (isExcluded(el.textContent)) return false;
+      const hasChildWithSig = Array.from(el.children).some(c => c.textContent && c.textContent.includes('ลงชื่อ'));
+      return !hasChildWithSig;
+    });
+
+    sigElements.forEach(el => {
+      const txt = el.textContent || '';
+      const parentTxt = (el.parentElement ? el.parentElement.textContent : '') || '';
+      const contextTxt = txt + ' ' + parentTxt;
+
+      if (isExcluded(contextTxt)) return;
+
+      const isTeacher = teacherKeywords.some(kw => contextTxt.includes(kw)) ||
+                        (teacherName && contextTxt.includes(teacherName)) ||
+                        (el.closest('.signatures, .signature-grid') &&
+                         el.closest('.sig-box') === el.closest('.signatures, .signature-grid').firstElementChild);
+
+      if (isTeacher) {
+        if (el.querySelector('.mhc-sig-img, .mhc-sig-center-img')) return;
+
+        const isCentered = (el.style.textAlign === 'center') || (el.closest('.sig-box') != null);
+        const rawInner = el.innerHTML;
+        const sigRegex = /(ลงชื่อ\s*[\.]{5,}|ลงชื่อ\s*…+|ลงชื่อ\s*_{5,}|\(ลงชื่อ\)\s*[\.]{5,})/g;
+
+        if (sigRegex.test(rawInner)) {
+          el.innerHTML = rawInner.replace(sigRegex, (m) => {
+            return `<span class="mhc-sig-wrap">` +
+                     `<img src="${sigDataUrl}" class="${isCentered ? 'mhc-sig-center-img' : 'mhc-sig-img'}" alt="ลายเซ็น" />` +
+                     `<span>${m}</span>` +
+                   `</span>`;
+          });
+        } else {
+          el.innerHTML = `<span class="mhc-sig-wrap">` +
+                           `<img src="${sigDataUrl}" class="${isCentered ? 'mhc-sig-center-img' : 'mhc-sig-img'}" alt="ลายเซ็น" />` +
+                           `<span>${rawInner}</span>` +
+                         `</span>`;
+        }
+
+        // เติมชื่อครูลงในวงเล็บ ( .................... ) ด้านล่างถ้ายังเป็นจุดไข่ปลา
+        if (teacherName && el.parentElement) {
+          const nextLine = el.nextElementSibling;
+          if (nextLine && nextLine.textContent) {
+            const lineTxt = nextLine.textContent.trim();
+            if (/^\(\s*[\.]{5,}\s*\)$/.test(lineTxt) || /^\(\s*…+\s*\)$/.test(lineTxt)) {
+              nextLine.innerHTML = `( ${teacherName} )`;
+            }
+          }
+        }
+      }
+    });
+
+    // D. จัดการบล็อกข้อความที่มี <br> ใน js_templates.js
+    const containerDivs = doc.querySelectorAll('div, p');
+    containerDivs.forEach(c => {
+      if (c.children.length > 0 && c.querySelector('br')) {
+        const fullTxt = c.textContent || '';
+        if (fullTxt.includes('ลงชื่อ') && !isExcluded(fullTxt)) {
+          const isTeacher = teacherKeywords.some(kw => fullTxt.includes(kw)) ||
+                            (teacherName && fullTxt.includes(teacherName));
+          if (isTeacher && !c.querySelector('.mhc-sig-img, .mhc-sig-center-img')) {
+            c.innerHTML = c.innerHTML.replace(
+              /((?:ลงชื่อ|\(ลงชื่อ\))\s*[\.]{5,}[^\n<]*)/g,
+              (match) => {
+                if (isExcluded(match)) return match;
+                return `<span class="mhc-sig-wrap">` +
+                         `<img src="${sigDataUrl}" class="mhc-sig-img" alt="ลายเซ็น" />` +
+                         `<span>${match}</span>` +
+                       `</span>`;
+              }
+            );
+            if (teacherName) {
+              c.innerHTML = c.innerHTML.replace(/\(\s*[\.]{6,}\s*\)/, `( ${teacherName} )`);
+            }
+          }
+        }
+      }
+    });
+
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  } catch (err) {
+    console.error('Signature injection error:', err);
+    return html;
+  }
+}
+
+// 5. แสดงหน้าต่างจัดการ/วาด/เลือกลายเซ็นครู
+function showSignatureManagerModal(onSaved) {
+  let modal = document.getElementById('mhcSignatureManagerModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'mhcSignatureManagerModal';
+    modal.className = 'fixed inset-0 z-[100000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4';
+    document.body.appendChild(modal);
+  }
+
+  const curState = getPrintSignatureState();
+  let drawnDataUrl = curState.signature || '';
+  let selectedTeacherName = curState.name || '';
+  let penColor = '#002B9E'; // Royal blue
+  let penWidth = 2.4;
+
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+      <!-- Header -->
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg">
+            <i class='bx bx-edit-alt'></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">จัดการลายเซ็นครูสำหรับพิมพ์</h3>
+            <p class="text-[11px] text-slate-500">ลายเซ็นจะถูกประทับลงในเอกสารทุกหน้าที่สั่งพิมพ์อัตโนมัติ</p>
+          </div>
+        </div>
+        <button id="btnCloseSigManager" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100">
+          <i class='bx bx-x text-2xl leading-none'></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-5 overflow-y-auto space-y-4">
+        <!-- ชื่อครูผู้ลงนาม -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุลครูผู้ลงนาม</label>
+          <input id="sigTeacherNameInput" type="text" class="form-input w-full text-xs rounded-lg border-slate-200" placeholder="เช่น ครูก้องนที อุ่นเจริญ" value="${escapeHTML(selectedTeacherName)}">
+        </div>
+
+        <!-- แท็บวิธีเพิ่มลายเซ็น -->
+        <div class="flex rounded-lg bg-slate-100 p-1 text-xs font-medium">
+          <button id="tabSigDraw" type="button" class="flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold">
+            ✍️ วาดลายเซ็นสด
+          </button>
+          <button id="tabSigUpload" type="button" class="flex-1 py-1.5 rounded-md transition-all text-center text-slate-600 hover:text-slate-900">
+            📁 อัปโหลดรูป
+          </button>
+          <button id="tabSigSelect" type="button" class="flex-1 py-1.5 rounded-md transition-all text-center text-slate-600 hover:text-slate-900">
+            👥 เลือกครูในระบบ
+          </button>
+        </div>
+
+        <!-- Pane: วาดลายเซ็น -->
+        <div id="paneSigDraw" class="space-y-2.5">
+          <div class="flex items-center justify-between">
+            <!-- ตัวเลือกสีปากกา -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] text-slate-500 font-medium">หมึก:</span>
+              <button id="btnColorBlue" type="button" class="w-6 h-6 rounded-full border-2 border-indigo-500 shadow-xs" style="background:#002B9E;" title="สีน้ำเงินเข้มราชการ"></button>
+              <button id="btnColorBlack" type="button" class="w-6 h-6 rounded-full border-2 border-transparent shadow-xs" style="background:#0F172A;" title="สีดำ"></button>
+            </div>
+            <!-- ตัวเลือกขนาดเส้น -->
+            <div class="flex items-center gap-1">
+              <span class="text-[11px] text-slate-500 font-medium mr-1">เส้น:</span>
+              <button id="btnSizeThin" type="button" class="px-2 py-0.5 text-[10px] rounded border border-slate-200 hover:bg-slate-50">บาง</button>
+              <button id="btnSizeNormal" type="button" class="px-2 py-0.5 text-[10px] rounded border border-indigo-500 bg-indigo-50 text-indigo-700 font-bold">ปกติ</button>
+              <button id="btnSizeThick" type="button" class="px-2 py-0.5 text-[10px] rounded border border-slate-200 hover:bg-slate-50">หนา</button>
+            </div>
+            <!-- ปุ่มล้าง -->
+            <button id="btnClearSigCanvas" type="button" class="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-0.5 font-medium">
+              <i class='bx bx-trash text-sm'></i> ล้าง
+            </button>
+          </div>
+
+          <div class="relative w-full border-2 border-dashed border-indigo-200 rounded-xl bg-white overflow-hidden shadow-inner flex items-center justify-center" style="touch-action:none; height:160px;">
+            <canvas id="sigCanvas" class="w-full h-full cursor-crosshair"></canvas>
+            <div id="sigPlaceholderNote" class="absolute pointer-events-none text-center text-slate-300 text-xs ${drawnDataUrl ? 'hidden' : ''}">
+              <i class='bx bx-pencil text-xl block mb-0.5'></i>
+              ใช้นิ้ว ปากกาสไตลัส หรือเมาส์วาดลายเซ็นในกรอบนี้
+            </div>
+          </div>
+        </div>
+
+        <!-- Pane: อัปโหลด -->
+        <div id="paneSigUpload" class="hidden space-y-2.5">
+          <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-indigo-400 transition-colors bg-slate-50/50">
+            <input id="sigFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+            <label for="sigFileInput" class="cursor-pointer flex flex-col items-center gap-1.5">
+              <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+                <i class='bx bx-cloud-upload'></i>
+              </div>
+              <span class="text-xs font-bold text-indigo-600 hover:underline">คลิกเลือกไฟล์รูปภาพลายเซ็น</span>
+              <span class="text-[11px] text-slate-400">รองรับ PNG โปร่งใส, JPG หรือ WebP (ระบบตัดพื้นหลังขาวให้อัตโนมัติ)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Pane: เลือกครูในระบบ -->
+        <div id="paneSigSelect" class="hidden space-y-2.5">
+          <label class="block text-xs font-semibold text-slate-700">เลือกครูจากรายชื่อในระบบ MHC</label>
+          <select id="sigTeacherSelect" class="form-select w-full text-xs rounded-lg border-slate-200">
+            <option value="">กำลังโหลดรายชื่อครู...</option>
+          </select>
+          <p class="text-[11px] text-slate-500">ระบบจะดึงลายเซ็นที่ครูได้บันทึกไว้ในระบบประวัติบุคลากรมาใช้งาน</p>
+        </div>
+
+        <!-- กล่องตัวอย่างลายเซ็นปัจจุบัน -->
+        <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <div class="text-[11px] font-semibold text-slate-600 mb-1 flex items-center justify-between">
+            <span>ตัวอย่างลายเซ็นที่จะใช้พิมพ์:</span>
+            <span id="sigStatusBadge" class="text-[10px] px-1.5 py-0.5 rounded ${drawnDataUrl ? 'bg-emerald-100 text-emerald-700 font-semibold' : 'bg-slate-200 text-slate-600 font-medium'}">
+              ${drawnDataUrl ? 'พร้อมใช้งาน' : 'ยังไม่มีลายเซ็น'}
+            </span>
+          </div>
+          <div class="h-16 w-full bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden p-2 relative">
+            <div id="sigLineGuide" class="absolute w-3/4 border-b border-slate-300 bottom-4"></div>
+            <img id="sigCurrentPreviewImg" src="${drawnDataUrl || ''}" alt="ลายเซ็น" class="max-h-12 max-w-full object-contain relative z-10 ${drawnDataUrl ? '' : 'hidden'}" style="mix-blend-mode:multiply;">
+            <span id="sigCurrentPreviewEmpty" class="text-xs text-slate-400 ${drawnDataUrl ? 'hidden' : ''}">ยังไม่มีลายเซ็น</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50/50">
+        <button id="btnCancelSigManager" type="button" class="btn btn-light px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200">
+          ยกเลิก
+        </button>
+        <button id="btnSaveSigManager" type="button" class="btn btn-primary px-4 py-2 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5" style="background:#4F46E5; color:white;">
+          <i class='bx bx-check text-base'></i>
+          <span>บันทึกและใช้ลายเซ็นนี้</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+
+  // Elements
+  const tabDraw = modal.querySelector('#tabSigDraw');
+  const tabUpload = modal.querySelector('#tabSigUpload');
+  const tabSelect = modal.querySelector('#tabSigSelect');
+  const paneDraw = modal.querySelector('#paneSigDraw');
+  const paneUpload = modal.querySelector('#paneSigUpload');
+  const paneSelect = modal.querySelector('#paneSigSelect');
+
+  const canvas = modal.querySelector('#sigCanvas');
+  const note = modal.querySelector('#sigPlaceholderNote');
+  const previewImg = modal.querySelector('#sigCurrentPreviewImg');
+  const previewEmpty = modal.querySelector('#sigCurrentPreviewEmpty');
+  const badge = modal.querySelector('#sigStatusBadge');
+  const nameInput = modal.querySelector('#sigTeacherNameInput');
+
+  // Tab switching
+  const setTab = (tab) => {
+    [tabDraw, tabUpload, tabSelect].forEach(t => {
+      t.className = 'flex-1 py-1.5 rounded-md transition-all text-center text-slate-600 hover:text-slate-900';
+    });
+    [paneDraw, paneUpload, paneSelect].forEach(p => p.classList.add('hidden'));
+
+    if (tab === 'draw') {
+      tabDraw.className = 'flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold';
+      paneDraw.classList.remove('hidden');
+      setTimeout(resizeCanvas, 50);
+    } else if (tab === 'upload') {
+      tabUpload.className = 'flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold';
+      paneUpload.classList.remove('hidden');
+    } else if (tab === 'select') {
+      tabSelect.className = 'flex-1 py-1.5 rounded-md transition-all text-center bg-white shadow-xs text-indigo-600 font-bold';
+      paneSelect.classList.remove('hidden');
+    }
+  };
+  tabDraw.onclick = () => setTab('draw');
+  tabUpload.onclick = () => setTab('upload');
+  tabSelect.onclick = () => setTab('select');
+
+  // Pen tools
+  const btnColorBlue = modal.querySelector('#btnColorBlue');
+  const btnColorBlack = modal.querySelector('#btnColorBlack');
+  btnColorBlue.onclick = () => {
+    penColor = '#002B9E';
+    btnColorBlue.className = 'w-6 h-6 rounded-full border-2 border-indigo-500 shadow-xs';
+    btnColorBlack.className = 'w-6 h-6 rounded-full border-2 border-transparent shadow-xs';
+  };
+  btnColorBlack.onclick = () => {
+    penColor = '#0F172A';
+    btnColorBlack.className = 'w-6 h-6 rounded-full border-2 border-indigo-500 shadow-xs';
+    btnColorBlue.className = 'w-6 h-6 rounded-full border-2 border-transparent shadow-xs';
+  };
+
+  const btnThin = modal.querySelector('#btnSizeThin');
+  const btnNormal = modal.querySelector('#btnSizeNormal');
+  const btnThick = modal.querySelector('#btnSizeThick');
+  const setSize = (w, activeBtn) => {
+    penWidth = w;
+    [btnThin, btnNormal, btnThick].forEach(b => {
+      b.className = 'px-2 py-0.5 text-[10px] rounded border border-slate-200 hover:bg-slate-50';
+    });
+    activeBtn.className = 'px-2 py-0.5 text-[10px] rounded border border-indigo-500 bg-indigo-50 text-indigo-700 font-bold';
+  };
+  btnThin.onclick = () => setSize(1.6, btnThin);
+  btnNormal.onclick = () => setSize(2.4, btnNormal);
+  btnThick.onclick = () => setSize(3.6, btnThick);
+
+  // Setup Canvas
+  let isDrawing = false;
+  let lastX = 0, lastY = 0;
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+  setTimeout(resizeCanvas, 60);
+
+  canvas.addEventListener('pointerdown', (e) => {
+    isDrawing = true;
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    const rect = canvas.getBoundingClientRect();
+    lastX = e.clientX - rect.left;
+    lastY = e.clientY - rect.top;
+    if (note) note.style.display = 'none';
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!isDrawing) return;
+    const rect = canvas.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+
+    ctx.strokeStyle = penColor;
+    ctx.lineWidth = penWidth;
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(currentX, currentY);
+    ctx.stroke();
+
+    lastX = currentX;
+    lastY = currentY;
+  });
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    isDrawing = false;
+    const trimmed = trimCanvasWhitespace(canvas);
+    if (trimmed) {
+      drawnDataUrl = trimmed;
+      previewImg.src = drawnDataUrl;
+      previewImg.classList.remove('hidden');
+      previewEmpty.classList.add('hidden');
+      badge.textContent = 'วาดสำเร็จ';
+      badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold';
+    }
+  };
+
+  canvas.addEventListener('pointerup', stopDrawing);
+  canvas.addEventListener('pointercancel', stopDrawing);
+
+  // Clear canvas
+  modal.querySelector('#btnClearSigCanvas').onclick = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (note) note.style.display = 'block';
+  };
+
+  // File upload
+  const fileInput = modal.querySelector('#sigFileInput');
+  fileInput.onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (re) => {
+      const img = new Image();
+      img.onload = () => {
+        makeImageTransparent(img, (cleanUrl) => {
+          drawnDataUrl = cleanUrl;
+          previewImg.src = drawnDataUrl;
+          previewImg.classList.remove('hidden');
+          previewEmpty.classList.add('hidden');
+          badge.textContent = 'อัปโหลดสำเร็จ';
+          badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold';
+        });
+      };
+      img.src = re.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Teachers in system
+  const teacherSelect = modal.querySelector('#sigTeacherSelect');
+  const populateTeacherSelect = (teachers) => {
+    if (!teachers || teachers.length === 0) {
+      teacherSelect.innerHTML = '<option value="">ไม่พบข้อมูลครู</option>';
+      return;
+    }
+    teacherSelect.innerHTML = '<option value="">-- เลือกครูผู้สอนจากระบบ --</option>' +
+      teachers.map(t => {
+        const tName = t.name || (t.prefix||'') + (t.first_name||'') + ' ' + (t.last_name||'');
+        return `<option value="${escapeHTML(tName)}" data-sig="${escapeHTML(t.signature || '')}">${escapeHTML(tName)} ${t.signature ? '✓ มีลายเซ็น' : '(ยังไม่มีลายเซ็น)'}</option>`;
+      }).join('');
+  };
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run.withSuccessHandler((res) => {
+      if (res && res.status === 'success' && res.data) {
+        populateTeacherSelect(res.data);
+      }
+    }).getTeachersForDropdown(APP.token);
+  } else if (typeof APP !== 'undefined' && APP.personnel) {
+    const list = APP.personnel.filter(p => p.type === 'teacher' && p.status === 'active');
+    populateTeacherSelect(list);
+  }
+
+  teacherSelect.onchange = () => {
+    const opt = teacherSelect.selectedOptions[0];
+    if (opt && opt.value) {
+      nameInput.value = opt.value;
+      const sig = opt.getAttribute('data-sig');
+      if (sig) {
+        drawnDataUrl = sig;
+        previewImg.src = drawnDataUrl;
+        previewImg.classList.remove('hidden');
+        previewEmpty.classList.add('hidden');
+        badge.textContent = 'พบลายเซ็นในระบบ';
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold';
+      } else {
+        if (typeof showToast === 'function') {
+          showToast('ครูท่านนี้ยังไม่ได้บันทึกลายเซ็นในระบบ ท่านสามารถวาดหรืออัปโหลดรูปภาพได้', 'warning');
+        }
+      }
+    }
+  };
+
+  // Close handlers
+  const closeModal = () => { modal.style.display = 'none'; };
+  modal.querySelector('#btnCloseSigManager').onclick = closeModal;
+  modal.querySelector('#btnCancelSigManager').onclick = closeModal;
+
+  // Save handler
+  modal.querySelector('#btnSaveSigManager').onclick = () => {
+    if (!drawnDataUrl) {
+      if (typeof showToast === 'function') {
+        showToast('กรุณาวาดลายเซ็นหรืออัปโหลดรูปภาพก่อนบันทึก', 'warning');
+      } else {
+        alert('กรุณาวาดลายเซ็นหรืออัปโหลดรูปภาพก่อนบันทึก');
+      }
+      return;
+    }
+    const finalName = nameInput.value.trim() || 'ครูก้องนที อุ่นเจริญ';
+    localStorage.setItem('mhc_custom_signature', drawnDataUrl);
+    localStorage.setItem('mhc_custom_signature_name', finalName);
+    localStorage.setItem('mhc_sig_enabled', 'true');
+
+    closeModal();
+    if (typeof onSaved === 'function') {
+      onSaved(drawnDataUrl, finalName);
+    }
+    if (typeof showToast === 'function') {
+      showToast('บันทึกลายเซ็นเรียบร้อยแล้ว — เอกสารจะประทับลายเซ็นนี้ทุกหน้า', 'success');
+    }
+  };
+}
+
 function showPrintPreviewModal(html, docTitle, directUrl) {
   let modal = document.getElementById('printDocModal');
   const env = getPrintEnv();
@@ -439,10 +1116,22 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate">ตัวอย่างเอกสารสำหรับพิมพ์</span>
         </div>
         <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <!-- ปุ่มเปิด/ปิดลายเซ็นครู -->
+          <button id="btnToggleSignatureAction" type="button" class="btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all" title="เปิด/ปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์">
+            <span id="sigToggleDot" class="w-2 h-2 rounded-full"></span>
+            <i class='bx bx-edit-alt text-sm'></i>
+            <span id="sigToggleText">ลายเซ็นครู</span>
+          </button>
+          <!-- ปุ่มจัดการลายเซ็น -->
+          <button id="btnConfigSignatureAction" type="button" class="btn btn-light p-1.5 text-slate-600 hover:text-slate-900 rounded-lg border border-slate-200 hover:bg-slate-100" title="ตั้งค่าหรือวาดลายเซ็นครู">
+            <i class='bx bx-slider-alt text-base'></i>
+          </button>
+          <!-- ปุ่มพิมพ์เอกสาร -->
           <button id="btnPrintModalAction" type="button" class="btn btn-primary flex items-center gap-1 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-bold shadow-sm rounded-lg" style="background:#4F46E5; color:white;" title="พิมพ์เอกสาร / AirPrint / บันทึกเป็น PDF">
             <i class='bx bx-printer text-base'></i>
             <span>พิมพ์</span>
           </button>
+          <!-- ปุ่มปิด -->
           <button id="btnClosePrintModalAction" type="button" class="btn btn-light p-1.5 text-slate-400 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50" title="ปิดหน้าต่าง">
             <i class='bx bx-x text-xl leading-none'></i>
           </button>
@@ -474,28 +1163,91 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     });
   }
 
-  modal._currentHtml = html;
+  modal._rawHtml = html;
   modal._currentTitle = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
   modal._currentDirectUrl = directUrl || '';
 
   const titleEl = document.getElementById('printDocModalTitle');
   if (titleEl) titleEl.textContent = modal._currentTitle;
 
-  const iframe = document.getElementById('printDocIframe');
-  if (iframe) {
-    // ซ่อนแถบเครื่องมือสีดำซ้ำซ้อนภายใน iframe เพื่อความสะอาด สวยงาม ดูเป็นทางการ
-    const cleanOverride = `
-      <style id="cleanPreviewOverride">
-        .no-print, .no-print-bar { display: none !important; }
-        body { background: #FFFFFF !important; padding: 0 !important; }
-        .print-page-wrapper { margin: 8px auto !important; box-shadow: none !important; padding: 12px 14px !important; }
-      </style>
-    `;
-    iframe.srcdoc = html.includes('</head>')
-      ? html.replace('</head>', cleanOverride + '</head>')
-      : cleanOverride + html;
-  }
+  const sigState = getPrintSignatureState();
 
+  const updateToggleBtnUI = () => {
+    const dot = document.getElementById('sigToggleDot');
+    const txt = document.getElementById('sigToggleText');
+    const btn = document.getElementById('btnToggleSignatureAction');
+    if (!btn || !dot || !txt) return;
+
+    if (sigState.enabled && sigState.hasSignature) {
+      btn.className = 'btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 shadow-2xs hover:bg-emerald-100 transition-all';
+      dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+      txt.textContent = 'ลายเซ็นครู: เปิด';
+      btn.title = `กำลังใส่ลายเซ็นของ ${sigState.name} ลงในเอกสารทุกหน้าที่พิมพ์ (คลิกเพื่อปิด)`;
+    } else {
+      btn.className = 'btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all';
+      dot.className = 'w-2 h-2 rounded-full bg-slate-300';
+      txt.textContent = 'ลายเซ็นครู: ปิด';
+      btn.title = 'คลิกเพื่อเปิดการใส่ลายเซ็นครูลงในเอกสารทุกหน้าที่พิมพ์';
+    }
+  };
+
+  const refreshPreview = () => {
+    if (sigState.enabled && sigState.signature) {
+      modal._currentHtml = applySignatureToDocument(modal._rawHtml, sigState.signature, sigState.name);
+    } else {
+      modal._currentHtml = modal._rawHtml;
+    }
+    updateToggleBtnUI();
+
+    const iframe = document.getElementById('printDocIframe');
+    if (iframe) {
+      // ซ่อนแถบเครื่องมือสีดำซ้ำซ้อนภายใน iframe เพื่อความสะอาด สวยงาม ดูเป็นทางการ
+      const cleanOverride = `
+        <style id="cleanPreviewOverride">
+          .no-print, .no-print-bar { display: none !important; }
+          body { background: #FFFFFF !important; padding: 0 !important; }
+          .print-page-wrapper { margin: 8px auto !important; box-shadow: none !important; padding: 12px 14px !important; }
+        </style>
+      `;
+      iframe.srcdoc = modal._currentHtml.includes('</head>')
+        ? modal._currentHtml.replace('</head>', cleanOverride + '</head>')
+        : cleanOverride + modal._currentHtml;
+    }
+  };
+
+  document.getElementById('btnToggleSignatureAction').onclick = () => {
+    if (!sigState.hasSignature && !sigState.enabled) {
+      // ยังไม่มีลายเซ็นในระบบ ให้เปิดหน้าต่างจัดการทันที
+      showSignatureManagerModal((newSig, newName) => {
+        sigState.signature = newSig;
+        sigState.name = newName;
+        sigState.hasSignature = true;
+        sigState.enabled = true;
+        localStorage.setItem('mhc_sig_enabled', 'true');
+        refreshPreview();
+      });
+      return;
+    }
+    sigState.enabled = !sigState.enabled;
+    localStorage.setItem('mhc_sig_enabled', sigState.enabled ? 'true' : 'false');
+    refreshPreview();
+    if (typeof showToast === 'function') {
+      showToast(sigState.enabled ? 'เปิดการประทับลายเซ็นครูแล้ว' : 'ปิดการประทับลายเซ็นแล้ว', 'info');
+    }
+  };
+
+  document.getElementById('btnConfigSignatureAction').onclick = () => {
+    showSignatureManagerModal((newSig, newName) => {
+      sigState.signature = newSig;
+      sigState.name = newName;
+      sigState.hasSignature = true;
+      sigState.enabled = true;
+      localStorage.setItem('mhc_sig_enabled', 'true');
+      refreshPreview();
+    });
+  };
+
+  refreshPreview();
   modal.style.display = 'flex';
 }
 
