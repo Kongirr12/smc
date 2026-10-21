@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.1.3',
+  APP_VERSION    : '3.1.4',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -3649,6 +3649,7 @@ function getGradeSheet(subjectId, sessionToken, academicYear, semester, classroo
         character_result: g.character_result || '',
         reading_result: g.reading_result || '',
         activity_result: g.activity_result || '',
+        s_scores      : g.s_scores || null,
         q_scores      : g.q_scores || null,
         l_scores      : g.l_scores || null,
         grade_special : g.grade_special || ''
@@ -3711,6 +3712,7 @@ function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester)
         (r.attendance_hours !== '' && r.attendance_hours != null) ||
         r.character_result ||
         r.reading_result ||
+        r.s_scores ||
         r.q_scores ||
         r.l_scores
       ))
@@ -3718,10 +3720,26 @@ function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester)
         const sm = (r.score_midterm === '' || r.score_midterm == null) ? null : Number(r.score_midterm);
         const sf = (r.score_final   === '' || r.score_final   == null) ? null : Number(r.score_final);
 
+        // คำนวณผลรวมคะแนนเก็บย่อย s_scores หากมี
+        let sSum = 0;
+        let hasS = false;
+        if (r.s_scores && typeof r.s_scores === 'object') {
+          Object.values(r.s_scores).forEach(v => {
+            if (v !== '' && v != null && !isNaN(v)) {
+              sSum += Number(v);
+              hasS = true;
+            }
+          });
+        }
+
         let total = null;
-        if (sm !== null && sf !== null) total = sm + sf;
-        else if (sm !== null) total = sm;
-        else if (sf !== null) total = sf;
+        if (hasS) {
+          total = sSum + (sm !== null ? sm : 0) + (sf !== null ? sf : 0);
+        } else {
+          if (sm !== null && sf !== null) total = sm + sf;
+          else if (sm !== null) total = sm;
+          else if (sf !== null) total = sf;
+        }
 
         const attH = (r.attendance_hours === '' || r.attendance_hours == null) ? null : Number(r.attendance_hours);
         const totH = (r.total_hours === '' || r.total_hours == null) ? null : Number(r.total_hours);
@@ -3779,6 +3797,7 @@ function saveGradeBulk(subjectId, records, sessionToken, academicYear, semester)
           character_result: charRes,
           reading_result: readRes,
           activity_result: r.activity_result || '',
+          s_scores      : r.s_scores || null,
           q_scores      : r.q_scores || null,
           l_scores      : r.l_scores || null,
           recorded_by   : recordedBy,
@@ -3944,8 +3963,18 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
     };
 
     const tableRows = roomRows.map((r, i) => {
-      const m = (r.score_midterm === '' || r.score_midterm == null) ? '' : Number(r.score_midterm);
+      let m = (r.score_midterm === '' || r.score_midterm == null) ? '' : Number(r.score_midterm);
       const f = (r.score_final   === '' || r.score_final   == null) ? '' : Number(r.score_final);
+      if (r.s_scores && typeof r.s_scores === 'object') {
+        let sSum = 0;
+        let hasS = false;
+        Object.values(r.s_scores).forEach(v => {
+          if (v !== '' && v != null && !isNaN(v)) { sSum += Number(v); hasS = true; }
+        });
+        if (hasS) {
+          m = (m !== '' ? m : 0) + sSum;
+        }
+      }
       const t = (m !== '' && f !== '') ? (Number(m) + Number(f))
                 : (m !== '' ? m : (f !== '' ? f : ''));
       const pct = (r.attendance_hours !== '' && r.total_hours !== '' && r.total_hours)

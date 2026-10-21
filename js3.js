@@ -525,6 +525,7 @@ function normalizeGradeLevel(str) {
 const AcademicState = {
   tab: 'subjects',     // 'subjects' | 'grades' | 'gpa'
   sgsTab: 'S',         // 'S' (ผลการเรียน) | 'Q' (คุณลักษณะ) | 'L' (อ่านคิดวิเคราะห์) | 'ALL' (ตารางรวม)
+  sgsMode: 'sgs5',     // 'sgs5' (10 ช่อง) | 'sgs3' (6 ช่อง) | 'sgs10' (20 ช่อง) | 'compact' (โหมดย่อ)
   page: 1,
   search: '',
   subject_group: '',
@@ -1510,6 +1511,11 @@ function switchSgsGradeTab(tab) {
   renderGradeSheetTable();
 }
 
+function switchSgsMode(mode) {
+  AcademicState.sgsMode = mode || 'sgs5';
+  renderGradeSheetTable();
+}
+
 function calculateAvgQL(scoresObj, count) {
   if (!scoresObj) return '';
   let sum = 0;
@@ -1644,6 +1650,48 @@ function recalcGradeRow(i) {
   const row = AcademicState.gradeRows[i];
   if (!row) return;
 
+  row.s_scores = row.s_scores || {};
+  // อ่านค่าคะแนนเก็บย่อย S ที่แสดงอยู่ในตาราง ณ ปัจจุบัน
+  document.querySelectorAll(`#gradeTable .g-s[data-row="${i}"]`).forEach(inp => {
+    const sNum = inp.dataset.s;
+    const sVal = inp.value.trim();
+    row.s_scores['S' + sNum] = (sVal === '' ? '' : Number(sVal));
+  });
+
+  const mode = AcademicState.sgsMode || 'sgs5';
+  let beforeRange = [];
+  let afterRange = [];
+  if (mode === 'sgs3') {
+    beforeRange = [1, 2, 3];
+    afterRange = [4, 5, 6];
+  } else if (mode === 'sgs5') {
+    beforeRange = [1, 2, 3, 4, 5];
+    afterRange = [6, 7, 8, 9, 10];
+  } else if (mode === 'sgs10') {
+    beforeRange = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    afterRange = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  }
+
+  let sumSBefore = 0;
+  let hasSBefore = false;
+  beforeRange.forEach(n => {
+    const v = row.s_scores['S' + n];
+    if (v !== '' && v != null && !isNaN(v)) {
+      sumSBefore += Number(v);
+      hasSBefore = true;
+    }
+  });
+
+  let sumSAfter = 0;
+  let hasSAfter = false;
+  afterRange.forEach(n => {
+    const v = row.s_scores['S' + n];
+    if (v !== '' && v != null && !isNaN(v)) {
+      sumSAfter += Number(v);
+      hasSAfter = true;
+    }
+  });
+
   const midEl = get('midterm');
   const finEl = get('final');
   const attEl = get('att');
@@ -1656,14 +1704,39 @@ function recalcGradeRow(i) {
   const tot = totEl ? parseFloat(totEl.value) : (row.total_hours !== '' && row.total_hours != null ? parseFloat(row.total_hours) : NaN);
   const special = specialEl ? specialEl.value : (row.grade_special || '');
 
+  // อัปเดตตัวเลขแสดงผลในแต่ละช่องสรุปย่อย
+  const sBeforeEl = get('s-before-sum');
+  if (sBeforeEl) sBeforeEl.textContent = hasSBefore ? (Math.round(sumSBefore * 10) / 10) : '-';
+
+  const betweenEl = get('between-sum');
+  let between = null;
+  if (hasSBefore) {
+    between = sumSBefore + (!isNaN(mid) ? mid : 0);
+  } else if (!isNaN(mid)) {
+    between = mid;
+  }
+  if (betweenEl) betweenEl.textContent = (between !== null) ? (Math.round(between * 10) / 10) : '-';
+
+  const sAfterEl = get('s-after-sum');
+  if (sAfterEl) sAfterEl.textContent = hasSAfter ? (Math.round(sumSAfter * 10) / 10) : '-';
+
+  // รวม 100 คะแนน
   let total = null;
-  if (!isNaN(mid) && !isNaN(fin)) total = mid + fin;
-  else if (!isNaN(mid)) total = mid;
-  else if (!isNaN(fin)) total = fin;
+  if (hasSBefore || hasSAfter) {
+    total = (hasSBefore ? sumSBefore : 0) +
+            (!isNaN(mid) ? mid : 0) +
+            (hasSAfter ? sumSAfter : 0) +
+            (!isNaN(fin) ? fin : 0);
+  } else {
+    if (!isNaN(mid) && !isNaN(fin)) total = mid + fin;
+    else if (!isNaN(mid)) total = mid;
+    else if (!isNaN(fin)) total = fin;
+  }
 
   const totalEl = get('total');
   if (totalEl) totalEl.textContent = (total === null) ? '-' : Number(total).toFixed(total % 1 ? 1 : 0);
 
+  // คำนวณ % เวลาเรียน
   let pct = null;
   if (!isNaN(att) && !isNaN(tot) && tot > 0) pct = Math.round((att / tot) * 1000) / 10;
   const pctEl = get('pct');
@@ -1672,6 +1745,7 @@ function recalcGradeRow(i) {
     pctEl.className = 'grade-output g-pct ' + (pct === null ? '' : (pct < 80 ? 'grade-fail' : 'grade-pass'));
   }
 
+  // คำนวณเกรด (0 - 4 หรือ มส / ผลพิเศษ)
   let grade = '-';
   if (special) {
     grade = special;
@@ -1709,9 +1783,10 @@ function recalcGradeRow(i) {
     }
   }
 
-  // sync state
+  // ซิงค์ข้อมูลเข้า State
   if (midEl) row.score_midterm = isNaN(mid) ? '' : mid;
   if (finEl) row.score_final   = isNaN(fin) ? '' : fin;
+  row.score_total              = total;
   if (attEl) row.attendance_hours = isNaN(att) ? '' : att;
   if (totEl) row.total_hours      = isNaN(tot) ? '' : tot;
   if (specialEl) row.grade_special = special;
@@ -1730,43 +1805,69 @@ function renderGradeSheetTable() {
   }
 
   const currentTab = AcademicState.sgsTab || 'S';
+  const currentMode = AcademicState.sgsMode || 'sgs5';
   const roomDisplay = AcademicState.currentSubjectClassroom 
     ? ` · ห้อง <b>${escapeHTML(AcademicState.currentSubjectClassroom)}</b>` 
     : ' · <b>ทุกห้องเรียน</b>';
+
+  // กำหนดช่วงคะแนนเก็บย่อย S ตามโหมด
+  let beforeRange = [];
+  let afterRange = [];
+  if (currentMode === 'sgs3') {
+    beforeRange = [1, 2, 3];
+    afterRange = [4, 5, 6];
+  } else if (currentMode === 'sgs5') {
+    beforeRange = [1, 2, 3, 4, 5];
+    afterRange = [6, 7, 8, 9, 10];
+  } else if (currentMode === 'sgs10') {
+    beforeRange = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    afterRange = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  }
 
   // Quick toolbar HTML depending on active tab
   let quickToolbarHtml = '';
   if (currentTab === 'S') {
     quickToolbarHtml = `
-      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg mb-3 text-xs text-blue-900">
-        <div class="flex items-center gap-1.5 font-medium">
-          <i class='bx bx-info-circle text-blue-600 text-base'>\x3c/i>
-          <span><b>โครงสร้างคะแนน SGS:</b> ระหว่างภาค (เต็ม ${subj.midterm_weight||70}) · ปลายภาค (เต็ม ${subj.final_weight||30}) · รวม 100 คะแนน · เวลาเรียนต้องไม่น้อยกว่า 80%</span>
+      <div class="flex flex-wrap items-center justify-between gap-2.5 p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl mb-3 text-xs text-blue-900 shadow-2xs">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="flex items-center gap-1.5 font-bold text-blue-800">
+            <i class='bx bx-grid-alt text-base text-blue-600'>\x3c/i>
+            <span>รูปแบบตาราง SGS:</span>
+          </div>
+          <div class="inline-flex rounded-lg border border-blue-200 bg-white p-0.5 shadow-2xs">
+            <button type="button" class="sgs-mode-pill ${currentMode==='sgs5'?'active':''}" onclick="switchSgsMode('sgs5')">SGS 10 ช่อง (S1-S5 / S6-S10)\x3c/button>
+            <button type="button" class="sgs-mode-pill ${currentMode==='sgs3'?'active':''}" onclick="switchSgsMode('sgs3')">SGS 6 ช่อง (S1-S3 / S4-S6)\x3c/button>
+            <button type="button" class="sgs-mode-pill ${currentMode==='sgs10'?'active':''}" onclick="switchSgsMode('sgs10')">SGS 20 ช่อง (เต็มพิกัด)\x3c/button>
+            <button type="button" class="sgs-mode-pill ${currentMode==='compact'?'active':''}" onclick="switchSgsMode('compact')">โหมดย่อ (กลางภาค/ปลายภาค)\x3c/button>
+          </div>
         </div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-slate-500 font-medium">เครื่องมือด่วน:</span>
-          <button type="button" class="px-2.5 py-1 bg-white hover:bg-blue-100 border border-blue-300 rounded font-semibold text-blue-800 transition-colors shadow-xs" onclick="quickFillAttendance(100)">
-            ⚡ ตั้งเวลาเรียน 100% ทั้งหมด
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-slate-500 font-medium">เวลาเรียน:</span>
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-blue-100 border border-blue-300 rounded font-semibold text-blue-800 transition-colors shadow-2xs" onclick="quickFillAttendance(100)">
+            ⚡ ตั้ง 100% ทั้งหมด
+          </button>
+          <button type="button" class="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-600 transition-colors shadow-2xs" onclick="quickFillAttendance(80)">
+            ⚡ 80% (เกณฑ์ผ่าน)
           </button>
         </div>
       </div>
     `;
   } else if (currentTab === 'Q') {
     quickToolbarHtml = `
-      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-amber-50/80 border border-amber-200 rounded-lg mb-3 text-xs text-amber-900">
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-amber-50/80 border border-amber-200 rounded-xl mb-3 text-xs text-amber-900 shadow-2xs">
         <div class="flex items-center gap-1.5 font-medium">
           <i class='bx bx-star text-amber-600 text-base'>\x3c/i>
-          <span><b>คุณลักษณะอันพึงประสงค์ (Q1 - Q8):</b> 0 = ไม่ผ่าน, 1 = ผ่าน, 2 = ดี, 3 = ดีเยี่ยม (สอดคล้องกับระบบ SGS และ AutoGrade)</span>
+          <span><b>คุณลักษณะอันพึงประสงค์ (Q1 - Q8):</b> 0 = ไม่ผ่าน, 1 = ผ่าน, 2 = ดี, 3 = ดีเยี่ยม (รูปแบบตรงตามระบบ SGS และ SGS AutoGrade)</span>
         </div>
         <div class="flex items-center gap-1.5">
           <span class="text-slate-500 font-medium">กรอกด่วน:</span>
-          <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded font-semibold text-amber-800 transition-colors shadow-xs" onclick="quickFillQ(3)">
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded font-semibold text-amber-800 transition-colors shadow-2xs" onclick="quickFillQ(3)">
             ⚡ ให้ 3 (ดีเยี่ยม) ทั้งหมด
           </button>
-          <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded font-semibold text-amber-800 transition-colors shadow-xs" onclick="quickFillQ(2)">
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 rounded font-semibold text-amber-800 transition-colors shadow-2xs" onclick="quickFillQ(2)">
             ⚡ ให้ 2 (ดี) ทั้งหมด
           </button>
-          <button type="button" class="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-600 transition-colors" onclick="quickFillQ('')">
+          <button type="button" class="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-600 transition-colors shadow-2xs" onclick="quickFillQ('')">
             🧹 ล้างค่า
           </button>
         </div>
@@ -1774,20 +1875,20 @@ function renderGradeSheetTable() {
     `;
   } else if (currentTab === 'L') {
     quickToolbarHtml = `
-      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-indigo-50/80 border border-indigo-200 rounded-lg mb-3 text-xs text-indigo-900">
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-indigo-50/80 border border-indigo-200 rounded-xl mb-3 text-xs text-indigo-900 shadow-2xs">
         <div class="flex items-center gap-1.5 font-medium">
           <i class='bx bx-book-reader text-indigo-600 text-base'>\x3c/i>
-          <span><b>การอ่าน คิดวิเคราะห์ และเขียน (L1 - L5):</b> 0 = ไม่ผ่าน, 1 = ผ่าน, 2 = ดี, 3 = ดีเยี่ยม (สอดคล้องกับระบบ SGS และ AutoGrade)</span>
+          <span><b>การอ่าน คิดวิเคราะห์ และเขียน (L1 - L5):</b> 0 = ไม่ผ่าน, 1 = ผ่าน, 2 = ดี, 3 = ดีเยี่ยม (รูปแบบตรงตามระบบ SGS และ SGS AutoGrade)</span>
         </div>
         <div class="flex items-center gap-1.5">
           <span class="text-slate-500 font-medium">กรอกด่วน:</span>
-          <button type="button" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 rounded font-semibold text-indigo-800 transition-colors shadow-xs" onclick="quickFillL(3)">
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 rounded font-semibold text-indigo-800 transition-colors shadow-2xs" onclick="quickFillL(3)">
             ⚡ ให้ 3 (ดีเยี่ยม) ทั้งหมด
           </button>
-          <button type="button" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 rounded font-semibold text-indigo-800 transition-colors shadow-xs" onclick="quickFillL(2)">
+          <button type="button" class="px-2.5 py-1 bg-white hover:bg-indigo-100 border border-indigo-300 rounded font-semibold text-indigo-800 transition-colors shadow-2xs" onclick="quickFillL(2)">
             ⚡ ให้ 2 (ดี) ทั้งหมด
           </button>
-          <button type="button" class="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-600 transition-colors" onclick="quickFillL('')">
+          <button type="button" class="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-600 transition-colors shadow-2xs" onclick="quickFillL('')">
             🧹 ล้างค่า
           </button>
         </div>
@@ -1795,7 +1896,7 @@ function renderGradeSheetTable() {
     `;
   } else if (currentTab === 'ALL') {
     quickToolbarHtml = `
-      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-lg mb-3 text-xs text-emerald-900">
+      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl mb-3 text-xs text-emerald-900 shadow-2xs">
         <div class="flex items-center gap-1.5 font-medium">
           <i class='bx bx-grid-alt text-emerald-600 text-base'>\x3c/i>
           <span><b>ตารางรวมมาตรฐาน SGS:</b> แสดงคะแนนระหว่างภาค, ปลายภาค, คะแนนรวม, เกรด, คุณลักษณะ (Q) และอ่านคิดวิเคราะห์ (L) ในตารางเดียว</span>
@@ -1807,63 +1908,106 @@ function renderGradeSheetTable() {
   // Header Table Columns HTML
   let theadColsHtml = '';
   if (currentTab === 'S') {
-    theadColsHtml = `
-      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
-      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:90px;" title="คะแนนระหว่างภาค เต็ม ${subj.midterm_weight||70}">ระหว่างภาค (${subj.midterm_weight||70})\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:90px;" title="คะแนนปลายภาค เต็ม ${subj.final_weight||30}">ปลายภาค (${subj.final_weight||30})\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:70px;">รวม (100)\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:70px;">ชม.เรียน\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:65px;">ชม.รวม\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:65px;">%\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:65px;">เกรด\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:80px;">ผลพิเศษ\x3c/th>
-    `;
+    if (currentMode === 'compact') {
+      theadColsHtml = `
+        <tr class="bg-slate-100/90 text-slate-700 text-xs font-semibold uppercase border-b border-slate-300">
+          <th class="px-2 py-2.5 text-center" style="width:38px;">ที่\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+          <th class="px-2 py-2.5 text-left" style="min-width:170px;">ชื่อ - สกุล\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:55px;">ห้อง\x3c/th>
+          <th class="px-2 py-2.5 text-center bg-blue-50/90 text-blue-900" style="width:90px;" title="คะแนนระหว่างภาค เต็ม ${subj.midterm_weight||70}">ระหว่างภาค (${subj.midterm_weight||70})\x3c/th>
+          <th class="px-2 py-2.5 text-center bg-purple-50/90 text-purple-900" style="width:90px;" title="คะแนนปลายภาค เต็ม ${subj.final_weight||30}">ปลายภาค (${subj.final_weight||30})\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:65px;">รวม (100)\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:65px;">ชม.เรียน\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:60px;">ชม.รวม\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:60px;">%\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:55px;">เกรด\x3c/th>
+          <th class="px-2 py-2.5 text-center" style="width:75px;">ผลพิเศษ\x3c/th>
+        \x3c/tr>
+      `;
+    } else {
+      // โหมด SGS เต็มรูปแบบ (Two-Tier Header แบบหน้าเว็บ SGS จริง)
+      const bSubCols = beforeRange.map(n => `<th class="px-0.5 py-1 text-center font-mono text-[11px] text-blue-800" style="width:46px;">S${n}\x3c/th>`).join('');
+      const aSubCols = afterRange.map(n => `<th class="px-0.5 py-1 text-center font-mono text-[11px] text-teal-800" style="width:46px;">S${n}\x3c/th>`).join('');
+
+      theadColsHtml = `
+        <tr class="bg-slate-100 text-slate-700 text-xs font-semibold uppercase border-b border-slate-300">
+          <th rowspan="2" class="px-2 py-2 text-center" style="width:38px;">ที่\x3c/th>
+          <th rowspan="2" class="px-2 py-2 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+          <th rowspan="2" class="px-2 py-2 text-left" style="min-width:170px;">ชื่อ - สกุล\x3c/th>
+          <th rowspan="2" class="px-2 py-2 text-center" style="width:55px;">ห้อง\x3c/th>
+          <th colspan="${beforeRange.length + 1}" class="px-1 py-1.5 text-center bg-blue-100/70 text-blue-900 border-x border-blue-200">
+            คะแนนก่อนสอบกลางภาค <span class="text-[10px] text-blue-600 font-normal">(${beforeRange.length} ช่อง)\x3c/span>
+          \x3c/th>
+          <th rowspan="2" class="px-1.5 py-2 text-center bg-amber-50/90 text-amber-900 border-r border-amber-200" style="width:72px;" title="คะแนนสอบกลางภาค">สอบกลางภาค\x3c/th>
+          <th rowspan="2" class="px-1.5 py-2 text-center bg-indigo-50/90 text-indigo-900 border-r border-indigo-200" style="width:75px;" title="รวมระหว่างภาค = รวมก่อนกลางภาค + สอบกลางภาค">รวมระหว่างภาค\x3c/th>
+          <th colspan="${afterRange.length + 1}" class="px-1 py-1.5 text-center bg-teal-100/70 text-teal-900 border-r border-teal-200">
+            คะแนนหลังสอบกลางภาค <span class="text-[10px] text-teal-600 font-normal">(${afterRange.length} ช่อง)\x3c/span>
+          \x3c/th>
+          <th rowspan="2" class="px-1.5 py-2 text-center bg-purple-50/90 text-purple-900 border-r border-purple-200" style="width:72px;" title="คะแนนสอบปลายภาค">สอบปลายภาค\x3c/th>
+          <th colspan="4" class="px-1 py-1.5 text-center bg-slate-200/80 text-slate-800">สรุปผลการเรียน\x3c/th>
+        \x3c/tr>
+        <tr class="bg-slate-50 text-slate-600 text-[11px] font-semibold border-b border-slate-300">
+          ${bSubCols}
+          <th class="px-1 py-1 text-center bg-blue-100/80 text-blue-900 border-r border-blue-200 font-bold" style="width:56px;">รวมก่อน\x3c/th>
+          ${aSubCols}
+          <th class="px-1 py-1 text-center bg-teal-100/80 text-teal-900 border-r border-teal-200 font-bold" style="width:56px;">รวมหลัง\x3c/th>
+          <th class="px-1 py-1 text-center bg-slate-100 text-slate-800" style="width:65px;">รวม 100\x3c/th>
+          <th class="px-1 py-1 text-center bg-slate-100 text-slate-800" style="width:52px;">เกรด\x3c/th>
+          <th class="px-1 py-1 text-center bg-slate-100 text-slate-800" style="width:60px;">เวลา %\x3c/th>
+          <th class="px-1 py-1 text-center bg-slate-100 text-slate-800" style="width:70px;">ผลพิเศษ\x3c/th>
+        \x3c/tr>
+      `;
+    }
   } else if (currentTab === 'Q') {
     theadColsHtml = `
-      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
-      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="รักชาติ ศาสน์ กษัตริย์">Q1<div class="text-[9px] font-normal text-slate-400">รักชาติ\x3c/div>\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="ซื่อสัตย์สุจริต">Q2<div class="text-[9px] font-normal text-slate-400">ซื่อสัตย์\x3c/div>\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="มีวินัย">Q3<div class="text-[9px] font-normal text-slate-400">มีวินัย\x3c/div>\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="ใฝ่เรียนรู้">Q4<div class="text-[9px] font-normal text-slate-400">ใฝ่รู้\x3c/div>\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="อยู่อย่างพอเพียง">Q5<div class="text-[9px] font-normal text-slate-400">พอเพียง\x3c/div>\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="มุ่งมั่นในการทำงาน">Q6<div class="text-[9px] font-normal text-slate-400">มุ่งมั่น\x3c/div>\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="รักความเป็นไทย">Q7<div class="text-[9px] font-normal text-slate-400">รักไทย\x3c/div>\x3c/th>
-      <th class="px-1 py-2.5 text-center" style="width:50px;" title="มีจิตสาธารณะ">Q8<div class="text-[9px] font-normal text-slate-400">สาธารณะ\x3c/div>\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:95px;" title="สรุปผลคุณลักษณะ (0-3)">สรุปผล Q\x3c/th>
+      <tr class="bg-slate-100/90 text-slate-700 text-xs uppercase border-b border-slate-300">
+        <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+        <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="รักชาติ ศาสน์ กษัตริย์">Q1<div class="text-[9px] font-normal text-slate-400">รักชาติ\x3c/div>\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="ซื่อสัตย์สุจริต">Q2<div class="text-[9px] font-normal text-slate-400">ซื่อสัตย์\x3c/div>\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="มีวินัย">Q3<div class="text-[9px] font-normal text-slate-400">มีวินัย\x3c/div>\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="ใฝ่เรียนรู้">Q4<div class="text-[9px] font-normal text-slate-400">ใฝ่รู้\x3c/div>\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="อยู่อย่างพอเพียง">Q5<div class="text-[9px] font-normal text-slate-400">พอเพียง\x3c/div>\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="มุ่งมั่นในการทำงาน">Q6<div class="text-[9px] font-normal text-slate-400">มุ่งมั่น\x3c/div>\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="รักความเป็นไทย">Q7<div class="text-[9px] font-normal text-slate-400">รักไทย\x3c/div>\x3c/th>
+        <th class="px-1 py-2.5 text-center" style="width:50px;" title="มีจิตสาธารณะ">Q8<div class="text-[9px] font-normal text-slate-400">สาธารณะ\x3c/div>\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:95px;" title="สรุปผลคุณลักษณะ (0-3)">สรุปผล Q\x3c/th>
+      \x3c/tr>
     `;
   } else if (currentTab === 'L') {
     theadColsHtml = `
-      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
-      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
-      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การอ่านเพื่อค้นคว้า">L1<div class="text-[9px] font-normal text-slate-400">การอ่าน\x3c/div>\x3c/th>
-      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การคิดวิเคราะห์">L2<div class="text-[9px] font-normal text-slate-400">คิดวิเคราะห์\x3c/div>\x3c/th>
-      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การสังเคราะห์/จับประเด็น">L3<div class="text-[9px] font-normal text-slate-400">จับประเด็น\x3c/div>\x3c/th>
-      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การแสดงความคิดเห็น/วิจารณญาณ">L4<div class="text-[9px] font-normal text-slate-400">วิจารณญาณ\x3c/div>\x3c/th>
-      <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การเขียนถ่ายทอด/สื่อความ">L5<div class="text-[9px] font-normal text-slate-400">สื่อความ\x3c/div>\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:95px;" title="สรุปผลการอ่านคิดวิเคราะห์ (0-3)">สรุปผล L\x3c/th>
+      <tr class="bg-slate-100/90 text-slate-700 text-xs uppercase border-b border-slate-300">
+        <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+        <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
+        <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การอ่านเพื่อค้นคว้า">L1<div class="text-[9px] font-normal text-slate-400">การอ่าน\x3c/div>\x3c/th>
+        <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การคิดวิเคราะห์">L2<div class="text-[9px] font-normal text-slate-400">คิดวิเคราะห์\x3c/div>\x3c/th>
+        <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การสังเคราะห์/จับประเด็น">L3<div class="text-[9px] font-normal text-slate-400">จับประเด็น\x3c/div>\x3c/th>
+        <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การแสดงความคิดเห็น/วิจารณญาณ">L4<div class="text-[9px] font-normal text-slate-400">วิจารณญาณ\x3c/div>\x3c/th>
+        <th class="px-1.5 py-2.5 text-center" style="width:65px;" title="การเขียนถ่ายทอด/สื่อความ">L5<div class="text-[9px] font-normal text-slate-400">สื่อความ\x3c/div>\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:95px;" title="สรุปผลการอ่านคิดวิเคราะห์ (0-3)">สรุปผล L\x3c/th>
+      \x3c/tr>
     `;
   } else if (currentTab === 'ALL') {
     theadColsHtml = `
-      <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
-      <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:85px;">ระหว่างภาค\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:85px;">ปลายภาค\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:65px;">รวม\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:60px;">เกรด\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:90px;">คุณลักษณะ (Q)\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:95px;">อ่านวิเคราะห์ (L)\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:65px;">% เวลา\x3c/th>
-      <th class="px-2 py-2.5 text-center" style="width:75px;">ผลพิเศษ\x3c/th>
+      <tr class="bg-slate-100/90 text-slate-700 text-xs uppercase border-b border-slate-300">
+        <th class="px-2 py-2.5 text-center" style="width:40px;">ที่\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:85px;">เลขประจำตัว\x3c/th>
+        <th class="px-2 py-2.5 text-left" style="min-width:180px;">นักเรียน\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:60px;">ห้อง\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:85px;">ระหว่างภาค\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:85px;">ปลายภาค\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:65px;">รวม\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:60px;">เกรด\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:90px;">คุณลักษณะ (Q)\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:95px;">อ่านวิเคราะห์ (L)\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:65px;">% เวลา\x3c/th>
+        <th class="px-2 py-2.5 text-center" style="width:75px;">ผลพิเศษ\x3c/th>
+      \x3c/tr>
     `;
   }
 
@@ -1871,16 +2015,17 @@ function renderGradeSheetTable() {
   const rowsHtml = rows.map((r, i) => {
     const q = r.q_scores || {};
     const l = r.l_scores || {};
+    const s = r.s_scores || {};
     const qSummary = r.character_result || (r.q_scores ? calculateAvgQL(r.q_scores, 8) : '');
     const lSummary = r.reading_result || (r.l_scores ? calculateAvgQL(r.l_scores, 5) : '');
 
     const commonCols = `
       <td class="px-2 py-2 text-center text-slate-500 font-medium">${r.student_number || (i+1)}\x3c/td>
-      <td class="px-2 py-2 text-center font-mono text-xs font-semibold text-slate-700 bg-slate-50/50">${escapeHTML(r.student_code || r.student_id || '-')}\x3c/td>
+      <td class="ttc px-2 py-2 text-center font-mono text-xs font-semibold text-slate-700 bg-slate-50/50">${escapeHTML(r.student_code || r.student_id || '-')}\x3c/td>
       <td class="px-2 py-2">
         <div class="flex items-center gap-2">
-          ${avatarHTML(r.photo, r.first_name, 28)}
-          <div>
+          ${avatarHTML(r.photo, r.first_name, 26)}
+          <div class="truncate">
             <div class="font-semibold text-slate-800 text-xs">
               ${escapeHTML((r.prefix||'')+(r.first_name||'')+' '+(r.last_name||''))}
             </div>
@@ -1891,26 +2036,65 @@ function renderGradeSheetTable() {
     `;
 
     if (currentTab === 'S') {
-      return `
-        <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" data-row="${i}">
-          ${commonCols}
-          <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-midterm" data-row="${i}" value="${r.score_midterm===''||r.score_midterm==null?'':r.score_midterm}">\x3c/td>
-          <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-final"   data-row="${i}" value="${r.score_final===''||r.score_final==null?'':r.score_final}">\x3c/td>
-          <td class="px-1 py-1"><div class="grade-output g-total" data-row="${i}">-\x3c/div>\x3c/td>
-          <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-att" data-row="${i}" value="${r.attendance_hours===''||r.attendance_hours==null?'':r.attendance_hours}">\x3c/td>
-          <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-tot" data-row="${i}" value="${r.total_hours===''||r.total_hours==null?'':r.total_hours}">\x3c/td>
-          <td class="px-1 py-1"><div class="grade-output g-pct" data-row="${i}">-\x3c/div>\x3c/td>
-          <td class="px-1 py-1"><div class="grade-output g-grade" data-row="${i}">-\x3c/div>\x3c/td>
-          <td class="px-1 py-1">
-            <select class="grade-input g-special" data-row="${i}">
-              <option value="">-\x3c/option>
-              <option value="มส" ${r.grade_special==='มส'?'selected':''}>มส\x3c/option>
-              <option value="มผ" ${r.grade_special==='มผ'?'selected':''}>มผ\x3c/option>
-              <option value="ร"  ${r.grade_special==='ร'?'selected':''}>ร\x3c/option>
-            \x3c/select>
-          \x3c/td>
-        \x3c/tr>
-      `;
+      if (currentMode === 'compact') {
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors" data-row="${i}">
+            ${commonCols}
+            <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-midterm" data-row="${i}" value="${r.score_midterm===''||r.score_midterm==null?'':r.score_midterm}">\x3c/td>
+            <td class="px-1 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-final"   data-row="${i}" value="${r.score_final===''||r.score_final==null?'':r.score_final}">\x3c/td>
+            <td class="px-1 py-1"><div class="grade-output g-total" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-att" data-row="${i}" value="${r.attendance_hours===''||r.attendance_hours==null?'':r.attendance_hours}">\x3c/td>
+            <td class="px-1 py-1"><input type="number" min="0" class="grade-input g-tot" data-row="${i}" value="${r.total_hours===''||r.total_hours==null?'':r.total_hours}">\x3c/td>
+            <td class="px-1 py-1"><div class="grade-output g-pct" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1"><div class="grade-output g-grade" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1">
+              <select class="grade-input g-special" data-row="${i}">
+                <option value="">-\x3c/option>
+                <option value="มส" ${r.grade_special==='มส'?'selected':''}>มส\x3c/option>
+                <option value="มผ" ${r.grade_special==='มผ'?'selected':''}>มผ\x3c/option>
+                <option value="ร"  ${r.grade_special==='ร'?'selected':''}>ร\x3c/option>
+              \x3c/select>
+            \x3c/td>
+          \x3c/tr>
+        `;
+      } else {
+        // แถวตารางคะแนนแบบ SGS มาตรฐาน พร้อมช่องคะแนนเก็บย่อย S
+        const sBeforeInputs = beforeRange.map(n => {
+          const v = (s['S' + n] !== '' && s['S' + n] != null) ? s['S' + n] : '';
+          return `<td class="px-0.5 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-s" data-row="${i}" data-s="${n}" value="${v}">\x3c/td>`;
+        }).join('');
+
+        const sAfterInputs = afterRange.map(n => {
+          const v = (s['S' + n] !== '' && s['S' + n] != null) ? s['S' + n] : '';
+          return `<td class="px-0.5 py-1"><input type="number" min="0" max="100" step="0.5" class="grade-input g-s" data-row="${i}" data-s="${n}" value="${v}">\x3c/td>`;
+        }).join('');
+
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/70 transition-colors" data-row="${i}">
+            ${commonCols}
+            ${sBeforeInputs}
+            <td class="px-1 py-1 bg-blue-50/40"><div class="grade-output g-s-before-sum font-bold text-blue-900" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1 bg-amber-50/30"><input type="number" min="0" max="100" step="0.5" class="grade-input g-midterm" data-row="${i}" value="${r.score_midterm===''||r.score_midterm==null?'':r.score_midterm}">\x3c/td>
+            <td class="px-1 py-1 bg-indigo-50/40"><div class="grade-output g-between-sum font-bold text-indigo-900" data-row="${i}">-\x3c/div>\x3c/td>
+            ${sAfterInputs}
+            <td class="px-1 py-1 bg-teal-50/40"><div class="grade-output g-s-after-sum font-bold text-teal-900" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1 bg-purple-50/30"><input type="number" min="0" max="100" step="0.5" class="grade-input g-final" data-row="${i}" value="${r.score_final===''||r.score_final==null?'':r.score_final}">\x3c/td>
+            <td class="px-1 py-1"><div class="grade-output g-total" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1"><div class="grade-output g-grade" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1"><div class="grade-output g-pct" data-row="${i}">-\x3c/div>\x3c/td>
+            <td class="px-1 py-1">
+              <select class="grade-input g-special" data-row="${i}">
+                <option value="">-\x3c/option>
+                <option value="มส" ${r.grade_special==='มส'?'selected':''}>มส\x3c/option>
+                <option value="มผ" ${r.grade_special==='มผ'?'selected':''}>มผ\x3c/option>
+                <option value="ร"  ${r.grade_special==='ร'?'selected':''}>ร\x3c/option>
+              \x3c/select>
+              <input type="hidden" class="g-att" data-row="${i}" value="${r.attendance_hours===''||r.attendance_hours==null?'':r.attendance_hours}">
+              <input type="hidden" class="g-tot" data-row="${i}" value="${r.total_hours===''||r.total_hours==null?'':r.total_hours}">
+            \x3c/td>
+          \x3c/tr>
+        `;
+      }
     } else if (currentTab === 'Q') {
       const qInputs = [1, 2, 3, 4, 5, 6, 7, 8].map(num => {
         const val = q['Q' + num] != null ? q['Q' + num] : (r.character_result || '');
@@ -1995,13 +2179,21 @@ function renderGradeSheetTable() {
 
   area.innerHTML = `
     <!-- หัวข้อมูลรายวิชา -->
-    <div class="p-3 rounded-lg mb-3" style="background:#FAF0F2;border:1px solid #BFDBFE;">
-      <div class="font-semibold text-slate-800 text-sm md:text-base">
-        ${escapeHTML(subj.subject_code||'')} · ${escapeHTML(subj.subject_name||'')}
-      </div>
-      <div class="text-xs text-slate-600 mt-1">
-        ระดับชั้น <b>${escapeHTML(subj.grade_level||'-')}</b>${roomDisplay} · เทอม ${escapeHTML(subj.semester||'-')} · ปีการศึกษา ${escapeHTML(subj.academic_year||'-')}
-        · ระหว่างภาค <b>${subj.midterm_weight||70}\x3c/b> · ปลายภาค <b>${subj.final_weight||30}\x3c/b> · รวม <b>100\x3c/b> คะแนน
+    <div class="p-3 rounded-xl mb-3 shadow-2xs" style="background:#F0FDF4;border:1px solid #BBF7D0;">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div class="font-bold text-slate-800 text-sm md:text-base flex items-center gap-1.5">
+            <i class='bx bx-book-bookmark text-emerald-600'>\x3c/i>
+            <span>${escapeHTML(subj.subject_code||'')} · ${escapeHTML(subj.subject_name||'')}</span>
+          </div>
+          <div class="text-xs text-slate-600 mt-1">
+            ระดับชั้น <b>${escapeHTML(subj.grade_level||'-')}</b>${roomDisplay} · เทอม ${escapeHTML(subj.semester||'-')} · ปีการศึกษา ${escapeHTML(subj.academic_year||'-')}
+            · ระหว่างภาค <b>${subj.midterm_weight||70}\x3c/b> · ปลายภาค <b>${subj.final_weight||30}\x3c/b> · รวม <b>100\x3c/b> คะแนน
+          </div>
+        </div>
+        <div class="text-[11px] font-semibold text-emerald-800 bg-white/80 border border-emerald-300 px-2.5 py-1 rounded-lg">
+          ⚡ รองรับโปรแกรม SGS AutoGrade 100%
+        </div>
       </div>
     </div>
 
@@ -2025,13 +2217,13 @@ function renderGradeSheetTable() {
 
       <!-- ปุ่มดำเนินการหลัก -->
       <div class="flex flex-wrap items-center gap-2">
-        <button class="btn btn-outline-success text-xs font-semibold" onclick="exportPP5ToExcel()" title="ส่งออกไฟล์ Excel (.xlsx) รูปแบบตรงกับโปรแกรม SGS AutoGrade และสรุป ปพ.5">
-          <i class='bx bx-file mr-1 text-emerald-600'>\x3c/i> โหลด Excel (SGS .xlsx)
+        <button class="btn btn-outline-success text-xs font-semibold shadow-2xs" onclick="exportPP5ToExcel()" title="ส่งออกไฟล์ Excel (.xlsx) ที่มีโครงสร้างตรงกับโปรแกรม SGS AutoGrade 100% และสรุป ปพ.5">
+          <i class='bx bx-file mr-1 text-emerald-600'>\x3c/i> โหลด Excel (AutoGrade .xlsx)
         </button>
-        <button class="btn btn-light text-xs font-semibold" onclick="exportPP5ToCsv()" title="ส่งออกไฟล์ CSV (.csv) สำหรับระบบ SGS">
+        <button class="btn btn-light text-xs font-semibold shadow-2xs" onclick="exportPP5ToCsv()" title="ส่งออกไฟล์ CSV (.csv) สำหรับระบบ SGS">
           <i class='bx bx-table mr-1 text-blue-600'>\x3c/i> โหลด CSV (SGS .csv)
         </button>
-        <button class="btn btn-light text-xs font-semibold" onclick="printPP5()">
+        <button class="btn btn-light text-xs font-semibold shadow-2xs" onclick="printPP5()">
           <i class='bx bx-printer mr-1'>\x3c/i> พิมพ์ ปพ.5
         </button>
         <button class="btn btn-blue text-xs font-semibold shadow-sm" onclick="saveGradeSheet()">
@@ -2047,9 +2239,7 @@ function renderGradeSheetTable() {
     <div style="overflow-x:auto;" class="rounded-xl border border-slate-200 bg-white shadow-xs">
       <table class="min-w-full text-sm" id="gradeTable">
         <thead>
-          <tr class="bg-slate-50/90 text-slate-600 text-xs uppercase border-b border-slate-200">
-            ${theadColsHtml}
-          \x3c/tr>
+          ${theadColsHtml}
         \x3c/thead>
         <tbody>
           ${rowsHtml}
@@ -2081,20 +2271,41 @@ function renderGradeSheetTable() {
         font-weight: 600;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
+      .sgs-mode-pill {
+        padding: 3px 9px;
+        font-size: 11px;
+        border-radius: 6px;
+        font-weight: 500;
+        color: #475569;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .sgs-mode-pill:hover {
+        color: #1E293B;
+        background: #F1F5F9;
+      }
+      .sgs-mode-pill.active {
+        background: #2563EB;
+        color: #FFFFFF;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(37,99,235,0.25);
+      }
       .grade-input {
-        width: 100%; padding: 5px 6px; border: 1.5px solid #CBD5E1;
+        width: 100%; padding: 4.5px 5px; border: 1.5px solid #CBD5E1;
         border-radius: 6px; font-family: inherit; font-size: 12px;
         background: #FFFFFF; text-align: center; box-sizing: border-box;
       }
       .grade-input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
       .grade-output {
-        padding: 5px; text-align: center; font-size: 12px; font-weight: 600;
-        background: #F1F5F9; border-radius: 6px; color: #1E293B; min-height: 26px;
+        padding: 4.5px 3px; text-align: center; font-size: 12px; font-weight: 600;
+        background: #F1F5F9; border-radius: 6px; color: #1E293B; min-height: 25px;
       }
       .grade-output.grade-fail { background: #FEE2E2; color: #B91C1C; font-weight: 700; }
       .grade-output.grade-pass { background: #DCFCE7; color: #15803D; }
       .ql-select {
-        width: 100%; padding: 4.5px 4px; border: 1.5px solid #CBD5E1;
+        width: 100%; padding: 4px 3px; border: 1.5px solid #CBD5E1;
         border-radius: 6px; font-family: inherit; font-size: 12px;
         background: #FFFFFF; text-align: center; box-sizing: border-box; font-weight: 600;
       }
@@ -2141,48 +2352,74 @@ function exportPP5ToExcel() {
   const sem  = AcademicState.currentSubjectSem || subj.semester || '1';
   const room = AcademicState.currentSubjectClassroom || '';
 
-  // 1. Sheet 1: Template สำหรับระบบ SGS และโปรแกรม SGS AutoGrade
+  // 1. Sheet 1: Template สำหรับระบบ SGS และโปรแกรม SGS AutoGrade 100%
   const sgsData = rows.map(r => {
     const fullName = `${r.prefix || ''}${r.first_name || ''} ${r.last_name || ''}`.trim();
     const q = r.q_scores || {};
     const l = r.l_scores || {};
+    const s = r.s_scores || {};
     const charDef = r.character_result || '';
     const readDef = r.reading_result || '';
 
-    return {
+    const rec = {
       stdID: String(r.student_code || r.student_id || '').trim(),
-      'student Name': fullName,
-      S1: '', S2: '', S3: '', S4: '', S5: '',
-      S6: '', S7: '', S8: '', S9: '', S10: '',
-      S11: '', S12: '', S13: '', S14: '', S15: '',
-      S16: '', S17: '', S18: '', S19: '', S20: '',
-      Midterm: (r.score_midterm !== '' && r.score_midterm != null) ? Number(r.score_midterm) : '',
-      Final: (r.score_final !== '' && r.score_final != null) ? Number(r.score_final) : '',
-      Q1: q.Q1 != null ? q.Q1 : charDef,
-      Q2: q.Q2 != null ? q.Q2 : charDef,
-      Q3: q.Q3 != null ? q.Q3 : charDef,
-      Q4: q.Q4 != null ? q.Q4 : charDef,
-      Q5: q.Q5 != null ? q.Q5 : charDef,
-      Q6: q.Q6 != null ? q.Q6 : charDef,
-      Q7: q.Q7 != null ? q.Q7 : charDef,
-      Q8: q.Q8 != null ? q.Q8 : charDef,
-      L1: l.L1 != null ? l.L1 : readDef,
-      L2: l.L2 != null ? l.L2 : readDef,
-      L3: l.L3 != null ? l.L3 : readDef,
-      L4: l.L4 != null ? l.L4 : readDef,
-      L5: l.L5 != null ? l.L5 : readDef
+      'student Name': fullName
     };
+
+    // กำหนด S1 - S20 จากข้อมูลคะแนนเก็บย่อย
+    for (let k = 1; k <= 20; k++) {
+      const val = s['S' + k];
+      rec['S' + k] = (val !== '' && val != null && !isNaN(val)) ? Number(val) : '';
+    }
+
+    rec.Midterm = (r.score_midterm !== '' && r.score_midterm != null && !isNaN(r.score_midterm)) ? Number(r.score_midterm) : '';
+    rec.Final   = (r.score_final !== '' && r.score_final != null && !isNaN(r.score_final)) ? Number(r.score_final) : '';
+
+    // Q1 - Q8
+    for (let k = 1; k <= 8; k++) {
+      const val = q['Q' + k] != null && q['Q' + k] !== '' ? q['Q' + k] : charDef;
+      rec['Q' + k] = (val !== '' && val != null && !isNaN(val)) ? Number(val) : '';
+    }
+
+    // L1 - L5
+    for (let k = 1; k <= 5; k++) {
+      const val = l['L' + k] != null && l['L' + k] !== '' ? l['L' + k] : readDef;
+      rec['L' + k] = (val !== '' && val != null && !isNaN(val)) ? Number(val) : '';
+    }
+
+    return rec;
   });
 
-  // 2. Sheet 2: สรุปคะแนน_ปพ5 (แบบรายงานทางการภาษาไทย)
+  // 2. Sheet 2: สรุปคะแนน_ปพ5 (แบบรายงานทางการภาษาไทยสำหรับโรงเรียนมหาชัยพิทยาคาร)
   const reportData = rows.map((r, idx) => {
     const fullName = `${r.prefix || ''}${r.first_name || ''} ${r.last_name || ''}`.trim();
+    const s = r.s_scores || {};
+    
+    // ตรวจสอบว่ามีคะแนนเก็บย่อย S หรือไม่
+    let sSum = 0;
+    let hasS = false;
+    Object.values(s).forEach(v => {
+      if (v !== '' && v != null && !isNaN(v)) { sSum += Number(v); hasS = true; }
+    });
+
     const mid = parseFloat(r.score_midterm);
     const fin = parseFloat(r.score_final);
-    let total = null;
-    if (!isNaN(mid) && !isNaN(fin)) total = mid + fin;
-    else if (!isNaN(mid)) total = mid;
-    else if (!isNaN(fin)) total = fin;
+    
+    let betweenScore = '';
+    if (hasS) {
+      betweenScore = sSum + (!isNaN(mid) ? mid : 0);
+    } else {
+      betweenScore = !isNaN(mid) ? mid : '';
+    }
+
+    let total = r.score_total;
+    if (total == null) {
+      if (hasS) total = sSum + (!isNaN(mid) ? mid : 0) + (!isNaN(fin) ? fin : 0);
+      else if (!isNaN(mid) && !isNaN(fin)) total = mid + fin;
+      else if (!isNaN(mid)) total = mid;
+      else if (!isNaN(fin)) total = fin;
+      else total = '';
+    }
 
     const att = parseFloat(r.attendance_hours);
     const tot = parseFloat(r.total_hours);
@@ -2192,14 +2429,15 @@ function exportPP5ToExcel() {
     let grade = '-';
     if (r.grade_special) grade = r.grade_special;
     else if (attPct !== null && attPct < 80) grade = 'มส';
-    else if (total !== null) {
-      if (total >= 80) grade = '4';
-      else if (total >= 75) grade = '3.5';
-      else if (total >= 70) grade = '3';
-      else if (total >= 65) grade = '2.5';
-      else if (total >= 60) grade = '2';
-      else if (total >= 55) grade = '1.5';
-      else if (total >= 50) grade = '1';
+    else if (total !== '' && total != null) {
+      const numTotal = Number(total);
+      if (numTotal >= 80) grade = '4';
+      else if (numTotal >= 75) grade = '3.5';
+      else if (numTotal >= 70) grade = '3';
+      else if (numTotal >= 65) grade = '2.5';
+      else if (numTotal >= 60) grade = '2';
+      else if (numTotal >= 55) grade = '1.5';
+      else if (numTotal >= 50) grade = '1';
       else grade = '0';
     }
 
@@ -2211,9 +2449,9 @@ function exportPP5ToExcel() {
       'เลขประจำตัว': String(r.student_code || r.student_id || '').trim(),
       'ชื่อ-สกุล': fullName,
       'ห้อง': r.classroom || room || '',
-      ['ระหว่างภาค (เต็ม ' + (subj.midterm_weight || 70) + ')']: (r.score_midterm !== '' && r.score_midterm != null) ? Number(r.score_midterm) : '',
+      ['ระหว่างภาค (เต็ม ' + (subj.midterm_weight || 70) + ')']: betweenScore,
       ['ปลายภาค (เต็ม ' + (subj.final_weight || 30) + ')']: (r.score_final !== '' && r.score_final != null) ? Number(r.score_final) : '',
-      'รวม (100)': total !== null ? total : '',
+      'รวม (100)': total !== '' && total != null ? Number(total) : '',
       'เวลาเรียน(%)': attPct !== null ? attPct + '%' : '',
       'ผลการเรียน': grade,
       'คุณลักษณะฯ (0-3)': qSummary,
@@ -2224,7 +2462,7 @@ function exportPP5ToExcel() {
 
   const wb = XLSX.utils.book_new();
 
-  // Template Sheet
+  // Template Sheet (ตรงกับ SGS AutoGrade 100%)
   const wsSgs = XLSX.utils.json_to_sheet(sgsData);
   wsSgs['!cols'] = [
     { wch: 10 }, // stdID
@@ -2294,6 +2532,7 @@ function exportPP5ToCsv() {
     const fullName = `${r.prefix || ''}${r.first_name || ''} ${r.last_name || ''}`.trim();
     const q = r.q_scores || {};
     const l = r.l_scores || {};
+    const s = r.s_scores || {};
     const charDef = r.character_result || '';
     const readDef = r.reading_result || '';
 
@@ -2302,28 +2541,30 @@ function exportPP5ToCsv() {
 
     const row = [
       escapeCsv(String(r.student_code || r.student_id || '').trim()),
-      escapeCsv(fullName),
-      // S1-S20
-      '', '', '', '', '', '', '', '', '', '',
-      '', '', '', '', '', '', '', '', '', '',
-      escapeCsv(mid),
-      escapeCsv(fin),
-      // Q1-Q8
-      escapeCsv(q.Q1 != null ? q.Q1 : charDef),
-      escapeCsv(q.Q2 != null ? q.Q2 : charDef),
-      escapeCsv(q.Q3 != null ? q.Q3 : charDef),
-      escapeCsv(q.Q4 != null ? q.Q4 : charDef),
-      escapeCsv(q.Q5 != null ? q.Q5 : charDef),
-      escapeCsv(q.Q6 != null ? q.Q6 : charDef),
-      escapeCsv(q.Q7 != null ? q.Q7 : charDef),
-      escapeCsv(q.Q8 != null ? q.Q8 : charDef),
-      // L1-L5
-      escapeCsv(l.L1 != null ? l.L1 : readDef),
-      escapeCsv(l.L2 != null ? l.L2 : readDef),
-      escapeCsv(l.L3 != null ? l.L3 : readDef),
-      escapeCsv(l.L4 != null ? l.L4 : readDef),
-      escapeCsv(l.L5 != null ? l.L5 : readDef)
+      escapeCsv(fullName)
     ];
+
+    // S1 - S20
+    for (let k = 1; k <= 20; k++) {
+      const val = s['S' + k];
+      row.push(escapeCsv(val !== '' && val != null ? val : ''));
+    }
+
+    row.push(escapeCsv(mid));
+    row.push(escapeCsv(fin));
+
+    // Q1 - Q8
+    for (let k = 1; k <= 8; k++) {
+      const val = q['Q' + k] != null && q['Q' + k] !== '' ? q['Q' + k] : charDef;
+      row.push(escapeCsv(val));
+    }
+
+    // L1 - L5
+    for (let k = 1; k <= 5; k++) {
+      const val = l['L' + k] != null && l['L' + k] !== '' ? l['L' + k] : readDef;
+      row.push(escapeCsv(val));
+    }
+
     csvLines.push(row.join(','));
   });
 
@@ -2347,12 +2588,54 @@ function saveGradeSheet() {
   const year = AcademicState.currentSubjectYear || document.getElementById('grYear')?.value || (APP.dashboardData?.config?.academic_year || '');
   const sem  = AcademicState.currentSubjectSem || document.getElementById('grSem')?.value || '1';
 
-  showLoading('กำลังบันทึก...');
+  showLoading('กำลังบันทึกคะแนน...');
   google.script.run
     .withSuccessHandler(res => {
       hideLoading();
-      if (res.status === 'success') Swal.fire({ icon:'success', title:'สำเร็จ', text:res.message, timer:1800 });
-      else showToast('error', res.message);
+      if (res.status === 'success') {
+        Swal.fire({
+          icon: 'success',
+          title: 'บันทึกคะแนนเรียบร้อยแล้ว!',
+          html: `
+            <div style="font-size: 13px; color: #334155; line-height: 1.6; text-align: left; margin: 8px 0 14px 0;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px; font-weight:600; color:#0F172A;">
+                <i class='bx bx-check-circle' style="color:#10B981; font-size:18px;">\x3c/i>
+                <span>${escapeHTML(res.message || 'บันทึกข้อมูลคะแนน ปพ.5 เรียบร้อยแล้ว')}\x3c/span>
+              </div>
+              <div style="padding: 10px 12px; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; color: #065F46; font-size: 12px;">
+                <div style="font-weight:700; display:flex; align-items:center; gap:5px; margin-bottom:3px;">
+                  <i class='bx bxs-file-import'>\x3c/i>
+                  <span>เชื่อมโยงโปรแกรม SGS AutoGrade สำเร็จ</span>
+                </div>
+                <span>ท่านสามารถดาวน์โหลดไฟล์ Excel หรือ CSV ด้านล่าง เพื่อนำไปเปิดในโปรแกรม <b>SGS AutoGrade</b> แล้วกดเริ่มกรอกคะแนนเข้าเว็บ SGS ได้ทันทีครับ</span>
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          showDenyButton: true,
+          confirmButtonText: '<i class="bx bx-download mr-1">\x3c/i> โหลด Excel (AutoGrade .xlsx)',
+          denyButtonText: '<i class="bx bx-file mr-1">\x3c/i> โหลด CSV (SGS .csv)',
+          cancelButtonText: 'ปิดหน้าต่าง',
+          confirmButtonColor: '#10B981',
+          denyButtonColor: '#3B82F6',
+          cancelButtonColor: '#94A3B8',
+          reverseButtons: false,
+          customClass: {
+            popup: 'rounded-2xl',
+            confirmButton: 'font-semibold text-xs py-2 px-3 rounded-lg shadow-sm',
+            denyButton: 'font-semibold text-xs py-2 px-3 rounded-lg shadow-sm',
+            cancelButton: 'text-xs py-2 px-3 rounded-lg'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            exportPP5ToExcel();
+          } else if (result.isDenied) {
+            exportPP5ToCsv();
+          }
+        });
+      } else {
+        showToast('error', res.message);
+      }
     })
     .withFailureHandler(err => { hideLoading(); showToast('error', err.message || err); })
     .saveGradeBulk(AcademicState.currentSubject.id, AcademicState.gradeRows, APP.token, year, sem);
