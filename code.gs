@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.2.4',
+  APP_VERSION    : '3.2.5',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -4245,13 +4245,13 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @page {
-      size: A4 portrait;
-      margin: 10mm 12mm 12mm 12mm;
+      size: A4 landscape;
+      margin: 8mm 10mm 10mm 10mm;
     }
     * { box-sizing: border-box; }
     body {
       font-family: 'Sarabun', 'TH Sarabun PSK', sans-serif;
-      font-size: 10.5pt;
+      font-size: 10pt;
       line-height: 1.35;
       color: #000;
       background: #FFF;
@@ -4260,7 +4260,7 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
     }
     .print-page-wrapper {
       width: 100%;
-      max-width: 210mm;
+      max-width: 285mm;
       margin: 0 auto;
       background: #FFF;
       padding: 4px 0;
@@ -5159,7 +5159,7 @@ function renderReceiptTemplate_(config, tx, student) {
 <meta charset="UTF-8"><title>ใบเสร็จ ${escapeHTMLServer_(tx.receipt_number || '')}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 1.5cm; }
+  @page { size: A4 portrait; margin: 12mm 15mm; }
   body { font-family: 'Sarabun', sans-serif; font-size: 14px; color: #000; max-width: 800px; margin: auto; }
   .receipt-box {
     border: 2px solid #800020;

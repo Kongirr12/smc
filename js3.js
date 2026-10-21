@@ -35,7 +35,10 @@ function getSafePrintTitle(title) {
 async function generatePdfFromHtml(html, title, action = 'download') {
   if (!html) return null;
   const safeTitle = getSafePrintTitle(title);
-  const isLandscape = html.includes('A4 landscape') || html.includes('แนวนอน') || html.includes('landscape');
+  const modal = document.getElementById('printDocModal');
+  const isLandscape = (modal && modal.style.display !== 'none' && modal._currentOrientation)
+    ? (modal._currentOrientation === 'landscape')
+    : (html.includes('A4 landscape') || html.includes('แนวนอน') || html.includes('landscape'));
 
   showLoading('กำลังจัดเตรียมไฟล์ PDF...');
 
@@ -1504,6 +1507,30 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     document.body.appendChild(modal);
   }
 
+  // ฟังก์ชันวิเคราะห์ทิศทางหน้ากระดาษที่เหมาะสมที่สุดโดยอัตโนมัติ (Smart Auto-Orientation Detector)
+  function detectDocOrientation(rawHtml, title) {
+    if (!rawHtml) return 'portrait';
+    const lower = rawHtml.toLowerCase();
+    if (lower.includes('size: a4 landscape') || lower.includes('size:landscape') || lower.includes('size: landscape') || lower.includes('a4 landscape')) {
+      return 'landscape';
+    }
+    if (lower.includes('size: a4 portrait') || lower.includes('size:portrait') || lower.includes('size: portrait') || lower.includes('a4 portrait')) {
+      return 'portrait';
+    }
+    const tLower = (title || '').toLowerCase();
+    if (tLower.includes('ตารางเรียน') || tLower.includes('ตารางสอน') || tLower.includes('ปฏิทิน') || 
+        tLower.includes('ปพ.5') || tLower.includes('ปพ.๕') || tLower.includes('แบบบันทึกผลการเรียน') ||
+        tLower.includes('เมทริกซ์') || tLower.includes('เปรียบเทียบทุกรายวิชา')) {
+      return 'landscape';
+    }
+    return 'portrait';
+  }
+
+  modal._rawHtml = html;
+  modal._currentTitle = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
+  modal._currentDirectUrl = directUrl || '';
+  modal._currentOrientation = detectDocOrientation(html, docTitle);
+
   // สร้างและอัปเดต Toolbar ด้านบนให้สวยงาม คมชัด และได้สัดส่วนสมบูรณ์แบบเสมอ
   modal.innerHTML = `
     <!-- Universal Executive Print Toolbar (Height 56px with aligned 38px buttons) -->
@@ -1515,14 +1542,20 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         </div>
         <div class="min-w-0">
           <span id="printDocModalTitle" class="text-xs sm:text-sm font-bold text-slate-800 truncate block">ตัวอย่างเอกสารสำหรับพิมพ์</span>
-          <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบความถูกต้องและลายเซ็นทุกฝ่ายก่อนสั่งพิมพ์หรือส่งออก PDF (A4)</span>
+          <span class="text-[10px] text-slate-400 font-normal hidden sm:block">ตรวจสอบความถูกต้อง ทิศทางหน้ากระดาษ และลายเซ็นทุกฝ่ายก่อนสั่งพิมพ์ (A4)</span>
         </div>
       </div>
 
       <!-- Right: Standardized 38px Executive Control Buttons -->
-      <div class="flex items-center gap-2 flex-shrink-0">
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <!-- ปุ่มสลับทิศทางหน้ากระดาษ (Landscape / Portrait Switcher) -->
+        <button id="btnToggleOrientationAction" type="button" class="print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs" title="คลิกเพื่อสลับทิศทางหน้ากระดาษระหว่าง แนวนอน (Landscape) และ แนวตั้ง (Portrait)">
+          <i id="orientationIcon" class='bx bx-layout text-sm text-indigo-600'></i>
+          <span id="orientationText">แนวนอน (A4)</span>
+        </button>
+
         <!-- ปุ่มเปิด/ปิดลายเซ็น (Multi-Signature State Aware) -->
-        <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-2 font-semibold" title="คลิกเพื่อเปิด/ปิดการใส่ลายเซ็นลงในเอกสาร">
+        <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs" title="คลิกเพื่อเปิด/ปิดการใส่ลายเซ็นลงในเอกสาร">
           <span id="sigToggleDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></span>
           <i class='bx bx-edit-alt text-sm'></i>
           <span id="sigToggleText">ลายเซ็น: ปิดอยู่</span>
@@ -1534,7 +1567,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         </button>
 
         <!-- ปุ่มพิมพ์เอกสาร / บันทึก PDF (A4) -->
-        <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-2 font-bold border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
+        <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
           <i class='bx bx-printer text-base leading-none'></i>
           <span>พิมพ์เอกสาร</span>
         </button>
@@ -1569,12 +1602,28 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     }
   });
 
-  modal._rawHtml = html;
-  modal._currentTitle = docTitle || 'ตัวอย่างเอกสารสำหรับพิมพ์';
-  modal._currentDirectUrl = directUrl || '';
-
   const titleEl = document.getElementById('printDocModalTitle');
   if (titleEl) titleEl.textContent = modal._currentTitle;
+
+  const updateOrientationBtnUI = () => {
+    const isLand = modal._currentOrientation === 'landscape';
+    const icon = document.getElementById('orientationIcon');
+    const txt = document.getElementById('orientationText');
+    const btn = document.getElementById('btnToggleOrientationAction');
+    if (!btn || !icon || !txt) return;
+
+    if (isLand) {
+      btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 shadow-2xs gap-1.5 font-bold text-xs';
+      icon.className = 'bx bx-layout text-sm text-indigo-600';
+      txt.textContent = 'แนวนอน (A4)';
+      btn.title = 'หน้ากระดาษปัจจุบัน: แนวนอน (A4 Landscape) — คลิกเพื่อสลับเป็นแนวตั้ง (Portrait)';
+    } else {
+      btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs';
+      icon.className = 'bx bx-file text-sm text-slate-500';
+      txt.textContent = 'แนวตั้ง (A4)';
+      btn.title = 'หน้ากระดาษปัจจุบัน: แนวตั้ง (A4 Portrait) — คลิกเพื่อสลับเป็นแนวนอน (Landscape)';
+    }
+  };
 
   const updateToggleBtnUI = () => {
     const multi = getPrintMultiSignatureState();
@@ -1592,12 +1641,12 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const hasAnyActive = multi.masterEnabled && activeList.length > 0;
 
     if (hasAnyActive) {
-      btn.className = 'print-topbar-btn px-3.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs gap-2 font-bold';
+      btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs gap-1.5 sm:gap-2 font-bold text-xs';
       dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
       txt.textContent = activeList.length >= 3 ? 'ลายเซ็น: ครบทุกฝ่าย (เปิด)' : `ลายเซ็น: เปิด (${activeList.join(', ')})`;
       btn.title = `กำลังประทับลายเซ็น (${activeList.join(', ')}) ลงในเอกสารทุกหน้าที่พิมพ์ (คลิกเพื่อปิด)`;
     } else {
-      btn.className = 'print-topbar-btn px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-2 font-semibold';
+      btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs';
       dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0';
       txt.textContent = 'ลายเซ็น: ปิดอยู่';
       btn.title = 'คลิกเพื่อเปิดการใส่ลายเซ็นลงในเอกสาร';
@@ -1612,17 +1661,56 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
       modal._currentHtml = modal._rawHtml;
     }
     updateToggleBtnUI();
+    updateOrientationBtnUI();
 
+    const isLand = modal._currentOrientation === 'landscape';
     const iframe = document.getElementById('printDocIframe');
     if (iframe) {
       const cleanOverride = `
         <style id="cleanPreviewOverride">
+          @page {
+            size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
+            margin: ${isLand ? '8mm 10mm 10mm 10mm' : '10mm 12mm 12mm 12mm'} !important;
+          }
           .no-print, .no-print-bar { display: none !important; }
-          body { background: #FFFFFF !important; padding: 0 !important; }
-          .print-page-wrapper { margin: 8px auto !important; box-shadow: none !important; padding: 12px 14px !important; }
+          body {
+            background: #FFFFFF !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container {
+            margin: 8px auto !important;
+            box-shadow: none !important;
+            padding: ${isLand ? '10px 14px' : '12px 16px'} !important;
+            max-width: ${isLand ? '285mm' : '205mm'} !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          table {
+            max-width: 100% !important;
+          }
           @media print {
-            body { background: #FFFFFF !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .print-page-wrapper { margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; }
+            @page {
+              size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
+              margin: ${isLand ? '8mm 10mm 10mm 10mm' : '10mm 12mm 12mm 12mm'} !important;
+            }
+            body {
+              background: #FFFFFF !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container {
+              margin: 0 auto !important;
+              padding: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              width: 100% !important;
+              max-width: 100% !important;
+            }
             .no-print, .no-print-bar { display: none !important; }
           }
         </style>
@@ -1630,6 +1718,20 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
       iframe.srcdoc = modal._currentHtml.includes('</head>')
         ? modal._currentHtml.replace('</head>', cleanOverride + '</head>')
         : cleanOverride + modal._currentHtml;
+    }
+  };
+
+  document.getElementById('btnToggleOrientationAction').onclick = () => {
+    modal._currentOrientation = (modal._currentOrientation === 'landscape') ? 'portrait' : 'landscape';
+    updateOrientationBtnUI();
+    refreshPreview();
+    if (typeof showToast === 'function') {
+      showToast(
+        modal._currentOrientation === 'landscape'
+          ? 'สลับเป็นหน้ากระดาษ "แนวนอน (Landscape)" แล้ว'
+          : 'สลับเป็นหน้ากระดาษ "แนวตั้ง (Portrait)" แล้ว',
+        'info'
+      );
     }
   };
 
