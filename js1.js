@@ -899,6 +899,9 @@ function loadDashboardData(silent) {
       APP.dashboardData = res.data;
       APP._dashboardTs = Date.now();
       renderDashboardData(res.data);
+      if (typeof ensureClassroomTeachersMap === 'function') {
+        ensureClassroomTeachersMap();
+      }
     })
     .withFailureHandler(err => {
       if (!silent) showToast('error', err.message || err);

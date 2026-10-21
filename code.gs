@@ -380,6 +380,7 @@ function routeApi(action, params, token) {
       // ---------- CLASSROOMS ----------
       case 'getClassrooms': return getClassrooms(token);
       case 'getClassroomList': return getClassroomList(params, token);
+      case 'getClassroomTeachersMap': return getClassroomTeachersMap(token);
       case 'getClassroomById': return getClassroomById(params.id, token);
       case 'getClassroomsForDropdown': return getClassroomsForDropdown(token);
       case 'saveClassroom': return saveClassroom(params, token);
@@ -2514,7 +2515,7 @@ function savePersonnel(data, sessionToken) {
         return p;
       });
       if (!found) return { status:'error', message:'ไม่พบข้อมูลที่จะแก้ไข' };
-      clearCachedKeys_('teachers_dropdown');
+      clearCachedKeys_('teachers_dropdown', 'classroom_teachers_map');
       return { status:'success', data:updated, message:'แก้ไขข้อมูลสำเร็จ' };
     } else {
       const now = new Date().toISOString();
@@ -2523,7 +2524,7 @@ function savePersonnel(data, sessionToken) {
         personnel_id : generatePersonnelId()
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Personnel', obj);
-      clearCachedKeys_('teachers_dropdown');
+      clearCachedKeys_('teachers_dropdown', 'classroom_teachers_map');
       return { status:'success', data:obj, message:'เพิ่มบุคลากรสำเร็จ' };
     }
   } catch (e) {
@@ -8343,6 +8344,19 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
           ${rowCells.join('')}
         </tr>`;
     });
+
+    let homeroomTeacher = '';
+    let homeroomTeacherSig = '';
+    try {
+      const classrooms = readJsonSheet_('Classrooms');
+      const myClassroom = classrooms.find(c => c.name === classroom && (!c.academic_year || String(c.academic_year) === String(ay)));
+      homeroomTeacher = myClassroom?.teacher_name || '';
+      const personnel = readJsonSheet_('Personnel');
+      const hp = personnel.find(p => (myClassroom?.homeroom_teacher_id && p.id === myClassroom.homeroom_teacher_id) ||
+        ((p.prefix||'')+(p.first_name||'')+' '+(p.last_name||'')).trim() === String(homeroomTeacher).trim());
+      if (hp && hp.signature) homeroomTeacherSig = hp.signature;
+    } catch (_) {}
+
     const html = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8425,21 +8439,25 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   <tbody>${rows.join('')}</tbody>
 </table>
 <div class="signature-row">
-  <div>
-    <div class="sig-stamp-zone"></div>
+  <div data-sig-role="teacher" data-classroom="${escapeHTMLServer_(classroom)}">
+    <div class="sig-stamp-zone">
+      ${homeroomTeacherSig ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(homeroomTeacherSig)}" style="max-height:44px; max-width:145px; object-fit:contain;">` : ''}
+    </div>
     <div class="sig-line"></div>
-    <div>ครูที่ปรึกษา</div>
+    <div>( ${escapeHTMLServer_(homeroomTeacher || '..............................................................')} )</div>
+    <div style="font-weight:600; margin-top:2px;">ครูที่ปรึกษา / ครูประจำชั้น</div>
   </div>
-  <div>
+  <div data-sig-role="evaluator">
     <div class="sig-stamp-zone"></div>
     <div class="sig-line"></div>
-    <div>หัวหน้างานวิชาการ</div>
+    <div>( .............................................................. )</div>
+    <div style="font-weight:600; margin-top:2px;">หัวหน้ากลุ่มบริหารวิชาการ</div>
   </div>
-  <div>
+  <div data-sig-role="director">
     <div class="sig-stamp-zone"></div>
     <div class="sig-line"></div>
-    <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
-    <div>ผู้อำนวยการโรงเรียน</div>
+    <div>( ${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')} )</div>
+    <div style="font-weight:600; margin-top:2px;">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
   </div>
 </div>
 </body></html>`;
@@ -8558,6 +8576,7 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
           ${rowCells.join('')}
         </tr>`;
     });
+
     const html = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9115,6 +9134,9 @@ function getClassroomList(params, sessionToken) {
         teacher_name : tNames.length > 0 ? tNames.join(', ') : '-',
         teacher_name_1: tName1,
         teacher_name_2: tName2,
+        teacher_signature: per.signature || per2.signature || '',
+        teacher_signature_1: per.signature || '',
+        teacher_signature_2: per2.signature || '',
         student_count: count
       });
     });
@@ -9122,6 +9144,59 @@ function getClassroomList(params, sessionToken) {
     return { status:'success', data:enriched, academic_year:ay };
   } catch(e) {
     logError({ fn:'getClassroomList', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
+/**
+ * ดึงความสัมพันธ์ระหว่างห้องเรียน ระดับชั้น (ม.1 - ม.6) และครูประจำชั้นพร้อมลายเซ็นดิจิทัล
+ */
+function getClassroomTeachersMap(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    return getCachedJson_('classroom_teachers_map', 600, function() {
+      const ay = getConfig().academic_year || '2569';
+      const rooms = readJsonSheet_('Classrooms').filter(r => !r.academic_year || String(r.academic_year) === String(ay));
+      const personnel = readJsonSheet_('Personnel');
+      const perMap = {};
+      personnel.forEach(p => perMap[p.id] = p);
+
+      const byClassroom = {};
+      const byGrade = {};
+
+      rooms.forEach(r => {
+        const per = perMap[r.homeroom_teacher_id] || perMap[r.homeroom_teacher_id_2] || {};
+        const tName = (per.id ? ((per.prefix||'') + (per.first_name||'') + ' ' + (per.last_name||'')).trim() : '') || r.teacher_name || '';
+        const tSig = per.signature || '';
+        if (r.name) {
+          byClassroom[r.name] = {
+            name: tName,
+            signature: tSig,
+            classroom: r.name,
+            grade_level: r.grade_level
+          };
+        }
+        if (r.grade_level) {
+          if (!byGrade[r.grade_level] || (!byGrade[r.grade_level].signature && tSig)) {
+            byGrade[r.grade_level] = {
+              name: tName,
+              signature: tSig,
+              grade_level: r.grade_level
+            };
+          }
+        }
+      });
+
+      return {
+        status: 'success',
+        byClassroom: byClassroom,
+        byGrade: byGrade,
+        academic_year: ay
+      };
+    });
+  } catch(e) {
+    logError({ fn:'getClassroomTeachersMap', error:e.message });
     return { status:'error', message:e.message };
   }
 }
@@ -9146,7 +9221,7 @@ function saveClassroom(data, sessionToken) {
         Object.assign(r, clean); r.updated_at = new Date().toISOString(); updated = r; return r;
       });
       if (!found) return { status:'error', message:'ไม่พบห้องเรียน' };
-      clearCachedKeys_('classrooms_dropdown');
+      clearCachedKeys_('classrooms_dropdown', 'classroom_teachers_map');
       return { status:'success', data:updated, message:'แก้ไขห้องเรียนสำเร็จ' };
     } else {
       const all = readJsonSheet_('Classrooms');
@@ -9155,7 +9230,7 @@ function saveClassroom(data, sessionToken) {
       const now = new Date().toISOString();
       const obj = Object.assign({ id:generateId() }, clean, { created_at:now, updated_at:now });
       appendJsonRow_('Classrooms', obj);
-      clearCachedKeys_('classrooms_dropdown');
+      clearCachedKeys_('classrooms_dropdown', 'classroom_teachers_map');
       return { status:'success', data:obj, message:'เพิ่มห้องเรียนสำเร็จ' };
     }
   } catch(e) {
@@ -9169,7 +9244,7 @@ function deleteClassroom(id, sessionToken) {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
     const found = deleteJsonById_('Classrooms', id);
-    if (found) clearCachedKeys_('classrooms_dropdown');
+    if (found) clearCachedKeys_('classrooms_dropdown', 'classroom_teachers_map');
     return found ? { status:'success', message:'ลบห้องเรียนสำเร็จ' }
                  : { status:'error', message:'ไม่พบห้องเรียน' };
   } catch(e) { return { status:'error', message:e.message }; }

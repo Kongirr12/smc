@@ -3855,9 +3855,14 @@ function printDailyAttendanceRecord() {
         : `ระดับชั้น: ชั้น ${rm} | เช็คแถวหน้าเสาธงและกิจกรรมโฮมรูม`;
 
       const pageBreakStyle = isLast ? '' : 'page-break-after: always; break-after: page;';
+      const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+      const rmTeacherInfo = (autoMap && autoMap.byClassroom && autoMap.byClassroom[rm]) || null;
+      const rmTeacherName = rmTeacherInfo?.name || '';
+      const rmTeacherSig = rmTeacherInfo?.signature || '';
+      const rmGLevel = getGradeLevelFromClass(rm);
 
       return `
-        <div class="print-page-wrapper" style="${pageBreakStyle}">
+        <div class="print-page-wrapper" data-classroom="${escapeHTML(rm)}" data-grade-level="${escapeHTML(rmGLevel)}" style="${pageBreakStyle}">
           <div class="header">
             <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
             <div class="title">${escapeHTML(docTitle)}</div>
@@ -3891,13 +3896,16 @@ function printDailyAttendanceRecord() {
           </table>
 
           <div class="signatures">
-            <div class="sig-box">
-              <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
-              <div class="sig-line">( .............................................................. )</div>
-              <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + rm}</div>
+            <div class="sig-box" data-sig-role="teacher" data-classroom="${escapeHTML(rm)}" data-grade-level="${escapeHTML(rmGLevel)}">
+              <div class="sig-stamp-zone">
+                ${rmTeacherSig ? `<img class="teacher-sig-img" src="${rmTeacherSig}" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` : ''}
+              </div>
+              <div class="sig-dots" style="${rmTeacherSig ? 'display:none;' : ''}">ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
+              <div class="sig-line">( ${escapeHTML(rmTeacherName || '..............................................................')} )</div>
+              <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + escapeHTML(rm)}</div>
               <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
             </div>
-            <div class="sig-box">
+            <div class="sig-box" data-sig-role="director">
               <div>ทราบ / อนุมัติ</div>
               <div class="sig-stamp-zone"></div>
               <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
@@ -3946,8 +3954,15 @@ function printDailyAttendanceRecord() {
       `;
     }).join('');
 
+    const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+    const singleGLevel = getGradeLevelFromClass(classroom);
+    const singleTeacherInfo = (classroom && autoMap && autoMap.byClassroom && autoMap.byClassroom[classroom]) ||
+                              (singleGLevel && autoMap && autoMap.byGrade && autoMap.byGrade[singleGLevel]) || null;
+    const singleTeacherName = singleTeacherInfo?.name || '';
+    const singleTeacherSig = singleTeacherInfo?.signature || '';
+
     pagesHtml = `
-      <div class="print-page-wrapper">
+      <div class="print-page-wrapper" data-classroom="${escapeHTML(classroom)}" data-grade-level="${escapeHTML(singleGLevel)}">
         <div class="header">
           <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
           <div class="title">${escapeHTML(docTitle)}</div>
@@ -3981,13 +3996,16 @@ function printDailyAttendanceRecord() {
         </table>
 
         <div class="signatures">
-          <div class="sig-box">
-            <div>ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
-            <div class="sig-line">( .............................................................. )</div>
-            <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น'}</div>
+          <div class="sig-box" data-sig-role="teacher" data-classroom="${escapeHTML(classroom)}" data-grade-level="${escapeHTML(singleGLevel)}">
+            <div class="sig-stamp-zone">
+              ${singleTeacherSig ? `<img class="teacher-sig-img" src="${singleTeacherSig}" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` : ''}
+            </div>
+            <div class="sig-dots" style="${singleTeacherSig ? 'display:none;' : ''}">ลงชื่อ .............................................................. ${isSubject ? 'ผู้ตรวจเช็ค' : 'ครูประจำชั้น'}</div>
+            <div class="sig-line">( ${escapeHTML(singleTeacherName || '..............................................................')} )</div>
+            <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + (classroom ? escapeHTML(classroom) : '')}</div>
             <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
-          <div class="sig-box">
+          <div class="sig-box" data-sig-role="director">
             <div>ทราบ / อนุมัติ</div>
             <div class="sig-stamp-zone"></div>
             <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
@@ -4481,10 +4499,18 @@ function printAttendanceReport() {
       `;
     }
 
+    const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+    const gTeacherInfo = (activeRoom && autoMap && autoMap.byClassroom && autoMap.byClassroom[activeRoom]) ||
+                         (autoMap && autoMap.byGrade && autoMap.byGrade[gLevel]) || null;
+    const gTeacherName = (isSubjectMode && targetSub?.teacher_name)
+      ? targetSub.teacher_name
+      : (gTeacherInfo ? gTeacherInfo.name : '');
+    const gTeacherSig = (isSubjectMode ? '' : (gTeacherInfo ? gTeacherInfo.signature : ''));
+
     const pageBreakStyle = (isMultiGrade && !isLastGrade) ? 'page-break-after: always; break-after: page;' : '';
 
     return `
-      <div class="print-page-wrapper grade-level-section" style="${pageBreakStyle}">
+      <div class="print-page-wrapper grade-level-section" data-grade-level="${escapeHTML(gLevel)}" ${activeRoom ? `data-classroom="${escapeHTML(activeRoom)}"` : ''} style="${pageBreakStyle}">
         <div class="header">
           <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';">
           <div class="title">${escapeHTML(reportTitle)}</div>
@@ -4511,13 +4537,16 @@ function printAttendanceReport() {
         ${gExtraLegendHtml}
 
         <div class="signatures">
-          <div class="sig-box">
-            <div>ลงชื่อ .............................................................. ผู้รายงาน</div>
-            <div class="sig-line">( .............................................................. )</div>
-            <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : (isMultiGrade ? 'หัวหน้าระดับชั้น ' + gLevel : 'ครูประจำชั้น')}</div>
+          <div class="sig-box" data-sig-role="teacher" data-grade-level="${escapeHTML(gLevel)}" ${activeRoom ? `data-classroom="${escapeHTML(activeRoom)}"` : ''}>
+            <div class="sig-stamp-zone">
+              ${gTeacherSig ? `<img class="teacher-sig-img" src="${gTeacherSig}" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` : ''}
+            </div>
+            <div class="sig-dots" style="${gTeacherSig ? 'display:none;' : ''}">ลงชื่อ .............................................................. ผู้รายงาน</div>
+            <div class="sig-name">( ${escapeHTML(gTeacherName || '..............................................................')} )</div>
+            <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : (isMultiGrade ? 'หัวหน้าระดับชั้น ' + gLevel : 'ครูประจำชั้น ' + (activeRoom || gLevel))}</div>
             <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
-          <div class="sig-box">
+          <div class="sig-box" data-sig-role="director">
             <div>ทราบ / อนุมัติ</div>
             <div class="sig-stamp-zone"></div>
             <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>

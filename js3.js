@@ -555,7 +555,7 @@ function generateEvaluatorSignatureSvg() {
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 }
 
-// 4. อ่านสถานะและข้อมูลลายเซ็นแบบครบทุกผู้ลงนาม 4 ฝ่าย
+// 4. อ่านสถานะและข้อมูลลายเซ็นแบบครบทุกผู้ลงนาม 4 ฝ่าย พร้อมรองรับการแยกลายเซ็นตามระดับชั้น (ม.1 - ม.6)
 function getPrintMultiSignatureState() {
   let savedMulti = null;
   try {
@@ -571,6 +571,24 @@ function getPrintMultiSignatureState() {
   let teacherName = (savedMulti && savedMulti.teacher && savedMulti.teacher.name) || legacyName || userName || 'ครูก้องนที อุ่นเจริญ';
   if (teacherName === 'ผู้ดูแลระบบ' || teacherName === 'admin') teacherName = 'ครูก้องนที อุ่นเจริญ';
   const teacherSig = (savedMulti && savedMulti.teacher && savedMulti.teacher.signature) || legacySig || userSig || '';
+
+  // โหมดตรวจจับและดึงลายเซ็นครูประจำชั้นตรงตามห้องเรียน/ระดับชั้นอัตโนมัติ (Auto-Match)
+  const autoMatchClassroom = (savedMulti && savedMulti.autoMatchClassroom !== undefined) ? !!savedMulti.autoMatchClassroom : true;
+
+  // ลายเซ็นแยกรายระดับชั้น (ม.1 - ม.6)
+  const DEFAULT_GRADES = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'];
+  const gradeTeachers = {};
+  DEFAULT_GRADES.forEach(g => {
+    const savedG = (savedMulti && savedMulti.gradeTeachers && savedMulti.gradeTeachers[g]) || {};
+    gradeTeachers[g] = {
+      grade: g,
+      roleId: 'grade_' + g.replace('.', ''),
+      title: `ครูประจำชั้น / หัวหน้าระดับชั้น ${g}`,
+      enabled: savedG.enabled !== undefined ? !!savedG.enabled : true,
+      signature: savedG.signature || '',
+      name: savedG.name || ''
+    };
+  });
 
   const defaultDirSig = generateDirectorSignatureSvg();
   const directorSig = (savedMulti && savedMulti.director && savedMulti.director.signature) || defaultDirSig;
@@ -588,13 +606,15 @@ function getPrintMultiSignatureState() {
 
   return {
     masterEnabled: masterEnabled,
+    autoMatchClassroom: autoMatchClassroom,
     teacher: {
       roleId: 'teacher',
-      title: 'ครูประจำชั้น / ครูผู้สอน',
+      title: 'ครูประจำชั้น / ครูผู้สอน (ทั่วไป)',
       enabled: savedMulti && savedMulti.teacher ? !!savedMulti.teacher.enabled : true,
       signature: teacherSig,
       name: teacherName
     },
+    gradeTeachers: gradeTeachers,
     evaluator: {
       roleId: 'evaluator',
       title: 'หัวหน้างานวัดและประเมินผล',
@@ -630,6 +650,31 @@ function savePrintMultiSignatureState(state) {
   } catch (e) {}
 }
 
+/**
+ * ดึงและแคชข้อมูลความสัมพันธ์ห้องเรียน - ครูประจำชั้น - ลายเซ็นดิจิทัล สำหรับ Client
+ */
+function ensureClassroomTeachersMap(callback) {
+  if (window._mhcClassroomTeachersMap && window._mhcClassroomTeachersMap.status === 'success') {
+    if (typeof callback === 'function') callback(window._mhcClassroomTeachersMap);
+    return;
+  }
+  if (typeof google !== 'undefined' && google.script && google.script.run && typeof APP !== 'undefined' && APP.token) {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.status === 'success') {
+          window._mhcClassroomTeachersMap = res;
+        }
+        if (typeof callback === 'function') callback(window._mhcClassroomTeachersMap || null);
+      })
+      .withFailureHandler(() => {
+        if (typeof callback === 'function') callback(null);
+      })
+      .getClassroomTeachersMap(APP.token);
+  } else if (typeof callback === 'function') {
+    callback(null);
+  }
+}
+
 // Wrapper เพื่อความเข้ากันได้ย้อนหลัง 100%
 function getPrintSignatureState() {
   const multi = getPrintMultiSignatureState();
@@ -646,7 +691,7 @@ function getPrintSignatureState() {
   };
 }
 
-// 5. แทรกรูปภาพลายเซ็นลงใน HTML เอกสารทุกรูปแบบ ทุกหน้าที่พิมพ์ รองรับครบทุกตำแหน่งผู้ลงนาม
+// 5. แทรกรูปภาพลายเซ็นลงใน HTML เอกสารทุกรูปแบบ ทุกหน้าที่พิมพ์ รองรับครบทุกตำแหน่งและแยกลายเซ็นตามระดับชั้น/ห้องเรียน
 function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
   if (!html) return html;
 
@@ -656,7 +701,9 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
   } else if (typeof sigOptionsOrUrl === 'string' && sigOptionsOrUrl) {
     multiState = {
       masterEnabled: true,
+      autoMatchClassroom: true,
       teacher: { enabled: true, signature: sigOptionsOrUrl, name: legacyTeacherName || 'ครูก้องนที อุ่นเจริญ' },
+      gradeTeachers: {},
       evaluator: { enabled: false, signature: '', name: '' },
       director: { enabled: false, signature: '', name: 'นายอธิการ สุขศรี' },
       parent: { enabled: false, signature: '', name: '' }
@@ -735,12 +782,12 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
     stampBoxes.forEach((box, idx) => {
       const boxTxt = box.textContent || '';
       const isDirector = boxTxt.includes('ผู้อำนวยการ') || boxTxt.includes('อธิการ') || boxTxt.includes('สุขศรี') || boxTxt.includes('อนุมัติผล') || boxTxt.includes('ทราบ / อนุมัติ');
-      const isEvaluator = boxTxt.includes('หัวหน้างานวัด') || boxTxt.includes('หัวหน้ากลุ่มสาระ') || boxTxt.includes('วัดและประเมินผล') || boxTxt.includes('วิชาการ') || boxTxt.includes('หัวหน้างานวิชาการ');
+      const isEvaluator = boxTxt.includes('หัวหน้างานวัด') || boxTxt.includes('หัวหน้ากลุ่มสาระ') || boxTxt.includes('วัดและประเมินผล') || boxTxt.includes('วิชาการ') || boxTxt.includes('หัวหน้างานวิชาการ') || boxTxt.includes('หัวหน้ากลุ่มบริหารวิชาการ');
       const isParent = boxTxt.includes('ผู้ปกครอง');
       const isTeacher = !isDirector && !isEvaluator && !isParent && (
         boxTxt.includes('ครูประจำชั้น') || boxTxt.includes('ครูผู้สอน') || boxTxt.includes('ผู้รายงาน') || 
         boxTxt.includes('ผู้สรุปรายงาน') || boxTxt.includes('ผู้ตรวจเช็ค') || boxTxt.includes('ผู้จัดทำ') || 
-        boxTxt.includes('ครูที่ปรึกษา') || boxTxt.includes('ตำแหน่ง') || idx === 0
+        boxTxt.includes('ครูที่ปรึกษา') || boxTxt.includes('ตำแหน่ง') || box.getAttribute('data-sig-role') === 'teacher' || idx === 0
       );
 
       let targetSig = '';
@@ -754,9 +801,61 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
       } else if (isParent && pSig) {
         targetSig = pSig;
         targetName = pName;
-      } else if (isTeacher && tSig) {
-        targetSig = tSig;
-        targetName = tName;
+      } else if (isTeacher) {
+        // หาข้อมูลระดับชั้นหรือห้องเรียนของกล่องนี้เพื่อแยกลายเซ็นอย่างถูกต้อง
+        const wrapper = box.closest('.grade-level-section, .print-page-wrapper, [data-grade-level], [data-classroom]');
+        let boxGrade = box.getAttribute('data-grade-level') || (wrapper ? wrapper.getAttribute('data-grade-level') : '') || '';
+        let boxClassroom = box.getAttribute('data-classroom') || (wrapper ? wrapper.getAttribute('data-classroom') : '') || '';
+
+        if (!boxGrade) {
+          const contextText = (box.textContent || '') + ' ' + (wrapper ? wrapper.textContent : '');
+          const mMatch = contextText.match(/(ม\.[1-6]|มัธยมศึกษาปีที่\s*([1-6])|ชั้นมัธยมศึกษาปีที่\s*([1-6]))/i);
+          if (mMatch) {
+            if (mMatch[1].startsWith('ม.')) boxGrade = mMatch[1];
+            else if (mMatch[2]) boxGrade = 'ม.' + mMatch[2];
+            else if (mMatch[3]) boxGrade = 'ม.' + mMatch[3];
+          }
+        }
+        if (!boxClassroom && boxGrade) {
+          const cMatch = (wrapper ? wrapper.textContent : '').match(/(ม\.[1-6]\/\d+)/i);
+          if (cMatch) boxClassroom = cMatch[1];
+        }
+
+        const existingSigImg = box.querySelector('.teacher-sig-img');
+        const hasExistingValidSig = existingSigImg && existingSigImg.src && existingSigImg.src.startsWith('data:image');
+
+        const gTeacher = (boxGrade && multiState.gradeTeachers && multiState.gradeTeachers[boxGrade]) || null;
+        const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+        const autoRoomTeacher = (boxClassroom && autoMap && autoMap.byClassroom && autoMap.byClassroom[boxClassroom]) || null;
+        const autoGradeTeacher = (boxGrade && autoMap && autoMap.byGrade && autoMap.byGrade[boxGrade]) || null;
+
+        // ลำดับความสำคัญในการเลือกข้อมูลครูประจำชั้น / หัวหน้าระดับชั้น:
+        // Priority 1: มีการระบุลายเซ็นเฉพาะระดับชั้นนั้นใน Studio (Grade-Level Custom Override)
+        if (gTeacher && gTeacher.enabled && gTeacher.signature) {
+          targetSig = gTeacher.signature;
+          targetName = gTeacher.name || tName;
+        }
+        // Priority 2: มีลายเซ็นที่ดึงตรงตามห้องเรียน/ระดับชั้นจาก Server มาอยู่แล้ว (Auto-Matched by Classroom)
+        else if (hasExistingValidSig && multiState.autoMatchClassroom !== false) {
+          targetSig = existingSigImg.src;
+          const curName = (box.querySelector('.sig-name')?.textContent || '').replace(/[()]/g, '').trim();
+          targetName = curName || (autoRoomTeacher ? autoRoomTeacher.name : (autoGradeTeacher ? autoGradeTeacher.name : tName));
+        }
+        // Priority 3: ดึงอัตโนมัติตามห้องเรียนจาก Cache ใน Client (Auto Match Classroom)
+        else if (autoRoomTeacher && autoRoomTeacher.signature && multiState.autoMatchClassroom !== false) {
+          targetSig = autoRoomTeacher.signature;
+          targetName = autoRoomTeacher.name || tName;
+        }
+        // Priority 4: ดึงอัตโนมัติตามระดับชั้นจาก Cache ใน Client (Auto Match Grade)
+        else if (autoGradeTeacher && autoGradeTeacher.signature && multiState.autoMatchClassroom !== false) {
+          targetSig = autoGradeTeacher.signature;
+          targetName = autoGradeTeacher.name || tName;
+        }
+        // Priority 5: ใช้ลายเซ็นครูประจำชั้นทั่วไป (Global Default Teacher)
+        else if (tSig) {
+          targetSig = tSig;
+          targetName = (gTeacher && gTeacher.name) ? gTeacher.name : tName;
+        }
       }
 
       if (targetSig) {
@@ -805,6 +904,7 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
 
     // B. อัปเดต elements ที่มี .teacher-sig-img อยู่เดิมใน HTML
     doc.querySelectorAll('.teacher-sig-img').forEach(img => {
+      if (img.closest('[data-mhc-signed]')) return;
       const parentTxt = (img.closest('.sig-box, .sig-row, div, td') || {}).textContent || '';
       if ((parentTxt.includes('ผู้อำนวยการ') || parentTxt.includes('อธิการ')) && dSig) {
         img.src = dSig;
@@ -812,6 +912,8 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
         img.src = eSig;
       } else if (parentTxt.includes('ผู้ปกครอง') && pSig) {
         img.src = pSig;
+      } else if (multiState.autoMatchClassroom !== false && img.src && img.src.startsWith('data:image')) {
+        // คงรูปลายเซ็นเดิมที่ระบบแมตช์ตามห้องเรียนไว้
       } else if (tSig) {
         img.src = tSig;
       }
@@ -884,11 +986,36 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
 
   const multiState = getPrintMultiSignatureState();
   let currentRoleId = initialRoleId || 'teacher';
+  let selectedGrade = null; // null = ค่าเริ่มต้น/ทั่วไป, 'ม.1' - 'ม.6' = เฉพาะระดับชั้น
   let penColor = '#002B9E';
   let penWidth = 2.4;
 
+  // โหลดแคชข้อมูลห้องเรียนและครูประจำชั้นเตรียมไว้
+  ensureClassroomTeachersMap(() => {
+    if (modal && modal.style.display !== 'none' && currentRoleId === 'teacher') {
+      renderModalUI();
+    }
+  });
+
   const renderModalUI = () => {
-    const curRole = multiState[currentRoleId];
+    let curRole = null;
+    const isGradeMode = (currentRoleId === 'teacher' && selectedGrade);
+    if (isGradeMode) {
+      if (!multiState.gradeTeachers) multiState.gradeTeachers = {};
+      if (!multiState.gradeTeachers[selectedGrade]) {
+        multiState.gradeTeachers[selectedGrade] = {
+          grade: selectedGrade,
+          roleId: 'grade_' + selectedGrade.replace('.', ''),
+          title: `ครูประจำชั้น / หัวหน้าระดับชั้น ${selectedGrade}`,
+          enabled: true,
+          signature: '',
+          name: ''
+        };
+      }
+      curRole = multiState.gradeTeachers[selectedGrade];
+    } else {
+      curRole = multiState[currentRoleId];
+    }
 
     const rolesList = [
       { id: 'teacher', icon: 'bx-edit', title: 'ครูประจำชั้น / ครูผู้สอน', color: 'indigo' },
@@ -912,6 +1039,9 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
       `;
     }).join('');
 
+    const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+    const gradeTeacherAuto = (selectedGrade && autoMap && autoMap.byGrade && autoMap.byGrade[selectedGrade]) ? autoMap.byGrade[selectedGrade] : null;
+
     modal.innerHTML = `
       <div class="bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] w-full max-w-xl overflow-hidden flex flex-col max-h-[94vh] border border-white/40 ring-1 ring-slate-900/10 animate-in fade-in zoom-in-95 duration-200">
         
@@ -927,7 +1057,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
                 <span>ศูนย์จัดการลายเซ็นครบทุกตำแหน่ง</span>
                 <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/20">ปพ.5 · ปพ.6 · 4 ฝ่าย</span>
               </h3>
-              <p class="text-[11px] text-indigo-200/80 font-normal mt-0.5">กำหนดและประทับลายเซ็นครบทั้ง 4 ตำแหน่งลงในเอกสารสำหรับพิมพ์ได้ในที่เดียว</p>
+              <p class="text-[11px] text-indigo-200/80 font-normal mt-0.5">กำหนดและประทับลายเซ็นครบทั้ง 4 ตำแหน่ง และแยกลายเซ็นครูประจำชั้น ม.1 - ม.6 ได้ในที่เดียว</p>
             </div>
           </div>
           <button id="btnCloseSigManager" type="button" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer relative z-10" title="ปิดหน้าต่าง">
@@ -945,6 +1075,44 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
             ${roleTabsHtml}
           </div>
         </div>
+
+        <!-- Sub Bar for Grade-Level Signatures (เมื่อเลือกครูประจำชั้น) -->
+        ${currentRoleId === 'teacher' ? `
+          <div class="px-5 py-2.5 bg-indigo-50/70 border-b border-indigo-100 flex flex-col gap-1.5 animate-in fade-in duration-150">
+            <div class="flex items-center justify-between text-[11px] font-bold text-slate-700">
+              <span class="flex items-center gap-1.5 text-indigo-900">
+                <i class='bx bx-git-branch text-sm text-indigo-600'></i>
+                <span>แยกลายเซ็นครูประจำชั้นตามระดับชั้น (ม.1 - ม.6):</span>
+              </span>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer bg-white px-2.5 py-1 rounded-full border border-indigo-200/80 shadow-2xs" title="ตรวจจับห้องเรียน/ระดับชั้นของเอกสาร แล้วดึงลายเซ็นครูประจำชั้นห้องนั้นจากฐานข้อมูลให้อัตโนมัติ">
+                <input id="chkAutoMatchClassroom" type="checkbox" class="sr-only peer" ${multiState.autoMatchClassroom !== false ? 'checked' : ''}>
+                <div class="w-7 h-3.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-emerald-600"></div>
+                <span class="text-[10px] font-bold ${multiState.autoMatchClassroom !== false ? 'text-emerald-700' : 'text-slate-500'}">ดึงตามห้องอัตโนมัติ</span>
+              </label>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-1 p-1 bg-white/80 rounded-xl border border-indigo-100/80 shadow-2xs select-none">
+              <button type="button" class="btn-grade-tab py-1 px-1 rounded-lg text-[11px] font-bold transition-all text-center cursor-pointer ${selectedGrade === null ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}" data-grade="">
+                🌐 ทั่วไป
+              </button>
+              ${['ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'].map(g => {
+                const gData = multiState.gradeTeachers && multiState.gradeTeachers[g];
+                const hasCustomSig = !!(gData && gData.signature);
+                const isAct = selectedGrade === g;
+                return `
+                  <button type="button" class="btn-grade-tab py-1 px-1 rounded-lg text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${isAct ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}" data-grade="${g}">
+                    <span>${g}</span>
+                    ${hasCustomSig ? `<span class="w-1.5 h-1.5 rounded-full ${isAct ? 'bg-emerald-300' : 'bg-emerald-500'}"></span>` : ''}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+            <div class="text-[10px] text-indigo-700/80 flex items-center justify-between px-1">
+              <span>กำลังตั้งค่า: <b>${escapeHTML(curRole.title)}</b></span>
+              ${selectedGrade ? `<span class="text-emerald-700 font-semibold">✨ กำหนดเฉพาะ ${selectedGrade}</span>` : `<span class="text-slate-500">ใช้เป็นค่าเริ่มต้นทั่วไป</span>`}
+            </div>
+          </div>
+        ` : ''}
 
         <!-- Body -->
         <div class="p-5 sm:p-6 overflow-y-auto space-y-4 bg-slate-50/40">
@@ -974,6 +1142,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
                 <span>ชื่อ-นามสกุลผู้ลงนาม (พิมพ์ลงในวงเล็บ)</span>
               </label>
               ${currentRoleId === 'director' ? `<span class="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md border border-amber-200">ผู้อำนวยการโรงเรียน</span>` : ''}
+              ${selectedGrade ? `<span class="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-800 rounded-md border border-indigo-200">ระดับชั้น ${selectedGrade}</span>` : ''}
             </div>
             <div class="relative">
               <i class='bx bx-user absolute left-3.5 top-3 text-slate-400 text-base'></i>
@@ -982,6 +1151,11 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
             <!-- ปุ่มด่วนสำหรับแต่ละบทบาท -->
             <div class="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
               <span class="text-[10px] text-slate-400 font-medium flex-shrink-0">เลือกด่วน:</span>
+              ${selectedGrade && gradeTeacherAuto ? `
+                <button id="btnQuickSyncGradeTeacher" type="button" class="flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 transition-all cursor-pointer">
+                  ⚡ ใช้ครูประจำชั้น ${selectedGrade} (${gradeTeacherAuto.name})
+                </button>
+              ` : ''}
               <button type="button" class="btn-quick-name flex-shrink-0 text-[10px] px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200/60 transition-all cursor-pointer" data-name="ครูก้องนที อุ่นเจริญ">
                 ✍️ ครูก้องนที อุ่นเจริญ
               </button>
@@ -1150,20 +1324,62 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
       btn.onclick = () => {
         const nextRole = btn.getAttribute('data-role');
         if (nextRole && nextRole !== currentRoleId) {
-          // บันทึกชื่อปัจจุบันก่อนสลับ
           const nameInp = modal.querySelector('#sigTeacherNameInput');
-          if (nameInp) multiState[currentRoleId].name = nameInp.value.trim();
+          if (nameInp) curRole.name = nameInp.value.trim();
           currentRoleId = nextRole;
+          selectedGrade = null;
           renderModalUI();
         }
       };
     });
 
+    // ผูก Event การเปลี่ยนแท็บระดับชั้นย่อย (Grade Tabs สำหรับครูประจำชั้น)
+    modal.querySelectorAll('.btn-grade-tab').forEach(btn => {
+      btn.onclick = () => {
+        const g = btn.getAttribute('data-grade') || null;
+        if (g !== selectedGrade) {
+          const nameInp = modal.querySelector('#sigTeacherNameInput');
+          if (nameInp) curRole.name = nameInp.value.trim();
+          selectedGrade = g;
+          renderModalUI();
+        }
+      };
+    });
+
+    // ผูกสวิตช์ Auto Match Classroom
+    const chkAuto = modal.querySelector('#chkAutoMatchClassroom');
+    if (chkAuto) {
+      chkAuto.onchange = () => {
+        multiState.autoMatchClassroom = chkAuto.checked;
+        if (typeof showToast === 'function') {
+          showToast(chkAuto.checked ? 'เปิดโหมดดึงลายเซ็นครูประจำชั้นอัตโนมัติแล้ว' : 'ปิดโหมดอัตโนมัติ (ใช้ตามที่กำหนด)', 'info');
+        }
+      };
+    }
+
+    // ผูกปุ่มซิงค์ครูประจำชั้นเฉพาะระดับชั้น
+    const btnSyncGrade = modal.querySelector('#btnQuickSyncGradeTeacher');
+    if (btnSyncGrade && selectedGrade) {
+      btnSyncGrade.onclick = () => {
+        const autoM = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+        const gInfo = autoM && autoM.byGrade && autoM.byGrade[selectedGrade];
+        if (gInfo) {
+          curRole.name = gInfo.name || curRole.name;
+          curRole.signature = gInfo.signature || curRole.signature;
+          curRole.enabled = true;
+          renderModalUI();
+          if (typeof showToast === 'function') {
+            showToast(`ซิงค์ข้อมูลครูประจำชั้น ${selectedGrade} สำเร็จแล้ว`, 'success');
+          }
+        }
+      };
+    }
+
     // ผูกสวิตช์เปิด/ปิดบทบาท
     const chkRole = modal.querySelector('#chkRoleEnabled');
     if (chkRole) {
       chkRole.onchange = () => {
-        multiState[currentRoleId].enabled = chkRole.checked;
+        curRole.enabled = chkRole.checked;
       };
     }
 
@@ -1220,7 +1436,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
     const previewNameText = modal.querySelector('#sigPreviewNameText');
 
     nameInput.oninput = () => {
-      multiState[currentRoleId].name = nameInput.value.trim();
+      curRole.name = nameInput.value.trim();
       if (previewNameText) {
         previewNameText.textContent = `( ${nameInput.value.trim() || '...................................................'} )`;
       }
@@ -1231,7 +1447,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
         const n = btn.getAttribute('data-name');
         if (n) {
           nameInput.value = n;
-          multiState[currentRoleId].name = n;
+          curRole.name = n;
           if (previewNameText) previewNameText.textContent = `( ${n} )`;
           nameInput.focus();
         }
@@ -1239,7 +1455,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
     });
 
     const updatePreviewSig = (url) => {
-      multiState[currentRoleId].signature = url || '';
+      curRole.signature = url || '';
       if (url) {
         previewImg.src = url;
         previewImg.classList.remove('hidden');
@@ -1257,7 +1473,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
 
     // Canvas Setup
     let isDrawing = false;
-    let hasStrokes = !!multiState[currentRoleId].signature;
+    let hasStrokes = !!curRole.signature;
     const ctx = canvas ? canvas.getContext('2d', { willReadFrequently: true }) : null;
 
     const setupCanvas = () => {
@@ -1272,12 +1488,12 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
       ctx.strokeStyle = penColor;
       ctx.lineWidth = penWidth;
 
-      if (multiState[currentRoleId].signature) {
+      if (curRole.signature) {
         const img = new Image();
         img.onload = () => {
           ctx.drawImage(img, 20, 20, (rect.width - 40) || 300, (rect.height - 40) || 120);
         };
-        img.src = multiState[currentRoleId].signature;
+        img.src = curRole.signature;
       }
     };
 
@@ -1470,7 +1686,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
         const sName = opt.dataset.name;
         if (sName) {
           nameInput.value = sName;
-          multiState[currentRoleId].name = sName;
+          curRole.name = sName;
           if (previewNameText) previewNameText.textContent = `( ${sName} )`;
         }
         if (sUrl && sUrl.length > 20) {
@@ -1499,8 +1715,7 @@ function showSignatureManagerModal(onSaved, initialRoleId) {
     const btnSave = modal.querySelector('#btnSaveSigManager');
     if (btnSave) {
       btnSave.onclick = () => {
-        // อัปเดตชื่อของบทบาทปัจจุบัน
-        if (nameInput) multiState[currentRoleId].name = nameInput.value.trim();
+        if (nameInput) curRole.name = nameInput.value.trim();
         multiState.masterEnabled = true;
 
         savePrintMultiSignatureState(multiState);
@@ -1935,6 +2150,9 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   if (btnCfgMobile) btnCfgMobile.onclick = configSignatureHandler;
 
   refreshPreview();
+  ensureClassroomTeachersMap(() => {
+    refreshPreview();
+  });
   modal.style.display = 'flex';
 }
 function openHTMLDocument(html, docTitle, directUrl) {
