@@ -2627,7 +2627,7 @@ function printCalendar() {
     .event-table {
       width: 100%;
       border-collapse: collapse;
-      table-layout: fixed;
+      table-layout: auto;
       font-size: 10px;
       margin-bottom: 12px;
       border: 1px solid #CBD5E1;
@@ -2655,19 +2655,23 @@ function printCalendar() {
 
     /* Signatures */
     .sig-container {
-      margin-top: 14px;
+      margin-top: 16px;
       display: flex;
-      justify-content: space-between;
+      justify-content: space-around;
       page-break-inside: avoid;
-      padding: 0 40px;
+      padding: 0 20px;
+      gap: 24px;
     }
     .sig-box {
       text-align: center;
       font-size: 11px;
       line-height: 1.5;
+      min-width: 210px;
+      max-width: 340px;
+      flex: 1;
     }
-    .sig-line {
-      margin-bottom: 38px;
+    .sig-dots, .sig-name, .sig-title, .sig-date {
+      white-space: nowrap;
     }
 
     /* Footer */
@@ -2702,11 +2706,18 @@ function printCalendar() {
         border: none !important;
         overflow: visible !important;
       }
-      table, .cal-table, .event-table {
+      .cal-table {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
         table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+      .event-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        table-layout: auto !important;
         border-collapse: collapse !important;
       }
       tr {
@@ -2788,17 +2799,19 @@ function printCalendar() {
 
     <!-- Signature -->
     <div class="sig-container">
-      <div class="sig-box">
-        <div class="sig-line">ลงชื่อ............................................................ผู้จัดทำ</div>
-        <div>(............................................................)</div>
-        <div>ผู้ประสานงาน / ฝ่ายบริหารงานวิชาการ</div>
-        <div>วันที่ ..... เดือน .................... พ.ศ. ........</div>
+      <div class="sig-box" data-sig-role="teacher">
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots">ลงชื่อ ........................................ ผู้จัดทำ</div>
+        <div class="sig-name">( ........................................ )</div>
+        <div class="sig-title">ผู้ประสานงาน / ฝ่ายบริหารงานวิชาการ</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ........</div>
       </div>
-      <div class="sig-box">
-        <div class="sig-line">ลงชื่อ............................................................ผู้อนุมัติ</div>
-        <div>(นายอธิการ สุขศรี)</div>
-        <div>ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-        <div>วันที่ ..... เดือน .................... พ.ศ. ........</div>
+      <div class="sig-box" data-sig-role="director">
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots">ลงชื่อ ........................................ ผู้อนุมัติ</div>
+        <div class="sig-name">( นายอธิการ สุขศรี )</div>
+        <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ........</div>
       </div>
     </div>
 

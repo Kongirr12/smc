@@ -1,6 +1,6 @@
 // ============================================================
 //  MODULE: แบบฟอร์มงาน 4 ฝ่าย โรงเรียนมหาชัยพิทยาคาร
-//  ระบบ MHC Smart School | v3.3.5
+//  ระบบ MHC Smart School | v3.3.6
 //  พัฒนาโดย ครูก้องนที อุ่นเจริญ
 // ============================================================
 
@@ -3620,7 +3620,7 @@ function downloadTemplateDoc(templateId) {
         width: 100% !important;
         max-width: 100% !important;
         border-collapse: collapse;
-        table-layout: fixed;
+        table-layout: auto;
         margin: 6pt 0;
         word-wrap: break-word;
         overflow-wrap: break-word;
@@ -3630,10 +3630,13 @@ function downloadTemplateDoc(templateId) {
         padding: 3pt 4pt;
         font-size: 13.5pt;
         vertical-align: top;
-        word-break: break-all;
-        overflow-wrap: anywhere;
+        word-break: break-word;
+        overflow-wrap: break-word;
       }
       th { background: #F0F0F0; font-weight: bold; text-align: center; }
+      table.borderless {
+        table-layout: fixed;
+      }
       table.borderless, table.borderless td, table.borderless th {
         border: none !important;
         padding: 0 !important;
@@ -3766,7 +3769,7 @@ function previewTemplatePrint(templateId) {
       width: 100% !important;
       max-width: 100% !important;
       border-collapse: collapse;
-      table-layout: fixed;
+      table-layout: auto;
       margin: 6pt 0;
       word-wrap: break-word;
       overflow-wrap: break-word;
@@ -3776,10 +3779,13 @@ function previewTemplatePrint(templateId) {
       padding: 3pt 4pt;
       font-size: 13pt;
       vertical-align: top;
-      word-break: break-all;
-      overflow-wrap: anywhere;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
     th { background: #F0F0F0; font-weight: bold; text-align: center; }
+    table.borderless {
+      table-layout: fixed;
+    }
     table.borderless, table.borderless td, table.borderless th {
       border: none !important;
       padding: 0 !important;

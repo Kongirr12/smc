@@ -57,7 +57,14 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     doc.querySelectorAll('.no-print, .no-print-bar, button, script').forEach(el => el.remove());
 
     const bodyHtml = doc.body ? doc.body.innerHTML : html;
-    parsedContent = styles + bodyHtml;
+    const pdfFixCss = `<style>
+      table:not(.cal-table) { width: 100% !important; max-width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; }
+      .sig-line:empty { border-bottom: 1px dotted #64748B !important; width: 170px !important; margin: 0 auto 4px auto !important; }
+      .sig-line:not(:empty) { border-bottom: none !important; width: auto !important; white-space: nowrap !important; }
+      .sig-box { min-width: 200px !important; max-width: 340px !important; }
+      .sig-dots, .sig-name, .sig-title, .sig-date { white-space: nowrap !important; }
+    </style>`;
+    parsedContent = styles + pdfFixCss + bodyHtml;
   } catch (_) {
     parsedContent = html;
   }
@@ -595,6 +602,15 @@ function generateEvaluatorSignatureSvg() {
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 }
 
+function generateTeacherSignatureSvg() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" width="240" height="80">
+    <path d="M 28 52 C 36 24, 54 18, 62 38 C 66 48, 56 58, 48 50 C 42 42, 54 28, 72 30 C 88 32, 98 48, 112 36 C 126 24, 138 40, 152 32 C 166 24, 180 38, 196 28 C 206 22, 214 36, 202 46 C 182 58, 132 62, 54 58 C 88 54, 144 50, 208 46" 
+      fill="none" stroke="#002B9E" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 116 20 C 120 14, 126 16, 124 22" fill="none" stroke="#002B9E" stroke-width="2.0" stroke-linecap="round" />
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
 // 4. อ่านสถานะและข้อมูลลายเซ็นแบบครบทุกผู้ลงนาม 4 ฝ่าย พร้อมรองรับการแยกลายเซ็นตามระดับชั้น (ม.1 - ม.6)
 function getPrintMultiSignatureState() {
   let savedMulti = null;
@@ -610,7 +626,8 @@ function getPrintMultiSignatureState() {
 
   let teacherName = (savedMulti && savedMulti.teacher && savedMulti.teacher.name) || legacyName || userName || 'ครูก้องนที อุ่นเจริญ';
   if (teacherName === 'ผู้ดูแลระบบ' || teacherName === 'admin') teacherName = 'ครูก้องนที อุ่นเจริญ';
-  const teacherSig = (savedMulti && savedMulti.teacher && savedMulti.teacher.signature) || legacySig || userSig || '';
+  const defaultTeacherSig = generateTeacherSignatureSvg();
+  const teacherSig = (savedMulti && savedMulti.teacher && savedMulti.teacher.signature) || legacySig || userSig || defaultTeacherSig;
 
   // โหมดตรวจจับและดึงลายเซ็นครูประจำชั้นตรงตามห้องเรียน/ระดับชั้นอัตโนมัติ (Auto-Match)
   const autoMatchClassroom = (savedMulti && savedMulti.autoMatchClassroom !== undefined) ? !!savedMulti.autoMatchClassroom : true;
@@ -794,32 +811,43 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
-        .sig-line {
+        .sig-line:empty {
           border-bottom: 1px dotted #64748B !important;
           width: 170px !important;
           margin: 0 auto 4px auto !important;
           padding-bottom: 0 !important;
           min-height: 0 !important;
         }
-        .sig-row, .signature-row {
+        .sig-line:not(:empty) {
+          border-bottom: none !important;
+          width: auto !important;
+          margin-top: 2px !important;
+          white-space: nowrap !important;
+        }
+        .sig-row, .signature-row, .signatures, .sig-container {
           display: flex !important;
           justify-content: space-around !important;
           align-items: flex-start !important;
-          margin-top: 24px !important;
+          margin-top: 20px !important;
           text-align: center !important;
           font-size: 11px !important;
-          gap: 20px !important;
+          gap: 16px !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
         }
         .sig-box {
           flex: 1 !important;
-          min-width: 170px !important;
-          max-width: 250px !important;
+          min-width: 200px !important;
+          max-width: 340px !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
           text-align: center !important;
+        }
+        .sig-dots {
+          white-space: nowrap !important;
+          font-size: 10.5px !important;
+          color: #334155 !important;
         }
         .sig-name {
           font-weight: 600 !important;
@@ -828,10 +856,10 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
           margin-top: 2px !important;
           white-space: nowrap !important;
         }
-        .sig-title {
+        .sig-title, .sig-date {
           font-size: 10.5px !important;
-          color: #475569 !important;
-          margin-top: 1px !important;
+          color: #334155 !important;
+          margin-top: 2px !important;
           white-space: nowrap !important;
         }
         .mhc-sig-inline-wrap {
@@ -959,10 +987,12 @@ function applySignatureToDocument(html, sigOptionsOrUrl, legacyTeacherName) {
             targetSig = autoGradeTeacher.signature;
             targetName = autoGradeTeacher.name || tName;
           }
-          // Priority 5: ใช้ลายเซ็นครูประจำชั้นทั่วไป (Global Default Teacher)
-          else if (tSig) {
-            targetSig = tSig;
-            targetName = (gTeacher && gTeacher.name) ? gTeacher.name : tName;
+          // Priority 5: ใช้ลายเซ็นครูประจำชั้นทั่วไป หรือลายเซ็นดิจิทัลมาตรฐาน (Global Default Teacher)
+          else {
+            targetSig = tSig || generateTeacherSignatureSvg();
+            const rawDomName = (box.querySelector('.sig-name')?.textContent || '').replace(/[()]/g, '').trim();
+            const domNameClean = rawDomName.replace(/[\.\s_…\-]/g, '').length === 0 ? '' : rawDomName;
+            targetName = domNameClean || (gTeacher && gTeacher.name) || (autoRoomTeacher && autoRoomTeacher.name) || (autoGradeTeacher && autoGradeTeacher.name) || tName;
           }
 
           if (!targetName || targetName.replace(/[\.\s_…\-]/g, '').length === 0) {
@@ -2124,10 +2154,17 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
           }
-          table {
+          table:not(.cal-table) {
+            max-width: 100% !important;
+            width: 100% !important;
+            table-layout: auto !important;
+            border-collapse: collapse !important;
+          }
+          table.cal-table {
             max-width: 100% !important;
             width: 100% !important;
             table-layout: fixed !important;
+            border-collapse: collapse !important;
           }
           .sig-stamp-zone {
             height: 48px !important;
@@ -2149,32 +2186,44 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          .sig-line {
+          .sig-line:empty {
             border-bottom: 1px dotted #64748B !important;
             width: 170px !important;
             margin: 0 auto 4px auto !important;
             padding-bottom: 0 !important;
             min-height: 0 !important;
           }
-          .sig-row, .signature-row {
+          .sig-line:not(:empty) {
+            border-bottom: none !important;
+            width: auto !important;
+            margin-top: 2px !important;
+            white-space: nowrap !important;
+          }
+          .sig-row, .signature-row, .signatures, .sig-container {
             display: flex !important;
             justify-content: space-around !important;
             align-items: flex-start !important;
-            margin-top: 24px !important;
+            margin-top: 20px !important;
             text-align: center !important;
             font-size: 11px !important;
-            gap: 20px !important;
+            gap: 16px !important;
+            flex-wrap: nowrap !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
           .sig-box {
             flex: 1 !important;
-            min-width: 170px !important;
-            max-width: 250px !important;
+            min-width: 200px !important;
+            max-width: 340px !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
             text-align: center !important;
+          }
+          .sig-dots {
+            white-space: nowrap !important;
+            font-size: 10.5px !important;
+            color: #334155 !important;
           }
           .sig-name {
             font-weight: 600 !important;
@@ -2183,10 +2232,10 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             margin-top: 2px !important;
             white-space: nowrap !important;
           }
-          .sig-title {
+          .sig-title, .sig-date {
             font-size: 10.5px !important;
-            color: #475569 !important;
-            margin-top: 1px !important;
+            color: #334155 !important;
+            margin-top: 2px !important;
             white-space: nowrap !important;
           }
           /* ป้องกันการทับซ้อนข้อความท้ายเอกสารกับชื่อผู้บริหาร */
@@ -2203,16 +2252,9 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             page-break-inside: avoid !important;
           }
           @media screen and (max-width: 640px) {
-            .signatures, .sig-container {
-              display: flex !important;
-              flex-wrap: wrap !important;
-              gap: 14px !important;
-              justify-content: space-around !important;
-            }
-            .sig-box {
-              min-width: 160px !important;
-              max-width: 280px !important;
-              margin: 4px 0 !important;
+            .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container, .pp5-sheet {
+              min-width: ${isLand ? '860px' : '640px'} !important;
+              margin: 4px auto !important;
             }
           }
           @media print {
@@ -2243,13 +2285,22 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               border: none !important;
               width: 100% !important;
               max-width: 100% !important;
+              min-width: 0 !important;
             }
-            /* ป้องกันตารางตกขอบกระดาษ: ปรับให้ยืดหยุ่นเต็มพื้นที่ 100% และ auto layout */
-            table {
+            /* ป้องกันตารางตกขอบกระดาษ: ปรับให้ยืดหยุ่นเต็มพื้นที่ 100% และตรงกับหน้าตัวอย่าง 100% */
+            table:not(.cal-table) {
               width: 100% !important;
               max-width: 100% !important;
               min-width: 0 !important;
               table-layout: auto !important;
+              page-break-inside: auto !important;
+              border-collapse: collapse !important;
+            }
+            table.cal-table {
+              width: 100% !important;
+              max-width: 100% !important;
+              min-width: 0 !important;
+              table-layout: fixed !important;
               page-break-inside: auto !important;
               border-collapse: collapse !important;
             }
@@ -2272,7 +2323,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             }
             .signatures, .sig-container, .signature-grid, .sig-row, .signature-row {
               display: flex !important;
-              justify-content: space-between !important;
+              justify-content: space-around !important;
               flex-wrap: nowrap !important;
               page-break-inside: avoid !important;
               break-inside: avoid !important;

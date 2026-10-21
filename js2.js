@@ -3662,11 +3662,11 @@ function printAttendanceDashboardOverview() {
     .kpi-box { background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 8px; text-align: center; }
     .kpi-title { font-size: 9pt; color: #64748B; font-weight: bold; margin-bottom: 3px; }
     .kpi-val { font-size: 14pt; font-weight: 800; }
-    .signatures { margin-top: 30px; display: flex; justify-content: space-between; page-break-inside: avoid; gap: 16px; flex-wrap: wrap; }
-    .sig-box { text-align: center; min-width: 180px; max-width: 280px; flex: 1; font-size: 9pt; }
-    .sig-stamp-zone { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .sig-dots { font-size: 9pt; color: #334155; }
-    .sig-line { margin-top: 4px; color: #334155; font-size: 9pt; }
+    .signatures { margin-top: 30px; display: flex; justify-content: space-around; page-break-inside: avoid; gap: 16px; flex-wrap: nowrap; }
+    .sig-box { text-align: center; min-width: 210px; max-width: 340px; flex: 1; font-size: 9pt; }
+    .sig-stamp-zone { min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+    .sig-dots { font-size: 9pt; color: #334155; white-space: nowrap; }
+    .sig-name, .sig-title, .sig-date { margin-top: 3px; color: #334155; font-size: 9pt; white-space: nowrap; }
     .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
@@ -3732,19 +3732,23 @@ function printAttendanceDashboardOverview() {
     </div>
 
     <div class="signatures">
-      <div class="sig-box">
-        <div>ลงชื่อ .............................................................. ผู้สรุปรายงาน</div>
-        <div class="sig-line">( .............................................................. )</div>
-        <div class="sig-line">ตำแหน่ง หัวหน้างานระดับชั้น / ผู้รับผิดชอบ</div>
-        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      <div class="sig-box" data-sig-role="teacher">
+        <div>&nbsp;</div>
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-line"></div>
+        <div class="sig-dots">ลงชื่อ ........................................ ผู้สรุปรายงาน</div>
+        <div class="sig-name">( ........................................ )</div>
+        <div class="sig-title">ตำแหน่ง หัวหน้างานระดับชั้น / ผู้รับผิดชอบ</div>
+        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
       </div>
-      <div class="sig-box">
+      <div class="sig-box" data-sig-role="director">
         <div>ทราบ / อนุมัติ</div>
         <div class="sig-stamp-zone"></div>
-        <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
-        <div class="sig-line">( นายอธิการ สุขศรี )</div>
-        <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-        <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+        <div class="sig-line"></div>
+        <div class="sig-dots">ลงชื่อ ........................................</div>
+        <div class="sig-name">( นายอธิการ สุขศรี )</div>
+        <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
       </div>
     </div>
 
@@ -3905,21 +3909,24 @@ function printDailyAttendanceRecord() {
 
           <div class="signatures">
             <div class="sig-box" data-sig-role="teacher" data-classroom="${escapeHTML(rm)}" data-grade-level="${escapeHTML(rmGLevel)}">
+              <div>&nbsp;</div>
               <div class="sig-stamp-zone">
                 ${rmTeacherSig ? `<img class="teacher-sig-img" src="${rmTeacherSig}" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` : ''}
               </div>
-              <div class="sig-dots" style="${rmTeacherSig ? 'display:none;' : ''}">ลงชื่อ .............................................................. ผู้ตรวจเช็ค</div>
-              <div class="sig-line">( ${escapeHTML(rmTeacherName || '..............................................................')} )</div>
-              <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + escapeHTML(rm)}</div>
-              <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+              <div class="sig-line"></div>
+              <div class="sig-dots" style="${rmTeacherSig ? 'display:none;' : ''}">ลงชื่อ ........................................ ผู้ตรวจเช็ค</div>
+              <div class="sig-name">( ${escapeHTML(rmTeacherName || '........................................')} )</div>
+              <div class="sig-title">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + escapeHTML(rm)}</div>
+              <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
             </div>
             <div class="sig-box" data-sig-role="director">
               <div>ทราบ / อนุมัติ</div>
               <div class="sig-stamp-zone"></div>
-              <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
-              <div class="sig-line">( นายอธิการ สุขศรี )</div>
-              <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-              <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+              <div class="sig-line"></div>
+              <div class="sig-dots">ลงชื่อ ........................................</div>
+              <div class="sig-name">( นายอธิการ สุขศรี )</div>
+              <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
             </div>
           </div>
 
@@ -4005,21 +4012,24 @@ function printDailyAttendanceRecord() {
 
         <div class="signatures">
           <div class="sig-box" data-sig-role="teacher" data-classroom="${escapeHTML(classroom)}" data-grade-level="${escapeHTML(singleGLevel)}">
+            <div>&nbsp;</div>
             <div class="sig-stamp-zone">
               ${singleTeacherSig ? `<img class="teacher-sig-img" src="${singleTeacherSig}" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` : ''}
             </div>
-            <div class="sig-dots" style="${singleTeacherSig ? 'display:none;' : ''}">ลงชื่อ .............................................................. ${isSubject ? 'ผู้ตรวจเช็ค' : 'ครูประจำชั้น'}</div>
-            <div class="sig-line">( ${escapeHTML(singleTeacherName || '..............................................................')} )</div>
-            <div class="sig-line">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + (classroom ? escapeHTML(classroom) : '')}</div>
-            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-line"></div>
+            <div class="sig-dots" style="${singleTeacherSig ? 'display:none;' : ''}">ลงชื่อ ........................................ ${isSubject ? 'ผู้ตรวจเช็ค' : 'ครูประจำชั้น'}</div>
+            <div class="sig-name">( ${escapeHTML(singleTeacherName || '........................................')} )</div>
+            <div class="sig-title">ตำแหน่ง ${isSubject ? 'ครูผู้สอน' : 'ครูประจำชั้น ' + (classroom ? escapeHTML(classroom) : '')}</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
           <div class="sig-box" data-sig-role="director">
             <div>ทราบ / อนุมัติ</div>
             <div class="sig-stamp-zone"></div>
-            <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
-            <div class="sig-line">( นายอธิการ สุขศรี )</div>
-            <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-line"></div>
+            <div class="sig-dots">ลงชื่อ ........................................</div>
+            <div class="sig-name">( นายอธิการ สุขศรี )</div>
+            <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
         </div>
 
@@ -4052,11 +4062,11 @@ function printDailyAttendanceRecord() {
     th { background: #F1F5F9; border: 1px solid #94A3B8; padding: 5px 3px; text-align: center; font-weight: bold; font-size: 8.5pt; }
     td { border: 1px solid #CBD5E1; padding: 4px 4px; line-height: 1.3; font-size: 8.5pt; vertical-align: middle; }
     tr:nth-child(even) { background: #FAFAFA; }
-    .signatures { margin-top: 24px; display: flex; justify-content: space-between; page-break-inside: avoid; gap: 16px; flex-wrap: wrap; }
-    .sig-box { text-align: center; min-width: 180px; max-width: 280px; flex: 1; font-size: 9pt; }
-    .sig-stamp-zone { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .sig-dots { font-size: 9pt; color: #334155; }
-    .sig-line { margin-top: 4px; color: #334155; font-size: 9pt; }
+    .signatures { margin-top: 24px; display: flex; justify-content: space-around; page-break-inside: avoid; gap: 16px; flex-wrap: nowrap; }
+    .sig-box { text-align: center; min-width: 210px; max-width: 340px; flex: 1; font-size: 9pt; }
+    .sig-stamp-zone { min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+    .sig-dots { font-size: 9pt; color: #334155; white-space: nowrap; }
+    .sig-name, .sig-title, .sig-date { margin-top: 3px; color: #334155; font-size: 9pt; white-space: nowrap; }
     .footer { margin-top: 24px; padding-top: 6px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 8pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }
@@ -4291,7 +4301,7 @@ function printAttendanceReport() {
         <tr>
           <td style="text-align:center;">${idx + 1}</td>
           <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
-          <td style="text-align:left; font-weight:600; padding-left:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+          <td style="text-align:left; font-weight:600; padding:2px 6px; white-space:nowrap; min-width:130px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
           <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
           ${dayHeaders.map(h => {
             const st = r.dates ? r.dates[h.ds] : null;
@@ -4326,7 +4336,7 @@ function printAttendanceReport() {
         <tr>
           <th style="width:28px; min-width:28px; text-align:center;">ที่</th>
           <th style="width:62px; min-width:60px; text-align:center;">รหัสนักเรียน</th>
-          <th style="width:140px; min-width:130px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+          <th style="min-width:140px; text-align:left; padding-left:6px; white-space:nowrap;">ชื่อ - นามสกุล</th>
           <th style="width:48px; min-width:45px; text-align:center; white-space:nowrap;">ห้อง</th>
           ${res.months.map(m => `
             <th style="min-width:55px; text-align:center;">${escapeHTML(m.label)}</th>
@@ -4343,7 +4353,7 @@ function printAttendanceReport() {
           <tr>
             <td style="text-align:center;">${idx + 1}</td>
             <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
-            <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+            <td style="text-align:left; font-weight:600; padding:2px 6px; white-space:nowrap; min-width:140px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
             <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
             ${res.months.map(m => {
               const mData = r.by_month ? r.by_month[m.ym] : null;
@@ -4413,8 +4423,8 @@ function printAttendanceReport() {
             </th>
             `;
           }).join('')}
-          <th style="width:48px; min-width:0; text-align:center; font-size:7.5pt; padding:2px 1px; white-space:nowrap;">% รวม</th>
-          <th style="width:52px; min-width:0; text-align:center; font-size:7.5pt; padding:2px 1px; white-space:nowrap;">ผลประเมิน</th>
+          <th style="width:44px; min-width:40px; text-align:center; font-size:7.5pt; padding:2px 2px; white-space:nowrap;">% รวม</th>
+          <th style="width:64px; min-width:60px; text-align:center; font-size:7.5pt; padding:2px 2px; white-space:nowrap;">ผลประเมิน</th>
         </tr>
       `;
 
@@ -4424,7 +4434,7 @@ function printAttendanceReport() {
           <tr>
             <td style="text-align:center;">${idx + 1}</td>
             <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; white-space:nowrap;">${escapeHTML(r.student_code || '-')}</td>
-            <td style="text-align:left; font-weight:600; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+            <td style="text-align:left; font-weight:600; padding:2px 6px; white-space:nowrap; min-width:135px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
             <td style="text-align:center; white-space:nowrap; font-size:8pt;">${escapeHTML(r.classroom || '-')}</td>
             ${activeGSubjects.map(s => {
               const subData = r.by_subject ? r.by_subject[s.id] : null;
@@ -4432,10 +4442,10 @@ function printAttendanceReport() {
               const p = subData.attendance_pct || 0;
               return `<td style="text-align:center; font-weight:bold; font-size:7.5pt; padding:2px 1px; ${p < 80 ? 'color:#B91C1C;' : 'color:#15803D;'}">${p.toFixed(0)}%</td>`;
             }).join('')}
-            <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${bad ? 'color:#B91C1C;' : 'color:#15803D;'}">
+            <td style="text-align:center; font-weight:bold; font-size:7.5pt; white-space:nowrap; ${bad ? 'color:#B91C1C;' : 'color:#15803D;'}">
               ${r.total === 0 ? '-' : r.attendance_pct.toFixed(1) + '%'}
             </td>
-            <td style="text-align:center; font-weight:bold; font-size:7.5pt; ${r.total === 0 ? 'color:#64748B;' : (bad ? 'color:#B91C1C;' : 'color:#15803D;')}">
+            <td style="text-align:center; font-weight:bold; font-size:7.5pt; white-space:nowrap; ${r.total === 0 ? 'color:#64748B;' : (bad ? 'color:#B91C1C;' : 'color:#15803D;')}">
               ${r.total === 0 ? 'ยังไม่มีข้อมูล' : (bad ? 'เสี่ยง มส.' : 'ปกติ')}
             </td>
           </tr>
@@ -4464,7 +4474,7 @@ function printAttendanceReport() {
         <tr>
           <th style="width:30px;">ที่</th>
           <th style="width:65px;">รหัสนักเรียน</th>
-          <th style="width:145px; min-width:135px; text-align:left; padding-left:8px; white-space:nowrap;">ชื่อ - นามสกุล</th>
+          <th style="min-width:145px; text-align:left; padding-left:8px; white-space:nowrap;">ชื่อ - นามสกุล</th>
           <th style="width:58px; text-align:center; white-space:nowrap;">ห้อง</th>
           <th style="width:38px; color:#15803D;">มา</th>
           <th style="width:38px; color:#B91C1C;">ขาด</th>
@@ -4482,7 +4492,7 @@ function printAttendanceReport() {
           <tr>
             <td style="text-align:center;">${idx + 1}</td>
             <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt;">${escapeHTML(r.student_code || '-')}</td>
-            <td style="text-align:left; font-weight:600; padding-left:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
+            <td style="text-align:left; font-weight:600; padding:2px 8px; white-space:nowrap; min-width:145px;">${escapeHTML((r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || ''))}</td>
             <td style="text-align:center; white-space:nowrap; font-size:8.5pt;">${escapeHTML(r.classroom || '-')}</td>
             <td style="text-align:center; color:#15803D; font-weight:bold;">${r.present}</td>
             <td style="text-align:center; color:#B91C1C; font-weight:bold;">${r.absent}</td>
@@ -4546,21 +4556,24 @@ function printAttendanceReport() {
 
         <div class="signatures">
           <div class="sig-box" data-sig-role="teacher" data-grade-level="${escapeHTML(gLevel)}" ${activeRoom ? `data-classroom="${escapeHTML(activeRoom)}"` : ''}>
+            <div>&nbsp;</div>
             <div class="sig-stamp-zone">
               ${gTeacherSig ? `<img class="teacher-sig-img" src="${gTeacherSig}" alt="ลายเซ็น" style="max-height:44px; max-width:145px; object-fit:contain; pointer-events:none; display:inline-block;" />` : ''}
             </div>
-            <div class="sig-dots" style="${gTeacherSig ? 'display:none;' : ''}">ลงชื่อ .............................................................. ผู้รายงาน</div>
-            <div class="sig-name">( ${escapeHTML(gTeacherName || '..............................................................')} )</div>
-            <div class="sig-line">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : (isMultiGrade ? 'หัวหน้าระดับชั้น ' + gLevel : 'ครูประจำชั้น ' + (activeRoom || gLevel))}</div>
-            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-line"></div>
+            <div class="sig-dots" style="${gTeacherSig ? 'display:none;' : ''}">ลงชื่อ ........................................ ผู้รายงาน</div>
+            <div class="sig-name">( ${escapeHTML(gTeacherName || '........................................')} )</div>
+            <div class="sig-title">ตำแหน่ง ${isSubjectMode ? 'ครูผู้สอน' : (isMultiGrade ? 'หัวหน้าระดับชั้น ' + gLevel : 'ครูประจำชั้น ' + (activeRoom || gLevel))}</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
           <div class="sig-box" data-sig-role="director">
             <div>ทราบ / อนุมัติ</div>
             <div class="sig-stamp-zone"></div>
-            <div class="sig-dots" style="margin-top:6px;">ลงชื่อ ..............................................................</div>
-            <div class="sig-line">( นายอธิการ สุขศรี )</div>
-            <div class="sig-line">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-            <div class="sig-line">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+            <div class="sig-line"></div>
+            <div class="sig-dots">ลงชื่อ ........................................</div>
+            <div class="sig-name">( นายอธิการ สุขศรี )</div>
+            <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
         </div>
 
@@ -4616,11 +4629,11 @@ function printAttendanceReport() {
     th { background: #F1F5F9; border: 1px solid #94A3B8; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '3px 2px'}; text-align: center; font-weight: bold; }
     td { border: 1px solid #CBD5E1; padding: ${isMatrixMode || isAllSubjectsMode ? '2px 1px' : '2.5px 3px'}; line-height: 1.25; }
     tr:nth-child(even) { background: #FAFAFA; }
-    .signatures { margin-top: 20px; display: flex; justify-content: space-between; page-break-inside: avoid; gap: 16px; flex-wrap: wrap; }
-    .sig-box { text-align: center; min-width: 180px; max-width: 280px; flex: 1; font-size: 9pt; }
-    .sig-stamp-zone { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .sig-dots { font-size: 9pt; color: #334155; }
-    .sig-line { margin-top: 4px; color: #334155; font-size: 9pt; }
+    .signatures { margin-top: 20px; display: flex; justify-content: space-around; page-break-inside: avoid; gap: 16px; flex-wrap: nowrap; }
+    .sig-box { text-align: center; min-width: 210px; max-width: 340px; flex: 1; font-size: 9pt; }
+    .sig-stamp-zone { min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+    .sig-dots { font-size: 9pt; color: #334155; white-space: nowrap; }
+    .sig-name, .sig-title, .sig-date { margin-top: 3px; color: #334155; font-size: 9pt; white-space: nowrap; }
     .footer { margin-top: 18px; padding-top: 6px; border-top: 1px solid #CBD5E1; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; clear: both; }
     @media print {
       .no-print { display: none !important; }

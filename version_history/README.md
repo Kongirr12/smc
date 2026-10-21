@@ -9,7 +9,8 @@
 
 | เวอร์ชัน | วันที่อัปเดต | หัวข้อการปรับปรุงหลัก | ไฟล์เอกสาร |
 | :--- | :--- | :--- | :--- |
-| **v3.3.5** 🔥 *(ล่าสุด)* | 21 ต.ค. 2569 | **เวอร์ชันพัฒนาล่าสุด (Latest Release)**: ยกระดับความเร็วสูงสุดทั้ง Frontend & Backend (Single-Trip Bundled RPC, Full `CACHE_TTL_MAP`), เชื่อมต่อฟังก์ชันครบ 100% | [CHANGELOG.md](../CHANGELOG.md) |
+| **v3.3.6** 🔥 *(ล่าสุด)* | 21 ต.ค. 2569 | **เวอร์ชันพัฒนาล่าสุด (Latest Release)**: แก้ไขการแสดงผลเอกสารพิมพ์ทั้งหมด (1:1 WYSIWYG Preview & Print), ป้องกันชื่อนักเรียนและลายเซ็นตกขอบ/ตัดบรรทัด, รองรับ Responsive มือถือ 100% | [CHANGELOG.md](../CHANGELOG.md) |
+| **v3.3.5** | 21 ต.ค. 2569 | ยกระดับความเร็วสูงสุดทั้ง Frontend & Backend (Single-Trip Bundled RPC, Full `CACHE_TTL_MAP`), เชื่อมต่อฟังก์ชันครบ 100% | [CHANGELOG.md](../CHANGELOG.md) |
 | **v3.3.4** | 21 ต.ค. 2569 | ซิงค์ลายเซ็น ผอ. นายอธิการ สุขศรี อัตโนมัติ, แยกลายเซ็นรายระดับชั้น ม.1-ม.6, ศูนย์ดาวน์โหลด SGS AutoGrade v1.0.3 | [CHANGELOG.md](../CHANGELOG.md) |
 | **v2.7.8** | 24 ก.ย. 2569 | ศูนย์รวมแบบฟอร์ม 4 ฝ่าย (30 แบบฟอร์ม), ยืนยันชื่อผู้อำนวยการ "นายอธิการ สุขศรี", ผู้จัดทำ "ครูก้องนที อุ่นเจริญ", ปรับประสิทธิภาพความเร็วสูงสุด | [v2.7.8-latest-release.md](./v2.7.8-latest-release.md) |
 | **v2.6.0** | 23 ก.ย. 2569 | ยกระดับความเร็วและความลื่นไหลของระบบแบบก้าวกระโดด (Instant Attendance 0.5ms, PWA Service Worker & Backend Cache) | [v2.6.0-extreme-performance-and-smoothness.md](./v2.6.0-extreme-performance-and-smoothness.md) |

@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.3.5',
+  APP_VERSION    : '3.3.6',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -8447,7 +8447,7 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     page-break-inside: avoid !important; break-inside: avoid !important;
   }
   .sig-box, .signature-row > div {
-    min-width: 160px; max-width: 250px; flex: 1;
+    min-width: 190px; max-width: 340px; flex: 1;
     display: flex; flex-direction: column; align-items: center; text-align: center;
   }
   .sig-stamp-zone {
@@ -8678,7 +8678,7 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
     page-break-inside: avoid !important; break-inside: avoid !important;
   }
   .sig-box, .sig-row > div {
-    min-width: 170px; max-width: 250px; flex: 1;
+    min-width: 190px; max-width: 340px; flex: 1;
     display: flex; flex-direction: column; align-items: center; text-align: center;
   }
   .sig-stamp-zone {
@@ -10310,7 +10310,7 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
     page-break-inside: avoid !important; break-inside: avoid !important;
   }
   .sig-box, .sig-row > div {
-    min-width: 170px; max-width: 250px; flex: 1;
+    min-width: 190px; max-width: 340px; flex: 1;
     display: flex; flex-direction: column; align-items: center; text-align: center;
   }
   .sig-stamp-zone {
