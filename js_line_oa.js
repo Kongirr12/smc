@@ -284,22 +284,28 @@ const _origRenderDashboard = window.renderDashboard;
 if (typeof _origRenderDashboard === 'function') {
   window.renderDashboard = function(container) {
     _origRenderDashboard(container);
-    // Inject LINE OA badge เล็กๆ ใน welcome row (lazy)
+    const appendLineBadge = (hasToken) => {
+      const wRow = document.querySelector('.welcome-row .sub');
+      if (!wRow || wRow.querySelector('.mhc-line-oa-badge')) return;
+      const badge = document.createElement('span');
+      badge.className = 'mhc-line-oa-badge';
+      badge.style.cssText = 'margin-left:8px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px;' +
+        (hasToken ? 'background:#DCFCE7; color:#15803D;' : 'background:#FEE2E2; color:#B91C1C;');
+      badge.innerHTML = hasToken ? '🟢 LINE OA เชื่อมต่อแล้ว' : '⚪ ยังไม่ได้ตั้งค่า LINE OA';
+      wRow.appendChild(badge);
+    };
+    if (window.APP && APP.dashboardData && APP.dashboardData.config && APP.dashboardData.config.line_oa_connected !== undefined) {
+      appendLineBadge(Boolean(APP.dashboardData.config.line_oa_connected));
+      return;
+    }
     setTimeout(() => {
       google.script.run
         .withSuccessHandler(res => {
-          if (res.status !== 'success') return;
-          const hasToken = !!res.data.line_channel_token;
-          const wRow = document.querySelector('.welcome-row .sub');
-          if (!wRow) return;
-          const badge = document.createElement('span');
-          badge.style.cssText = 'margin-left:8px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px;' +
-            (hasToken ? 'background:#DCFCE7; color:#15803D;' : 'background:#FEE2E2; color:#B91C1C;');
-          badge.innerHTML = hasToken ? '🟢 LINE OA เชื่อมต่อแล้ว' : '⚪ ยังไม่ได้ตั้งค่า LINE OA';
-          wRow.appendChild(badge);
+          if (!res || res.status !== 'success') return;
+          appendLineBadge(Boolean(res.data && res.data.line_channel_token));
         })
         .withFailureHandler(()=>{})
         .getLineSettings(APP.token);
-    }, 1200);
+    }, 600);
   };
 }

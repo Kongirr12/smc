@@ -196,20 +196,15 @@ function loadSchedData(silent) {
     content.innerHTML = '<div class="empty-state"><i class="bx bx-loader-alt bx-spin">\x3c/i>กำลังโหลดข้อมูล...\x3c/div>';
   }
 
-  // Not forcing tab to 'teacher' here so teachers can switch tabs
-
-  // โหลดพร้อมกัน 4 ชุด
-  let done = 0;
-  const check = () => {
-    if (++done < 4) return;
+  const finalizeSchedLoad = () => {
     // เลือกห้องเรียนแรกเป็นค่าเริ่มต้นหากยังไม่ได้เลือก
     if (!SchedState.classroom && SchedState.classrooms && SchedState.classrooms.length > 0) {
       SchedState.classroom = SchedState.classrooms[0];
     }
     // ถ้าเป็นครู → เลือกตัวเองอัตโนมัติ
-    if (APP.role === 'teacher') {
+    if (APP.role === 'teacher' && Array.isArray(SchedState.teachers)) {
       const own = SchedState.teachers.find(t =>
-        t.personnel_id && APP.user.username &&
+        t.personnel_id && APP.user && APP.user.username &&
         String(t.personnel_id).toLowerCase() === String(APP.user.username).toLowerCase()
       );
       if (own) SchedState.teacher_id = own.id;
@@ -217,43 +212,55 @@ function loadSchedData(silent) {
     renderSchedTab();
   };
 
+  // Single-trip bundled load via getSchedule (returns entries, classrooms, teachers, periods, rooms, subjects in 1 call)
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status === 'success') {
-        SchedState.entries    = res.data;
-        SchedState.classrooms = res.classrooms;
-        SchedState.teachers   = res.teachers;
+      if (res && res.status === 'success') {
+        SchedState.entries    = res.data || [];
+        SchedState.classrooms = res.classrooms || [];
+        SchedState.teachers   = res.teachers || [];
+        if (Array.isArray(res.periods)) {
+          SchedState.periods = res.periods;
+        }
+        if (Array.isArray(res.rooms)) {
+          SchedState.rooms = res.rooms;
+        }
+        if (Array.isArray(res.subjects)) {
+          SchedState.subjects = res.subjects;
+        }
+        // Fallback only if backend did not bundle periods/rooms/subjects
+        if (!Array.isArray(res.periods) || !Array.isArray(res.rooms) || !Array.isArray(res.subjects)) {
+          let pending = 0;
+          const checkFallback = () => { if (--pending <= 0) finalizeSchedLoad(); };
+          if (!Array.isArray(res.periods)) {
+            pending++;
+            google.script.run
+              .withSuccessHandler(r => { if (r && r.status === 'success' && r.data) SchedState.periods = r.data.periods || []; checkFallback(); })
+              .withFailureHandler(checkFallback)
+              .getPeriodConfig(SchedState.academic_year, SchedState.semester, APP.token);
+          }
+          if (!Array.isArray(res.rooms)) {
+            pending++;
+            google.script.run
+              .withSuccessHandler(r => { if (r && r.status === 'success') SchedState.rooms = r.data || []; checkFallback(); })
+              .withFailureHandler(checkFallback)
+              .getRooms({}, APP.token);
+          }
+          if (!Array.isArray(res.subjects)) {
+            pending++;
+            google.script.run
+              .withSuccessHandler(r => { if (r && r.status === 'success') SchedState.subjects = r.data || []; checkFallback(); })
+              .withFailureHandler(checkFallback)
+              .getSubjects({ per_page: 1000, academic_year: SchedState.academic_year, all_subjects: true }, APP.token);
+          }
+          if (pending === 0) finalizeSchedLoad();
+          return;
+        }
       }
-      check();
+      finalizeSchedLoad();
     })
-    .withFailureHandler(() => check())
-    .getSchedule({ academic_year:SchedState.academic_year, semester:SchedState.semester, view:'all' }, APP.token);
-
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success') {
-        SchedState.periods = res.data.periods || [];
-      }
-      check();
-    })
-    .withFailureHandler(() => check())
-    .getPeriodConfig(SchedState.academic_year, SchedState.semester, APP.token);
-
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success') SchedState.rooms = res.data;
-      check();
-    })
-    .withFailureHandler(() => check())
-    .getRooms({}, APP.token);
-
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success') SchedState.subjects = res.data || [];
-      check();
-    })
-    .withFailureHandler(() => check())
-    .getSubjects({ per_page: 1000, academic_year: SchedState.academic_year, all_subjects: true }, APP.token);
+    .withFailureHandler(() => finalizeSchedLoad())
+    .getSchedule({ academic_year: SchedState.academic_year, semester: SchedState.semester, view: 'all' }, APP.token);
 }
 
 function renderSchedTab() {

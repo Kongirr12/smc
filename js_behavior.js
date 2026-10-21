@@ -61,18 +61,28 @@ function renderBehavior(container) {
 
 function loadBehaviorData(silent) {
   if (!silent) showLoading('กำลังโหลด...');
-  let done = 0;
-  const check = () => { if (++done >= 2) { if (!silent) hideLoading(); renderBhvSummary(); } };
-
   google.script.run
-    .withSuccessHandler(res => { if (res.status==='success') BHV.summary = res.data; check(); })
-    .withFailureHandler(() => check())
+    .withSuccessHandler(res => {
+      if (res && res.status === 'success') {
+        BHV.summary = res.data || [];
+        if (res.presets) {
+          BHV.presets = res.presets;
+          if (!silent) hideLoading();
+          renderBhvSummary();
+          return;
+        }
+      }
+      google.script.run
+        .withSuccessHandler(r => {
+          if (r && r.status === 'success') BHV.presets = r.data;
+          if (!silent) hideLoading();
+          renderBhvSummary();
+        })
+        .withFailureHandler(() => { if (!silent) hideLoading(); renderBhvSummary(); })
+        .getBehaviorPresets(APP.token);
+    })
+    .withFailureHandler(() => { if (!silent) hideLoading(); renderBhvSummary(); })
     .getBehaviorSummary(APP.token);
-
-  google.script.run
-    .withSuccessHandler(res => { if (res.status==='success') BHV.presets = res.data; check(); })
-    .withFailureHandler(() => check())
-    .getBehaviorPresets(APP.token);
 }
 
 function switchBhvTab(tab) {

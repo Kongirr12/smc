@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.3.0',
+  APP_VERSION    : '3.3.5',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -322,6 +322,9 @@ function doPost(e) {
     if (typeof fn === 'function') {
       const result = fn.apply(null, args);
       return jsonResponse(result);
+    } else if (action) {
+      const routeRes = routeApi(action, payload.params || args[0] || {}, payload.token || args[1] || '');
+      return jsonResponse(routeRes);
     } else {
       return jsonResponse({ status: 'error', message: 'Action not found: ' + action });
     }
@@ -473,8 +476,12 @@ function routeApi(action, params, token) {
       case 'deleteCustomTemplate': return deleteCustomTemplate(params.id, token);
       case 'resetCustomTemplates': return resetCustomTemplates(token);
 
-      // ---------- REPORTS ----------
+      // ---------- REPORTS & SYSTEM SETTINGS ----------
       case 'getReportsOverview': return getReportsOverview(token);
+      case 'generateReport': return generateReport(params.reportType || params.type, params, token);
+      case 'getSystemSettings': return getSystemSettings(token);
+      case 'saveSystemSettings': return saveSystemSettings(params, token);
+      case 'getSystemInfo': return getSystemInfo(token);
 
       // ---------- USERS ----------
       case 'getUsers': return getUsers(params, token);
@@ -506,11 +513,13 @@ function routeApi(action, params, token) {
       case 'copySchedule': return copySchedule(params, token);
 
       // ---------- LINE OA ----------
+      case 'getLineSettings': return getLineSettings(token);
+      case 'saveLineSettings': return saveLineSettings(params, token);
       case 'getLineOAConfig': return getLineOAConfig(token);
       case 'saveLineOAConfig': return saveLineOAConfig(params, token);
       case 'sendBroadcast': return sendBroadcast(params, token);
       case 'getLineMessages': return getLineMessages(params, token);
-      case 'testLineNotify': return testLineNotify(params.id, token);
+      case 'testLineNotify': return testLineNotify(params.id || params.targetType, token);
 
       // ---------- STUDENT CARD ----------
       case 'getStudentCardData': return getStudentCardData(params, token);
@@ -712,10 +721,11 @@ function _clearCacheChunks_(key) {
     const meta = cache.get(key + '_meta');
     if (meta) {
       const chunks = parseInt(meta, 10);
+      const keysToRemove = [key + '_meta'];
       for (let i = 0; i < chunks; i++) {
-        cache.remove(key + '_chunk_' + i);
+        keysToRemove.push(key + '_chunk_' + i);
       }
-      cache.remove(key + '_meta');
+      cache.removeAll(keysToRemove);
     }
   } catch(e) {}
 }
@@ -1155,25 +1165,8 @@ function logout(sessionToken) {
 function validateSession(sessionToken) {
   try {
     if (!sessionToken) return { valid:false, message:'session_invalid', code:401 };
-    const sessions = readJsonSheet_('Sessions');
-    const s = sessions.find(x => x.token === sessionToken);
-    if (!s) return { valid:false, message:'session_invalid', code:401 };
-    if (new Date(s.expires_at).getTime() < Date.now()) {
-      logout(sessionToken);
-      return { valid:false, expired:true, message:'session_invalid', code:401 };
-    }
-    const users = readJsonSheet_('Users');
-    const user = users.find(u => u.id === s.user_id);
-    if (!user) return { valid:false, message:'session_invalid', code:401 };
-    const safe = Object.assign({}, user);
-    delete safe.password;
-    if (!safe.signature) {
-      try {
-        const personnel = readJsonSheet_('Personnel');
-        const p = personnel.find(px => String(px.personnel_id || '').toLowerCase() === String(user.username || '').toLowerCase() || px.id === user.id);
-        if (p && p.signature) safe.signature = p.signature;
-      } catch (_) {}
-    }
+    const light = validateSessionLight_(sessionToken);
+    if (!light || !light.valid) return light || { valid:false, message:'session_invalid', code:401 };
 
     let dashboardData = null;
     try {
@@ -1181,15 +1174,15 @@ function validateSession(sessionToken) {
       if (dash.status === 'success') {
         dashboardData = dash.data;
         const notifs = readJsonSheet_('Notifications');
-        dashboardData.unread_notifications = notifs.filter(n => n.user_id === safe.id && !n.is_read);
+        dashboardData.unread_notifications = notifs.filter(n => n.user_id === light.user.id && !n.is_read);
       }
     } catch(err) {}
 
     return {
       valid: true,
-      user: safe,
-      role: s.role,
-      role_info: CONFIG.USER_ROLES[s.role] || null,
+      user: light.user,
+      role: light.role,
+      role_info: light.role_info || CONFIG.USER_ROLES[light.role] || null,
       dashboardData: dashboardData
     };
   } catch (e) {
@@ -1452,7 +1445,7 @@ function getDashboardDataCore_() {
   const result = {
     status: 'success',
     data: {
-      config: { school_name: config.school_name, school_logo: config.school_logo, academic_year: config.academic_year, semester: config.semester, director_name: config.director_name || 'นายอธิการ สุขศรี' },
+      config: { school_name: config.school_name, school_logo: config.school_logo, academic_year: config.academic_year, semester: config.semester, director_name: config.director_name || 'นายอธิการ สุขศรี', line_oa_connected: Boolean(config.line_channel_token) },
       stats: {
         students      : studentsActive,
         personnel     : personnelActive,
@@ -2301,6 +2294,7 @@ function generateStudentId() {
  */
 function ensureExecutivePersonnel_() {
   try {
+    if (_jsonSheetCache_._execProvisioned) return false;
     const personnel = readJsonSheet_('Personnel');
     const now = new Date().toISOString();
     let hasChanges = false;
@@ -2374,6 +2368,7 @@ function ensureExecutivePersonnel_() {
     if (hasChanges) {
       clearCachedKeys_('teachers_dropdown');
     }
+    _jsonSheetCache_._execProvisioned = true;
     return hasChanges;
   } catch (e) {
     logError({ fn:'ensureExecutivePersonnel_', error:e.message });
@@ -3388,7 +3383,20 @@ function getClassrooms(sessionToken) {
     if (!auth.ok) return auth.response;
     const all = readJsonSheet_('Students');
     const list = Array.from(new Set(all.map(s => s.classroom).filter(Boolean))).sort();
-    return { status:'success', data:list };
+    let subjects = [];
+    let periods = DEFAULT_PERIODS;
+    try {
+      const subRes = getSubjects({}, sessionToken);
+      if (subRes && subRes.status === 'success') subjects = subRes.data || [];
+    } catch (_) {}
+    try {
+      const cfg = getConfig();
+      const pRes = getPeriodConfig(cfg.academic_year || '', cfg.semester || '1', sessionToken);
+      if (pRes && pRes.status === 'success' && pRes.data && Array.isArray(pRes.data.periods)) {
+        periods = pRes.data.periods;
+      }
+    } catch (_) {}
+    return { status:'success', data:list, subjects:subjects, periods:periods };
   } catch (e) {
     return { status:'error', message:e.message };
   }
@@ -7793,15 +7801,37 @@ function getSchedule(params, sessionToken) {
     // distinct teachers ที่ active
     const teachers = personnel
       .filter(p => p.type === 'teacher' && p.status !== 'inactive')
-      .map(p => ({ id:p.id, name:(p.prefix||'')+(p.first_name||'')+' '+(p.last_name||''), department:p.department, personnel_id:p.personnel_id }));
+      .map(p => ({ id:p.id, name:(p.prefix||'')+(p.first_name||'')+' '+(p.last_name||''), first_name:p.first_name||'', department:p.department, personnel_id:p.personnel_id }));
+
+    // Bundle periods, rooms, and subjects in 1 response so loadSchedData needs only 1 network request
+    let periods = DEFAULT_PERIODS;
+    try {
+      const pCfg = getPeriodConfig(ay, sem, sessionToken);
+      if (pCfg && pCfg.status === 'success' && pCfg.data && Array.isArray(pCfg.data.periods)) {
+        periods = pCfg.data.periods;
+      }
+    } catch (_) {}
+
+    const sortedRooms = rooms.slice().sort((a,b) => String(a.building||'').localeCompare(String(b.building||''),'th') || String(a.name||'').localeCompare(String(b.name||''),'th'));
+
+    let enrichedSubjects = [];
+    try {
+      const subRes = getSubjects({ per_page: 1000, academic_year: ay, all_subjects: true }, sessionToken);
+      if (subRes && subRes.status === 'success') enrichedSubjects = subRes.data || [];
+    } catch (_) {
+      enrichedSubjects = subjects;
+    }
 
     return {
-      status     : 'success',
-      data       : enriched,
-      classrooms : classrooms,
-      teachers   : teachers,
+      status       : 'success',
+      data         : enriched,
+      classrooms   : classrooms,
+      teachers     : teachers,
+      periods      : periods,
+      rooms        : sortedRooms,
+      subjects     : enrichedSubjects,
       academic_year: ay,
-      semester   : sem
+      semester     : sem
     };
 
   } catch(e) {
@@ -9938,7 +9968,7 @@ function getBehaviorSummary(sessionToken) {
       };
     });
     summary.sort((a, b) => a.total_score - b.total_score);
-    return { status:'success', data:summary, total:summary.length };
+    return { status:'success', data:summary, total:summary.length, presets:BEHAVIOR_PRESETS };
   } catch(e) { return { status:'error', message:e.message }; }
 }
 
@@ -10650,6 +10680,7 @@ function sendChatMessage(sessionToken, recipientId, content, type) {
           title: `💬 ข้อความใหม่จาก ${user.name}`,
           message: text.length > 60 ? text.substring(0, 57) + '...' : text,
           type: 'chat',
+          is_read: false,
           read: false,
           created_at: new Date().toISOString(),
           link: '#chat'
@@ -10685,4 +10716,79 @@ function clearOldChatMessages(sessionToken) {
   } catch (e) {
     return { status: 'error', message: e.message };
   }
+}
+
+/* ============================================================
+ *  Compatibility & Alias Wrappers (Prevent ReferenceError on routeApi/legacy calls)
+ * ============================================================ */
+function getLineOAConfig(sessionToken) { return getLineSettings(sessionToken); }
+function saveLineOAConfig(data, sessionToken) { return saveLineSettings(data, sessionToken); }
+function checkScheduleConflicts(params, sessionToken) {
+  params = params || {};
+  return getAllConflicts(params.academic_year || params.year, params.semester || params.sem, sessionToken);
+}
+function copySchedule(params, sessionToken) {
+  params = params || {};
+  return copyScheduleSemester(params.fromYear, params.fromSem, params.toYear, params.toSem, sessionToken);
+}
+function saveSchedule(params, sessionToken) { return saveScheduleEntry(params, sessionToken); }
+function deleteSchedule(id, sessionToken) {
+  const auth = _requireAuth_(sessionToken, true);
+  if (!auth.ok) return auth.response;
+  const ok = deleteJsonById_('Schedule', id);
+  return ok ? { status:'success', message:'ลบคาบเรียนสำเร็จ' } : { status:'error', message:'ไม่พบรายการ' };
+}
+function exportAttendance(params, sessionToken) { return exportData('attendance', sessionToken); }
+function getAttendanceByStudent(studentId, sessionToken) {
+  const auth = _requireAuth_(sessionToken);
+  if (!auth.ok) return auth.response;
+  const all = readJsonSheet_('Attendance').filter(a => a.student_id === studentId);
+  return { status:'success', data:all };
+}
+function getClassroomById(id, sessionToken) {
+  const auth = _requireAuth_(sessionToken);
+  if (!auth.ok) return auth.response;
+  const room = readJsonSheet_('Classrooms').find(r => r.id === id);
+  return room ? { status:'success', data:room } : { status:'error', message:'ไม่พบห้องเรียน' };
+}
+function getFinancialReport(params, sessionToken) { return generateReport('finance_summary', params || {}, sessionToken); }
+function getGradeReport(studentId, sessionToken) { return calculateGPA(studentId, '', sessionToken); }
+function saveGradeSheet(params, sessionToken) {
+  params = params || {};
+  return saveGradeBulk(params.subject_id || params.id, params.records || [], sessionToken, params.academic_year || params.year, params.semester || params.sem);
+}
+function importStudents(params, sessionToken) {
+  const records = params && params.records ? (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records) : (Array.isArray(params) ? params : []);
+  return importStudentsCSV(records, sessionToken);
+}
+function importPersonnel(params, sessionToken) {
+  const records = params && params.records ? (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records) : (Array.isArray(params) ? params : []);
+  return importPersonnelCSV(records, sessionToken);
+}
+function getStudentCardData(params, sessionToken) {
+  return getStudents(Object.assign({ per_page: 500, status: 'active' }, params || {}), sessionToken);
+}
+function scanAttendance(code, sessionToken) {
+  return recordQRAttendance(code, new Date().toISOString().slice(0, 10), sessionToken);
+}
+function sendBroadcast(params, sessionToken) {
+  const auth = _requireAuth_(sessionToken, true);
+  if (!auth.ok) return auth.response;
+  const cfg = getLineConfig_();
+  if (!cfg.token || !cfg.schoolGroup) return { status:'error', message:'ยังไม่ได้ตั้งค่า LINE OA หรือ Group โรงเรียน' };
+  const text = (params && (params.message || params.text)) || '';
+  if (!text) return { status:'error', message:'กรุณาระบุข้อความ' };
+  const ok = lineaPushMessage_(cfg.schoolGroup, [{ type:'text', text:text }], cfg.token);
+  return ok ? { status:'success', message:'ส่งข้อความสำเร็จ' } : { status:'error', message:'ส่งข้อความไม่สำเร็จ' };
+}
+function getLineMessages(params, sessionToken) {
+  const auth = _requireAuth_(sessionToken);
+  if (!auth.ok) return auth.response;
+  return { status:'success', data:[] };
+}
+function sendPasswordReset(email) {
+  return { status:'error', message:'กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่านได้ที่เมนู จัดการผู้ใช้งาน' };
+}
+function resetPasswordByToken(token, newPassword) {
+  return { status:'error', message:'กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน' };
 }

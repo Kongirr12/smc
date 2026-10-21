@@ -3,7 +3,52 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.3.0] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.3.5] - 2026-10-21 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### ⚡ ยกระดับความเร็วสูงสุดทั้งระบบ (Full-Stack Extreme Speed) และเชื่อมต่อฟังก์ชัน RPC ครบ 100%
+- **ลดจำนวนการเรียก API ซ้ำซ้อนด้วย Single-Trip Bundled Payloads (`code.gs`, `js_schedule.js`, `js2.js`, `js_behavior.js`, `js_line_oa.js`):**
+  - **หน้าตารางสอน (`getSchedule`):** รวมข้อมูล `periods`, `rooms`, และ `subjects` มาพร้อมกับรายการตารางสอนในคำขอเดียว ลดจำนวนการยิง API ตอนเปิดหน้าตารางสอนจาก 4 คำขอ เหลือเพียง **1 คำขอ** (เร็วขึ้น 4 เท่า)
+  - **หน้าการเข้าเรียน (`getClassrooms`):** รวมข้อมูล `subjects` และ `periods` มาในคำขอเดียว พร้อมแสดงผลทันที 0ms เมื่อมีข้อมูลใน State ลดการยิง API ตอนเข้าหน้าเช็คชื่อจาก 3 คำขอ เหลือ **1 คำขอ**
+  - **หน้าพฤติกรรมนักเรียน (`getBehaviorSummary`):** แนบ `presets` มาพร้อมข้อมูลสรุปพฤติกรรม ลดการยิง API จาก 2 คำขอ เหลือ **1 คำขอ**
+  - **ป้ายสถานะ LINE OA บนหน้าหลัก (`getDashboardDataCore_`):** แนบสถานะ `line_oa_connected` มาพร้อมข้อมูลแดชบอร์ด ไม่ต้องยิง `getLineSettings` ซ้ำหลังเปิดหน้าหลัก
+- **ปรับปรุงระบบ Micro-Cache & Selective Cache Invalidation (`index.html`):**
+  - ปรับรายชื่อฟังก์ชันใน `CACHE_TTL_MAP` ให้ตรงกับฟังก์ชัน RPC จริงครบทั้ง 39 รายการ พร้อมระบบบันทึกแคชลง `sessionStorage` แบบ Debounced (`_scheduleCacheFlush`) ไม่บล็อก UI Thread
+  - ปรับปรุงการล้างแคช (`createRunner`) โดยไม่ล้างแคชทั้งหมดเมื่อเรียก `saveTemporaryPrintDoc`, `pingOnlineStatus`, `testLineNotify`, หรือส่งข้อความแชท (`sendChatMessage`)
+- **เพิ่มความเร็ว Backend & เชื่อมต่อฟังก์ชันครบ 100% (`code.gs`):**
+  - ปรับ `_clearCacheChunks_` ให้ลบแคชด้วย `cache.removeAll` ในคำสั่งเดียว และปรับ `validateSession` ให้ดึง `fast_sess_` จาก `CacheService` ทันที
+  - เพิ่ม `generateReport`, `getLineSettings`, `saveLineSettings`, `getSystemInfo`, `getSystemSettings`, `saveSystemSettings` ใน `routeApi` พร้อมสร้างฟังก์ชัน Wrapper รองรับ Action สำรองครบทุกตัว
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.5` พร้อมอัปเดต Query String `?v=3.3.5` ใน `index.html` และ `CONFIG.APP_VERSION` เป็น `3.3.5` ใน `code.gs`
+
+---
+
+## [v3.3.4] - 2026-10-21
+### ✍️ ซิงค์ลายเซ็นผู้อำนวยการจากเซิร์ฟเวอร์อัตโนมัติ และแก้ไขการแสดงผลชื่อครูผู้ลงนาม
+- **Auto-Sync Director Signature (`ensureClassroomTeachersMap` ใน `js3.js` & `code.gs`):** ซิงค์ลายเซ็นจริงของผู้อำนวยการโรงเรียน (**นายอธิการ สุขศรี**) จากชีต `Personnel` บนเซิร์ฟเวอร์อัตโนมัติ และแก้ไข Fallback ชื่อครูผู้ลงนามไม่ให้แสดงจุดไข่ปลาเมื่อมีข้อมูลครูในระบบ
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.4` พร้อมอัปเดต Query String `?v=3.3.4` ใน `index.html` และ `CONFIG.APP_VERSION` เป็น `3.3.4` ใน `code.gs`
+
+---
+
+## [v3.3.3] - 2026-10-21
+### 🛠️ แก้ไขข้อผิดพลาด TDZ ReferenceError และอาการหน้าต่างค้างในศูนย์จัดการลายเซ็น
+- **Signature Manager Modal Stability (`js3.js`):** แก้ไขลำดับการประกาศตัวแปร (Temporal Dead Zone ReferenceError) และแก้ไขปัญหา Backdrop ค้างเมื่อเปิด/ปิดหน้าต่างตั้งค่าลายเซ็นดิจิทัล
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.3` และ Query String `?v=3.3.3`
+
+---
+
+## [v3.3.2] - 2026-10-21
+### 🖨️ ปรับตำแหน่งลายเซ็นตารางสอน ประทับลายเซ็น ผอ. อัตโนมัติ และจัดระเบียบปุ่มแถบเครื่องมือพิมพ์
+- **Schedule Signature Alignment & Director Auto-Stamp (`code.gs`, `js3.js`):** จัดแนวบล็อกลายเซ็นในตารางสอนให้สมดุล ประทับลายเซ็นผู้อำนวยการโรงเรียน (**นายอธิการ สุขศรี**) อัตโนมัติ และปรับปรุงปุ่มบนแถบเครื่องมือตัวอย่างก่อนพิมพ์ (Print Preview Toolbar)
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.2` และ Query String `?v=3.3.2`
+
+---
+
+## [v3.3.1] - 2026-10-21
+### 🏫 ระบบแยกลายเซ็นตามระดับชั้น (ม.1 - ม.6) และจับคู่ครูประจำชั้นอัตโนมัติ (Smart Auto-Match)
+- **Grade-Level & Classroom-Specific Signature Separation (`code.gs`, `js1.js`, `js2.js`, `js3.js`):** รองรับการตั้งค่าลายเซ็นครูประจำชั้นแยกตามระดับชั้น ม.1 – ม.6 พร้อมโหมดตรวจจับและดึงลายเซ็นครูประจำชั้นตรงตามห้องเรียนอัตโนมัติ (`getClassroomTeachersMap`)
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.1` และ Query String `?v=3.3.1`
+
+---
+
+## [v3.3.0] - 2026-10-21
 ### ⚡ เชื่อมโยงศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade v1.0.3) รองรับ Windows, macOS และส่วนขยาย Chrome
 - **เพิ่มเมนู "โปรแกรมช่วยกรอก SGS" ในหมวดระบบภายนอก (ส่วนเสริม):**
   - เพิ่มเมนูใหม่ในแถบ Sidebar หมวดที่ 4: ระบบภายนอก (ส่วนเสริม) เชื่อมโยงไปยังหน้าศูนย์ดาวน์โหลดโปรแกรมช่วยกรอกคะแนน SGS (AutoGrade v1.0.3) สำหรับครูผู้สอน

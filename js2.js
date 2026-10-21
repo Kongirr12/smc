@@ -1814,44 +1814,52 @@ function renderAttendance(container) {
     AttendanceState.mode = 'class';
   }
 
-  let loaded = 0;
-  const checkReady = () => {
-    if (++loaded >= 3) {
-      if (AttendanceState.tab === 'overview') {
-        renderAttendanceOverviewTab();
-      } else if (AttendanceState.tab === 'report') {
-        renderAttendanceReport();
-      } else {
-        renderAttendanceRecord();
-      }
+  const renderActiveAttTab = () => {
+    if (AttendanceState.tab === 'overview') {
+      renderAttendanceOverviewTab();
+    } else if (AttendanceState.tab === 'report') {
+      renderAttendanceReport();
+    } else {
+      renderAttendanceRecord();
     }
   };
 
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success') AttendanceState.classrooms = res.data;
-      checkReady();
-    })
-    .withFailureHandler(() => checkReady())
-    .getClassrooms(APP.token);
+  // หากมีข้อมูลใน State แล้ว ให้แสดงผลทันที 0ms แล้วค่อยอัปเดตเบื้องหลัง
+  const hasCachedState = Array.isArray(AttendanceState.classrooms) && AttendanceState.classrooms.length > 0 &&
+                         Array.isArray(AttendanceState.periods) && AttendanceState.periods.length > 0;
+  if (hasCachedState) {
+    renderActiveAttTab();
+  }
 
   google.script.run
     .withSuccessHandler(res => {
-      if (res.status === 'success') AttendanceState.subjects = res.data || [];
-      checkReady();
-    })
-    .withFailureHandler(() => checkReady())
-    .getSubjects({}, APP.token);
-
-  google.script.run
-    .withSuccessHandler(res => {
-      if (res.status === 'success' && res.data) {
-        AttendanceState.periods = res.data.periods || [];
+      if (res && res.status === 'success') {
+        AttendanceState.classrooms = res.data || [];
+        if (Array.isArray(res.subjects)) {
+          AttendanceState.subjects = res.subjects;
+        }
+        if (Array.isArray(res.periods)) {
+          AttendanceState.periods = res.periods;
+        }
+        if (Array.isArray(res.subjects) && Array.isArray(res.periods)) {
+          if (!hasCachedState) renderActiveAttTab();
+          return;
+        }
       }
-      checkReady();
+      // Fallback if backend did not bundle subjects/periods
+      let pending = 2;
+      const doneFallback = () => { if (--pending <= 0 && !hasCachedState) renderActiveAttTab(); };
+      google.script.run
+        .withSuccessHandler(r => { if (r && r.status === 'success') AttendanceState.subjects = r.data || []; doneFallback(); })
+        .withFailureHandler(doneFallback)
+        .getSubjects({}, APP.token);
+      google.script.run
+        .withSuccessHandler(r => { if (r && r.status === 'success' && r.data) AttendanceState.periods = r.data.periods || []; doneFallback(); })
+        .withFailureHandler(doneFallback)
+        .getPeriodConfig(APP.dashboardData?.config?.academic_year || '', APP.dashboardData?.config?.semester || '', APP.token);
     })
-    .withFailureHandler(() => checkReady())
-    .getPeriodConfig(APP.dashboardData?.config?.academic_year || '', APP.dashboardData?.config?.semester || '', APP.token);
+    .withFailureHandler(() => { if (!hasCachedState) renderActiveAttTab(); })
+    .getClassrooms(APP.token);
 }
 
 function switchAttendanceTab(tab) {

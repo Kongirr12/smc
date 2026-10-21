@@ -11,14 +11,14 @@
   <title>MHC Smart School</title>
   
   <!-- App Favicon & Apple Touch Icons (Mac Safari Bookmark & Share) -->
-  <link rel="icon" type="image/x-icon" href="favicon.ico?v=3.3.4" id="favicon">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=3.3.4">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=3.3.4">
-  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png?v=3.3.4">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.3.4">
-  <link rel="apple-touch-icon" href="app-icon.jpg?v=3.3.4">
-  <link rel="shortcut icon" href="favicon-32.png?v=3.3.4">
-  <link rel="manifest" href="manifest.json?v=3.3.4">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=3.3.5" id="favicon">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=3.3.5">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=3.3.5">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png?v=3.3.5">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.3.5">
+  <link rel="apple-touch-icon" href="app-icon.jpg?v=3.3.5">
+  <link rel="shortcut icon" href="favicon-32.png?v=3.3.5">
+  <link rel="manifest" href="manifest.json?v=3.3.5">
   
   <!-- Open Graph & Meta for macOS Safari bookmark / Share sheet -->
   <meta property="og:type" content="website">
@@ -78,49 +78,93 @@
     // High-performance In-flight Deduplication & Micro-cache
     const _apiCache = new Map();
     const _inFlightRequests = new Map();
+    const _PERSIST_ACTIONS = new Set([
+      'getConfig', 'getTeachersForDropdown', 'getClassroomsForDropdown',
+      'getPeriodConfig', 'getUsersAndTeachers', 'getClassrooms',
+      'getClassroomList', 'getClassroomTeachersMap', 'getSubjects',
+      'getRooms', 'getSchedule', 'getBehaviorPresets', 'getLineSettings',
+      'getSystemSettings', 'getDashboardData'
+    ]);
+    let _cacheFlushTimer = null;
+    function _scheduleCacheFlush() {
+      if (_cacheFlushTimer) return;
+      _cacheFlushTimer = setTimeout(() => {
+        _cacheFlushTimer = null;
+        try {
+          const toSave = {};
+          const now = Date.now();
+          for (const [k, v] of _apiCache.entries()) {
+            const actionName = k.split(':')[0];
+            if (_PERSIST_ACTIONS.has(actionName) && (now - v.time < 300000)) {
+              toSave[k] = v;
+            }
+          }
+          sessionStorage.setItem('sso_api_cache', JSON.stringify(toSave));
+        } catch (_) {}
+      }, 180);
+    }
 
-    // Hydrate persistent dropdowns from sessionStorage for 0ms initial form renders
+    // Hydrate persistent caches from sessionStorage for 0ms initial renders
     try {
       const persistedCache = sessionStorage.getItem('sso_api_cache');
       if (persistedCache) {
         const parsed = JSON.parse(persistedCache);
         const now = Date.now();
         Object.keys(parsed).forEach(k => {
-          if (now - parsed[k].time < 300000) {
+          if (parsed[k] && (now - parsed[k].time < 300000)) {
             _apiCache.set(k, parsed[k]);
           }
         });
       }
     } catch (_) {}
 
-    // High-speed API cache TTL (ms) for ultra-fast navigation
+    // High-speed API cache TTL (ms) aligned 100% with actual RPC endpoints
     const CACHE_TTL_MAP = {
       'getConfig': 300000,
+      'getSystemSettings': 300000,
+      'getSystemInfo': 180000,
+      'getLineSettings': 300000,
       'getTeachersForDropdown': 300000,
       'getClassroomsForDropdown': 300000,
+      'getClassroomTeachersMap': 300000,
       'getPeriodConfig': 300000,
       'getUsersAndTeachers': 300000,
-      'getStudents': 60000,
-      'getClassrooms': 120000,
-      'getClassroomData': 120000,
-      'getSubjects': 180000,
-      'getPersonnel': 180000,
-      'getCalendarEvents': 120000,
       'getRooms': 300000,
-      'getSchoolYear': 300000,
-      'getDashboardData': 30000,
-      'getSidebarBadges': 60000,
-      'getReportsOverview': 60000,
-      'getCustomTemplates': 120000,
-      'getDepartments': 300000,
-      'getScheduleData': 60000,
-      'getScheduleConfig': 180000,
-      'getScheduleBatchData': 60000,
+      'getBehaviorPresets': 300000,
+      'getCustomTemplates': 180000,
+      'getSubjects': 180000,
+      'getSubjectById': 180000,
+      'getPersonnel': 180000,
+      'getPersonnelById': 180000,
+      'getClassrooms': 120000,
+      'getClassroomList': 120000,
+      'getClassroomStudents': 120000,
+      'getPromotionPreview': 120000,
+      'getCalendarEvents': 120000,
+      'getFilesList': 120000,
+      'getUsers': 120000,
+      'getStudents': 60000,
+      'getStudentById': 60000,
+      'getSchedule': 90000,
+      'getAllConflicts': 60000,
+      'getTeacherWorkload': 60000,
+      'getGradeSheet': 60000,
+      'calculateGPA': 60000,
+      'getAttendanceFilterOptions': 180000,
+      'getAttendanceByClassDate': 45000,
+      'getAttendanceBySubjectDate': 45000,
+      'getAttendanceReport': 60000,
       'getBehaviorSummary': 60000,
-      'getBehaviorHistory': 60000,
-      'getStudentCardData': 120000,
-      'getLineOaConfig': 300000,
-      'getFinanceOverview': 60000
+      'getBehaviorRecords': 60000,
+      'getTransactions': 60000,
+      'getFinanceSummary': 60000,
+      'getDocuments': 60000,
+      'getApprovals': 45000,
+      'getRegistrations': 60000,
+      'getReportsOverview': 60000,
+      'getDashboardData': 45000,
+      'getSidebarBadges': 60000,
+      'getOnlineUsers': 20000
     };
 
     window.clearAppCache = function(actionPrefix) {
@@ -134,7 +178,7 @@
           _apiCache.delete(key);
         }
       }
-      try { sessionStorage.removeItem('sso_api_cache'); } catch (_) {}
+      _scheduleCacheFlush();
     };
 
     let _sessionRedirectActive = false;
@@ -216,10 +260,23 @@
             return function(fn) { failureHandler = fn; return proxy; };
           }
           return function(...args) {
-            const isMutation = /^(save|delete|import|transfer|change|review|record|update|logout|reset|autoAssign|clean|quickUpdate|enroll)/i.test(prop);
+            const isNonInvalidating = (prop === 'saveTemporaryPrintDoc' || prop === 'pingOnlineStatus' || prop === 'testLineNotify');
+            const isMutation = !isNonInvalidating && /^(save|delete|import|transfer|change|review|record|update|logout|reset|autoAssign|clean|quickUpdate|enroll|createUsers|executePromotion|rollbackPromotion|approve|reject|toggleUser|adminReset|uploadFile|markNotificationRead|sendChatMessage|clearOldChatMessages)/i.test(prop);
             if (isMutation) {
-              _apiCache.clear(); // Invalidate cache on mutations
-              try { sessionStorage.removeItem('sso_api_cache'); } catch (_) {}
+              if (prop === 'sendChatMessage' || prop === 'clearOldChatMessages') {
+                window.clearAppCache('getChatMessages');
+              } else if (prop === 'markNotificationRead') {
+                window.clearAppCache('getDashboardData');
+                window.clearAppCache('getSidebarBadges');
+              } else {
+                // Preserve static config/preset caches unless explicitly modified
+                for (const k of Array.from(_apiCache.keys())) {
+                  if (!/^(getConfig|getBehaviorPresets|getLineSettings):/.test(k) || /Config|Settings|Period/i.test(prop)) {
+                    _apiCache.delete(k);
+                  }
+                }
+                _scheduleCacheFlush();
+              }
             }
 
             const cacheKey = prop + ':' + JSON.stringify(args);
@@ -235,18 +292,18 @@
                 // Completely fresh cache hit: 0ms instant response
                 setTimeout(() => {
                   try {
-                    if (successHandler) successHandler(JSON.parse(JSON.stringify(item.data)));
+                    if (successHandler) successHandler( structuredClone ? structuredClone(item.data) : JSON.parse(JSON.stringify(item.data)) );
                   } catch (e) {
                     console.error("Cache success callback error:", e);
                   }
                 }, 0);
                 return proxy;
-              } else if (age < ttl * 2) {
+              } else if (age < ttl * 2.5) {
                 // SWR: return stale data immediately so UI doesn't lag, then revalidate in background
                 hasReturnedStale = true;
                 setTimeout(() => {
                   try {
-                    if (successHandler) successHandler(JSON.parse(JSON.stringify(item.data)));
+                    if (successHandler) successHandler( structuredClone ? structuredClone(item.data) : JSON.parse(JSON.stringify(item.data)) );
                   } catch (e) {}
                 }, 0);
               }
@@ -266,12 +323,8 @@
               .then(data => {
                 if (!isMutation && ttl > 0 && data && data.status !== 'error') {
                   _apiCache.set(cacheKey, { time: Date.now(), data: data });
-                  if (prop === 'getClassroomsForDropdown' || prop === 'getTeachersForDropdown' || prop === 'getConfig') {
-                    try {
-                      const toSave = JSON.parse(sessionStorage.getItem('sso_api_cache') || '{}');
-                      toSave[cacheKey] = { time: Date.now(), data: data };
-                      sessionStorage.setItem('sso_api_cache', JSON.stringify(toSave));
-                    } catch (_) {}
+                  if (_PERSIST_ACTIONS.has(prop)) {
+                    _scheduleCacheFlush();
                   }
                 }
                 return data;
@@ -376,12 +429,12 @@
   <script src="html2pdf.bundle.min.js"></script>
 
   <!-- SheetJS — สร้างและส่งออกไฟล์ Excel (.xlsx) และ CSV สำหรับระบบ SGS -->
-  <script src="xlsx.full.min.js?v=3.3.4"></script>
+  <script src="xlsx.full.min.js?v=3.3.5"></script>
 
   <!-- Boxicons (แทน Flaticon ที่ต้อง download) -->
   <link href='https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css?v=3.3.4">
+  <link rel="stylesheet" href="styles.css?v=3.3.5">
 </head>
 <body>
 
@@ -552,7 +605,7 @@
               <i class='bx bx-code-alt text-indigo-500'></i>
               <span>พัฒนาระบบโดย <b>ครูก้องนที อุ่นเจริญ</b></span>
               <span class="text-slate-300 dark:text-slate-700">•</span>
-              <span class="font-mono text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v3.3.4</span>
+              <span class="font-mono text-[9px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">v3.3.5</span>
             </div>
           </div>
         </form>
@@ -831,19 +884,19 @@
   <!-- Universal In-App Print Area for Standalone PWA / Mobile Printing -->
   <div id="inAppPrintArea" style="display:none;"></div>
 
-  <script src="js1.js?v=3.3.4"></script>
-  <script src="js2.js?v=3.3.4"></script>
-  <script src="js3.js?v=3.3.4"></script>
-  <script src="js4.js?v=3.3.4"></script>
-  <script src="js_chat.js?v=3.3.4"></script>
-  <script src="js_schedule.js?v=3.3.4"></script>
-  <script src="js_classroom.js?v=3.3.4"></script>
-  <script src="js_behavior.js?v=3.3.4"></script>
-  <script src="js_student_card.js?v=3.3.4"></script>
-  <script src="js_qr_attendance.js?v=3.3.4"></script>
-  <script src="js_line_oa.js?v=3.3.4"></script>
-  <script src="js_manual.js?v=3.3.4"></script>
-  <script src="js_templates.js?v=3.3.4"></script>
+  <script src="js1.js?v=3.3.5"></script>
+  <script src="js2.js?v=3.3.5"></script>
+  <script src="js3.js?v=3.3.5"></script>
+  <script src="js4.js?v=3.3.5"></script>
+  <script src="js_chat.js?v=3.3.5"></script>
+  <script src="js_schedule.js?v=3.3.5"></script>
+  <script src="js_classroom.js?v=3.3.5"></script>
+  <script src="js_behavior.js?v=3.3.5"></script>
+  <script src="js_student_card.js?v=3.3.5"></script>
+  <script src="js_qr_attendance.js?v=3.3.5"></script>
+  <script src="js_line_oa.js?v=3.3.5"></script>
+  <script src="js_manual.js?v=3.3.5"></script>
+  <script src="js_templates.js?v=3.3.5"></script>
  
   <!-- PWA Service Worker Registration & Force Update -->
   <script>
