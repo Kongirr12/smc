@@ -10,7 +10,7 @@ function renderManual(container) {
         <h1><i class='bx bxs-book-reader text-primary' >\x3c/i> คู่มือการใช้งาน\x3c/h1>
         <div class="sub" style="line-height:1.6;">
           <i class='bx bx-info-circle'>\x3c/i> MHC Smart School — โรงเรียนมหาชัยพิทยาคาร สพม.มหาสารคาม<br>
-          <span style="font-size:12px; color:#64748b;">ผู้อำนวยการโรงเรียน: <b>นายอธิการ สุขศรี</b> • พัฒนาระบบโดย: <b>ครูก้องนที อุ่นเจริญ</b> • เวอร์ชัน <b>v3.1.2</b></span>
+          <span style="font-size:12px; color:#64748b;">ผู้อำนวยการโรงเรียน: <b>นายอธิการ สุขศรี</b> • พัฒนาระบบโดย: <b>ครูก้องนที อุ่นเจริญ</b> • เวอร์ชัน <b>v3.1.3</b></span>
         \x3c/div>
       \x3c/div>
     \x3c/div>

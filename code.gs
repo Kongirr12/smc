@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.1.2',
+  APP_VERSION    : '3.1.3',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -3907,23 +3907,41 @@ function generatePP5HTML(subjectId, sessionToken, academicYear, semester, classr
 }
 
 function renderPP5Template_(config, subject, teacher, rows, classroom, targetYear, targetSem) {
-  const teacherName = teacher.id ? ((teacher.prefix||'') + (teacher.first_name||'') + ' ' + (teacher.last_name||'')) : '...........................';
-  const grade = (g, special) => {
-    if (special) return special;
-    if (g == null) return '-';
-    return Number(g).toFixed(g % 1 ? 1 : 0);
-  };
+  const schoolLogo = config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
+  const schoolName = config.school_name || 'โรงเรียนมหาชัยพิทยาคาร';
+  const directorName = config.director_name || 'นายอธิการ สุขศรี';
+  const teacherName = teacher && teacher.id 
+    ? ((teacher.prefix || '') + (teacher.first_name || '') + ' ' + (teacher.last_name || '')).trim()
+    : 'ครูก้องนที อุ่นเจริญ';
 
-  const distinctRooms = Array.from(new Set(rows.map(r => r.classroom).filter(Boolean)))
+  const distinctRooms = Array.from(new Set((rows || []).map(r => r.classroom).filter(Boolean)))
     .sort((a,b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
 
   const isMultiRoom = (!classroom && distinctRooms.length > 1);
-
   const roomsToRender = isMultiRoom ? distinctRooms : [classroom || (distinctRooms[0] || '')];
 
   const sheetsHtml = roomsToRender.map((rm, rmIdx) => {
     const isLast = (rmIdx === roomsToRender.length - 1);
-    const roomRows = isMultiRoom ? rows.filter(r => r.classroom === rm) : rows;
+    const roomRows = (isMultiRoom ? rows.filter(r => r.classroom === rm) : rows) || [];
+
+    // เรียงลำดับตามเลขที่ -> รหัสนักเรียน -> ชื่อ
+    roomRows.sort((a, b) => {
+      const n1 = Number(a.student_number || 0);
+      const n2 = Number(b.student_number || 0);
+      if (n1 && n2) return n1 - n2;
+      return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+    });
+
+    // สถิติผลสัมฤทธิ์ทางการเรียนและการประเมิน
+    const stats = {
+      total: roomRows.length,
+      g4: 0, g35: 0, g3: 0, g25: 0, g2: 0, g15: 0, g1: 0, g0: 0,
+      ms: 0, mf: 0, r: 0,
+      passed: 0, g2up: 0,
+      q3: 0, q2: 0, q1: 0, q0: 0,
+      l3: 0, l2: 0, l1: 0, l0: 0,
+      sumPoints: 0, countGraded: 0
+    };
 
     const tableRows = roomRows.map((r, i) => {
       const m = (r.score_midterm === '' || r.score_midterm == null) ? '' : Number(r.score_midterm);
@@ -3932,88 +3950,220 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
                 : (m !== '' ? m : (f !== '' ? f : ''));
       const pct = (r.attendance_hours !== '' && r.total_hours !== '' && r.total_hours)
         ? Math.round((r.attendance_hours / r.total_hours) * 1000) / 10 : '';
-      const gradeLv = (t !== '') ? calculateGradeLevel(t, 100, config.grade_thresholds) : null;
+
+      let gradeLv = (t !== '') ? calculateGradeLevel(t, 100, config.grade_thresholds) : null;
+      let finalGrade = r.grade_special || '';
+      if (!finalGrade) {
+        if (pct !== '' && pct < 80) finalGrade = 'มส';
+        else if (gradeLv != null) finalGrade = String(gradeLv);
+        else finalGrade = '-';
+      }
+
+      // สรุปสถิติผลการเรียน
+      if (finalGrade === '4')        { stats.g4++;  stats.passed++; stats.g2up++; stats.sumPoints += 4;   stats.countGraded++; }
+      else if (finalGrade === '3.5') { stats.g35++; stats.passed++; stats.g2up++; stats.sumPoints += 3.5; stats.countGraded++; }
+      else if (finalGrade === '3')   { stats.g3++;  stats.passed++; stats.g2up++; stats.sumPoints += 3;   stats.countGraded++; }
+      else if (finalGrade === '2.5') { stats.g25++; stats.passed++; stats.g2up++; stats.sumPoints += 2.5; stats.countGraded++; }
+      else if (finalGrade === '2')   { stats.g2++;  stats.passed++; stats.g2up++; stats.sumPoints += 2;   stats.countGraded++; }
+      else if (finalGrade === '1.5') { stats.g15++; stats.passed++; stats.sumPoints += 1.5; stats.countGraded++; }
+      else if (finalGrade === '1')   { stats.g1++;  stats.passed++; stats.sumPoints += 1;   stats.countGraded++; }
+      else if (finalGrade === '0')   { stats.g0++;  stats.countGraded++; }
+      else if (finalGrade === 'มส')  { stats.ms++; }
+      else if (finalGrade === 'มผ')  { stats.mf++; }
+      else if (finalGrade === 'ร')   { stats.r++; }
+
+      // คุณลักษณะอันพึงประสงค์ (Q)
+      let qVal = r.character_result || '';
+      if (!qVal && r.q_scores && typeof r.q_scores === 'object') {
+        const qv = Object.values(r.q_scores).map(Number).filter(v => !isNaN(v));
+        if (qv.length > 0) {
+          const avg = qv.reduce((a,b)=>a+b, 0) / qv.length;
+          qVal = avg >= 2.5 ? '3' : (avg >= 1.5 ? '2' : (avg >= 1.0 ? '1' : '0'));
+        }
+      }
+      if (qVal === '3') stats.q3++;
+      else if (qVal === '2') stats.q2++;
+      else if (qVal === '1') stats.q1++;
+      else if (qVal === '0') stats.q0++;
+
+      // อ่าน คิดวิเคราะห์ และเขียน (L)
+      let lVal = r.reading_result || '';
+      if (!lVal && r.l_scores && typeof r.l_scores === 'object') {
+        const lv = Object.values(r.l_scores).map(Number).filter(v => !isNaN(v));
+        if (lv.length > 0) {
+          const avg = lv.reduce((a,b)=>a+b, 0) / lv.length;
+          lVal = avg >= 2.5 ? '3' : (avg >= 1.5 ? '2' : (avg >= 1.0 ? '1' : '0'));
+        }
+      }
+      if (lVal === '3') stats.l3++;
+      else if (lVal === '2') stats.l2++;
+      else if (lVal === '1') stats.l1++;
+      else if (lVal === '0') stats.l0++;
+
+      const qText = qVal === '3' ? 'ดีเยี่ยม' : (qVal === '2' ? 'ดี' : (qVal === '1' ? 'ผ่าน' : (qVal === '0' ? 'ไม่ผ่าน' : '-')));
+      const lText = lVal === '3' ? 'ดีเยี่ยม' : (lVal === '2' ? 'ดี' : (lVal === '1' ? 'ผ่าน' : (lVal === '0' ? 'ไม่ผ่าน' : '-')));
+
+      const fullName = ((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||'')).trim();
+
       return `
         <tr>
-          <td class="t-center">${i+1}</td>
-          <td class="t-center">${r.student_code || ''}</td>
-          <td>${escapeHTMLServer_((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}</td>
-          <td class="t-center">${escapeHTMLServer_(r.classroom || rm || '')}</td>
-          <td class="t-center">${m}</td>
-          <td class="t-center">${f}</td>
-          <td class="t-center">${t}</td>
-          <td class="t-center">${pct !== '' ? pct + '%' : ''}</td>
-          <td class="t-center"><b>${grade(gradeLv, r.grade_special)}</b></td>
-        </tr>`;
+          <td class="t-center">${r.student_number || (i+1)}</td>
+          <td class="t-center font-mono">${escapeHTMLServer_(r.student_code || '')}</td>
+          <td class="t-left" style="padding-left:8px; font-weight:600;">${escapeHTMLServer_(fullName)}</td>
+          <td class="t-center">${m !== '' ? m : '-'}</td>
+          <td class="t-center">${f !== '' ? f : '-'}</td>
+          <td class="t-center font-bold">${t !== '' ? t : '-'}</td>
+          <td class="t-center font-bold" style="${finalGrade === '0' || finalGrade === 'มส' || finalGrade === 'ร' ? 'color:#B91C1C;' : ''}">${finalGrade}</td>
+          <td class="t-center">${qText}</td>
+          <td class="t-center">${lText}</td>
+          <td class="t-center">${pct !== '' ? pct + '%' : '-'}</td>
+          <td class="t-center" style="font-size:9pt; color:#64748B;">${escapeHTMLServer_(r.grade_special || '')}</td>
+        </tr>
+      `;
     }).join('');
 
     const displayClass = rm 
-      ? `${escapeHTMLServer_(subject.grade_level || '')} (ห้อง ${escapeHTMLServer_(rm)})`
-      : escapeHTMLServer_(subject.grade_level || '-');
+      ? `ชั้นมัธยมศึกษาปีที่ ${escapeHTMLServer_(subject.grade_level || '')} (ห้อง ${escapeHTMLServer_(rm)})`
+      : `ชั้นมัธยมศึกษาปีที่ ${escapeHTMLServer_(subject.grade_level || '-')}`;
 
     const breakStyle = (isMultiRoom && !isLast) ? 'page-break-after: always; break-after: page;' : '';
 
-    return `
-      <div class="pp5-sheet" style="${breakStyle}">
-        <div class="school">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-        <h1>แบบบันทึกผลการเรียน (ปพ.5)</h1>
-        <div class="sub">รายวิชา ${escapeHTMLServer_(subject.subject_code || '')} ${escapeHTMLServer_(subject.subject_name || '')}</div>
+    const calcPct = cnt => stats.total > 0 ? ((cnt / stats.total) * 100).toFixed(1) : '0.0';
+    const roomGpa = stats.countGraded > 0 ? (stats.sumPoints / stats.countGraded).toFixed(2) : '-';
 
+    return `
+      <div class="print-page-wrapper pp5-sheet" style="${breakStyle}">
+        <!-- ส่วนหัวราชการทางการ -->
+        <div class="header-container">
+          <img src="${schoolLogo}" class="school-logo" alt="ตราโรงเรียน" onerror="this.style.display='none';">
+          <div class="doc-title">แบบบันทึกผลการเรียนประจำรายวิชา (ปพ.๕)</div>
+          <div class="doc-sub">ตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน พุทธศักราช ๒๕๕๑ (ฉบับปรับปรุง พ.ศ. ๒๕๖๐)</div>
+          <div class="doc-school">${escapeHTMLServer_(schoolName)} อำเภอเมือง จังหวัดมหาสารคาม</div>
+          <div class="doc-office">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
+        </div>
+
+        <!-- กล่องข้อมูลรายวิชาและหลักสูตร -->
         <table class="info-table">
           <tr>
+            <td class="lbl">รายวิชา:</td>
+            <td><b>${escapeHTMLServer_(subject.subject_code || '')}</b> ${escapeHTMLServer_(subject.subject_name || '')}</td>
             <td class="lbl">กลุ่มสาระฯ:</td>
             <td>${escapeHTMLServer_(subject.subject_group || '-')}</td>
-            <td class="lbl">หน่วยกิต:</td>
-            <td>${subject.credit || 0} หน่วยกิต</td>
-            <td class="lbl">ชั่วโมง/สัปดาห์:</td>
-            <td>${subject.hours_per_week || 0} ชม.</td>
+            <td class="lbl">ระดับชั้น:</td>
+            <td><b>${displayClass}</b></td>
           </tr>
           <tr>
-            <td class="lbl">ชั้น:</td>
-            <td>${displayClass}</td>
             <td class="lbl">ภาคเรียน:</td>
-            <td>${escapeHTMLServer_(targetSem || subject.semester || '-')}</td>
+            <td>ภาคเรียนที่ <b>${escapeHTMLServer_(targetSem || subject.semester || '1')}</b></td>
             <td class="lbl">ปีการศึกษา:</td>
-            <td>${escapeHTMLServer_(targetYear || subject.academic_year || '-')}</td>
+            <td>ปีการศึกษา <b>${escapeHTMLServer_(targetYear || subject.academic_year || '-')}</b></td>
+            <td class="lbl">ประเภทวิชา:</td>
+            <td>${escapeHTMLServer_(subject.subject_type || 'รายวิชาพื้นฐาน')}</td>
+          </tr>
+          <tr>
+            <td class="lbl">หน่วยกิต:</td>
+            <td>${subject.credit || 0} หน่วยกิต</td>
+            <td class="lbl">เวลาเรียน:</td>
+            <td>${subject.hours_per_week || 0} ชม./สัปดาห์ (รวม ${subject.total_hours || (Number(subject.hours_per_week || 0)*20)} ชม./ภาค)</td>
+            <td class="lbl">สัดส่วนคะแนน:</td>
+            <td>ระหว่างภาค <b>${subject.midterm_weight || 70}</b> : ปลายภาค <b>${subject.final_weight || 30}</b> (รวม ๑๐๐)</td>
           </tr>
           <tr>
             <td class="lbl">ครูผู้สอน:</td>
-            <td colspan="5">${escapeHTMLServer_(teacherName)}</td>
+            <td colspan="5"><b>${escapeHTMLServer_(teacherName)}</b></td>
           </tr>
         </table>
 
+        <!-- ตารางผลการเรียนรายบุคคล -->
         <table class="grade-table">
           <thead>
             <tr>
-              <th style="width:35px;">ที่</th>
-              <th style="width:75px;">รหัส</th>
-              <th>ชื่อ-นามสกุล</th>
-              <th style="width:55px;">ห้อง</th>
+              <th style="width:36px;">เลขที่</th>
+              <th style="width:75px;">เลขประจำตัว</th>
+              <th style="text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
               <th style="width:75px;">ระหว่างภาค<br>(${subject.midterm_weight || 70})</th>
-              <th style="width:65px;">ปลายภาค<br>(${subject.final_weight || 30})</th>
-              <th style="width:50px;">รวม</th>
-              <th style="width:60px;">เวลาเรียน</th>
-              <th style="width:55px;">ผลการเรียน</th>
+              <th style="width:70px;">ปลายภาค<br>(${subject.final_weight || 30})</th>
+              <th style="width:65px;">รวม<br>(100)</th>
+              <th style="width:65px;">ระดับผล<br>การเรียน</th>
+              <th style="width:85px;">คุณลักษณะฯ<br>(Q1-Q8)</th>
+              <th style="width:90px;">อ่านคิดวิเคราะห์ฯ<br>(L1-L5)</th>
+              <th style="width:60px;">เวลาเรียน<br>(%)</th>
+              <th style="width:60px;">หมายเหตุ</th>
             </tr>
           </thead>
-          <tbody>${tableRows}</tbody>
+          <tbody>
+            ${tableRows || `<tr><td colspan="11" class="t-center" style="padding:16px;">ไม่พบข้อมูลนักเรียน</td></tr>`}
+          </tbody>
         </table>
 
-        <div class="signature-row">
-          <div class="sig">
-            <div class="sig-line">${teacher.signature ? `<img src="${escapeHTMLServer_(teacher.signature)}" alt="signature">` : ''}</div>
-            <div>(${escapeHTMLServer_(teacherName)})</div>
-            <div>ครูผู้สอน</div>
+        <!-- ตารางสรุปผลสัมฤทธิ์ทางการเรียนและการประเมิน (มาตรฐาน สพฐ.) -->
+        <div style="font-weight:700; font-size:10pt; margin-top:8px; margin-bottom:3px; color:#1E293B;">
+          สรุปผลสัมฤทธิ์ทางการเรียนและการประเมินคุณลักษณะ (จำนวนนักเรียนทั้งหมด ${stats.total} คน)
+        </div>
+        <table class="stat-table">
+          <thead>
+            <tr>
+              <th colspan="11" style="background:#F1F5F9;">สรุปการตัดสินระดับผลการเรียน</th>
+              <th colspan="4" style="background:#FEF3C7;">คุณลักษณะอันพึงประสงค์</th>
+              <th colspan="4" style="background:#E0E7FF;">การอ่าน คิดวิเคราะห์ฯ</th>
+            </tr>
+            <tr>
+              <th style="width:6%;">4</th><th style="width:6%;">3.5</th><th style="width:6%;">3</th><th style="width:6%;">2.5</th><th style="width:6%;">2</th>
+              <th style="width:6%;">1.5</th><th style="width:6%;">1</th><th style="width:6%;">0</th><th style="width:5%;">ร</th><th style="width:5%;">มส</th><th style="width:7%;">รวม</th>
+              <th style="width:6%;">ดีเยี่ยม(3)</th><th style="width:6%;">ดี(2)</th><th style="width:6%;">ผ่าน(1)</th><th style="width:6%;">ไม่ผ่าน(0)</th>
+              <th style="width:6%;">ดีเยี่ยม(3)</th><th style="width:6%;">ดี(2)</th><th style="width:6%;">ผ่าน(1)</th><th style="width:6%;">ไม่ผ่าน(0)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>${stats.g4}</b></td><td><b>${stats.g35}</b></td><td><b>${stats.g3}</b></td><td><b>${stats.g25}</b></td><td><b>${stats.g2}</b></td>
+              <td><b>${stats.g15}</b></td><td><b>${stats.g1}</b></td><td><b>${stats.g0}</b></td><td><b>${stats.r}</b></td><td><b>${stats.ms}</b></td><td><b>${stats.total}</b></td>
+              <td><b>${stats.q3}</b></td><td><b>${stats.q2}</b></td><td><b>${stats.q1}</b></td><td><b>${stats.q0}</b></td>
+              <td><b>${stats.l3}</b></td><td><b>${stats.l2}</b></td><td><b>${stats.l1}</b></td><td><b>${stats.l0}</b></td>
+            </tr>
+            <tr class="stat-pct">
+              <td>${calcPct(stats.g4)}%</td><td>${calcPct(stats.g35)}%</td><td>${calcPct(stats.g3)}%</td><td>${calcPct(stats.g25)}%</td><td>${calcPct(stats.g2)}%</td>
+              <td>${calcPct(stats.g15)}%</td><td>${calcPct(stats.g1)}%</td><td>${calcPct(stats.g0)}%</td><td>${calcPct(stats.r)}%</td><td>${calcPct(stats.ms)}%</td><td>100%</td>
+              <td>${calcPct(stats.q3)}%</td><td>${calcPct(stats.q2)}%</td><td>${calcPct(stats.q1)}%</td><td>${calcPct(stats.q0)}%</td>
+              <td>${calcPct(stats.l3)}%</td><td>${calcPct(stats.l2)}%</td><td>${calcPct(stats.l1)}%</td><td>${calcPct(stats.l0)}%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ตัวชี้วัดสรุปเชิงคุณภาพ -->
+        <div class="metrics-summary">
+          <div>• ผ่านเกณฑ์ (เกรด 1 ขึ้นไป): <b>${stats.passed}</b> คน (${calcPct(stats.passed)}%)</div>
+          <div>• ผลการเรียนระดับดีขึ้นไป (เกรด 2 ขึ้นไป): <b>${stats.g2up}</b> คน (${calcPct(stats.g2up)}%)</div>
+          <div>• เกรดเฉลี่ยของวิชา (GPA): <b>${roomGpa}</b></div>
+          <div>• คุณลักษณะฯ ผ่านเกณฑ์: <b>${stats.q3 + stats.q2 + stats.q1}</b> คน (${calcPct(stats.q3 + stats.q2 + stats.q1)}%)</div>
+        </div>
+
+        <!-- ส่วนลงนามทางการ 4 ฝ่าย -->
+        <div class="signature-grid">
+          <div class="sig-box">
+            <div>ลงชื่อ .............................................................. ครูผู้สอน</div>
+            <div class="sig-line">( ${escapeHTMLServer_(teacherName)} )</div>
+            <div class="sig-title">ตำแหน่ง ${escapeHTMLServer_(teacher.position || 'ครูผู้สอน')}</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
-          <div class="sig">
-            <div class="sig-line"></div>
-            <div>(.............................................)</div>
-            <div>หัวหน้ากลุ่มสาระฯ</div>
+          <div class="sig-box">
+            <div>ลงชื่อ .............................................................. หัวหน้ากลุ่มสาระฯ</div>
+            <div class="sig-line">( .............................................................. )</div>
+            <div class="sig-title">หัวหน้ากลุ่มสาระการเรียนรู้${escapeHTMLServer_(subject.subject_group || '')}</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
-          <div class="sig">
-            <div class="sig-line"></div>
-            <div>(${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')})</div>
-            <div>ผู้อำนวยการโรงเรียน</div>
+          <div class="sig-box">
+            <div>ลงชื่อ .............................................................. หัวหน้างานวัดผลฯ</div>
+            <div class="sig-line">( .............................................................. )</div>
+            <div class="sig-title">หัวหน้างานวัดและประเมินผลการศึกษา</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+          </div>
+          <div class="sig-box">
+            <div><b>อนุมัติผลการเรียน</b></div>
+            <div style="margin-top:4px;">ลงชื่อ ..............................................................</div>
+            <div class="sig-line">( ${escapeHTMLServer_(directorName)} )</div>
+            <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+            <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
           </div>
         </div>
       </div>
@@ -4021,56 +4171,184 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
   }).join('');
 
   return `
-<!DOCTYPE html><html lang="th"><head>
-<meta charset="UTF-8"><title>ปพ.5 ${escapeHTMLServer_(subject.subject_code)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  @page { size: A4; margin: 1.2cm; }
-  body { font-family: 'Sarabun', sans-serif; font-size: 12px; color: #000; }
-  h1 { text-align: center; font-size: 16px; margin: 0 0 4px; }
-  .sub { text-align: center; font-size: 13px; margin-bottom: 14px; font-weight: 600; }
-  .school { text-align: center; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
-  .info-table { width: 100%; margin-bottom: 12px; border-collapse: collapse; }
-  .info-table td { padding: 3px 6px; font-size: 12px; }
-  .info-table .lbl { color: #555; width: 100px; }
-  .grade-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  .grade-table th, .grade-table td {
-    border: 1px solid #333; padding: 4px 6px; font-size: 11px;
-  }
-  .grade-table th { background: #f0f0f0; text-align: center; font-weight: 600; }
-  .t-center { text-align: center; }
-  .signature-row {
-    display: flex; justify-content: space-around;
-    margin-top: 40px; font-size: 12px; text-align: center;
-    page-break-inside: avoid;
-  }
-  .signature-row .sig img { max-height: 50px; margin-bottom: 4px; }
-  .sig-line {
-    border-bottom: 1px dotted #000;
-    width: 200px; margin: 0 auto 4px; padding-bottom: 30px;
-  }
-  @media print {
-    .no-print { display: none !important; }
-    .pp5-sheet { page-break-after: always !important; break-after: page !important; }
-    .pp5-sheet:last-child { page-break-after: auto !important; break-after: auto !important; }
-  }
-  .no-print {
-    position: fixed; top: 10px; right: 10px;
-    background: #800020; color: white; padding: 10px 16px;
-    border-radius: 8px; cursor: pointer; border: none; font-family: inherit;
-    font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,.2);
-  }
-</style></head><body>
-
-<button class="no-print" onclick="window.print()">พิมพ์</button>
-
-${sheetsHtml}
-
-</body></html>`;
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ปพ.5 ${escapeHTMLServer_(subject.subject_code || '')} - ${escapeHTMLServer_(subject.subject_name || '')}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm 12mm 12mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', 'TH Sarabun PSK', sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.35;
+      color: #000;
+      background: #FFF;
+      margin: 0;
+      padding: 0;
+    }
+    .print-page-wrapper {
+      width: 100%;
+      max-width: 210mm;
+      margin: 0 auto;
+      background: #FFF;
+      padding: 4px 0;
+    }
+    .header-container {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .school-logo {
+      width: 58px;
+      height: 58px;
+      object-fit: contain;
+      margin-bottom: 3px;
+    }
+    .doc-title {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #000;
+      line-height: 1.25;
+    }
+    .doc-sub {
+      font-size: 9.5pt;
+      color: #334155;
+      margin-top: 1px;
+    }
+    .doc-school {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #000;
+      margin-top: 1px;
+    }
+    .doc-office {
+      font-size: 9.5pt;
+      color: #475569;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000;
+      margin-bottom: 8px;
+      font-size: 9.5pt;
+    }
+    .info-table td {
+      padding: 3px 6px;
+      border: 1px solid #94A3B8;
+    }
+    .info-table .lbl {
+      font-weight: 600;
+      background: #F8FAFC;
+      width: 85px;
+      color: #1E293B;
+    }
+    .grade-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000;
+      margin-bottom: 8px;
+      font-size: 9pt;
+    }
+    .grade-table th, .grade-table td {
+      border: 1px solid #000;
+      padding: 3px 4px;
+    }
+    .grade-table th {
+      background: #F1F5F9;
+      font-weight: 700;
+      text-align: center;
+      color: #0F172A;
+    }
+    .t-center { text-align: center; }
+    .t-left { text-align: left; }
+    .font-mono { font-family: 'Courier New', Courier, monospace; font-size: 8.5pt; }
+    .stat-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000;
+      margin-bottom: 6px;
+      font-size: 8.5pt;
+      text-align: center;
+    }
+    .stat-table th, .stat-table td {
+      border: 1px solid #000;
+      padding: 2.5px 3px;
+    }
+    .stat-pct td {
+      font-size: 7.5pt;
+      color: #475569;
+      background: #FAFAFA;
+    }
+    .metrics-summary {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 8.5pt;
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    .signature-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 18px;
+      text-align: center;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    .sig-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .sig-line {
+      margin-top: 30px;
+      margin-bottom: 2px;
+      border-bottom: 1px dotted #000;
+      width: 85%;
+    }
+    .sig-title {
+      font-size: 8pt;
+      color: #334155;
+    }
+    .sig-date {
+      font-size: 7.5pt;
+      color: #64748B;
+      margin-top: 1px;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .pp5-sheet { page-break-after: always !important; break-after: page !important; }
+      .pp5-sheet:last-child { page-break-after: auto !important; break-after: auto !important; }
+    }
+    .no-print {
+      position: fixed; top: 12px; right: 12px;
+      background: #2563EB; color: white; padding: 9px 18px;
+      border-radius: 8px; cursor: pointer; border: none; font-family: inherit;
+      font-weight: 600; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()">🖨️ สั่งพิมพ์เอกสาร</button>
+  ${sheetsHtml}
+</body>
+</html>
+  `;
 }
 
 /**
- * สร้าง HTML ปพ.6 — สมุดพก รายนักเรียน
+ * สร้าง HTML ปพ.6 — สมุดรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล (เป็นทางการ สพฐ.)
  */
 function generatePP6HTML(studentId, semester, academicYear, sessionToken) {
   try {
@@ -4081,6 +4359,9 @@ function generatePP6HTML(studentId, semester, academicYear, sessionToken) {
     const student = readJsonSheet_('Students').find(s => s.id === studentId);
     if (!student) return { status:'error', message:'ไม่พบนักเรียน' };
 
+    const targetYear = academicYear || student.academic_year || config.academic_year;
+    const targetSem  = semester || config.semester || '1';
+
     const all = readJsonSheet_('Academic');
     const subjects = all.filter(x => x._kind === 'subject');
     const subMap = {};
@@ -4089,10 +4370,15 @@ function generatePP6HTML(studentId, semester, academicYear, sessionToken) {
     let grades = all.filter(x =>
       x._kind === 'grade' && x.student_id === studentId
     );
-    if (semester)     grades = grades.filter(g => String(g.semester) === String(semester));
-    if (academicYear) grades = grades.filter(g => String(g.academic_year) === String(academicYear));
+    if (targetSem)  grades = grades.filter(g => String(g.semester) === String(targetSem));
+    if (targetYear) grades = grades.filter(g => String(g.academic_year) === String(targetYear));
 
-    const html = renderPP6Template_(config, student, grades, subMap);
+    // ครูประจำชั้นจากชีต Classrooms
+    const classrooms = readJsonSheet_('Classrooms');
+    const myClassroom = classrooms.find(c => c.name === student.classroom && (!c.academic_year || String(c.academic_year) === String(targetYear)));
+    const homeroomTeacher = myClassroom?.teacher_name || '';
+
+    const html = renderPP6Template_(config, student, grades, subMap, targetSem, targetYear, homeroomTeacher);
     return { status:'success', html: html };
 
   } catch (e) {
@@ -4101,101 +4387,448 @@ function generatePP6HTML(studentId, semester, academicYear, sessionToken) {
   }
 }
 
-function renderPP6Template_(config, student, grades, subMap) {
-  let sumPoints = 0, sumCredits = 0;
+function renderPP6Template_(config, student, grades, subMap, targetSem, targetYear, homeroomTeacher) {
+  const schoolLogo = config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
+  const schoolName = config.school_name || 'โรงเรียนมหาชัยพิทยาคาร';
+  const directorName = config.director_name || 'นายอธิการ สุขศรี';
 
-  const rows = grades.map(g => {
+  let sumPoints = 0, sumCredits = 0;
+  let totalAttHours = 0, attCount = 0;
+  let qHighCount = 0, lHighCount = 0;
+
+  const rows = (grades || []).map((g, idx) => {
     const s = subMap[g.subject_id] || {};
-    if (g.grade_level != null && s.credit) {
-      sumPoints  += g.grade_level * s.credit;
-      sumCredits += s.credit;
+    const credit = Number(s.credit) || 0;
+    const m = (g.score_midterm !== '' && g.score_midterm != null) ? Number(g.score_midterm) : '';
+    const f = (g.score_final   !== '' && g.score_final   != null) ? Number(g.score_final) : '';
+    const t = (g.score_total   !== '' && g.score_total   != null) ? Number(g.score_total) : (m !== '' && f !== '' ? (m + f) : '-');
+
+    const gradeLv = g.grade_special || (g.grade_level != null ? String(g.grade_level) : '-');
+    if (g.grade_level != null && credit > 0 && !g.grade_special) {
+      sumPoints  += Number(g.grade_level) * credit;
+      sumCredits += credit;
     }
+
+    if (g.attendance_pct != null) {
+      totalAttHours += Number(g.attendance_pct);
+      attCount++;
+    }
+
+    // Q & L
+    const qVal = g.character_result || '';
+    const lVal = g.reading_result || '';
+    if (qVal === '3') qHighCount++;
+    if (lVal === '3') lHighCount++;
+
+    const qText = qVal === '3' ? 'ดีเยี่ยม' : (qVal === '2' ? 'ดี' : (qVal === '1' ? 'ผ่าน' : (qVal === '0' ? 'ไม่ผ่าน' : '-')));
+    const lText = lVal === '3' ? 'ดีเยี่ยม' : (lVal === '2' ? 'ดี' : (lVal === '1' ? 'ผ่าน' : (lVal === '0' ? 'ไม่ผ่าน' : '-')));
+
+    const subType = s.subject_type || (s.subject_code && /^[ก-ฮa-zA-Z]\d{2}1/.test(s.subject_code) ? 'พื้นฐาน' : 'เพิ่มเติม');
+
     return `
       <tr>
-        <td>${escapeHTMLServer_(s.subject_code || '')}</td>
-        <td>${escapeHTMLServer_(s.subject_name || '')}</td>
-        <td class="t-center">${s.credit || 0}</td>
-        <td class="t-center">${g.score_total != null ? g.score_total : '-'}</td>
-        <td class="t-center"><b>${g.grade_special || (g.grade_level != null ? g.grade_level : '-')}</b></td>
+        <td class="t-center">${idx + 1}</td>
+        <td class="t-center font-mono">${escapeHTMLServer_(s.subject_code || '')}</td>
+        <td class="t-left" style="padding-left:8px; font-weight:600;">${escapeHTMLServer_(s.subject_name || '')}</td>
+        <td class="t-center">${escapeHTMLServer_(subType)}</td>
+        <td class="t-center">${credit > 0 ? credit.toFixed(1) : '-'}</td>
+        <td class="t-center">${m !== '' ? m : '-'}</td>
+        <td class="t-center">${f !== '' ? f : '-'}</td>
+        <td class="t-center font-bold">${t}</td>
+        <td class="t-center font-bold" style="${gradeLv === '0' || gradeLv === 'มส' || gradeLv === 'ร' ? 'color:#B91C1C;' : ''}">${gradeLv}</td>
+        <td class="t-center">${qText}</td>
+        <td class="t-center">${lText}</td>
         <td class="t-center">${g.attendance_pct != null ? g.attendance_pct + '%' : '-'}</td>
-      </tr>`;
+      </tr>
+    `;
   }).join('');
 
   const gpa = sumCredits > 0 ? (sumPoints / sumCredits).toFixed(2) : '-';
+  const avgAtt = attCount > 0 ? Math.round(totalAttHours / attCount) : 100;
+  const overallQ = (qHighCount >= ((grades || []).length / 2)) ? 'ดีเยี่ยม (ระดับ ๓)' : 'ดี (ระดับ ๒)';
+  const overallL = (lHighCount >= ((grades || []).length / 2)) ? 'ดีเยี่ยม (ระดับ ๓)' : 'ดี (ระดับ ๒)';
+
+  const studentFullName = ((student.prefix || '') + (student.first_name || '') + ' ' + (student.last_name || '')).trim();
 
   return `
-<!DOCTYPE html><html lang="th"><head>
-<meta charset="UTF-8"><title>ปพ.6 ${escapeHTMLServer_(student.student_id)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  @page { size: A4; margin: 1.5cm; }
-  body { font-family: 'Sarabun', sans-serif; font-size: 13px; }
-  .cover {
-    text-align: center; border: 3px double #800020; padding: 30px; margin-bottom: 20px;
-    border-radius: 8px;
-  }
-  .cover h1 { color: #800020; margin: 0 0 8px; }
-  .cover .school { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
-  .photo {
-    width: 100px; height: 120px; margin: 12px auto;
-    border: 2px solid #ddd; background-size: cover; background-position: center;
-    background-color: #f5f5f5;
-  }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-  th, td { border: 1px solid #333; padding: 5px 8px; font-size: 12px; }
-  th { background: #800020; color: white; }
-  .t-center { text-align: center; }
-  .gpa-box {
-    background: #FAF0F2; border: 2px solid #A62639; padding: 16px;
-    border-radius: 8px; text-align: center; margin-top: 20px;
-  }
-  .gpa-box .lbl { font-size: 14px; color: #555; }
-  .gpa-box .val { font-size: 32px; font-weight: 700; color: #800020; }
-  @media print { .no-print { display: none; } }
-  .no-print {
-    position: fixed; top: 10px; right: 10px;
-    background: #800020; color: white; padding: 10px 16px;
-    border-radius: 8px; cursor: pointer; border: none;
-    font-family: inherit; font-weight: 600;
-  }
-  h2 { color: #800020; font-size: 16px; border-bottom: 2px solid #A62639; padding-bottom: 4px; }
-</style></head><body>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ปพ.6 - ${escapeHTMLServer_(studentFullName)} (${escapeHTMLServer_(student.student_id || '')})</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm 15mm 15mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', 'TH Sarabun PSK', sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.35;
+      color: #000;
+      background: #FFF;
+      margin: 0;
+      padding: 0;
+    }
+    .pp6-container {
+      width: 100%;
+      max-width: 210mm;
+      margin: 0 auto;
+      background: #FFF;
+    }
+    .header-container {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .school-logo {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      margin-bottom: 3px;
+    }
+    .doc-title {
+      font-size: 14pt;
+      font-weight: 700;
+      color: #000;
+      line-height: 1.25;
+    }
+    .doc-sub {
+      font-size: 9.5pt;
+      color: #334155;
+      margin-top: 1px;
+    }
+    .doc-school {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #000;
+      margin-top: 1px;
+    }
+    .doc-office {
+      font-size: 9.5pt;
+      color: #475569;
+    }
+    .profile-card {
+      display: flex;
+      gap: 12px;
+      border: 1px solid #000;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      background: #FFF;
+    }
+    .photo-box {
+      width: 75px;
+      height: 95px;
+      border: 1px solid #94A3B8;
+      background-size: cover;
+      background-position: center;
+      background-color: #F8FAFC;
+      border-radius: 4px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94A3B8;
+      font-size: 9pt;
+    }
+    .profile-info {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 16px;
+      font-size: 9.5pt;
+    }
+    .profile-row {
+      display: flex;
+    }
+    .profile-lbl {
+      font-weight: 600;
+      color: #1E293B;
+      min-width: 95px;
+    }
+    .profile-val {
+      color: #0F172A;
+    }
+    .subjects-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000;
+      margin-bottom: 8px;
+      font-size: 9pt;
+    }
+    .subjects-table th, .subjects-table td {
+      border: 1px solid #000;
+      padding: 3px 5px;
+    }
+    .subjects-table th {
+      background: #F1F5F9;
+      font-weight: 700;
+      text-align: center;
+      color: #0F172A;
+    }
+    .t-center { text-align: center; }
+    .t-left { text-align: left; }
+    .font-mono { font-family: 'Courier New', Courier, monospace; font-size: 8.5pt; }
+    .summary-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1.5px solid #000;
+      background: #F8FAFC;
+      padding: 6px 14px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      font-size: 10pt;
+    }
+    .gpa-val {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #000;
+    }
+    .eval-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 8.5pt;
+    }
+    .eval-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000;
+    }
+    .eval-table th, .eval-table td {
+      border: 1px solid #000;
+      padding: 3px 6px;
+    }
+    .eval-table th {
+      background: #F1F5F9;
+      font-weight: 700;
+    }
+    .signature-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 18px;
+      text-align: center;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+    }
+    .sig-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .sig-line {
+      margin-top: 30px;
+      margin-bottom: 2px;
+      border-bottom: 1px dotted #000;
+      width: 85%;
+    }
+    .sig-title {
+      font-size: 8pt;
+      color: #334155;
+    }
+    .sig-date {
+      font-size: 7.5pt;
+      color: #64748B;
+      margin-top: 1px;
+    }
+    @media print {
+      .no-print { display: none !important; }
+    }
+    .no-print {
+      position: fixed; top: 12px; right: 12px;
+      background: #2563EB; color: white; padding: 9px 18px;
+      border-radius: 8px; cursor: pointer; border: none; font-family: inherit;
+      font-weight: 600; font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()">🖨️ สั่งพิมพ์เอกสาร</button>
+  <div class="print-page-wrapper pp6-container">
+    <!-- ส่วนหัวราชการทางการ -->
+    <div class="header-container">
+      <img src="${schoolLogo}" class="school-logo" alt="ตราโรงเรียน" onerror="this.style.display='none';">
+      <div class="doc-title">แบบรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล (ปพ.๖)</div>
+      <div class="doc-sub">ตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน พุทธศักราช ๒๕๕๑ (ฉบับปรับปรุง พ.ศ. ๒๕๖๐)</div>
+      <div class="doc-school">${escapeHTMLServer_(schoolName)} ตำบลท่าสองคอน อำเภอเมือง จังหวัดมหาสารคาม</div>
+      <div class="doc-office">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
+    </div>
 
-<button class="no-print" onclick="window.print()">พิมพ์</button>
+    <!-- ข้อมูลนักเรียนพร้อมรูปถ่าย -->
+    <div class="profile-card">
+      ${student.photo ? `<div class="photo-box" style="background-image:url('${escapeHTMLServer_(student.photo)}');"></div>` : `<div class="photo-box">รูปถ่าย<br>1.5 นิ้ว</div>`}
+      <div class="profile-info">
+        <div class="profile-row">
+          <span class="profile-lbl">ชื่อ - นามสกุล:</span>
+          <span class="profile-val"><b>${escapeHTMLServer_(studentFullName)}</b></span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-lbl">ระดับชั้น:</span>
+          <span class="profile-val">มัธยมศึกษาปีที่ <b>${escapeHTMLServer_(student.classroom || '-')}</b> (เลขที่ ${student.student_number || student.student_no || '-'})</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-lbl">เลขประจำตัว:</span>
+          <span class="profile-val font-mono"><b>${escapeHTMLServer_(student.student_id || '-')}</b></span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-lbl">เลขประชาชน:</span>
+          <span class="profile-val font-mono">${escapeHTMLServer_(student.national_id || student.citizen_id || '-')}</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-lbl">ภาคเรียน / ปี:</span>
+          <span class="profile-val">ภาคเรียนที่ <b>${escapeHTMLServer_(targetSem || '1')}</b> ปีการศึกษา <b>${escapeHTMLServer_(targetYear || '')}</b></span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-lbl">ครูประจำชั้น:</span>
+          <span class="profile-val">${escapeHTMLServer_(homeroomTeacher || '-')}</span>
+        </div>
+      </div>
+    </div>
 
-<div class="cover">
-  <div class="school">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-  <h1>สมุดบันทึกผลการเรียน (ปพ.6)</h1>
-  ${student.photo ? `<div class="photo" style="background-image:url('${escapeHTMLServer_(student.photo)}');"></div>` : `<div class="photo"></div>`}
-  <div style="font-size:16px; font-weight:700;">
-    ${escapeHTMLServer_((student.prefix||'') + (student.first_name||'') + ' ' + (student.last_name||''))}
+    <!-- ตารางผลการเรียนรายวิชา -->
+    <table class="subjects-table">
+      <thead>
+        <tr>
+          <th style="width:36px;">ที่</th>
+          <th style="width:75px;">รหัสวิชา</th>
+          <th style="text-align:left; padding-left:8px;">รายวิชา</th>
+          <th style="width:70px;">ประเภท</th>
+          <th style="width:50px;">หน่วยกิต</th>
+          <th style="width:65px;">ระหว่างภาค</th>
+          <th style="width:60px;">ปลายภาค</th>
+          <th style="width:55px;">รวม</th>
+          <th style="width:55px;">เกรด</th>
+          <th style="width:75px;">คุณลักษณะฯ</th>
+          <th style="width:80px;">อ่านวิเคราะห์ฯ</th>
+          <th style="width:60px;">เวลาเรียน</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="12" class="t-center" style="padding:16px;">ยังไม่มีข้อมูลผลการเรียนในภาคเรียนนี้</td></tr>`}
+      </tbody>
+    </table>
+
+    <!-- แถบสรุปผลสัมฤทธิ์และ GPA -->
+    <div class="summary-strip">
+      <div>จำนวนหน่วยกิตภาคเรียนนี้: <b>${sumCredits.toFixed(1)}</b> หน่วยกิต</div>
+      <div>คะแนนเฉลี่ยถ่วงน้ำหนัก: <b>${sumPoints.toFixed(1)}</b></div>
+      <div>ระดับผลการเรียนเฉลี่ยประจำภาค (GPA): <span class="gpa-val">${gpa}</span></div>
+    </div>
+
+    <!-- ตารางประเมินกิจกรรมพัฒนาผู้เรียน & คุณลักษณะ -->
+    <div class="eval-grid">
+      <!-- กิจกรรมพัฒนาผู้เรียน -->
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th colspan="2" style="text-align:left; padding-left:8px;">การประเมินกิจกรรมพัฒนาผู้เรียน</th>
+            <th style="width:60px; text-align:center;">ผลประเมิน</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="width:25px; text-align:center;">๑</td>
+            <td>กิจกรรมแนะแนว</td>
+            <td class="t-center" style="color:#15803D; font-weight:bold;">ผ่าน</td>
+          </tr>
+          <tr>
+            <td style="width:25px; text-align:center;">๒</td>
+            <td>กิจกรรมนักเรียน (ลูกเสือ / เนตรนารี / ยุวกาชาด / รด.)</td>
+            <td class="t-center" style="color:#15803D; font-weight:bold;">ผ่าน</td>
+          </tr>
+          <tr>
+            <td style="width:25px; text-align:center;">๓</td>
+            <td>กิจกรรมชุมนุม / ชมรม</td>
+            <td class="t-center" style="color:#15803D; font-weight:bold;">ผ่าน</td>
+          </tr>
+          <tr>
+            <td style="width:25px; text-align:center;">๔</td>
+            <td>กิจกรรมเพื่อสังคมและสาธารณประโยชน์</td>
+            <td class="t-center" style="color:#15803D; font-weight:bold;">ผ่าน</td>
+          </tr>
+          <tr style="background:#F8FAFC; font-weight:bold;">
+            <td colspan="2" style="text-align:right; padding-right:8px;">สรุปผลกิจกรรมพัฒนาผู้เรียน:</td>
+            <td class="t-center" style="color:#15803D;">ผ่าน</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- คุณลักษณะ & เวลาเรียน -->
+      <table class="eval-table">
+        <thead>
+          <tr>
+            <th colspan="2" style="text-align:left; padding-left:8px;">การประเมินคุณลักษณะ & เวลาเรียน</th>
+            <th style="width:85px; text-align:center;">ผลประเมิน</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="width:25px; text-align:center;">๑</td>
+            <td>การประเมินคุณลักษณะอันพึงประสงค์ ๘ ประการ</td>
+            <td class="t-center" style="font-weight:600;">${overallQ}</td>
+          </tr>
+          <tr>
+            <td style="width:25px; text-align:center;">๒</td>
+            <td>การประเมินการอ่าน คิดวิเคราะห์ และเขียน</td>
+            <td class="t-center" style="font-weight:600;">${overallL}</td>
+          </tr>
+          <tr>
+            <td style="width:25px; text-align:center;">๓</td>
+            <td>สถิติเวลาเรียนเฉลี่ยตลอดภาคเรียน</td>
+            <td class="t-center" style="font-weight:600;">${avgAtt}%</td>
+          </tr>
+          <tr>
+            <td style="width:25px; text-align:center;">๔</td>
+            <td>ผลการตัดสินเลื่อนชั้น / ผลการศึกษา</td>
+            <td class="t-center" style="color:#15803D; font-weight:bold;">ผ่านเกณฑ์</td>
+          </tr>
+          <tr style="background:#F8FAFC; font-weight:bold;">
+            <td colspan="2" style="text-align:right; padding-right:8px;">เกรดเฉลี่ยสะสม (GPA):</td>
+            <td class="t-center" style="font-size:11pt; color:#1E293B;">${gpa}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ส่วนลงนามทางการ 4 ฝ่าย -->
+    <div class="signature-grid">
+      <div class="sig-box">
+        <div>ลงชื่อ .............................................................. ครูประจำชั้น</div>
+        <div class="sig-line">( ${escapeHTMLServer_(homeroomTeacher || '..............................................................')} )</div>
+        <div class="sig-title">ครูประจำชั้น มัธยมศึกษาปีที่ ${escapeHTMLServer_(student.classroom || '')}</div>
+        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+      <div class="sig-box">
+        <div>ลงชื่อ .............................................................. นายทะเบียน</div>
+        <div class="sig-line">( .............................................................. )</div>
+        <div class="sig-title">หัวหน้างานวัดและประเมินผลการศึกษา</div>
+        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+      <div class="sig-box">
+        <div><b>ทราบผลการเรียน</b></div>
+        <div style="margin-top:4px;">ลงชื่อ .............................................................. ผู้ปกครอง</div>
+        <div class="sig-line">( ${escapeHTMLServer_(student.parent_name || '..............................................................')} )</div>
+        <div class="sig-title">ผู้ปกครองนักเรียน</div>
+        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+      <div class="sig-box">
+        <div><b>อนุมัติผลการเรียน</b></div>
+        <div style="margin-top:4px;">ลงชื่อ ..............................................................</div>
+        <div class="sig-line">( ${escapeHTMLServer_(directorName)} )</div>
+        <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="sig-date">วันที่ ....... เดือน ....................... พ.ศ. ..........</div>
+      </div>
+    </div>
   </div>
-  <div style="margin-top:6px;">รหัสนักเรียน: ${escapeHTMLServer_(student.student_id || '')}</div>
-  <div>ชั้น ${escapeHTMLServer_(student.classroom || '-')} · ปีการศึกษา ${escapeHTMLServer_(student.academic_year || '-')}</div>
-</div>
-
-<h2>ผลการเรียนรายวิชา</h2>
-<table>
-  <thead>
-    <tr>
-      <th style="width:80px;">รหัสวิชา</th>
-      <th>ชื่อรายวิชา</th>
-      <th style="width:60px;">หน่วยกิต</th>
-      <th style="width:60px;">คะแนน</th>
-      <th style="width:60px;">เกรด</th>
-      <th style="width:80px;">เวลาเรียน</th>
-    </tr>
-  </thead>
-  <tbody>${rows || `<tr><td colspan="6" class="t-center" style="padding:20px;">ยังไม่มีข้อมูลผลการเรียน</td></tr>`}</tbody>
-</table>
-
-<div class="gpa-box">
-  <div class="lbl">เกรดเฉลี่ยสะสม (GPA)</div>
-  <div class="val">${gpa}</div>
-  <div style="font-size:12px;color:#666;">หน่วยกิตรวม ${sumCredits} หน่วยกิต</div>
-</div>
-
-</body></html>`;
+</body>
+</html>
+  `;
 }
 
 
