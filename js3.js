@@ -101,8 +101,58 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     }
   } catch (_) {}
 
-  // Configure html2pdf options
-  const env = getPrintEnv();
+  // 4. Multi-Page Canvas Splitting for iOS (Prevent 4096px canvas memory limits on 40+ page documents)
+  const pageElems = Array.from(container.querySelectorAll('.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet'));
+  const jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+
+  if (pageElems.length > 1 && jsPdfLib && window.html2canvas) {
+    try {
+      const pageWidthMm = isLandscape ? 297 : 210;
+      const pageHeightMm = isLandscape ? 210 : 297;
+      const marginMm = 4;
+      const renderWidthMm = pageWidthMm - (marginMm * 2);
+      const renderHeightMm = pageHeightMm - (marginMm * 2);
+
+      const pdf = new jsPdfLib({
+        orientation: isLandscape ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      for (let idx = 0; idx < pageElems.length; idx++) {
+        if (idx > 0) pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+        const pageEl = pageElems[idx];
+
+        const canvas = await window.html2canvas(pageEl, {
+          scale: env.isMobile ? 1.25 : 1.5,
+          useCORS: true,
+          logging: false,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: isLandscape ? 1123 : 794
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.94);
+        pdf.addImage(imgData, 'JPEG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
+      }
+
+      hideLoading();
+
+      if (action === 'download') {
+        pdf.save(`${safeTitle}.pdf`);
+        showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
+        return true;
+      } else {
+        const pdfBlob = pdf.output('blob');
+        return pdfBlob;
+      }
+    } catch (multiErr) {
+      console.warn('Page-by-page rendering fallback to html2pdf:', multiErr);
+    }
+  }
+
+  // Configure html2pdf options (fallback for single-page documents)
   const isLargeDoc = container.offsetHeight > 3500;
   const opt = {
     margin: [6, 6, 6, 6],
