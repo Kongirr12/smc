@@ -58,6 +58,26 @@ async function generatePdfFromHtml(html, title, action = 'download') {
 
     const bodyHtml = doc.body ? doc.body.innerHTML : html;
     const pdfFixCss = `<style>
+      /* Force print styles inside PDF render container (strips screen shadows & rounded borders) */
+      .schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 auto !important;
+        padding: 4mm 6mm !important;
+        background: #FFFFFF !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .schedule-page:last-child, .print-page-wrapper:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
       table { border-collapse: collapse !important; }
       .schedule-page table, table.schedule-table, .timetable, #inAppPrintArea table { table-layout: fixed !important; width: 100% !important; }
       .sig-line:empty { border-bottom: 1px dotted #64748B !important; width: 170px !important; margin: 0 auto 4px auto !important; }
@@ -83,14 +103,14 @@ async function generatePdfFromHtml(html, title, action = 'download') {
   container.style.background = '#FFFFFF';
   container.style.color = '#0F172A';
   container.style.zIndex = '-9999';
-  container.style.opacity = '0.01';
+  container.style.opacity = '1';
   container.style.pointerEvents = 'none';
   container.innerHTML = parsedContent;
 
   document.body.appendChild(container);
 
   try {
-    // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จ และแปลงเป็น Data URL ป้องกัน CORS Error บน iOS WebKit
+    // 1. รอให้รูปภาพทั้งหมดใน container โหลดเสร็จ แปลงตราโรงเรียนเป็น Data URL และ decode ให้พร้อมเรนเดอร์ 100%
     try {
       const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
       const imgs = Array.from(container.querySelectorAll('img'));
@@ -98,7 +118,6 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         const src = img.getAttribute('src') || '';
         if (!src) continue;
 
-        // ตรวจสอบว่าเป็นตราโรงเรียนหรือไม่ (URL Google Drive, คำว่า school_logo หรือ class logo)
         const isSchoolLogo = src.includes('lh3.googleusercontent.com') ||
                              src.includes('school_logo') ||
                              src.includes('school-logo') ||
@@ -109,7 +128,6 @@ async function generatePdfFromHtml(html, title, action = 'download') {
                              (img.alt || '').includes('ตรา');
 
         if (isSchoolLogo) {
-          // ใช้ตราโรงเรียนมหาชัยพิทยาคารที่เป็นทางการแบบ Data URL เสมอ (Zero CORS, 100% คมชัด)
           img.src = defaultSchoolLogo;
           continue;
         }
@@ -125,74 +143,26 @@ async function generatePdfFromHtml(html, title, action = 'download') {
             ctx.drawImage(img, 0, 0);
             img.src = c.toDataURL('image/png');
           }
-        } catch (_) {
-          // หากติด CORS canvas ให้คงรูปภาพเดิมไว้ ไม่แทนที่ด้วย app-icon
-        }
+        } catch (_) {}
       }
+
+      // รอ decode ภาพทั้งหมดให้สมบูรณ์ก่อนเรนเดอร์ PDF ป้องกันภาพตราโรงเรียนในหน้าแรกว่างเปล่า
+      await Promise.all(imgs.map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        if (img.decode) return img.decode().catch(() => {});
+        return new Promise(res => { img.onload = res; img.onerror = res; });
+      }));
     } catch (_) {}
 
-    // 4. Page-by-Page Canvas Splitting (ป้องกันขีดจำกัด Canvas 4096px และ Out-of-Memory บน iOS)
-    const pageElems = Array.from(container.querySelectorAll('.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet'));
-    const pagesToRender = pageElems.length > 0 ? pageElems : [container];
-    const jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-
-    if (pagesToRender.length > 0 && jsPdfLib && window.html2canvas) {
-      try {
-        const pageWidthMm = isLandscape ? 297 : 210;
-        const pageHeightMm = isLandscape ? 210 : 297;
-        const marginMm = 3;
-        const renderWidthMm = pageWidthMm - (marginMm * 2);
-        const renderHeightMm = pageHeightMm - (marginMm * 2);
-
-        const pdf = new jsPdfLib({
-          orientation: isLandscape ? 'landscape' : 'portrait',
-          unit: 'mm',
-          format: 'a4',
-          compress: true
-        });
-
-        for (let idx = 0; idx < pagesToRender.length; idx++) {
-          if (idx > 0) pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
-          const pageEl = pagesToRender[idx];
-
-          const canvas = await window.html2canvas(pageEl, {
-            scale: 1.5,
-            useCORS: true,
-            allowTaint: false,
-            logging: false,
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: isLandscape ? 1123 : 794
-          });
-
-          const imgData = canvas.toDataURL('image/jpeg', 0.92);
-          pdf.addImage(imgData, 'JPEG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
-        }
-
-        hideLoading();
-
-        if (action === 'download') {
-          pdf.save(`${safeTitle}.pdf`);
-          showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
-          return true;
-        } else {
-          const pdfBlob = pdf.output('blob');
-          return pdfBlob;
-        }
-      } catch (multiErr) {
-        console.warn('Page-by-page rendering fallback to html2pdf:', multiErr);
-      }
-    }
-
-    // Configure html2pdf options (fallback for single-page documents)
-    const isLargeDoc = container.offsetHeight > 3500;
+    // 2. Configure html2pdf options พร้อม Page Break ที่แบ่งหน้าแยกรายห้องเรียนอย่างแม่นยำ 100%
     const opt = {
-      margin: [6, 6, 6, 6],
+      margin: [0, 0, 0, 0],
       filename: `${safeTitle}.pdf`,
-      image: { type: 'jpeg', quality: 0.96 },
+      image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
-        scale: env.isMobile ? (isLargeDoc ? 1 : 1.25) : (isLargeDoc ? 1.5 : 2),
+        scale: 1.5,
         useCORS: true,
+        allowTaint: true,
         logging: false,
         scrollX: 0,
         scrollY: 0,
@@ -201,9 +171,14 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       jsPDF: {
         unit: 'mm',
         format: 'a4',
-        orientation: isLandscape ? 'landscape' : 'portrait'
+        orientation: isLandscape ? 'landscape' : 'portrait',
+        compress: true
       },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        before: '.schedule-page:not(:first-child), .print-page-wrapper:not(:first-child), .pp6-container:not(:first-child), .pp5-sheet:not(:first-child)',
+        avoid: 'table, tr, td, th, .sig-row, .signature-row'
+      }
     };
 
     if (typeof html2pdf === 'undefined') {
