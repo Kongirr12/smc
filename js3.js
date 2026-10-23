@@ -76,35 +76,22 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       });
     }
 
-    // 2. Parse HTML ต้นฉบับ
+    // 2. Parse HTML ต้นฉบับ และดึง styles
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // ดึง styles และ links ทั้งหมด
-    const styles = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
+    // ดึง styles และลบ @media screen ออกทั้งหมด เพื่อให้ได้สไตล์สำหรับการพิมพ์จริง (ไม่มีขอบมน ไม่ติดเงาการ์ด)
+    const rawStyles = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
       .map(s => s.outerHTML)
       .join('\n');
 
+    // ลบ @media screen blocks ออกจากสไตล์ เพื่อไม่ให้กระทบกับการเรนเดอร์ PDF
+    const cleanStyles = rawStyles
+      .replace(/@media\s+screen\s*\{[\s\S]*?\}\s*\}/gi, '')
+      .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '');
+
     // ลบองค์ประกอบควบคุมที่ไม่ต้องการพิมพ์
     doc.querySelectorAll('.no-print, .no-print-bar, button, script').forEach(el => el.remove());
-
-    // ปรับเปลี่ยนตราโรงเรียนทั้งหมดเป็น Base64 Data URL ทางการ ป้องกันปัญหา CORS และรูปไม่ขึ้น 100%
-    const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
-    doc.querySelectorAll('img').forEach(img => {
-      const src = img.getAttribute('src') || '';
-      if (!src) return;
-      const isSchoolLogo = src.includes('lh3.googleusercontent.com') ||
-                           src.includes('school_logo') ||
-                           src.includes('school-logo') ||
-                           src.includes('app-icon') ||
-                           img.classList.contains('logo') ||
-                           img.classList.contains('school-logo') ||
-                           (img.alt || '').toLowerCase().includes('logo') ||
-                           (img.alt || '').includes('ตรา');
-      if (isSchoolLogo) {
-        img.src = defaultSchoolLogo;
-      }
-    });
 
     // 3. แยกเอกสารออกเป็นหน้ารายบุคคล / รายห้องเรียน (Page-by-Page Isolation)
     const pageSelector = '.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .print-doc, .form-doc-wrapper';
@@ -128,7 +115,10 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       }
     }
 
-    // 4. CSS สำหรับเรนเดอร์ PDF คมชัด ตัดขอบเงาการ์ด และจัดตารางพอดีหน้ากระดาษ A4
+    // 4. CSS พิเศษที่ถอดแบบมาจาก @media print ใน styles.css 100%
+    // รับประกันว่า PDF จะออกมาเหมือนกับการสั่งพิมพ์ผ่าน "พิมพ์เอกสาร" ทุกประการ:
+    // ขอบกระดาษเรียบตรง (ไม่ติดขอบมน 8px), ไม่มีเงาการ์ด, เส้นตารางหนา 2px คมชัด, ตรา รร. และลายเซ็นต์อยู่ครบสมบูรณ์
+    const hostWidthPx = isLandscape ? 1080 : 760;
     const pdfFixCss = `
       <style>
         * {
@@ -140,68 +130,142 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           margin: 0 !important;
           padding: 0 !important;
           background: #FFFFFF !important;
-          color: #0F172A !important;
-          width: ${isLandscape ? '1123px' : '794px'} !important;
-          font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          color: #000000 !important;
+          width: ${hostWidthPx}px !important;
+          font-family: 'Sarabun', 'TH Sarabun New', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          -webkit-font-smoothing: antialiased !important;
         }
         .schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .print-doc, .form-doc-wrapper {
           border-radius: 0 !important;
           box-shadow: none !important;
           border: none !important;
           margin: 0 auto !important;
-          padding: 5mm 6mm !important;
+          padding: 0 !important;
           background: #FFFFFF !important;
           width: 100% !important;
           max-width: 100% !important;
+          min-width: 0 !important;
           box-sizing: border-box !important;
         }
-        table {
-          border-collapse: collapse !important;
-          width: 100% !important;
-        }
-        .schedule-page table, table.schedule-table, .timetable, #inAppPrintArea table {
-          table-layout: fixed !important;
-          width: 100% !important;
-        }
-        .sig-line:empty {
-          border-bottom: 1px dotted #64748B !important;
-          width: 170px !important;
-          margin: 0 auto 4px auto !important;
-        }
-        .sig-line:not(:empty) {
-          border-bottom: none !important;
-          width: auto !important;
-          white-space: nowrap !important;
-        }
-        .sig-box {
-          min-width: 170px !important;
-          max-width: 340px !important;
-        }
-        .sig-dots, .sig-name, .sig-title, .sig-date {
-          white-space: nowrap !important;
-        }
-        .sig-stamp-zone {
-          height: 40px !important;
-          min-height: 40px !important;
-          max-height: 40px !important;
+        .header {
           display: flex !important;
+          flex-direction: column !important;
           align-items: center !important;
           justify-content: center !important;
+          text-align: center !important;
+          margin-bottom: 6px !important;
+        }
+        .header img, .logo, .school-logo {
+          width: 50px !important;
+          height: 50px !important;
+          object-fit: contain !important;
           margin: 0 auto 2px auto !important;
+          display: block !important;
+        }
+        .header > div:nth-child(2) {
+          font-size: 17px !important;
+          font-weight: 800 !important;
+          color: #0F172A !important;
+          margin-bottom: 2px !important;
+        }
+        .header > div:nth-child(3) {
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          color: #800020 !important;
+        }
+        .header > div:nth-child(4) {
+          font-size: 11px !important;
+          color: #64748B !important;
+          margin-top: 1px !important;
+        }
+        .workload {
+          font-size: 11px !important;
+          margin-bottom: 6px !important;
+          text-align: center !important;
+        }
+        table {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0 !important;
+          border-collapse: collapse !important;
+          table-layout: fixed !important;
+          border: 2px solid #000000 !important;
+          margin: 0 auto !important;
+        }
+        th, td {
+          border: 1px solid #000000 !important;
+          vertical-align: middle !important;
+          text-align: center !important;
+        }
+        th {
+          background: #FFFFFF !important;
+          color: #000000 !important;
+          padding: 4px 2px !important;
+          font-size: 10px !important;
+          font-weight: 700 !important;
+          border-bottom: 2px solid #000000 !important;
+        }
+        td {
+          padding: 2px 2px !important;
+          font-size: 9.5px !important;
+          min-height: 38px !important;
+          color: #000000 !important;
+        }
+        .sig-row, .signature-row {
+          margin-top: 10px !important;
+          gap: 14px !important;
+          display: flex !important;
+          justify-content: space-around !important;
+          align-items: flex-start !important;
+          text-align: center !important;
+          font-size: 10px !important;
+        }
+        .sig-box, .sig-row > div {
+          min-width: 170px !important;
+          max-width: 320px !important;
+          flex: 1 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          text-align: center !important;
+        }
+        .sig-stamp-zone {
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: flex-end !important;
+          margin: 0 auto 3px auto !important;
         }
         .teacher-sig-img, .mhc-sig-img {
-          max-height: 38px !important;
-          max-width: 145px !important;
+          max-height: 34px !important;
+          max-width: 140px !important;
           object-fit: contain !important;
           display: block !important;
           margin: 0 auto !important;
         }
-        .logo, .school-logo {
-          width: 50px !important;
-          height: 50px !important;
-          object-fit: contain !important;
-          display: block !important;
-          margin: 0 auto 2px auto !important;
+        .sig-line {
+          border-bottom: 1px dotted #64748B !important;
+          width: 160px !important;
+          margin: 0 auto 3px auto !important;
+          padding-bottom: 0 !important;
+          min-height: 0 !important;
+        }
+        .sig-name {
+          font-size: 10px !important;
+          color: #000000 !important;
+          font-weight: 600 !important;
+          white-space: nowrap !important;
+        }
+        .sig-title {
+          font-size: 9.5px !important;
+          color: #334155 !important;
+          white-space: nowrap !important;
+        }
+        .no-print, .no-print-bar, button {
+          display: none !important;
         }
       </style>
     `;
@@ -212,15 +276,17 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     renderHost.style.position = 'fixed';
     renderHost.style.left = '0';
     renderHost.style.top = '0';
-    renderHost.style.width = isLandscape ? '1123px' : '794px';
-    renderHost.style.minWidth = isLandscape ? '1123px' : '794px';
-    renderHost.style.maxWidth = isLandscape ? '1123px' : '794px';
+    renderHost.style.width = `${hostWidthPx}px`;
+    renderHost.style.minWidth = `${hostWidthPx}px`;
+    renderHost.style.maxWidth = `${hostWidthPx}px`;
     renderHost.style.background = '#FFFFFF';
-    renderHost.style.color = '#0F172A';
+    renderHost.style.color = '#000000';
     renderHost.style.zIndex = '9990';
     renderHost.style.opacity = '1';
     renderHost.style.pointerEvents = 'none';
     renderHost.style.boxSizing = 'border-box';
+    renderHost.style.padding = '0';
+    renderHost.style.margin = '0';
     renderHost.style.overflow = 'hidden';
     document.body.appendChild(renderHost);
 
@@ -232,13 +298,16 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       compress: true
     });
 
+    // กำหนดระยะขอบตรงกับ @page ในคำสั่ง "พิมพ์เอกสาร": บน 5mm, ข้าง 6mm
     const pageWidthMm = isLandscape ? 297 : 210;
     const pageHeightMm = isLandscape ? 210 : 297;
-    const marginMm = 4;
-    const renderWidthMm = pageWidthMm - (marginMm * 2);
-    const maxPageHeightMm = pageHeightMm - (marginMm * 2);
+    const marginX = 6;
+    const marginY = 5;
+    const renderWidthMm = pageWidthMm - (marginX * 2); // 285mm ในแนวนอน
+    const maxPageHeightMm = pageHeightMm - (marginY * 2);
 
     let isFirstPdfPage = true;
+    const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
 
     // 7. วนลูปเรนเดอร์แยกทีละหน้าอย่างเป็นอิสระ (Zero Overlap / Exactly 1 Page Per Classroom)
     for (let pIdx = 0; pIdx < pageNodes.length; pIdx++) {
@@ -246,9 +315,28 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       const nodeContent = node.outerHTML || node.innerHTML;
 
       // ติดตั้งเฉพาะเนื้อหาของหน้านี้
-      renderHost.innerHTML = styles + pdfFixCss + nodeContent;
+      renderHost.innerHTML = cleanStyles + pdfFixCss + nodeContent;
 
-      // Decode ภาพทั้งหมดในหน้านี้
+      // บังคับเปลี่ยนตราโรงเรียนใน DOM จริงของ Render Host ให้เป็น Base64 Data URL ทางการเสมอ 100%
+      // ป้องกันปัญหาติด CORS ของ Google Drive และตัดปัญหาตราโรงเรียนว่างเปล่าในหน้าแรกเด็ดขาด
+      renderHost.querySelectorAll('img').forEach(img => {
+        const s = (img.getAttribute('src') || '').toLowerCase();
+        const isSchoolLogo = s.includes('lh3.googleusercontent.com') ||
+                             s.includes('school_logo') ||
+                             s.includes('school-logo') ||
+                             s.includes('app-icon') ||
+                             img.classList.contains('logo') ||
+                             img.classList.contains('school-logo') ||
+                             (img.alt || '').toLowerCase().includes('logo') ||
+                             (img.alt || '').includes('ตรา');
+        if (isSchoolLogo) {
+          img.removeAttribute('onerror');
+          img.setAttribute('src', defaultSchoolLogo);
+          img.src = defaultSchoolLogo;
+        }
+      });
+
+      // รอ decode ภาพทั้งหมดในหน้านี้ (รวมถึงลายเซ็นต์) ให้พร้อมก่อนเรนเดอร์
       const imgs = Array.from(renderHost.querySelectorAll('img'));
       await Promise.all(imgs.map(img => {
         if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -256,17 +344,18 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         return new Promise(res => { img.onload = res; img.onerror = res; });
       }));
 
-      // หน่วงเวลาสั้นๆ เพื่อให้ Browser Layout Engine วาดตารางสมบูรณ์
-      await new Promise(r => setTimeout(r, 40));
+      // หน่วงเวลาสั้นๆ เพื่อให้ Browser Layout Engine วาดตารางและฟอนต์สมบูรณ์
+      await new Promise(r => setTimeout(r, 60));
 
+      // แคปเจอร์ด้วย scale: 2.0 (High Resolution 192 DPI คมชัดระดับพิมพ์เอกสาร)
       const canvas = await window.html2canvas(renderHost, {
-        scale: 1.5,
+        scale: 2.0,
         useCORS: true,
         allowTaint: false,
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: isLandscape ? 1123 : 794
+        windowWidth: hostWidthPx
       });
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
@@ -285,10 +374,9 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           isFirstPdfPage = false;
         }
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', 0.98);
         const renderHeightMm = (canvas.height / canvas.width) * renderWidthMm;
-        const posY = marginMm + Math.max(0, (maxPageHeightMm - renderHeightMm) / 4);
-        pdf.addImage(imgData, 'JPEG', marginMm, posY, renderWidthMm, renderHeightMm, undefined, 'FAST');
+        pdf.addImage(imgData, 'JPEG', marginX, marginY, renderWidthMm, renderHeightMm, undefined, 'FAST');
       } else {
         // หากเอกสารยาวเกิน 1 หน้า A4 ให้แบ่งสัดส่วนความสูงอย่างแม่นยำ
         let currentY = 0;
@@ -308,7 +396,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
             0, 0, canvas.width, chunkHeightPx
           );
 
-          const chunkImgData = chunkCanvas.toDataURL('image/jpeg', 0.95);
+          const chunkImgData = chunkCanvas.toDataURL('image/jpeg', 0.98);
           const chunkH = (chunkHeightPx / canvas.width) * renderWidthMm;
 
           if (!isFirstPdfPage) {
@@ -317,7 +405,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
             isFirstPdfPage = false;
           }
 
-          pdf.addImage(chunkImgData, 'JPEG', marginMm, marginMm, renderWidthMm, chunkH, undefined, 'FAST');
+          pdf.addImage(chunkImgData, 'JPEG', marginX, marginY, renderWidthMm, chunkH, undefined, 'FAST');
           currentY += chunkHeightPx;
         }
       }
