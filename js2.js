@@ -3638,9 +3638,10 @@ function printAttendanceDashboardOverview() {
 
   const docTitle = 'รายงานสรุปภาพรวมการเข้าเรียนประจำวัน';
   const subTitle = `ข้อมูลประจำวันที่ ${todayLabel} | ภาคเรียนที่ ${sem}/${ay}`;
-  const schoolLogoUrl = (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
+  const schoolLogoUrl = (typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL)
+    || (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
     || localStorage.getItem('cached_school_logo') 
-    || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
+    || 'school-logo.png';
 
   const html = `<!DOCTYPE html>
 <html lang="th">
@@ -3796,9 +3797,10 @@ function printDailyAttendanceRecord() {
   const mode = AttendanceState.mode;
   const isSubject = (mode === 'subject');
   const classroom = AttendanceState.classroom || '';
-  const schoolLogoUrl = (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
+  const schoolLogoUrl = (typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL)
+    || (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
     || localStorage.getItem('cached_school_logo') 
-    || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
+    || 'school-logo.png';
   
   let docTitle = isSubject ? 'แบบบันทึกการเข้าเรียนรายวิชาประจำวัน' : 'แบบบันทึกการเช็คแถวหน้าเสาธงและโฮมรูมประจำวัน';
   let subTitle = '';
@@ -4143,9 +4145,10 @@ function printAttendanceReport() {
   const sem = res.semester || '1';
   const ay = res.academic_year || '2569';
 
-  const schoolLogoUrl = (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
+  const schoolLogoUrl = (typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL)
+    || (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
     || localStorage.getItem('cached_school_logo') 
-    || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN';
+    || 'school-logo.png';
 
   const targetSub = res.target_subject;
   const isSubjectMode = !!targetSub || (rptType !== 'homeroom' && rptType !== 'all_subjects');

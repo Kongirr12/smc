@@ -2751,7 +2751,7 @@ function printCalendar() {
     </div>
 
     <div class="header">
-      <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="School Logo" class="logo">
+      <img src="${(typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL) || 'school-logo.png'}" alt="School Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';">
       <div class="header-text">
         <div class="header-school">โรงเรียนมหาชัยพิทยาคาร</div>
         <div class="header-title">ปฏิทินวิชาการและกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}</div>

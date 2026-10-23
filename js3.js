@@ -90,10 +90,30 @@ async function generatePdfFromHtml(html, title, action = 'download') {
 
   // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จ และแปลงเป็น Data URL ป้องกัน CORS Error บน iOS WebKit
   try {
+    const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
     const imgs = Array.from(container.querySelectorAll('img'));
     for (const img of imgs) {
       const src = img.getAttribute('src') || '';
-      if (!src || src.startsWith('data:')) continue;
+      if (!src) continue;
+
+      // ตรวจสอบว่าเป็นตราโรงเรียนหรือไม่ (URL Google Drive, คำว่า school_logo หรือ class logo)
+      const isSchoolLogo = src.includes('lh3.googleusercontent.com') ||
+                           src.includes('school_logo') ||
+                           src.includes('school-logo') ||
+                           src.includes('app-icon') ||
+                           img.classList.contains('logo') ||
+                           img.classList.contains('school-logo') ||
+                           (img.alt || '').toLowerCase().includes('logo') ||
+                           (img.alt || '').includes('ตรา');
+
+      if (isSchoolLogo) {
+        // ใช้ตราโรงเรียนมหาชัยพิทยาคารที่เป็นทางการแบบ Data URL เสมอ (Zero CORS, 100% คมชัด)
+        img.src = defaultSchoolLogo;
+        continue;
+      }
+
+      if (src.startsWith('data:')) continue;
+
       try {
         if (img.complete && img.naturalWidth > 0) {
           const c = document.createElement('canvas');
@@ -104,8 +124,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           img.src = c.toDataURL('image/png');
         }
       } catch (_) {
-        // หากติด CORS canvas ให้ใช้ fallback image ในเครื่อง
-        img.src = 'app-icon.jpg';
+        // หากติด CORS canvas ให้คงรูปภาพเดิมไว้ ไม่แทนที่ด้วย app-icon
       }
     }
   } catch (_) {}
@@ -418,6 +437,9 @@ async function openInExternalSafari(directUrl, html, title) {
   }
 
   if (targetUrl) {
+    if (!targetUrl.includes('autoprint=1')) {
+      targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'autoprint=1';
+    }
     const modal = document.getElementById('printDocModal');
     if (modal) modal._currentDirectUrl = targetUrl;
 
@@ -430,7 +452,7 @@ async function openInExternalSafari(directUrl, html, title) {
     a.click();
     setTimeout(() => {
       if (a.parentNode) a.parentNode.removeChild(a);
-    }, 150);
+    }, 200);
   } else {
     sharePdfDocument(html, title);
   }
@@ -645,19 +667,27 @@ function triggerDirectInAppPrint(html) {
   printArea.innerHTML = html || '';
   document.body.classList.add('is-printing-doc');
 
-  // สำคัญที่สุด: ห้ามใช้ afterprint ในการลบ class หรือ clear innerHTML
-  // เพราะบน iOS WebKit เหตุการณ์ afterprint จะถูกเรียกทันทีที่หน้าต่างพิมพ์ถูกเรียกขึ้นมา
-  // ทำให้การแสดงผลพิมพ์ใน AirPrint ย้อนกลับไปเป็นหน้าจอปกติ
-  // การล้างข้อมูลจะทำเมื่อผู้ใช้กดปิดหน้าต่าง modal เท่านั้น
-  const printDelay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 30 : 150;
+  const cleanup = () => {
+    document.body.classList.remove('is-printing-doc');
+    window.removeEventListener('focus', cleanup);
+    window.removeEventListener('afterprint', cleanup);
+  };
+
+  const printDelay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 50 : 150;
   setTimeout(() => {
     try {
       window.focus();
       window.print();
     } catch (e) {
       console.warn('In-app print error', e);
+      cleanup();
     }
   }, printDelay);
+
+  // Safety net: คืนค่าหน้าจอกลับสู่สภาพปกติเมื่อพิมพ์เสร็จ หรือผู้ใช้กลับสู่หน้าจอ (ป้องกันหน้าจอค้าง)
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.addEventListener('focus', cleanup, { once: true });
+  setTimeout(cleanup, 4000);
 }
 
 // Global handler called from top bar or from inside the iframe preview
@@ -2221,7 +2251,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         </button>
       </div>
     </div>
-    <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex flex-col p-0 sm:p-2" style="-webkit-overflow-scrolling: touch;">
+    <div class="flex-1 w-full bg-slate-200 overflow-auto relative flex flex-col p-0 sm:p-2" style="-webkit-overflow-scrolling: touch;">
       <iframe id="printDocIframe" class="w-full h-full border-0 bg-slate-100 sm:rounded-lg sm:shadow-lg" style="min-width:0; min-height:0; width:100%; height:100%; flex:1 1 0%;"></iframe>
     </div>
   `;
@@ -2349,7 +2379,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           html {
             width: 100% !important;
             min-width: 0 !important;
-            overflow-x: hidden !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
             -webkit-text-size-adjust: 100% !important;
             text-size-adjust: 100% !important;
           }
@@ -2359,7 +2390,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             margin: 0 auto !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            overflow-x: hidden !important;
+            overflow-x: auto !important;
             -webkit-overflow-scrolling: touch !important;
             box-sizing: border-box !important;
           }
@@ -2557,21 +2588,27 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
                 if (!availWidth) availWidth = 375;
 
                 if (availWidth > 0 && availWidth < targetWidth) {
-                  var pad = availWidth < 480 ? 10 : 20;
+                  var pad = availWidth < 480 ? 8 : 16;
                   var scale = (availWidth - pad) / targetWidth;
-                  if (scale < 0.2) scale = 0.2;
+                  if (scale < 0.25) scale = 0.25;
                   if (scale > 1) scale = 1;
 
-                  document.documentElement.style.overflowX = 'hidden';
-                  document.body.style.zoom = scale;
+                  document.documentElement.style.overflowX = 'auto';
+                  document.documentElement.style.webkitOverflowScrolling = 'touch';
+                  document.body.style.overflowX = 'auto';
+                  document.body.style.webkitOverflowScrolling = 'touch';
+                  try { document.body.style.zoom = scale; } catch(_) {}
                   document.body.style.width = targetWidth + 'px';
                   document.body.style.maxWidth = targetWidth + 'px';
-                  document.body.style.minWidth = targetWidth + 'px';
+                  document.body.style.minWidth = '0';
                   document.body.style.margin = '4px auto';
                   document.body.style.boxSizing = 'border-box';
                 } else {
                   document.documentElement.style.overflowX = 'auto';
-                  document.body.style.zoom = '1';
+                  document.documentElement.style.webkitOverflowScrolling = 'touch';
+                  document.body.style.overflowX = 'auto';
+                  document.body.style.webkitOverflowScrolling = 'touch';
+                  try { document.body.style.zoom = '1'; } catch(_) {}
                   document.body.style.width = '100%';
                   document.body.style.maxWidth = isLand ? '285mm' : '205mm';
                   document.body.style.minWidth = '0';

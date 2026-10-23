@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.3.12',
+  APP_VERSION    : '3.3.13',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -4316,7 +4316,7 @@ function renderPP5Template_(config, subject, teacher, rows, classroom, targetYea
       <div class="print-page-wrapper pp5-sheet" style="${breakStyle}">
         <!-- ส่วนหัวราชการทางการ -->
         <div class="header-container">
-          <img src="${schoolLogo}" class="school-logo" alt="ตราโรงเรียน" onerror="this.style.display='none';">
+          <img src="${schoolLogo}" class="school-logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
           <div class="doc-title">แบบบันทึกผลการเรียนประจำรายวิชา (ปพ.๕)</div>
           <div class="doc-sub">ตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน พุทธศักราช ๒๕๕๑ (ฉบับปรับปรุง พ.ศ. ๒๕๖๐)</div>
           <div class="doc-school">${escapeHTMLServer_(schoolName)} อำเภอเมือง จังหวัดมหาสารคาม</div>
@@ -5088,7 +5088,7 @@ function renderPP6Template_(config, student, grades, subMap, targetSem, targetYe
   <div class="print-page-wrapper pp6-container">
     <!-- ส่วนหัวราชการทางการ -->
     <div class="header-container">
-      <img src="${schoolLogo}" class="school-logo" alt="ตราโรงเรียน" onerror="this.style.display='none';">
+      <img src="${schoolLogo}" class="school-logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
       <div class="doc-title">แบบรายงานผลการพัฒนาคุณภาพผู้เรียนรายบุคคล (ปพ.๖)</div>
       <div class="doc-sub">ตามหลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน พุทธศักราช ๒๕๕๑ (ฉบับปรับปรุง พ.ศ. ๒๕๖๐)</div>
       <div class="doc-school">${escapeHTMLServer_(schoolName)} ตำบลท่าสองคอน อำเภอเมือง จังหวัดมหาสารคาม</div>
@@ -8407,7 +8407,7 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
 
     const html = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <title>ตารางสอน ${escapeHTMLServer_(classroom)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -8422,12 +8422,40 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     -webkit-overflow-scrolling: touch;
   }
   @media screen {
-    body { padding: 10px; background: #F8FAFC; }
+    html, body {
+      background: #F1F5F9 !important;
+      margin: 0 !important;
+      padding: 8px 4px !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    .schedule-page {
+      min-width: 780px !important;
+      max-width: 1020px !important;
+      margin: 8px auto !important;
+      background: #FFFFFF !important;
+      padding: 12px 14px !important;
+      border-radius: 8px !important;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+      box-sizing: border-box !important;
+    }
+    .no-print-toolbar {
+      position: sticky; top: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(8px);
+      color: #FFF; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); gap: 8px; flex-wrap: wrap;
+    }
+    .no-print-btn {
+      background: #4F46E5; color: #FFF; border: none; padding: 7px 14px;
+      border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
   }
   @media print {
     html, body { padding: 0 !important; background: #FFF !important; font-size: 10px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
-    .no-print { display: none !important; }
-    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; }
+    .no-print, .no-print-toolbar { display: none !important; }
+    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; width: 95% !important; max-width: 275mm !important; }
     table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
     thead { display: table-header-group !important; }
@@ -8485,18 +8513,17 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   .sig-title {
     font-size: 9.5px; color: #475569; margin-top: 1px; white-space: nowrap;
   }
-  .no-print {
-    position: fixed; top: 10px; right: 10px;
-    background: #4F46E5; color: white; padding: 8px 16px;
-    border-radius: 8px; cursor: pointer; border: none;
-    font-family: inherit; font-weight: 700; font-size: 13px;
-    z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  }
 </style></head><body>
-<button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
+<div class="no-print no-print-toolbar">
+  <div style="display:flex; align-items:center; gap:8px;">
+    <button class="no-print-btn" onclick="window.print()">🖨 พิมพ์เอกสาร (AirPrint)</button>
+    <button class="no-print-btn" style="background:#059669;" onclick="try{window.close();}catch(_){history.back();}">✕ ปิด</button>
+  </div>
+  <div style="font-size:11px; color:#94A3B8;">💡 เลื่อนซ้าย-ขวา เพื่อดูตารางสอนครบทุกคาบ หรือหมุนหน้าจอแนวนอน</div>
+</div>
 <div class="schedule-page">
   <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:6px;">
-    <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
+    <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
     <div style="font-size:17px; font-weight:800; color:#0F172A; margin-bottom:2px;">ตารางเรียน ชั้น ${escapeHTMLServer_(classroom)}</div>
     <div style="font-size:13px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
     <div style="font-size:11px; color:#64748B; margin-top:1px;">ภาคเรียนที่ ${escapeHTMLServer_(sem)} ปีการศึกษา ${escapeHTMLServer_(ay)}</div>
@@ -8535,6 +8562,16 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
     </div>
   </div>
 </div>
+<script>
+  (function() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('autoprint') === '1') {
+        setTimeout(function() { window.focus(); window.print(); }, 450);
+      }
+    } catch (_) {}
+  })();
+</script>
 </body></html>`;
 
     return { status:'success', html };
@@ -8662,7 +8699,7 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
 
     const html = `<!DOCTYPE html><html lang="th"><head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <title>ตารางสอน ${escapeHTMLServer_(teacherName)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -8674,12 +8711,40 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
     overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
   @media screen {
-    body { padding: 10px; background: #F8FAFC; }
+    html, body {
+      background: #F1F5F9 !important;
+      margin: 0 !important;
+      padding: 8px 4px !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    .schedule-page {
+      min-width: 780px !important;
+      max-width: 1020px !important;
+      margin: 8px auto !important;
+      background: #FFFFFF !important;
+      padding: 12px 14px !important;
+      border-radius: 8px !important;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+      box-sizing: border-box !important;
+    }
+    .no-print-toolbar {
+      position: sticky; top: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(8px);
+      color: #FFF; padding: 8px 12px; border-radius: 8px; margin-bottom: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); gap: 8px; flex-wrap: wrap;
+    }
+    .no-print-btn {
+      background: #4F46E5; color: #FFF; border: none; padding: 7px 14px;
+      border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
   }
   @media print {
     html, body { padding: 0 !important; background: #FFF !important; font-size: 10px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
-    .no-print { display: none !important; }
-    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; }
+    .no-print, .no-print-toolbar { display: none !important; }
+    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; width: 95% !important; max-width: 275mm !important; }
     table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
     thead { display: table-header-group !important; }
@@ -8725,18 +8790,17 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
   .sig-title {
     font-size: 9.5px; color: #475569; margin-top: 1px; white-space: nowrap;
   }
-  .no-print {
-    position:fixed; top:10px; right:10px;
-    background:#4F46E5; color:white; padding:8px 16px;
-    border-radius:8px; cursor:pointer; border:none;
-    font-family:inherit; font-weight:700; font-size:13px;
-    z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  }
 </style></head><body>
-<button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
+<div class="no-print no-print-toolbar">
+  <div style="display:flex; align-items:center; gap:8px;">
+    <button class="no-print-btn" onclick="window.print()">🖨 พิมพ์เอกสาร (AirPrint)</button>
+    <button class="no-print-btn" style="background:#059669;" onclick="try{window.close();}catch(_){history.back();}">✕ ปิด</button>
+  </div>
+  <div style="font-size:11px; color:#94A3B8;">💡 เลื่อนซ้าย-ขวา เพื่อดูตารางสอนครบทุกคาบ หรือหมุนหน้าจอแนวนอน</div>
+</div>
 <div class="schedule-page">
   <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:6px;">
-    <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
+    <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
     <div style="font-size:17px; font-weight:800; color:#0F172A; margin-bottom:2px;">ตารางสอน ${escapeHTMLServer_(teacherName)}</div>
     <div style="font-size:13px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
     <div style="font-size:11px; color:#64748B; margin-top:1px;">${escapeHTMLServer_(teacherPos)} | ภาคเรียนที่ ${sem} ปีการศึกษา ${ay}</div>
@@ -8766,6 +8830,16 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
     </div>
   </div>
 </div>
+<script>
+  (function() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('autoprint') === '1') {
+        setTimeout(function() { window.focus(); window.print(); }, 450);
+      }
+    } catch (_) {}
+  })();
+</script>
 </body></html>`;
 
     return { status:'success', html };
@@ -10238,7 +10312,7 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
       const pageHtml = `
         <div class="schedule-page" style="page-break-after:always; break-after:page; padding:0; margin:0 auto 10px auto; width:95%; max-width:275mm;">
           <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:6px; text-align:center;">
-            <img src="${escapeHTMLServer_(config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN')}" alt="Logo" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
+            <img src="${escapeHTMLServer_(config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN')}" alt="Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
             <div style="font-size:17px; font-weight:800; color:#0F172A; margin-bottom:2px;">${pageTitle}</div>
             <div style="font-size:13px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
             <div style="font-size:11px; color:#64748B; margin-top:1px;">${subHeader}</div>
@@ -10296,12 +10370,28 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
     print-color-adjust: exact;
   }
   @media screen {
-    body { min-width: 0; width: 100%; padding: 12px; background: #F8FAFC; }
+    html, body {
+      background: #F1F5F9 !important;
+      margin: 0 !important;
+      padding: 8px 4px !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    .schedule-page {
+      min-width: 780px !important;
+      max-width: 1020px !important;
+      margin: 10px auto !important;
+      background: #FFFFFF !important;
+      padding: 12px 14px !important;
+      border-radius: 8px !important;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
+      box-sizing: border-box !important;
+    }
   }
   @media print {
     html, body { padding: 0 !important; background: #FFF !important; font-size: 11px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .no-print, .no-print-bar { display: none !important; }
-    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; }
+    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; width: 95% !important; max-width: 275mm !important; }
     table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
     thead { display: table-header-group !important; }
@@ -10364,14 +10454,15 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
   }
   .no-print-bar {
     position: sticky; top: 0; left: 0; right: 0;
-    background: #1E293B; color: white; padding: 10px 16px;
-    border-radius: 8px; margin-bottom: 16px;
+    background: rgba(15, 23, 42, 0.94); backdrop-filter: blur(8px);
+    color: white; padding: 10px 14px;
+    border-radius: 8px; margin-bottom: 12px;
     display: flex; align-items: center; justify-content: space-between;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000; gap: 8px; flex-wrap: wrap;
   }
   .no-print-btn {
-    background: #4F46E5; color: white; padding: 8px 18px;
+    background: #4F46E5; color: white; padding: 8px 16px;
     border-radius: 6px; cursor: pointer; border: none;
     font-family: inherit; font-weight: 700; font-size: 13px;
     display: inline-flex; align-items: center; gap: 6px;
@@ -10379,12 +10470,25 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
   .no-print-btn:hover { background: #4338CA; }
 </style></head><body>
 <div class="no-print-bar no-print">
-  <div style="font-weight:700; font-size:13px;">🖨️ รวมทั้งหมด ${pageCount} หน้า (A4 แนวนอน)</div>
-  <button class="no-print-btn" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
-    <span>🖨 พิมพ์เอกสารทั้งหมด</span>
-  </button>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <button class="no-print-btn" onclick="window.print()">
+      <span>🖨 พิมพ์เอกสารทั้งหมด (${pageCount} หน้า)</span>
+    </button>
+    <button class="no-print-btn" style="background:#059669;" onclick="try{window.close();}catch(_){history.back();}">✕ ปิด</button>
+  </div>
+  <div style="font-size:11px; color:#94A3B8;">💡 เลื่อนซ้าย-ขวา เพื่อดูตารางสอนครบทุกคาบ หรือหมุนหน้าจอแนวนอน</div>
 </div>
 ${combinedBody}
+<script>
+  (function() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('autoprint') === '1') {
+        setTimeout(function() { window.focus(); window.print(); }, 450);
+      }
+    } catch (_) {}
+  })();
+</script>
 </body></html>`;
     
     return { status: 'success', html: finalHtml, count: pageCount };
