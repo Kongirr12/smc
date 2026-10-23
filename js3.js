@@ -118,7 +118,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     // 4. CSS พิเศษที่ถอดแบบมาจาก @media print ใน styles.css 100%
     // รับประกันว่า PDF จะออกมาเหมือนกับการสั่งพิมพ์ผ่าน "พิมพ์เอกสาร" ทุกประการ:
     // ขอบกระดาษเรียบตรง (ไม่ติดขอบมน 8px), ไม่มีเงาการ์ด, เส้นตารางหนา 2px คมชัด, ตรา รร. และลายเซ็นต์อยู่ครบสมบูรณ์
-    const hostWidthPx = isLandscape ? 1080 : 760;
+    const hostWidthPx = isLandscape ? 1020 : 760;
     const pdfFixCss = `
       <style>
         * {
@@ -132,6 +132,8 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           background: #FFFFFF !important;
           color: #000000 !important;
           width: ${hostWidthPx}px !important;
+          min-width: ${hostWidthPx}px !important;
+          max-width: ${hostWidthPx}px !important;
           font-family: 'Sarabun', 'TH Sarabun New', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
           -webkit-font-smoothing: antialiased !important;
         }
@@ -140,10 +142,10 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           box-shadow: none !important;
           border: none !important;
           margin: 0 auto !important;
-          padding: 8px 12px !important;
+          padding: 0 !important;
           background: #FFFFFF !important;
           width: 100% !important;
-          max-width: 100% !important;
+          max-width: ${hostWidthPx}px !important;
           min-width: 0 !important;
           box-sizing: border-box !important;
         }
@@ -192,7 +194,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           max-width: 100% !important;
           min-width: 0 !important;
           border-collapse: collapse !important;
-          table-layout: auto !important;
+          table-layout: fixed !important;
           border: 2px solid #000000 !important;
           margin: 0 auto !important;
         }
@@ -200,6 +202,11 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           border: 1px solid #000000 !important;
           vertical-align: middle !important;
           text-align: center !important;
+        }
+        th:first-child, td:first-child {
+          width: 85px !important;
+          min-width: 85px !important;
+          max-width: 85px !important;
         }
         th {
           background: #FFFFFF !important;
@@ -308,12 +315,12 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       compress: true
     });
 
-    // กำหนดระยะขอบตรงกับ @page ในคำสั่ง "พิมพ์เอกสาร": บน 5mm, ข้าง 6mm
+    // กำหนดระยะขอบตรงกับเอกสารเป้าหมายเป๊ะ 100%: แนวนอนกว้าง 270.4mm ขอบข้างละ 13.3mm ขอบบน 6mm
     const pageWidthMm = isLandscape ? 297 : 210;
     const pageHeightMm = isLandscape ? 210 : 297;
-    const marginX = 6;
-    const marginY = 5;
-    const renderWidthMm = pageWidthMm - (marginX * 2); // 285mm ในแนวนอน
+    const marginX = isLandscape ? 13.3 : 10.0;
+    const marginY = isLandscape ? 6.0 : 8.0;
+    const renderWidthMm = pageWidthMm - (marginX * 2); // 270.4mm ในแนวนอน พอดีเป๊ะ
     const maxPageHeightMm = pageHeightMm - (marginY * 2);
 
     let isFirstPdfPage = true;
@@ -862,9 +869,9 @@ function triggerDirectInAppPrint(html) {
       #inAppPrintArea .schedule-page,
       #inAppPrintArea .print-page-wrapper {
         width: 100% !important;
-        max-width: 285mm !important;
+        max-width: ${isLand ? '1020px' : '760px'} !important;
         margin: 0 auto !important;
-        padding: 8px 12px !important;
+        padding: 0 !important;
         page-break-after: always !important;
         break-after: page !important;
         page-break-inside: avoid !important;
@@ -890,13 +897,19 @@ function triggerDirectInAppPrint(html) {
       #inAppPrintArea table {
         width: 100% !important;
         max-width: 100% !important;
-        table-layout: auto !important;
+        table-layout: fixed !important;
         border-collapse: collapse !important;
         border: 2px solid #000000 !important;
       }
       #inAppPrintArea th,
       #inAppPrintArea td {
         border: 1px solid #000000 !important;
+      }
+      #inAppPrintArea th:first-child,
+      #inAppPrintArea td:first-child {
+        width: 85px !important;
+        min-width: 85px !important;
+        max-width: 85px !important;
       }
       #inAppPrintArea th {
         padding: 4px 2px !important;
@@ -2847,12 +2860,12 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             }
             .print-page-wrapper, .print-doc, .pp6-container, .pp5-sheet, .schedule-page, .calendar-container, .receipt-box {
               margin: 0 auto !important;
-              padding: 8px 12px !important;
+              padding: 0 !important;
               box-shadow: none !important;
               border: none !important;
               border-radius: 0 !important;
               width: 100% !important;
-              max-width: 100% !important;
+              max-width: ${isLand ? '1020px' : '760px'} !important;
               min-width: 0 !important;
               box-sizing: border-box !important;
               page-break-after: always !important;
@@ -2874,7 +2887,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               width: 100% !important;
               max-width: 100% !important;
               min-width: 0 !important;
-              table-layout: auto !important;
+              table-layout: fixed !important;
               page-break-inside: auto !important;
               border-collapse: collapse !important;
               border: 2px solid #000000 !important;
@@ -2882,6 +2895,12 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             table:not(.cal-table) th,
             table:not(.cal-table) td {
               border: 1px solid #000000 !important;
+            }
+            table:not(.cal-table) th:first-child,
+            table:not(.cal-table) td:first-child {
+              width: 85px !important;
+              min-width: 85px !important;
+              max-width: 85px !important;
             }
             .sig-line:empty {
               border-bottom: 1px dotted #64748B !important;
