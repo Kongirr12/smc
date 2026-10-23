@@ -1551,14 +1551,14 @@ html.dark-mode select option {
   background-color: #1A1D25 !important;
   color: #F1F5F9 !important;
 }
-html.dark-mode table, html.dark-mode th, html.dark-mode td { border-color: rgba(99,102,241,.1) !important; }
-html.dark-mode th, html.dark-mode thead th {
+html.dark-mode #appLayout table, html.dark-mode #appLayout th, html.dark-mode #appLayout td { border-color: rgba(99,102,241,.1) !important; }
+html.dark-mode #appLayout th, html.dark-mode #appLayout thead th {
   background-color: #1A1D25 !important; color: #94A3B8 !important;
 }
-html.dark-mode tbody tr:hover td, html.dark-mode .hover\:bg-slate-50:hover {
+html.dark-mode #appLayout tbody tr:hover td, html.dark-mode .hover\:bg-slate-50:hover {
   background-color: rgba(79,70,229,.08) !important;
 }
-html.dark-mode tbody tr { border-bottom-color: rgba(99,102,241,.1) !important; }
+html.dark-mode #appLayout tbody tr { border-bottom-color: rgba(99,102,241,.1) !important; }
 html.dark-mode .empty-state, html.dark-mode .coming-soon {
   background-color: transparent !important; border-color: rgba(99,102,241,.12) !important; color: #4B5563 !important;
 }

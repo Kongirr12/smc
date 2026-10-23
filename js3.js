@@ -32,8 +32,9 @@ function getSafePrintTitle(title) {
  * @param {'download'|'share'|'blob'|'open'} action - สิ่งที่ต้องการทำกับไฟล์ PDF
  * @returns {Promise<Blob|boolean|null>}
  */
-async function generatePdfFromHtml(html, title, action = 'download') {
+async function generatePdfFromHtml(html, title, action = 'download', opts = {}) {
   if (!html) return null;
+  const isSilent = Boolean(opts && opts.silent);
   const safeTitle = getSafePrintTitle(title);
   const modal = document.getElementById('printDocModal');
   const isLandscape = (modal && modal.style.display !== 'none' && modal._currentOrientation)
@@ -41,7 +42,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     : (html.includes('A4 landscape') || html.includes('แนวนอน') || html.includes('landscape') ||
        (title && (title.includes('ตารางเรียน') || title.includes('ตารางสอน') || title.includes('ปพ.5') || title.includes('ปพ.๕'))));
 
-  showLoading('กำลังจัดเตรียมไฟล์ PDF...');
+  if (!isSilent) showLoading('กำลังจัดเตรียมเอกสารสำหรับพิมพ์...');
 
   let renderHost = null;
   try {
@@ -56,7 +57,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     if (!jsPdfLib) {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'jspdf.umd.min.js?v=3.3.16';
+        s.src = 'jspdf.umd.min.js?v=3.3.21';
         s.onload = () => {
           jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
           resolve();
@@ -69,7 +70,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     if (!window.html2canvas) {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'html2canvas.min.js?v=3.3.16';
+        s.src = 'html2canvas.min.js?v=3.3.21';
         s.onload = resolve;
         s.onerror = reject;
         document.head.appendChild(s);
@@ -80,18 +81,18 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // ดึง styles และลบ @media screen ออกทั้งหมด เพื่อให้ได้สไตล์สำหรับการพิมพ์จริง (ไม่มีขอบมน ไม่ติดเงาการ์ด)
     const rawStyles = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
       .map(s => s.outerHTML)
       .join('\n');
 
-    // ลบ @media screen blocks ออกจากสไตล์ เพื่อไม่ให้กระทบกับการเรนเดอร์ PDF
+    // ลบ @media screen blocks และปรับ table-layout: fixed เป็น auto ให้ตรงกับฟอร์มในหน้าพรีวิว 100%
     const cleanStyles = rawStyles
       .replace(/@media\s+screen\s*\{[\s\S]*?\}\s*\}/gi, '')
-      .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '');
+      .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '')
+      .replace(/table-layout\s*:\s*fixed(\s*!important)?/gi, 'table-layout: auto !important');
 
     // ลบองค์ประกอบควบคุมที่ไม่ต้องการพิมพ์
-    doc.querySelectorAll('.no-print, .no-print-bar, button, script').forEach(el => el.remove());
+    doc.querySelectorAll('.no-print, .no-print-bar, .no-print-toolbar, button, script').forEach(el => el.remove());
 
     // 3. แยกเอกสารออกเป็นหน้ารายบุคคล / รายห้องเรียน (Page-by-Page Isolation)
     const pageSelector = '.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .print-doc, .form-doc-wrapper';
@@ -273,19 +274,28 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       </style>
     `;
 
-    // 5. สร้าง Isolated Iframe Render Host (แยกขาดจาก styles.css ของแอป 100% เหมือนหน้าพรีวิว)
-    renderHost = document.createElement('iframe');
+    // 5. สร้าง Render Host ใต้หน้าต่างพรีวิว (z-index: 10 ใต้ #printDocModal z-index: 99999)
+    // ไม่รบกวนสายตาผู้ใช้ แต่มี opacity: 1 เต็มร้อยเพื่อให้ WebKit วาดภาพคมชัด 100%
+    const existingHost = document.getElementById('pdfRenderHost');
+    if (existingHost && existingHost.parentNode) existingHost.parentNode.removeChild(existingHost);
+
+    renderHost = document.createElement('div');
     renderHost.id = 'pdfRenderHost';
     renderHost.style.position = 'fixed';
     renderHost.style.left = '0';
     renderHost.style.top = '0';
     renderHost.style.width = `${hostWidthPx}px`;
-    renderHost.style.height = '900px';
-    renderHost.style.border = '0';
+    renderHost.style.minWidth = `${hostWidthPx}px`;
+    renderHost.style.maxWidth = `${hostWidthPx}px`;
     renderHost.style.background = '#FFFFFF';
-    renderHost.style.zIndex = '9990';
+    renderHost.style.color = '#000000';
+    renderHost.style.zIndex = '10';
     renderHost.style.opacity = '1';
     renderHost.style.pointerEvents = 'none';
+    renderHost.style.boxSizing = 'border-box';
+    renderHost.style.padding = isLandscape ? '10px 14px' : '10px 12px';
+    renderHost.style.margin = '0';
+    renderHost.style.overflow = 'hidden';
     document.body.appendChild(renderHost);
 
     // 6. กำหนดขนาด A4 สำหรับ jsPDF
@@ -306,20 +316,14 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     let isFirstPdfPage = true;
     const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
 
-    // 7. วนลูปเรนเดอร์แยกทีละหน้าอย่างเป็นอิสระใน Isolated Iframe
+    // 7. วนลูปเรนเดอร์แยกทีละหน้าอย่างเป็นอิสระ
     for (let pIdx = 0; pIdx < pageNodes.length; pIdx++) {
       const node = pageNodes[pIdx];
       const nodeContent = node.outerHTML || node.innerHTML;
 
-      const iframeDoc = renderHost.contentDocument || (renderHost.contentWindow && renderHost.contentWindow.document);
-      if (!iframeDoc) continue;
-      iframeDoc.open();
-      iframeDoc.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">${cleanStyles}${pdfFixCss}</head><body><div id="pdfPageTarget" style="width:${hostWidthPx}px;background:#FFFFFF;padding:8px 12px;box-sizing:border-box;">${nodeContent}</div></body></html>`);
-      iframeDoc.close();
+      renderHost.innerHTML = cleanStyles + pdfFixCss + nodeContent;
 
-      const targetEl = iframeDoc.getElementById('pdfPageTarget') || iframeDoc.body;
-
-      targetEl.querySelectorAll('img').forEach(img => {
+      renderHost.querySelectorAll('img').forEach(img => {
         const s = (img.getAttribute('src') || '').toLowerCase();
         const isSchoolLogo = s.includes('lh3.googleusercontent.com') ||
                              s.includes('school_logo') ||
@@ -336,16 +340,16 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         }
       });
 
-      const imgs = Array.from(targetEl.querySelectorAll('img'));
+      const imgs = Array.from(renderHost.querySelectorAll('img'));
       await Promise.all(imgs.map(img => {
         if (img.complete && img.naturalWidth > 0) return Promise.resolve();
         if (img.decode) return img.decode().catch(() => {});
         return new Promise(res => { img.onload = res; img.onerror = res; });
       }));
 
-      await new Promise(r => setTimeout(r, 60));
+      await new Promise(r => setTimeout(r, 40));
 
-      const canvas = await window.html2canvas(targetEl, {
+      const canvas = await window.html2canvas(renderHost, {
         scale: 2.0,
         useCORS: true,
         allowTaint: false,
@@ -360,20 +364,16 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         continue;
       }
 
-      // ตรวจสอบความสูงเทียบกับหน้ากระดาษ A4
       const sliceHeightPx = Math.floor((maxPageHeightMm / renderWidthMm) * canvas.width);
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
       const renderHeightMm = (canvas.height / canvas.width) * renderWidthMm;
 
-      // เพิ่มหน้าใหม่ใน PDF (ยกเว้นหน้าแรก)
       if (!isFirstPdfPage) {
         pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
       } else {
         isFirstPdfPage = false;
       }
 
-      // ตรวจสอบว่าพอดี 1 หน้า A4 หรือไม่ (อนุโลมให้สูงเกินได้ถึง 15% โดยสเกลให้พอดี 1 หน้าพอดีเป๊ะ)
-      // รับประกันว่าตารางสอน/ตารางเรียน 1 หน้า จะไม่มีการตัดเศษลายเซ็นต์ไปโผล่หน้า 2 เด็ดขาด
       if (renderHeightMm <= maxPageHeightMm * 1.15) {
         const scaleFactor = Math.min(1, maxPageHeightMm / renderHeightMm);
         const finalW = renderWidthMm * scaleFactor;
@@ -382,7 +382,6 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         const posY = marginY;
         pdf.addImage(imgData, 'JPEG', posX, posY, finalW, finalH, undefined, 'FAST');
       } else {
-        // หากเอกสารยาวเกิน 1 หน้า A4 (เช่น บัญชีรายชื่อยาวหลายสิบคน) ให้แบ่งสัดส่วนความสูงตามความเหมาะสม
         let currentY = 0;
         let isFirstSlice = true;
         while (currentY < canvas.height) {
@@ -416,11 +415,11 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       }
     }
 
-    hideLoading();
+    if (!isSilent) hideLoading();
 
     if (action === 'download') {
       pdf.save(`${safeTitle}.pdf`);
-      showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
+      if (!isSilent) showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
       return true;
     } else {
       const pdfBlob = pdf.output('blob');
@@ -429,8 +428,10 @@ async function generatePdfFromHtml(html, title, action = 'download') {
 
   } catch (err) {
     console.error('PDF Generation Error:', err);
-    hideLoading();
-    showToast('error', 'เกิดข้อผิดพลาดในการสร้าง PDF');
+    if (!isSilent) {
+      hideLoading();
+      showToast('error', 'เกิดข้อผิดพลาดในการสร้าง PDF');
+    }
     return null;
   } finally {
     if (renderHost && renderHost.parentNode) {
@@ -1053,12 +1054,96 @@ function prepareInAppPrintArea(html, isLandOverride) {
   }
 }
 
+/**
+ * สำหรับโหมดไอคอนหน้าจอโฮม iPhone (iOS Standalone WebClip: window.navigator.standalone === true)
+ * ซึ่งระบบ iOS บล็อกคำสั่ง window.print() ไม่ให้ทำงาน:
+ * จะเปิด iOS Share Sheet (ที่มีเมนู "พิมพ์ / AirPrint" ในตัว) ทันทีในคลิกเดียวโดยใช้ไฟล์ PDF ที่เรนเดอร์เตรียมไว้ล่วงหน้า
+ */
+async function triggerIOSStandaloneAirPrint(html, title) {
+  const modal = document.getElementById('printDocModal');
+  const activeHtml = html || (modal && modal._currentHtml) || '';
+  const activeTitle = title || (modal && modal._currentTitle) || 'เอกสาร';
+  const safeTitle = getSafePrintTitle(activeTitle);
+
+  // กรณีที่ 1: ไฟล์ PDF ถูกสร้างเตรียมไว้ในหน่วยความจำเรียบร้อยแล้วระหว่างดูพรีวิว -> เปิดเมนู AirPrint / Share Sheet ทันที (0ms Synchronous Gesture!)
+  if (modal && modal._prebuiltPdfFile && navigator.share && (!navigator.canShare || navigator.canShare({ files: [modal._prebuiltPdfFile] }))) {
+    try {
+      await navigator.share({
+        files: [modal._prebuiltPdfFile],
+        title: `${activeTitle}`
+      });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      console.warn('Direct prebuilt share fallback:', err);
+    }
+  }
+
+  // กรณีที่ 2: ผู้ใช้กดปุ่มพิมพ์ทันทีขณะกำลังเรนเดอร์พื้นหลัง หรือต้องการ User Gesture ใหม่
+  showLoading('กำลังเตรียมหน้าต่างพิมพ์ AirPrint...');
+  let pdfBlob = null;
+  try {
+    if (modal && modal._prebuiltPdfPromise) {
+      pdfBlob = await modal._prebuiltPdfPromise;
+    }
+    if (!pdfBlob) {
+      pdfBlob = await generatePdfFromHtml(activeHtml, activeTitle, 'blob', { silent: true });
+    }
+  } catch (e) {
+    console.error('AirPrint PDF prep error:', e);
+  }
+  hideLoading();
+
+  if (!pdfBlob) {
+    showToast('error', 'ไม่สามารถเตรียมเอกสารสำหรับพิมพ์ได้');
+    return;
+  }
+
+  const file = new File([pdfBlob], `${safeTitle}.pdf`, { type: 'application/pdf' });
+  if (modal) modal._prebuiltPdfFile = file;
+
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'info',
+      title: 'พร้อมสั่งพิมพ์ AirPrint',
+      html: `<div class="text-xs sm:text-sm text-slate-600 leading-relaxed">แตะปุ่มด้านล่าง แล้วเลือกเมนู <b>"พิมพ์" (Print / AirPrint)</b> เพื่อพิมพ์เอกสารออกทางเครื่องพิมพ์ทันที</div>`,
+      confirmButtonText: '<i class="bx bx-printer mr-1"></i> เปิดหน้าต่างพิมพ์ (AirPrint)',
+      confirmButtonColor: '#4F46E5',
+      showCancelButton: true,
+      cancelButtonText: 'ยกเลิก',
+      cancelButtonColor: '#94A3B8',
+      customClass: { popup: 'rounded-2xl max-w-xs sm:max-w-sm' }
+    }).then((res) => {
+      if (res.isConfirmed) {
+        if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+          navigator.share({ files: [file], title: activeTitle }).catch((err) => {
+            if (err && err.name === 'AbortError') return;
+            downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
+          });
+        } else {
+          downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
+        }
+      }
+    });
+  } else if (navigator.share) {
+    navigator.share({ files: [file], title: activeTitle }).catch(() => downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`));
+  } else {
+    downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
+  }
+}
+
 function triggerDirectInAppPrint(html) {
   const modal = document.getElementById('printDocModal');
   const activeHtml = html || (modal && modal._currentHtml) || '';
+  const activeTitle = (modal && modal._currentTitle) || 'เอกสาร';
   const isLand = modal ? (modal._currentOrientation === 'landscape') : undefined;
 
-  // เตรียมพื้นที่พิมพ์และเรียก window.print() แบบ Synchronous ทันที เพื่อรองรับ AirPrint บน iPhone ทั้งใน Safari และที่คั่นหน้าบนหน้าจอโฮม
+  const env = getPrintEnv();
+  if (env.isIOSStandalone) {
+    triggerIOSStandaloneAirPrint(activeHtml, activeTitle);
+    return;
+  }
+
   prepareInAppPrintArea(activeHtml, isLand);
   document.body.classList.add('is-printing-doc');
 
@@ -2622,6 +2707,13 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   document.getElementById('btnClosePrintModalAction').onclick = closeHandler;
 
   const triggerPrintAction = () => {
+    const env = getPrintEnv();
+    // กรณีเปิดจากไอคอน Smart School บนหน้าจอโฮม iPhone (iOS Standalone WebClip ซึ่งระบบ iOS ปิดกั้น window.print()):
+    // ให้เปิดเมนู AirPrint ผ่าน iOS Share Sheet ทันทีด้วยไฟล์ที่เตรียมไว้ล่วงหน้า
+    if (env.isIOSStandalone) {
+      triggerIOSStandaloneAirPrint(modal._currentHtml, modal._currentTitle);
+      return;
+    }
     const iframe = document.getElementById('printDocIframe');
     if (iframe && iframe.contentWindow && !/iPad|iPhone|iPod/.test(navigator.userAgent)) {
       try {
@@ -2632,7 +2724,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         console.warn('iframe print failed, fallback to in-app print:', err);
       }
     }
-    // บน iPhone / iPad (รวมถึงที่คั่นหน้าที่วางไว้บนหน้าจอโฮม) เรียกใช้งาน AirPrint ทันที
+    // บน Safari iPhone / iPad หรือเบราว์เซอร์ทั่วไป เรียกใช้งาน AirPrint (window.print) ทันที
     window.triggerInAppPrint();
   };
 
@@ -2725,6 +2817,28 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
     const isLand = modal._currentOrientation === 'landscape';
     prepareInAppPrintArea(modal._currentHtml, isLand);
+
+    // หากเปิดใช้งานจากไอคอน Smart School บนหน้าจอโฮม iPhone (isIOSStandalone):
+    // ให้เรนเดอร์ไฟล์สำหรับ AirPrint เตรียมไว้ในหน่วยความจำแบบเงียบๆ ทันที เพื่อให้กดปุ่ม "พิมพ์เอกสาร" แล้วเด้งขึ้นทันทีในคลิกเดียว
+    const env = getPrintEnv();
+    if (env.isIOSStandalone) {
+      modal._prebuiltPdfFile = null;
+      if (modal._prebuiltTimer) clearTimeout(modal._prebuiltTimer);
+      const snapHtml = modal._currentHtml;
+      const snapTitle = modal._currentTitle;
+      modal._prebuiltTimer = setTimeout(() => {
+        const safeT = getSafePrintTitle(snapTitle);
+        modal._prebuiltPdfPromise = generatePdfFromHtml(snapHtml, snapTitle, 'blob', { silent: true })
+          .then(blob => {
+            if (blob && modal._currentHtml === snapHtml) {
+              modal._prebuiltPdfFile = new File([blob], `${safeT}.pdf`, { type: 'application/pdf' });
+            }
+            return blob;
+          })
+          .catch(() => null);
+      }, 150);
+    }
+
     const iframe = document.getElementById('printDocIframe');
     if (iframe) {
       const cleanOverride = `

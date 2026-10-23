@@ -307,6 +307,11 @@ function generateCardsFullHtml() {
 }
 
 function triggerCardPrint() {
+  const env = (typeof getPrintEnv === 'function') ? getPrintEnv() : { isIOSStandalone: window.navigator.standalone === true };
+  if (env.isIOSStandalone && typeof triggerIOSStandaloneAirPrint === 'function') {
+    triggerIOSStandaloneAirPrint(generateCardsFullHtml(), 'บัตรนักเรียน_โรงเรียนมหาชัยพิทยาคาร');
+    return;
+  }
   document.body.classList.add('printing-cards');
   try {
     window.focus();
