@@ -38,178 +38,310 @@ async function generatePdfFromHtml(html, title, action = 'download') {
   const modal = document.getElementById('printDocModal');
   const isLandscape = (modal && modal.style.display !== 'none' && modal._currentOrientation)
     ? (modal._currentOrientation === 'landscape')
-    : (html.includes('A4 landscape') || html.includes('แนวนอน') || html.includes('landscape'));
+    : (html.includes('A4 landscape') || html.includes('แนวนอน') || html.includes('landscape') ||
+       (title && (title.includes('ตารางเรียน') || title.includes('ตารางสอน') || title.includes('ปพ.5') || title.includes('ปพ.๕'))));
 
   showLoading('กำลังจัดเตรียมไฟล์ PDF...');
 
-  // Parse HTML
-  let parsedContent = '';
+  let renderHost = null;
   try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    // Extract all styles
-    const styles = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map(s => s.outerHTML)
-      .join('\n');
-
-    // Clean out controls
-    doc.querySelectorAll('.no-print, .no-print-bar, button, script').forEach(el => el.remove());
-
-    const bodyHtml = doc.body ? doc.body.innerHTML : html;
-    const pdfFixCss = `<style>
-      /* Force print styles inside PDF render container (strips screen shadows & rounded borders) */
-      .schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet {
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        border: none !important;
-        margin: 0 auto !important;
-        padding: 4mm 6mm !important;
-        background: #FFFFFF !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        page-break-after: always !important;
-        break-after: page !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-      .schedule-page:last-child, .print-page-wrapper:last-child {
-        page-break-after: auto !important;
-        break-after: auto !important;
-      }
-      table { border-collapse: collapse !important; }
-      .schedule-page table, table.schedule-table, .timetable, #inAppPrintArea table { table-layout: fixed !important; width: 100% !important; }
-      .sig-line:empty { border-bottom: 1px dotted #64748B !important; width: 170px !important; margin: 0 auto 4px auto !important; }
-      .sig-line:not(:empty) { border-bottom: none !important; width: auto !important; white-space: nowrap !important; }
-      .sig-box { min-width: 170px !important; max-width: 340px !important; }
-      .sig-dots, .sig-name, .sig-title, .sig-date { white-space: nowrap !important; }
-    </style>`;
-    parsedContent = styles + pdfFixCss + bodyHtml;
-  } catch (_) {
-    parsedContent = html;
-  }
-
-  // Create temporary container for PDF rendering (off-screen, never stuck on user display)
-  const container = document.createElement('div');
-  container.id = 'tempPdfRenderContainer';
-  container.style.position = 'fixed';
-  container.style.left = '0';
-  container.style.top = '0';
-  container.style.width = isLandscape ? '1123px' : '794px';
-  container.style.minWidth = isLandscape ? '1123px' : '794px';
-  container.style.maxWidth = isLandscape ? '1123px' : '794px';
-  container.style.boxSizing = 'border-box';
-  container.style.background = '#FFFFFF';
-  container.style.color = '#0F172A';
-  container.style.zIndex = '-9999';
-  container.style.opacity = '1';
-  container.style.pointerEvents = 'none';
-  container.innerHTML = parsedContent;
-
-  document.body.appendChild(container);
-
-  try {
-    // 1. รอให้รูปภาพทั้งหมดใน container โหลดเสร็จ แปลงตราโรงเรียนเป็น Data URL และ decode ให้พร้อมเรนเดอร์ 100%
-    try {
-      const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
-      const imgs = Array.from(container.querySelectorAll('img'));
-      for (const img of imgs) {
-        const src = img.getAttribute('src') || '';
-        if (!src) continue;
-
-        const isSchoolLogo = src.includes('lh3.googleusercontent.com') ||
-                             src.includes('school_logo') ||
-                             src.includes('school-logo') ||
-                             src.includes('app-icon') ||
-                             img.classList.contains('logo') ||
-                             img.classList.contains('school-logo') ||
-                             (img.alt || '').toLowerCase().includes('logo') ||
-                             (img.alt || '').includes('ตรา');
-
-        if (isSchoolLogo) {
-          img.src = defaultSchoolLogo;
-          continue;
-        }
-
-        if (src.startsWith('data:')) continue;
-
-        try {
-          if (img.complete && img.naturalWidth > 0) {
-            const c = document.createElement('canvas');
-            c.width = img.naturalWidth;
-            c.height = img.naturalHeight;
-            const ctx = c.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            img.src = c.toDataURL('image/png');
-          }
-        } catch (_) {}
-      }
-
-      // รอ decode ภาพทั้งหมดให้สมบูรณ์ก่อนเรนเดอร์ PDF ป้องกันภาพตราโรงเรียนในหน้าแรกว่างเปล่า
-      await Promise.all(imgs.map(img => {
-        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-        if (img.decode) return img.decode().catch(() => {});
-        return new Promise(res => { img.onload = res; img.onerror = res; });
-      }));
-    } catch (_) {}
-
-    // 2. Configure html2pdf options พร้อม Page Break ที่แบ่งหน้าแยกรายห้องเรียนอย่างแม่นยำ 100%
-    const opt = {
-      margin: [0, 0, 0, 0],
-      filename: `${safeTitle}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: isLandscape ? 1123 : 794
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: isLandscape ? 'landscape' : 'portrait',
-        compress: true
-      },
-      pagebreak: {
-        mode: ['css', 'legacy'],
-        before: '.schedule-page:not(:first-child), .print-page-wrapper:not(:first-child), .pp6-container:not(:first-child), .pp5-sheet:not(:first-child)',
-        avoid: 'table, tr, td, th, .sig-row, .signature-row'
-      }
-    };
-
-    if (typeof html2pdf === 'undefined') {
-      // Dynamic fallback if script not yet initialized
+    // 1. ตรวจสอบและเตรียม jsPDF / html2canvas
+    let jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (!jsPdfLib && typeof html2pdf !== 'undefined' && html2pdf.Worker) {
+      try {
+        const dummyWorker = new html2pdf.Worker();
+        jsPdfLib = dummyWorker.prop.jsPDF;
+      } catch (_) {}
+    }
+    if (!jsPdfLib) {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'html2pdf.bundle.min.js';
+        s.src = 'jspdf.umd.min.js?v=3.3.16';
+        s.onload = () => {
+          jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+          resolve();
+        };
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    if (!window.html2canvas) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'html2canvas.min.js?v=3.3.16';
         s.onload = resolve;
         s.onerror = reject;
         document.head.appendChild(s);
       });
     }
 
+    // 2. Parse HTML ต้นฉบับ
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // ดึง styles และ links ทั้งหมด
+    const styles = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(s => s.outerHTML)
+      .join('\n');
+
+    // ลบองค์ประกอบควบคุมที่ไม่ต้องการพิมพ์
+    doc.querySelectorAll('.no-print, .no-print-bar, button, script').forEach(el => el.remove());
+
+    // ปรับเปลี่ยนตราโรงเรียนทั้งหมดเป็น Base64 Data URL ทางการ ป้องกันปัญหา CORS และรูปไม่ขึ้น 100%
+    const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
+    doc.querySelectorAll('img').forEach(img => {
+      const src = img.getAttribute('src') || '';
+      if (!src) return;
+      const isSchoolLogo = src.includes('lh3.googleusercontent.com') ||
+                           src.includes('school_logo') ||
+                           src.includes('school-logo') ||
+                           src.includes('app-icon') ||
+                           img.classList.contains('logo') ||
+                           img.classList.contains('school-logo') ||
+                           (img.alt || '').toLowerCase().includes('logo') ||
+                           (img.alt || '').includes('ตรา');
+      if (isSchoolLogo) {
+        img.src = defaultSchoolLogo;
+      }
+    });
+
+    // 3. แยกเอกสารออกเป็นหน้ารายบุคคล / รายห้องเรียน (Page-by-Page Isolation)
+    const pageSelector = '.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .print-doc, .form-doc-wrapper';
+    let pageNodes = Array.from(doc.querySelectorAll(pageSelector));
+
+    if (pageNodes.length > 1) {
+      // กรองเฉพาะ element ชั้นนอกสุด ไม่ซ้อนกัน
+      pageNodes = pageNodes.filter(node => !pageNodes.some(parent => parent !== node && parent.contains(node)));
+    }
+
+    if (pageNodes.length === 0) {
+      // ตรวจสอบ div ที่ระบุ page-break-after
+      const breakNodes = Array.from(doc.body ? doc.body.children : []).filter(el => {
+        const s = el.getAttribute('style') || '';
+        return s.includes('page-break-after') || s.includes('break-after: page');
+      });
+      if (breakNodes.length > 0) {
+        pageNodes = breakNodes;
+      } else {
+        pageNodes = [doc.body || doc.documentElement];
+      }
+    }
+
+    // 4. CSS สำหรับเรนเดอร์ PDF คมชัด ตัดขอบเงาการ์ด และจัดตารางพอดีหน้ากระดาษ A4
+    const pdfFixCss = `
+      <style>
+        * {
+          box-sizing: border-box !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #FFFFFF !important;
+          color: #0F172A !important;
+          width: ${isLandscape ? '1123px' : '794px'} !important;
+          font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+        .schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .print-doc, .form-doc-wrapper {
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          margin: 0 auto !important;
+          padding: 5mm 6mm !important;
+          background: #FFFFFF !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        table {
+          border-collapse: collapse !important;
+          width: 100% !important;
+        }
+        .schedule-page table, table.schedule-table, .timetable, #inAppPrintArea table {
+          table-layout: fixed !important;
+          width: 100% !important;
+        }
+        .sig-line:empty {
+          border-bottom: 1px dotted #64748B !important;
+          width: 170px !important;
+          margin: 0 auto 4px auto !important;
+        }
+        .sig-line:not(:empty) {
+          border-bottom: none !important;
+          width: auto !important;
+          white-space: nowrap !important;
+        }
+        .sig-box {
+          min-width: 170px !important;
+          max-width: 340px !important;
+        }
+        .sig-dots, .sig-name, .sig-title, .sig-date {
+          white-space: nowrap !important;
+        }
+        .sig-stamp-zone {
+          height: 40px !important;
+          min-height: 40px !important;
+          max-height: 40px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          margin: 0 auto 2px auto !important;
+        }
+        .teacher-sig-img, .mhc-sig-img {
+          max-height: 38px !important;
+          max-width: 145px !important;
+          object-fit: contain !important;
+          display: block !important;
+          margin: 0 auto !important;
+        }
+        .logo, .school-logo {
+          width: 50px !important;
+          height: 50px !important;
+          object-fit: contain !important;
+          display: block !important;
+          margin: 0 auto 2px auto !important;
+        }
+      </style>
+    `;
+
+    // 5. สร้าง Render Host เดี่ยว บนหน้าจอ (ใต้ loadingOverlay) เพื่อเรนเดอร์ทีละหน้า
+    renderHost = document.createElement('div');
+    renderHost.id = 'pdfRenderHost';
+    renderHost.style.position = 'fixed';
+    renderHost.style.left = '0';
+    renderHost.style.top = '0';
+    renderHost.style.width = isLandscape ? '1123px' : '794px';
+    renderHost.style.minWidth = isLandscape ? '1123px' : '794px';
+    renderHost.style.maxWidth = isLandscape ? '1123px' : '794px';
+    renderHost.style.background = '#FFFFFF';
+    renderHost.style.color = '#0F172A';
+    renderHost.style.zIndex = '9990';
+    renderHost.style.opacity = '1';
+    renderHost.style.pointerEvents = 'none';
+    renderHost.style.boxSizing = 'border-box';
+    renderHost.style.overflow = 'hidden';
+    document.body.appendChild(renderHost);
+
+    // 6. กำหนดขนาด A4 สำหรับ jsPDF
+    const pdf = new jsPdfLib({
+      orientation: isLandscape ? 'landscape' : 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+
+    const pageWidthMm = isLandscape ? 297 : 210;
+    const pageHeightMm = isLandscape ? 210 : 297;
+    const marginMm = 4;
+    const renderWidthMm = pageWidthMm - (marginMm * 2);
+    const maxPageHeightMm = pageHeightMm - (marginMm * 2);
+
+    let isFirstPdfPage = true;
+
+    // 7. วนลูปเรนเดอร์แยกทีละหน้าอย่างเป็นอิสระ (Zero Overlap / Exactly 1 Page Per Classroom)
+    for (let pIdx = 0; pIdx < pageNodes.length; pIdx++) {
+      const node = pageNodes[pIdx];
+      const nodeContent = node.outerHTML || node.innerHTML;
+
+      // ติดตั้งเฉพาะเนื้อหาของหน้านี้
+      renderHost.innerHTML = styles + pdfFixCss + nodeContent;
+
+      // Decode ภาพทั้งหมดในหน้านี้
+      const imgs = Array.from(renderHost.querySelectorAll('img'));
+      await Promise.all(imgs.map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        if (img.decode) return img.decode().catch(() => {});
+        return new Promise(res => { img.onload = res; img.onerror = res; });
+      }));
+
+      // หน่วงเวลาสั้นๆ เพื่อให้ Browser Layout Engine วาดตารางสมบูรณ์
+      await new Promise(r => setTimeout(r, 40));
+
+      const canvas = await window.html2canvas(renderHost, {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: isLandscape ? 1123 : 794
+      });
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        console.warn(`Canvas empty for page ${pIdx}`);
+        continue;
+      }
+
+      // ตรวจสอบความสูงเทียบกับหน้ากระดาษ A4
+      const sliceHeightPx = Math.floor((maxPageHeightMm / renderWidthMm) * canvas.width);
+
+      if (canvas.height <= sliceHeightPx + 20) {
+        // พอดีใน 1 หน้า A4 (กรณีตารางเรียนรายห้อง / เอกสาร 1 หน้า)
+        if (!isFirstPdfPage) {
+          pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+        } else {
+          isFirstPdfPage = false;
+        }
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const renderHeightMm = (canvas.height / canvas.width) * renderWidthMm;
+        const posY = marginMm + Math.max(0, (maxPageHeightMm - renderHeightMm) / 4);
+        pdf.addImage(imgData, 'JPEG', marginMm, posY, renderWidthMm, renderHeightMm, undefined, 'FAST');
+      } else {
+        // หากเอกสารยาวเกิน 1 หน้า A4 ให้แบ่งสัดส่วนความสูงอย่างแม่นยำ
+        let currentY = 0;
+        while (currentY < canvas.height) {
+          const remainingPx = canvas.height - currentY;
+          const chunkHeightPx = Math.min(sliceHeightPx, remainingPx);
+
+          const chunkCanvas = document.createElement('canvas');
+          chunkCanvas.width = canvas.width;
+          chunkCanvas.height = chunkHeightPx;
+          const chunkCtx = chunkCanvas.getContext('2d');
+          chunkCtx.fillStyle = '#FFFFFF';
+          chunkCtx.fillRect(0, 0, chunkCanvas.width, chunkCanvas.height);
+          chunkCtx.drawImage(
+            canvas,
+            0, currentY, canvas.width, chunkHeightPx,
+            0, 0, canvas.width, chunkHeightPx
+          );
+
+          const chunkImgData = chunkCanvas.toDataURL('image/jpeg', 0.95);
+          const chunkH = (chunkHeightPx / canvas.width) * renderWidthMm;
+
+          if (!isFirstPdfPage) {
+            pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+          } else {
+            isFirstPdfPage = false;
+          }
+
+          pdf.addImage(chunkImgData, 'JPEG', marginMm, marginMm, renderWidthMm, chunkH, undefined, 'FAST');
+          currentY += chunkHeightPx;
+        }
+      }
+    }
+
+    hideLoading();
+
     if (action === 'download') {
-      await html2pdf().set(opt).from(container).save();
-      hideLoading();
+      pdf.save(`${safeTitle}.pdf`);
       showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
       return true;
-    } else if (action === 'share' || action === 'blob' || action === 'open') {
-      const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob');
-      hideLoading();
+    } else {
+      const pdfBlob = pdf.output('blob');
       return pdfBlob;
     }
+
   } catch (err) {
     console.error('PDF Generation Error:', err);
     hideLoading();
     showToast('error', 'เกิดข้อผิดพลาดในการสร้าง PDF');
     return null;
   } finally {
-    if (container && container.parentNode) {
-      container.parentNode.removeChild(container);
+    if (renderHost && renderHost.parentNode) {
+      renderHost.parentNode.removeChild(renderHost);
     }
   }
 }
@@ -478,53 +610,50 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
           บน iPhone เมื่อเปิดจากหน้าจอโฮมหรือที่คั่นหน้า กรุณาเลือกวิธีพิมพ์หรือส่งออกเอกสารที่ต้องการ:
         </p>
         <div class="space-y-2">
-          <button id="swalBtnDirectPrint" type="button" class="w-full text-left p-3 rounded-xl border border-violet-200 bg-violet-50/90 hover:bg-violet-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
-            <div class="w-10 h-10 rounded-lg bg-violet-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
-              <i class="bx bx-printer"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-bold text-violet-950 text-xs sm:text-sm">สั่งพิมพ์ AirPrint ในแอปโดยตรง</div>
-              <div class="text-[11px] text-violet-700 truncate">เรียกหน้าต่าง AirPrint สั่งพิมพ์ทันทีแบบเดียวกับบนคอมพิวเตอร์</div>
-            </div>
-          </button>
-
-          <button id="swalBtnSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-300 bg-blue-50/90 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
-            <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
-              <i class="bx bx-globe"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-bold text-blue-950 text-xs sm:text-sm">เปิดใน Safari เพื่อสั่งพิมพ์ (แนะนำ)</div>
-              <div class="text-[11px] text-blue-700 truncate">เปิดหน้าเอกสารใน Safari เพื่อสั่งพิมพ์ AirPrint พอดีกระดาษ A4 (100%)</div>
-            </div>
-          </button>
-
-          <button id="swalBtnSharePdf" type="button" class="w-full text-left p-3 rounded-xl border border-indigo-200 bg-indigo-50/90 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+          <!-- 1. แนะนำสูงสุด: แชร์ไฟล์ PDF / พิมพ์ AirPrint ผ่าน Share Sheet (ปลอดภัยและรองรับ 100% ทุกอุปกรณ์) -->
+          <button id="swalBtnSharePdf" type="button" class="w-full text-left p-3 rounded-xl border-2 border-indigo-500 bg-indigo-50/90 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
             <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
               <i class="bx bx-share-alt"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ไฟล์ PDF / พิมพ์ AirPrint (ในแอป)</div>
-              <div class="text-[11px] text-indigo-700 truncate">เปิดเมนู iOS ส่งไฟล์ PDF ทาง LINE หรือเลือกพิมพ์ AirPrint ได้ทันที</div>
+              <div class="font-bold text-indigo-950 text-xs sm:text-sm flex items-center gap-1.5">
+                <span>แชร์ไฟล์ PDF / พิมพ์ AirPrint</span>
+                <span class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">แนะนำ</span>
+              </div>
+              <div class="text-[11px] text-indigo-700 truncate">สร้าง PDF ขนาด A4 คมชัด เปิดเมนู iOS เลือกพิมพ์ AirPrint หรือส่ง LINE</div>
             </div>
           </button>
 
+          <!-- 2. ดาวน์โหลดไฟล์ PDF ขนาด A4 -->
           <button id="swalBtnDownloadPdf" type="button" class="w-full text-left p-3 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
             <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
               <i class="bx bxs-file-pdf"></i>
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-bold text-emerald-950 text-xs sm:text-sm">ดาวน์โหลดไฟล์ PDF ขนาด A4</div>
-              <div class="text-[11px] text-emerald-700 truncate">สร้างไฟล์ .pdf ขนาด A4 บันทึกเก็บไว้ในแอปไฟล์หรืออุปกรณ์</div>
+              <div class="text-[11px] text-emerald-700 truncate">สร้างไฟล์ .pdf A4 จัดหน้าแยกห้องเรียนเรียบร้อย บันทึกเก็บไว้ในแอปไฟล์</div>
             </div>
           </button>
 
-          <button id="swalBtnPreviewPdf" type="button" class="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition cursor-pointer">
-            <div class="w-9 h-9 rounded-lg bg-slate-700 text-white flex items-center justify-center text-lg flex-shrink-0">
-              <i class="bx bx-show"></i>
+          <!-- 3. เปิดใน Safari เพื่อสั่งพิมพ์ -->
+          <button id="swalBtnSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-300 bg-blue-50/90 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+            <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+              <i class="bx bx-globe"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-semibold text-slate-800 text-xs sm:text-sm">เปิดดูไฟล์ PDF เต็มจอ</div>
-              <div class="text-[10px] text-slate-500">เปิดดูในโปรแกรมอ่าน PDF ของ iPhone</div>
+              <div class="font-bold text-blue-950 text-xs sm:text-sm">เปิดใน Safari เพื่อสั่งพิมพ์</div>
+              <div class="text-[11px] text-blue-700 truncate">เปิดหน้าเอกสารใน Safari เพื่อสั่งพิมพ์ AirPrint พอดีกระดาษ A4 (100%)</div>
+            </div>
+          </button>
+
+          <!-- 4. สั่งพิมพ์ AirPrint ในแอปโดยตรง -->
+          <button id="swalBtnDirectPrint" type="button" class="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3 transition cursor-pointer shadow-2xs">
+            <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center text-lg flex-shrink-0">
+              <i class="bx bx-printer"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-slate-800 text-xs sm:text-sm">สั่งพิมพ์ AirPrint ในหน้านี้โดยตรง</div>
+              <div class="text-[10px] text-slate-500 truncate">เรียกคำสั่งพิมพ์ตรง (มีปุ่มย้อนกลับให้กดออกได้ตลอดเวลา)</div>
             </div>
           </button>
         </div>
@@ -543,17 +672,16 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
       const bDownload = document.getElementById('swalBtnDownloadPdf');
       const bShare = document.getElementById('swalBtnSharePdf');
       const bSafari = document.getElementById('swalBtnSafari');
-      const bPreview = document.getElementById('swalBtnPreviewPdf');
 
       const getActiveHtml = () => {
         const modal = document.getElementById('printDocModal');
         return (modal && modal._currentHtml) || html;
       };
 
-      if (bDirect) {
-        bDirect.onclick = () => {
+      if (bShare) {
+        bShare.onclick = () => {
           Swal.close();
-          triggerDirectInAppPrint(getActiveHtml());
+          sharePdfDocument(getActiveHtml(), title);
         };
       }
       if (bDownload) {
@@ -562,22 +690,16 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
           downloadPdfDocument(getActiveHtml(), title);
         };
       }
-      if (bShare) {
-        bShare.onclick = () => {
-          Swal.close();
-          sharePdfDocument(getActiveHtml(), title);
-        };
-      }
       if (bSafari) {
         bSafari.onclick = () => {
           Swal.close();
           openInExternalSafari(directUrl, getActiveHtml(), title);
         };
       }
-      if (bPreview) {
-        bPreview.onclick = () => {
+      if (bDirect) {
+        bDirect.onclick = () => {
           Swal.close();
-          openPdfPreview(getActiveHtml(), title);
+          triggerDirectInAppPrint(getActiveHtml());
         };
       }
     }
@@ -689,8 +811,22 @@ function triggerDirectInAppPrint(html) {
   printArea.innerHTML = html || '';
   document.body.classList.add('is-printing-doc');
 
+  // เพิ่มปุ่มลอย "เสร็จสิ้น / กลับสู่หน้าจอหลัก" มุมซ้ายบนเสมอ ป้องกันหน้าจอค้างบน iPhone / PWA 100%
+  const exitBtn = document.createElement('button');
+  exitBtn.id = 'exitPrintAreaBtn';
+  exitBtn.className = 'no-print';
+  exitBtn.type = 'button';
+  exitBtn.innerHTML = '<i class="bx bx-left-arrow-alt text-lg align-middle"></i> เสร็จสิ้น / กลับสู่หน้าจอหลัก';
+  exitBtn.style.cssText = 'position:fixed; top:12px; left:12px; z-index:999999; background:#0F172A; color:#FFFFFF; padding:8px 16px; border-radius:10px; font-weight:bold; font-size:13px; border:none; box-shadow:0 4px 14px rgba(0,0,0,0.3); cursor:pointer; -webkit-tap-highlight-color:transparent;';
+  exitBtn.onclick = () => cleanup();
+  printArea.prepend(exitBtn);
+
   const cleanup = () => {
     document.body.classList.remove('is-printing-doc');
+    const b = document.getElementById('exitPrintAreaBtn');
+    if (b && b.parentNode) b.parentNode.removeChild(b);
+    const dyn = document.getElementById('mhcDynamicPrintPageStyle');
+    if (dyn) dyn.textContent = '';
     window.removeEventListener('focus', cleanup);
     window.removeEventListener('afterprint', cleanup);
   };
@@ -2255,6 +2391,12 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           <span>แชร์ PDF</span>
         </button>
 
+        <!-- ปุ่มดาวน์โหลด PDF บนมือถือ -->
+        <button id="btnDownloadPdfActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-semibold text-xs flex items-center gap-1 shadow-2xs" title="ดาวน์โหลดเป็นไฟล์ PDF เก็บไว้">
+          <i class='bx bxs-file-pdf text-sm text-rose-600'></i>
+          <span>โหลด PDF</span>
+        </button>
+
         <!-- สลับทิศทางหน้ากระดาษ -->
         <button id="btnToggleOrientationActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white rounded-lg text-slate-700 font-semibold text-xs flex items-center gap-1 shadow-2xs">
           <i id="orientationIconMobile" class='bx bx-layout text-sm text-indigo-600'></i>
@@ -2301,6 +2443,13 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   const btnDownloadPdf = document.getElementById('btnDownloadPdfAction');
   if (btnDownloadPdf) {
     btnDownloadPdf.onclick = () => {
+      downloadPdfDocument(modal._currentHtml, modal._currentTitle);
+    };
+  }
+
+  const btnDownloadMobile = document.getElementById('btnDownloadPdfActionMobile');
+  if (btnDownloadMobile) {
+    btnDownloadMobile.onclick = () => {
       downloadPdfDocument(modal._currentHtml, modal._currentTitle);
     };
   }
