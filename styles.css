@@ -832,22 +832,22 @@ select {
 
 .btn-icon { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 10px; }
 
-/* ─── Tables ────────────────────────────────────────────────── */
-table {
+/* ─── Tables (Scoped to #appLayout to prevent bleeding into Print/PDF) ─── */
+#appLayout table {
   border-radius: var(--radius-md); overflow: hidden;
   border: 1px solid var(--border); width: 100%;
 }
-table.min-w-full { min-width: 750px; }
-thead th {
+#appLayout table.min-w-full { min-width: 750px; }
+#appLayout thead th {
   font-size: 11px !important; text-transform: uppercase; letter-spacing: .8px;
   font-weight: 700 !important; color: var(--text-secondary) !important;
   background: var(--bg-elevated) !important;
   padding: 12px 14px !important; white-space: nowrap;
 }
-tbody tr { transition: background var(--transition); border-bottom: 1px solid var(--border); }
-tbody tr:last-child { border-bottom: none; }
-tbody tr:hover td { background-color: var(--primary-50) !important; }
-tbody td { padding: 11px 14px !important; vertical-align: middle; color: var(--text-primary); }
+#appLayout tbody tr { transition: background var(--transition); border-bottom: 1px solid var(--border); }
+#appLayout tbody tr:last-child { border-bottom: none; }
+#appLayout tbody tr:hover td { background-color: var(--primary-50) !important; }
+#appLayout tbody td { padding: 11px 14px !important; vertical-align: middle; color: var(--text-primary); }
 
 /* ─── Status Badges ─────────────────────────────────────────── */
 .status-badge {
@@ -1842,8 +1842,10 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
 }
 
 /* ─── In-App Print Document Styles ─── */
-#inAppPrintArea {
-  display: none;
+@media screen {
+  #inAppPrintArea {
+    display: none !important;
+  }
 }
 
 @media print {
@@ -1870,7 +1872,7 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   #printDocModal,
   .swal2-container,
   nav, header, aside, .sidebar, .topbar,
-  .no-print, .no-print-bar, button {
+  .no-print, .no-print-bar, .no-print-toolbar, button {
     display: none !important;
     visibility: hidden !important;
   }
@@ -1880,7 +1882,7 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     visibility: hidden !important;
   }
 
-  /* แสดงเฉพาะพื้นที่เอกสาร #inAppPrintArea ให้เต็มหน้ากระดาษ A4 เสมอ */
+  /* แสดงเฉพาะพื้นที่เอกสาร #inAppPrintArea ให้ตรงกับหน้าพรีวิว 100% */
   #inAppPrintArea,
   body.is-printing-doc #inAppPrintArea {
     display: block !important;
@@ -1901,9 +1903,12 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   .schedule-page,
   .print-page-wrapper {
     width: 100% !important;
-    max-width: 1020px !important;
+    max-width: 100% !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -1934,30 +1939,31 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     font-size: 11px !important;
     color: #475569 !important;
   }
-  #inAppPrintArea table,
-  body.is-printing-doc #inAppPrintArea table {
+  #inAppPrintArea table:not(.cal-table),
+  body.is-printing-doc #inAppPrintArea table:not(.cal-table) {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     border-collapse: collapse !important;
+    table-layout: auto !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+  #inAppPrintArea .schedule-page table,
+  body.is-printing-doc #inAppPrintArea .schedule-page table {
+    border: 2px solid #000000 !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    table-layout: fixed !important;
-    border: 2px solid #000000 !important;
   }
-  #inAppPrintArea table th,
-  #inAppPrintArea table td,
-  body.is-printing-doc #inAppPrintArea table th,
-  body.is-printing-doc #inAppPrintArea table td {
+  #inAppPrintArea .schedule-page th,
+  #inAppPrintArea .schedule-page td,
+  body.is-printing-doc #inAppPrintArea .schedule-page th,
+  body.is-printing-doc #inAppPrintArea .schedule-page td {
     border: 1px solid #000000 !important;
-  }
-  #inAppPrintArea table th:first-child,
-  #inAppPrintArea table td:first-child,
-  body.is-printing-doc #inAppPrintArea table th:first-child,
-  body.is-printing-doc #inAppPrintArea table td:first-child {
-    width: 85px !important;
-    min-width: 85px !important;
-    max-width: 85px !important;
+    border-radius: 0 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
   }
   #inAppPrintArea thead,
   body.is-printing-doc #inAppPrintArea thead {
@@ -1977,21 +1983,13 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   body.is-printing-doc #inAppPrintArea th,
   body.is-printing-doc #inAppPrintArea td {
     min-width: 0 !important;
+    border-radius: 0 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
-  }
-  #inAppPrintArea th,
-  body.is-printing-doc #inAppPrintArea th {
-    padding: 4px 2px !important;
-    font-size: 10px !important;
-  }
-  #inAppPrintArea td,
-  body.is-printing-doc #inAppPrintArea td {
-    padding: 2px 2px !important;
-    font-size: 9.5px !important;
-    min-height: 38px !important;
   }
   #inAppPrintArea .sig-row,
   .schedule-page .sig-row,
@@ -2024,9 +2022,11 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   }
   #inAppPrintArea .no-print,
   #inAppPrintArea .no-print-bar,
+  #inAppPrintArea .no-print-toolbar,
   #inAppPrintArea button,
   body.is-printing-doc #inAppPrintArea .no-print,
   body.is-printing-doc #inAppPrintArea .no-print-bar,
+  body.is-printing-doc #inAppPrintArea .no-print-toolbar,
   body.is-printing-doc #inAppPrintArea button {
     display: none !important;
   }
@@ -2089,10 +2089,10 @@ html.dark-mode .btn-action-delete { color: #F87171 !important; }
 html.dark-mode .btn-action-view { color: #94A3B8 !important; }
 html.dark-mode .btn-action-add { color: #34D399 !important; }
 
-/* Further Dark Mode contrast improvements for Tables */
-html.dark-mode tbody tr { background-color: transparent !important; }
-html.dark-mode tbody tr:hover td { background-color: rgba(255,255,255, 0.05) !important; }
-html.dark-mode th, html.dark-mode thead th { background-color: #1F2937 !important; color: #E2E8F0 !important; }
+/* Further Dark Mode contrast improvements for Tables (Scoped to #appLayout) */
+html.dark-mode #appLayout tbody tr { background-color: transparent !important; }
+html.dark-mode #appLayout tbody tr:hover td { background-color: rgba(255,255,255, 0.05) !important; }
+html.dark-mode #appLayout th, html.dark-mode #appLayout thead th { background-color: #1F2937 !important; color: #E2E8F0 !important; }
 html.dark-mode .btn-light { background-color: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.1) !important; }
 html.dark-mode .btn-light:hover { background-color: rgba(255,255,255,0.15) !important; }
 

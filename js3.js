@@ -189,38 +189,24 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           text-align: right !important;
           color: #475569 !important;
         }
-        table {
+        table:not(.cal-table) {
           width: 100% !important;
           max-width: 100% !important;
           min-width: 0 !important;
           border-collapse: collapse !important;
-          table-layout: fixed !important;
-          border: 2px solid #000000 !important;
+          table-layout: auto !important;
           margin: 0 auto !important;
+          border-radius: 0 !important;
+          overflow: visible !important;
+          box-shadow: none !important;
         }
-        th, td {
-          border: 1px solid #000000 !important;
-          vertical-align: middle !important;
-          text-align: center !important;
+        .schedule-page table {
+          border: 2px solid #000000 !important;
         }
-        th:first-child, td:first-child {
-          width: 85px !important;
-          min-width: 85px !important;
-          max-width: 85px !important;
-        }
-        th {
-          background: #FFFFFF !important;
-          color: #000000 !important;
-          padding: 4px 2px !important;
-          font-size: 10px !important;
-          font-weight: 700 !important;
-          border-bottom: 2px solid #000000 !important;
-        }
-        td {
-          padding: 2px 2px !important;
-          font-size: 9.5px !important;
-          min-height: 38px !important;
-          color: #000000 !important;
+        thead, tbody, tfoot, colgroup, caption, tr, th, td {
+          border-radius: 0 !important;
+          letter-spacing: normal !important;
+          text-transform: none !important;
         }
         .sig-row, .signature-row {
           margin-top: 16px !important;
@@ -281,30 +267,25 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           white-space: nowrap !important;
           margin-top: 2px !important;
         }
-        .no-print, .no-print-bar, button {
+        .no-print, .no-print-bar, .no-print-toolbar, button {
           display: none !important;
         }
       </style>
     `;
 
-    // 5. สร้าง Render Host เดี่ยว บนหน้าจอ (ใต้ loadingOverlay) เพื่อเรนเดอร์ทีละหน้า
-    renderHost = document.createElement('div');
+    // 5. สร้าง Isolated Iframe Render Host (แยกขาดจาก styles.css ของแอป 100% เหมือนหน้าพรีวิว)
+    renderHost = document.createElement('iframe');
     renderHost.id = 'pdfRenderHost';
     renderHost.style.position = 'fixed';
     renderHost.style.left = '0';
     renderHost.style.top = '0';
     renderHost.style.width = `${hostWidthPx}px`;
-    renderHost.style.minWidth = `${hostWidthPx}px`;
-    renderHost.style.maxWidth = `${hostWidthPx}px`;
+    renderHost.style.height = '900px';
+    renderHost.style.border = '0';
     renderHost.style.background = '#FFFFFF';
-    renderHost.style.color = '#000000';
     renderHost.style.zIndex = '9990';
     renderHost.style.opacity = '1';
     renderHost.style.pointerEvents = 'none';
-    renderHost.style.boxSizing = 'border-box';
-    renderHost.style.padding = '0';
-    renderHost.style.margin = '0';
-    renderHost.style.overflow = 'hidden';
     document.body.appendChild(renderHost);
 
     // 6. กำหนดขนาด A4 สำหรับ jsPDF
@@ -315,28 +296,30 @@ async function generatePdfFromHtml(html, title, action = 'download') {
       compress: true
     });
 
-    // กำหนดระยะขอบตรงกับเอกสารเป้าหมายเป๊ะ 100%: แนวนอนกว้าง 270.4mm ขอบข้างละ 13.3mm ขอบบน 6mm
     const pageWidthMm = isLandscape ? 297 : 210;
     const pageHeightMm = isLandscape ? 210 : 297;
-    const marginX = isLandscape ? 13.3 : 10.0;
-    const marginY = isLandscape ? 6.0 : 8.0;
-    const renderWidthMm = pageWidthMm - (marginX * 2); // 270.4mm ในแนวนอน พอดีเป๊ะ
+    const marginX = isLandscape ? 6.0 : 8.0;
+    const marginY = isLandscape ? 5.0 : 8.0;
+    const renderWidthMm = pageWidthMm - (marginX * 2);
     const maxPageHeightMm = pageHeightMm - (marginY * 2);
 
     let isFirstPdfPage = true;
     const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
 
-    // 7. วนลูปเรนเดอร์แยกทีละหน้าอย่างเป็นอิสระ (Zero Overlap / Exactly 1 Page Per Classroom)
+    // 7. วนลูปเรนเดอร์แยกทีละหน้าอย่างเป็นอิสระใน Isolated Iframe
     for (let pIdx = 0; pIdx < pageNodes.length; pIdx++) {
       const node = pageNodes[pIdx];
       const nodeContent = node.outerHTML || node.innerHTML;
 
-      // ติดตั้งเฉพาะเนื้อหาของหน้านี้
-      renderHost.innerHTML = cleanStyles + pdfFixCss + nodeContent;
+      const iframeDoc = renderHost.contentDocument || (renderHost.contentWindow && renderHost.contentWindow.document);
+      if (!iframeDoc) continue;
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">${cleanStyles}${pdfFixCss}</head><body><div id="pdfPageTarget" style="width:${hostWidthPx}px;background:#FFFFFF;padding:8px 12px;box-sizing:border-box;">${nodeContent}</div></body></html>`);
+      iframeDoc.close();
 
-      // บังคับเปลี่ยนตราโรงเรียนใน DOM จริงของ Render Host ให้เป็น Base64 Data URL ทางการเสมอ 100%
-      // ป้องกันปัญหาติด CORS ของ Google Drive และตัดปัญหาตราโรงเรียนว่างเปล่าในหน้าแรกเด็ดขาด
-      renderHost.querySelectorAll('img').forEach(img => {
+      const targetEl = iframeDoc.getElementById('pdfPageTarget') || iframeDoc.body;
+
+      targetEl.querySelectorAll('img').forEach(img => {
         const s = (img.getAttribute('src') || '').toLowerCase();
         const isSchoolLogo = s.includes('lh3.googleusercontent.com') ||
                              s.includes('school_logo') ||
@@ -353,19 +336,16 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         }
       });
 
-      // รอ decode ภาพทั้งหมดในหน้านี้ (รวมถึงลายเซ็นต์) ให้พร้อมก่อนเรนเดอร์
-      const imgs = Array.from(renderHost.querySelectorAll('img'));
+      const imgs = Array.from(targetEl.querySelectorAll('img'));
       await Promise.all(imgs.map(img => {
         if (img.complete && img.naturalWidth > 0) return Promise.resolve();
         if (img.decode) return img.decode().catch(() => {});
         return new Promise(res => { img.onload = res; img.onerror = res; });
       }));
 
-      // หน่วงเวลาสั้นๆ เพื่อให้ Browser Layout Engine วาดตารางและฟอนต์สมบูรณ์
       await new Promise(r => setTimeout(r, 60));
 
-      // แคปเจอร์ด้วย scale: 2.0 (High Resolution 192 DPI คมชัดระดับพิมพ์เอกสาร)
-      const canvas = await window.html2canvas(renderHost, {
+      const canvas = await window.html2canvas(targetEl, {
         scale: 2.0,
         useCORS: true,
         allowTaint: false,
@@ -819,7 +799,12 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
   });
 }
 
-function triggerDirectInAppPrint(html) {
+/**
+ * เตรียมพื้นที่ #inAppPrintArea และ #mhcDynamicPrintPageStyle ล่วงหน้าทันทีที่เปิดหน้าพรีวิว
+ * เพื่อให้เมื่อผู้ใช้แตะปุ่ม "พิมพ์เอกสาร" บน iPhone (ทั้งใน Safari และที่คั่นหน้าจอโฮม) สามารถเรียก window.print() (AirPrint) แบบ Synchronous ทันที 100%
+ * และคงรูปแบบเอกสารให้ตรงกับฟอร์มที่แสดงในพรีวิวทุกประการ
+ */
+function prepareInAppPrintArea(html, isLandOverride) {
   let printArea = document.getElementById('inAppPrintArea');
   if (!printArea) {
     printArea = document.createElement('div');
@@ -830,11 +815,13 @@ function triggerDirectInAppPrint(html) {
 
   const modal = document.getElementById('printDocModal');
   const currentOri = (modal && modal._currentOrientation) || '';
-  const isLand = currentOri === 'landscape' || 
-                 (html || '').toLowerCase().includes('size: a4 landscape') || 
-                 (html || '').toLowerCase().includes('a4 landscape') || 
-                 (html || '').toLowerCase().includes('แนวนอน') ||
-                 (html || '').toLowerCase().includes('landscape');
+  const isLand = typeof isLandOverride === 'boolean'
+    ? isLandOverride
+    : (currentOri === 'landscape' ||
+       (html || '').toLowerCase().includes('size: a4 landscape') ||
+       (html || '').toLowerCase().includes('a4 landscape') ||
+       (html || '').toLowerCase().includes('แนวนอน') ||
+       (html || '').toLowerCase().includes('landscape'));
 
   let dynamicStyle = document.getElementById('mhcDynamicPrintPageStyle');
   if (!dynamicStyle) {
@@ -842,17 +829,35 @@ function triggerDirectInAppPrint(html) {
     dynamicStyle.id = 'mhcDynamicPrintPageStyle';
     document.head.appendChild(dynamicStyle);
   }
+
+  // ถอดแบบ CSS จาก cleanPreviewOverride ให้ตรงกับหน้าพรีวิว 100% (ใช้ table-layout: auto ไม่บีบคอลัมน์ ไม่ตัดคำว่า กิจกรรมหน้าเสาธง)
   dynamicStyle.textContent = `
+    @media screen {
+      #inAppPrintArea {
+        display: none !important;
+      }
+    }
     @media print {
       @page {
         size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
         margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 10mm 10mm 10mm'} !important;
       }
+      html, body {
+        background: #FFFFFF !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       body > *:not(#inAppPrintArea):not(#cardPrintOverlay) {
         display: none !important;
         visibility: hidden !important;
       }
-      #printDocModal, #appLayout, #loginScreen, #loadingOverlay, .swal2-container {
+      #printDocModal, #appLayout, #loginScreen, #loadingOverlay, .swal2-container, nav, header, aside, .sidebar, .topbar {
         display: none !important;
         visibility: hidden !important;
       }
@@ -866,26 +871,41 @@ function triggerDirectInAppPrint(html) {
         background: #FFFFFF !important;
         overflow: visible !important;
       }
+      #inAppPrintArea .print-page-wrapper,
+      #inAppPrintArea .print-doc,
+      #inAppPrintArea .pp6-container,
+      #inAppPrintArea .pp5-sheet,
       #inAppPrintArea .schedule-page,
-      #inAppPrintArea .print-page-wrapper {
+      #inAppPrintArea .calendar-container,
+      #inAppPrintArea .receipt-box {
         width: 100% !important;
-        max-width: ${isLand ? '1020px' : '760px'} !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
         margin: 0 auto !important;
         padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: #FFFFFF !important;
+        box-sizing: border-box !important;
         page-break-after: always !important;
         break-after: page !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        box-sizing: border-box !important;
+        overflow: visible !important;
       }
       #inAppPrintArea .schedule-page:last-child,
       #inAppPrintArea .print-page-wrapper:last-child {
         page-break-after: auto !important;
         break-after: auto !important;
       }
+      #inAppPrintArea .header {
+        margin-bottom: 6px !important;
+      }
       #inAppPrintArea .header img {
         width: 50px !important;
         height: 50px !important;
+        object-fit: contain !important;
         margin-bottom: 2px !important;
       }
       #inAppPrintArea .workload {
@@ -894,129 +914,166 @@ function triggerDirectInAppPrint(html) {
         font-size: 11px !important;
         color: #475569 !important;
       }
-      #inAppPrintArea table {
+      #inAppPrintArea table:not(.cal-table) {
         width: 100% !important;
         max-width: 100% !important;
-        table-layout: fixed !important;
+        min-width: 0 !important;
+        table-layout: auto !important;
         border-collapse: collapse !important;
-        border: 2px solid #000000 !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        box-shadow: none !important;
       }
-      #inAppPrintArea th,
-      #inAppPrintArea td {
+      #inAppPrintArea .schedule-page table {
+        border: 2px solid #000000 !important;
+        table-layout: auto !important;
+      }
+      #inAppPrintArea .schedule-page th,
+      #inAppPrintArea .schedule-page td {
         border: 1px solid #000000 !important;
       }
-      #inAppPrintArea th:first-child,
-      #inAppPrintArea td:first-child {
-        width: 85px !important;
-        min-width: 85px !important;
-        max-width: 85px !important;
+      #inAppPrintArea thead, #inAppPrintArea tbody, #inAppPrintArea tfoot, #inAppPrintArea tr, #inAppPrintArea th, #inAppPrintArea td {
+        border-radius: 0 !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
       }
-      #inAppPrintArea th {
-        padding: 4px 2px !important;
-        font-size: 10px !important;
-      }
-      #inAppPrintArea td {
-        padding: 2px 2px !important;
-        font-size: 9.5px !important;
-        min-height: 38px !important;
-      }
+      #inAppPrintArea thead { display: table-header-group !important; }
+      #inAppPrintArea tfoot { display: table-footer-group !important; }
+      #inAppPrintArea tr { page-break-inside: avoid !important; break-inside: avoid !important; }
       #inAppPrintArea .sig-row,
-      #inAppPrintArea .signature-row {
+      #inAppPrintArea .signature-row,
+      #inAppPrintArea .signatures,
+      #inAppPrintArea .sig-container {
+        display: flex !important;
+        justify-content: space-around !important;
+        align-items: flex-start !important;
         margin-top: 16px !important;
         gap: 16px !important;
+        flex-wrap: nowrap !important;
+        text-align: center !important;
+        font-size: 11px !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
       #inAppPrintArea .sig-box {
-        min-width: 180px !important;
-        max-width: 320px !important;
         flex: 1 !important;
+        min-width: 180px !important;
+        max-width: 340px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
       }
       #inAppPrintArea .sig-stamp-zone {
-        height: 40px !important;
-        min-height: 40px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        max-height: 44px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        margin: 0 auto 3px auto !important;
       }
       #inAppPrintArea .teacher-sig-img,
       #inAppPrintArea .mhc-sig-img {
-        max-height: 36px !important;
+        max-height: 40px !important;
+        max-width: 145px !important;
+        object-fit: contain !important;
+        display: block !important;
+        margin: 0 auto !important;
       }
       #inAppPrintArea .sig-line:empty {
         border-bottom: 1px dotted #64748B !important;
         width: 170px !important;
         margin: 0 auto 4px auto !important;
       }
+      #inAppPrintArea .sig-line:not(:empty) {
+        border-bottom: none !important;
+        width: auto !important;
+      }
       #inAppPrintArea .sig-name {
         font-size: 11px !important;
         font-weight: 600 !important;
         color: #0F172A !important;
         margin-top: 2px !important;
+        white-space: nowrap !important;
       }
-      #inAppPrintArea .sig-title {
-        font-size: 10px !important;
+      #inAppPrintArea .sig-title, #inAppPrintArea .sig-date {
+        font-size: 10.5px !important;
         color: #334155 !important;
         margin-top: 2px !important;
+        white-space: nowrap !important;
+      }
+      #inAppPrintArea .no-print,
+      #inAppPrintArea .no-print-bar,
+      #inAppPrintArea .no-print-toolbar,
+      #inAppPrintArea button {
+        display: none !important;
       }
     }
   `;
 
-  printArea.innerHTML = html || '';
+  if (html) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      doc.querySelectorAll('.no-print, .no-print-bar, .no-print-toolbar, button, script').forEach(el => el.remove());
+
+      const rawStyles = Array.from(doc.querySelectorAll('style, link[rel="stylesheet"]'))
+        .map(s => s.outerHTML)
+        .join('\n')
+        .replace(/@media\s+screen\s*\{[\s\S]*?\}\s*\}/gi, '')
+        .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '')
+        .replace(/table-layout\s*:\s*fixed\s*!important/gi, 'table-layout: auto !important');
+
+      const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
+      doc.querySelectorAll('img').forEach(img => {
+        const s = (img.getAttribute('src') || '').toLowerCase();
+        const isSchoolLogo = s.includes('lh3.googleusercontent.com') ||
+                             s.includes('school_logo') ||
+                             s.includes('school-logo') ||
+                             s.includes('app-icon') ||
+                             img.classList.contains('logo') ||
+                             img.classList.contains('school-logo') ||
+                             (img.alt || '').toLowerCase().includes('logo') ||
+                             (img.alt || '').includes('ตรา');
+        if (isSchoolLogo) {
+          img.removeAttribute('onerror');
+          img.setAttribute('src', defaultSchoolLogo);
+        }
+      });
+
+      printArea.innerHTML = rawStyles + (doc.body ? doc.body.innerHTML : html);
+      Array.from(printArea.querySelectorAll('img')).forEach(img => {
+        if (img.decode) img.decode().catch(() => {});
+      });
+    } catch (_) {
+      printArea.innerHTML = html;
+    }
+  }
+}
+
+function triggerDirectInAppPrint(html) {
+  const modal = document.getElementById('printDocModal');
+  const activeHtml = html || (modal && modal._currentHtml) || '';
+  const isLand = modal ? (modal._currentOrientation === 'landscape') : undefined;
+
+  // เตรียมพื้นที่พิมพ์และเรียก window.print() แบบ Synchronous ทันที เพื่อรองรับ AirPrint บน iPhone ทั้งใน Safari และที่คั่นหน้าบนหน้าจอโฮม
+  prepareInAppPrintArea(activeHtml, isLand);
   document.body.classList.add('is-printing-doc');
 
-  // เพิ่มปุ่มลอย "เสร็จสิ้น / กลับสู่หน้าจอหลัก" มุมซ้ายบนเสมอ ป้องกันหน้าจอค้างบน iPhone / PWA 100%
-  const exitBtn = document.createElement('button');
-  exitBtn.id = 'exitPrintAreaBtn';
-  exitBtn.className = 'no-print';
-  exitBtn.type = 'button';
-  exitBtn.innerHTML = '<i class="bx bx-left-arrow-alt text-lg align-middle"></i> เสร็จสิ้น / กลับสู่หน้าจอหลัก';
-  exitBtn.style.cssText = 'position:fixed; top:12px; left:12px; z-index:999999; background:#0F172A; color:#FFFFFF; padding:8px 16px; border-radius:10px; font-weight:bold; font-size:13px; border:none; box-shadow:0 4px 14px rgba(0,0,0,0.3); cursor:pointer; -webkit-tap-highlight-color:transparent;';
-  exitBtn.onclick = () => cleanup();
-  printArea.prepend(exitBtn);
-
-  const cleanup = () => {
-    document.body.classList.remove('is-printing-doc');
-    const b = document.getElementById('exitPrintAreaBtn');
-    if (b && b.parentNode) b.parentNode.removeChild(b);
-    const dyn = document.getElementById('mhcDynamicPrintPageStyle');
-    if (dyn) dyn.textContent = '';
-    window.removeEventListener('focus', cleanup);
-    window.removeEventListener('afterprint', cleanup);
-  };
-
-  const printDelay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 50 : 150;
-  setTimeout(() => {
-    try {
-      window.focus();
-      window.print();
-    } catch (e) {
-      console.warn('In-app print error', e);
-      cleanup();
-    }
-  }, printDelay);
-
-  // Safety net: คืนค่าหน้าจอกลับสู่สภาพปกติเมื่อพิมพ์เสร็จ หรือผู้ใช้กลับสู่หน้าจอ (ป้องกันหน้าจอค้าง)
-  window.addEventListener('afterprint', cleanup, { once: true });
-  window.addEventListener('focus', cleanup, { once: true });
-  setTimeout(cleanup, 4000);
+  try {
+    window.focus();
+    window.print();
+  } catch (e) {
+    console.warn('In-app print error:', e);
+  }
 }
 
 // Global handler called from top bar or from inside the iframe preview
 window.triggerInAppPrint = function() {
   const modal = document.getElementById('printDocModal');
   const html = (modal && modal._currentHtml) || '';
-  const title = (modal && modal._currentTitle) || 'เอกสาร';
-  const directUrl = (modal && modal._currentDirectUrl) || '';
-
-  const env = getPrintEnv();
-
-  // บน iOS เมื่อเปิดจากที่คั่นหน้า / หน้าจอโฮม (PWA Standalone):
-  // ระบบ iOS ปิดกั้นคำสั่ง window.print() ในโหมด Standalone ทำให้ไม่มีหน้าต่าง AirPrint เด้งขึ้นมา
-  // ให้เปิดกล่องตัวเลือกเพื่อ: 1. แชร์ไฟล์ PDF / พิมพ์ AirPrint (ในแอป) หรือ 2. เปิดใน Safari เพื่อพิมพ์ทันที
-  if (env.isIOSStandalone) {
-    showIOSPrintOptionsModal(html, title, directUrl);
-    return;
-  }
-
-  // บน Safari ปกติ หรือคอมพิวเตอร์: เรียกใช้งาน AirPrint / Print Dialog ทันที
   triggerDirectInAppPrint(html);
 };
 
@@ -2508,14 +2565,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               <i class='bx bx-slider-alt text-base leading-none'></i>
             </button>
 
-            <!-- ปุ่มดาวน์โหลด PDF -->
-            <button id="btnDownloadPdfAction" type="button" class="print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs" title="ดาวน์โหลดเป็นไฟล์ PDF เก็บไว้">
-              <i class='bx bxs-file-pdf text-sm text-rose-600'></i>
-              <span>ดาวน์โหลด PDF</span>
-            </button>
-
-            <!-- ปุ่มพิมพ์เอกสาร / บันทึก PDF -->
-            <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
+            <!-- ปุ่มพิมพ์เอกสาร / AirPrint -->
+            <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือ AirPrint ทันที">
               <i class='bx bx-printer text-base leading-none'></i>
               <span>พิมพ์เอกสาร</span>
             </button>
@@ -2530,22 +2581,10 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
       <!-- Mobile Sub-Toolbar (Row 2, visible on < 640px) -->
       <div class="flex sm:hidden items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 overflow-x-auto no-scrollbar py-0.5">
-        <!-- ปุ่มพิมพ์เอกสาร เด่นชัดบนมือถือ -->
-        <button id="btnPrintModalActionMobile" type="button" class="flex-shrink-0 h-8 px-3 text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow-xs flex items-center gap-1.5 font-bold text-xs active:scale-95 border-0">
+        <!-- ปุ่มพิมพ์เอกสาร / AirPrint เด่นชัดบนมือถือ -->
+        <button id="btnPrintModalActionMobile" type="button" class="flex-shrink-0 h-8 px-3.5 text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow-xs flex items-center gap-1.5 font-bold text-xs active:scale-95 border-0">
           <i class='bx bx-printer text-sm'></i>
           <span>พิมพ์เอกสาร</span>
-        </button>
-
-        <!-- ปุ่มแชร์ / ส่งออกไฟล์ PDF -->
-        <button id="btnShareModalActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-semibold text-xs flex items-center gap-1 shadow-2xs" title="แชร์ไฟล์ PDF ทาง LINE หรือแอปอื่น">
-          <i class='bx bx-share-alt text-sm text-indigo-600'></i>
-          <span>แชร์ PDF</span>
-        </button>
-
-        <!-- ปุ่มดาวน์โหลด PDF บนมือถือ -->
-        <button id="btnDownloadPdfActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-semibold text-xs flex items-center gap-1 shadow-2xs" title="ดาวน์โหลดเป็นไฟล์ PDF เก็บไว้">
-          <i class='bx bxs-file-pdf text-sm text-rose-600'></i>
-          <span>โหลด PDF</span>
         </button>
 
         <!-- สลับทิศทางหน้ากระดาษ -->
@@ -2583,11 +2622,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   document.getElementById('btnClosePrintModalAction').onclick = closeHandler;
 
   const triggerPrintAction = () => {
-    const env = getPrintEnv();
-    if (env.isIOSStandalone) {
-      showIOSPrintOptionsModal(modal._currentHtml, modal._currentTitle, modal._currentDirectUrl);
-      return;
-    }
     const iframe = document.getElementById('printDocIframe');
     if (iframe && iframe.contentWindow && !/iPad|iPhone|iPod/.test(navigator.userAgent)) {
       try {
@@ -2598,6 +2632,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         console.warn('iframe print failed, fallback to in-app print:', err);
       }
     }
+    // บน iPhone / iPad (รวมถึงที่คั่นหน้าที่วางไว้บนหน้าจอโฮม) เรียกใช้งาน AirPrint ทันที
     window.triggerInAppPrint();
   };
 
@@ -2605,27 +2640,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   const btnPrintMobile = document.getElementById('btnPrintModalActionMobile');
   if (btnPrintDesktop) btnPrintDesktop.onclick = triggerPrintAction;
   if (btnPrintMobile) btnPrintMobile.onclick = triggerPrintAction;
-
-  const btnDownloadPdf = document.getElementById('btnDownloadPdfAction');
-  if (btnDownloadPdf) {
-    btnDownloadPdf.onclick = () => {
-      downloadPdfDocument(modal._currentHtml, modal._currentTitle);
-    };
-  }
-
-  const btnDownloadMobile = document.getElementById('btnDownloadPdfActionMobile');
-  if (btnDownloadMobile) {
-    btnDownloadMobile.onclick = () => {
-      downloadPdfDocument(modal._currentHtml, modal._currentTitle);
-    };
-  }
-
-  const btnShareMobile = document.getElementById('btnShareModalActionMobile');
-  if (btnShareMobile) {
-    btnShareMobile.onclick = () => {
-      sharePdfDocument(modal._currentHtml, modal._currentTitle);
-    };
-  }
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.style.display !== 'none') {
@@ -2698,11 +2712,19 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
 
   const refreshPreview = () => {
     const multi = getPrintMultiSignatureState();
-    modal._currentHtml = applySignatureToDocument(modal._rawHtml, multi);
+    const defaultLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
+    let signedHtml = applySignatureToDocument(modal._rawHtml, multi);
+    if (signedHtml && window.OFFICIAL_SCHOOL_LOGO_DATA_URL) {
+      signedHtml = signedHtml
+        .replace(/https:\/\/lh3\.googleusercontent\.com\/d\/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN/g, defaultLogo)
+        .replace(/src=["']school-logo\.png["']/g, `src="${defaultLogo}"`);
+    }
+    modal._currentHtml = signedHtml;
     updateToggleBtnUI();
     updateOrientationBtnUI();
 
     const isLand = modal._currentOrientation === 'landscape';
+    prepareInAppPrintArea(modal._currentHtml, isLand);
     const iframe = document.getElementById('printDocIframe');
     if (iframe) {
       const cleanOverride = `
@@ -2887,20 +2909,19 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               width: 100% !important;
               max-width: 100% !important;
               min-width: 0 !important;
-              table-layout: fixed !important;
+              table-layout: auto !important;
               page-break-inside: auto !important;
               border-collapse: collapse !important;
+              border-radius: 0 !important;
+              overflow: visible !important;
+            }
+            .schedule-page table {
               border: 2px solid #000000 !important;
+              table-layout: auto !important;
             }
-            table:not(.cal-table) th,
-            table:not(.cal-table) td {
+            .schedule-page th,
+            .schedule-page td {
               border: 1px solid #000000 !important;
-            }
-            table:not(.cal-table) th:first-child,
-            table:not(.cal-table) td:first-child {
-              width: 85px !important;
-              min-width: 85px !important;
-              max-width: 85px !important;
             }
             .sig-line:empty {
               border-bottom: 1px dotted #64748B !important;
