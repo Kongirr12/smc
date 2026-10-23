@@ -197,11 +197,22 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           table-layout: fixed !important;
           border: 2px solid #000000 !important;
           margin: 0 auto !important;
+          border-radius: 0 !important;
+          overflow: visible !important;
+          box-shadow: none !important;
+        }
+        thead, tbody, tfoot, colgroup, caption {
+          border-radius: 0 !important;
+        }
+        tr {
+          border-radius: 0 !important;
         }
         th, td {
           border: 1px solid #000000 !important;
           vertical-align: middle !important;
           text-align: center !important;
+          border-radius: 0 !important;
+          overflow: visible !important;
         }
         th:first-child, td:first-child {
           width: 85px !important;
