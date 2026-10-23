@@ -560,21 +560,34 @@ function triggerDirectInAppPrint(html) {
         size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
         margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 10mm 10mm 10mm'} !important;
       }
+      body > *:not(#inAppPrintArea):not(#cardPrintOverlay) {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      #printDocModal, #appLayout, #loginScreen, #loadingOverlay, .swal2-container {
+        display: none !important;
+        visibility: hidden !important;
+      }
+      #inAppPrintArea {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #FFFFFF !important;
+        overflow: visible !important;
+      }
     }
   `;
 
   printArea.innerHTML = html || '';
   document.body.classList.add('is-printing-doc');
 
-  const cleanup = () => {
-    document.body.classList.remove('is-printing-doc');
-    window.removeEventListener('afterprint', cleanup);
-  };
-  window.addEventListener('afterprint', cleanup);
-
-  // Safe 45-second fallback for slow mobile print spoolers (prevents blank page on Android)
-  setTimeout(cleanup, 45000);
-
+  // สำคัญที่สุด: ห้ามใช้ afterprint ในการลบ class หรือ clear innerHTML
+  // เพราะบน iOS WebKit เหตุการณ์ afterprint จะถูกเรียกทันทีที่หน้าต่างพิมพ์ถูกเรียกขึ้นมา
+  // ทำให้การแสดงผลพิมพ์ใน AirPrint ย้อนกลับไปเป็นหน้าจอปกติ
+  // การล้างข้อมูลจะทำเมื่อผู้ใช้กดปิดหน้าต่าง modal เท่านั้น
   const printDelay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 30 : 150;
   setTimeout(() => {
     try {
@@ -2146,6 +2159,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const printArea = document.getElementById('inAppPrintArea');
     if (printArea) printArea.innerHTML = '';
     document.body.classList.remove('is-printing-doc');
+    const dynamicStyle = document.getElementById('mhcDynamicPrintPageStyle');
+    if (dynamicStyle) dynamicStyle.textContent = '';
   };
 
   document.getElementById('btnClosePrintModalAction').onclick = closeHandler;

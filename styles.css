@@ -1853,7 +1853,7 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     print-color-adjust: exact !important;
   }
 
-  body.is-printing-doc {
+  html, body {
     background: #FFFFFF !important;
     color: #000000 !important;
     overflow: visible !important;
@@ -1862,11 +1862,29 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     margin: 0 !important;
     padding: 0 !important;
   }
-  body.is-printing-doc > *:not(#inAppPrintArea) {
+
+  /* ปิดการแสดงผล UI ของแอปทั้งหมดเมื่อสั่งพิมพ์ เพื่อไม่ให้ติดหน้าจอแอป/Modal ลงบนกระดาษ */
+  #appLayout,
+  #loginScreen,
+  #loadingOverlay,
+  #printDocModal,
+  .swal2-container,
+  nav, header, aside, .sidebar, .topbar,
+  .no-print, .no-print-bar, button {
     display: none !important;
+    visibility: hidden !important;
   }
+
+  body > *:not(#inAppPrintArea):not(#cardPrintOverlay) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* แสดงเฉพาะพื้นที่เอกสาร #inAppPrintArea ให้เต็มหน้ากระดาษ A4 เสมอ */
+  #inAppPrintArea,
   body.is-printing-doc #inAppPrintArea {
     display: block !important;
+    visibility: visible !important;
     position: static !important;
     width: 100% !important;
     margin: 0 !important;
@@ -1874,9 +1892,11 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     background: #FFFFFF !important;
     overflow: visible !important;
   }
+  #inAppPrintArea *,
   body.is-printing-doc #inAppPrintArea * {
     overflow: visible !important;
   }
+  #inAppPrintArea table,
   body.is-printing-doc #inAppPrintArea table {
     width: 100% !important;
     max-width: 100% !important;
@@ -1885,16 +1905,21 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     page-break-inside: auto !important;
     table-layout: auto !important;
   }
+  #inAppPrintArea thead,
   body.is-printing-doc #inAppPrintArea thead {
     display: table-header-group !important;
   }
+  #inAppPrintArea tfoot,
   body.is-printing-doc #inAppPrintArea tfoot {
     display: table-footer-group !important;
   }
+  #inAppPrintArea tr,
   body.is-printing-doc #inAppPrintArea tr {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
+  #inAppPrintArea th,
+  #inAppPrintArea td,
   body.is-printing-doc #inAppPrintArea th,
   body.is-printing-doc #inAppPrintArea td {
     min-width: 0 !important;
@@ -1903,6 +1928,9 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     word-break: break-word !important;
     overflow-wrap: break-word !important;
   }
+  #inAppPrintArea .no-print,
+  #inAppPrintArea .no-print-bar,
+  #inAppPrintArea button,
   body.is-printing-doc #inAppPrintArea .no-print,
   body.is-printing-doc #inAppPrintArea .no-print-bar,
   body.is-printing-doc #inAppPrintArea button {

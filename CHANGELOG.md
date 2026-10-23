@@ -3,7 +3,20 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.3.10] - 2026-10-23 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.3.11] - 2026-10-23 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🖨️ แก้ปัญหา AirPrint บน iPhone ติดหน้าจอแอปและ Modal (ให้พิมพ์เฉพาะเนื้อหาเอกสาร 100%)
+- **แก้ไขปัญหากระดาษพิมพ์ใน AirPrint ติดหน้าจอแอปและหน้าต่าง Modal ซ้อนทับ (`styles.css`, `js3.js`, `index.html`):**
+  - **สาเหตุ:** บนระบบ iOS WebKit คำสั่ง `window.print()` จะเรียกใช้งาน `afterprint` ทันทีที่หน้าต่างพิมพ์ถูกเรียกขึ้นมา (ก่อนที่ระบบจะทันเรนเดอร์ภาพตัวอย่างกระดาษ) ส่งผลให้คลาสชั่วคราวถูกล้างออกก่อนเวลา ทำให้หน้าต่างพิมพ์จับภาพหน้าจอของแอป (`#appLayout`) และหน้าต่าง Modal ซ้อนกันลงบนกระดาษ
+  - **การแก้ไข:**
+    1. ปรับปรุง CSS `@media print` ใน [`styles.css`](file:///Users/macos/Desktop/anti/smart%20sch/styles.css) ให้ซ่อนส่วนประกอบของแอปทั้งหมดอย่างเด็ดขาด (`#appLayout, #loginScreen, #loadingOverlay, #printDocModal, .swal2-container, nav, header, aside, .sidebar, .topbar { display: none !important; }`) โดยไม่ต้องพึ่งพาคลาสชั่วคราว
+    2. นำ `style="display:none;"` ออกจากแท็ก `#inAppPrintArea` ใน [`index.html`](file:///Users/macos/Desktop/anti/smart%20sch/index.html) และควบคุมการแสดงผลผ่าน CSS แทน เพื่อให้ `#inAppPrintArea` แสดงผลเฉพาะตอนสั่งพิมพ์ได้อย่างสมบูรณ์แบบ
+    3. ลบเหตุการณ์ `afterprint` ออกจาก [`js3.js`](file:///Users/macos/Desktop/anti/smart%20sch/js3.js) เพื่อป้องกันไม่ให้ iOS WebKit ล้างข้อมูลก่อนที่ AirPrint จะเรนเดอร์เสร็จ โดยจะล้างข้อมูลต่อเมื่อผู้ใช้กดปิด Modal เท่านั้น
+    4. เมื่อสั่งพิมพ์ผ่าน AirPrint บน iPhone หน้ากระดาษจะแสดงเฉพาะตัวเอกสารตารางสอน/ตารางเรียน A4 แนวนอนที่คมชัด สะอาดตา โดยไม่มีเมนูหรือหน้าต่างอื่นของแอปรบกวนอีกต่อไป
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.11` พร้อมอัปเดต Query String `?v=3.3.11` ใน `index.html` และ `CONFIG.APP_VERSION = '3.3.11'` ใน `code.gs`
+
+---
+
+## [v3.3.10] - 2026-10-23
 ### 📱 ปรับหน้าตัวอย่างพิมพ์ (Print Preview) ให้พอดีหน้าจอมือถืออัตโนมัติ 100% พร้อมแก้ไขปุ่มพิมพ์และแชร์ PDF บน iPhone
 - **ระบบ Auto-Fit Screen สำหรับหน้าต่างตัวอย่างก่อนพิมพ์ (`js3.js`):**
   - แก้ไขปัญหาตารางตารางสอน/รายงาน A4 แนวนอนล้นขอบจอและถูกตัดทางขวาบน iPhone โดยคำนวณอัตราส่วนความกว้างของหน้าจอ (`availWidth`) เทียบกับขนาดเอกสาร A4 (`targetWidth = 1020px`) และปรับย่อขยาย (`CSS zoom / scale`) อัตโนมัติ
