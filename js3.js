@@ -140,7 +140,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           box-shadow: none !important;
           border: none !important;
           margin: 0 auto !important;
-          padding: 0 !important;
+          padding: 8px 12px !important;
           background: #FFFFFF !important;
           width: 100% !important;
           max-width: 100% !important;
@@ -167,28 +167,32 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           font-weight: 800 !important;
           color: #0F172A !important;
           margin-bottom: 2px !important;
+          line-height: 1.25 !important;
         }
         .header > div:nth-child(3) {
           font-size: 13px !important;
           font-weight: 700 !important;
           color: #800020 !important;
+          line-height: 1.25 !important;
         }
         .header > div:nth-child(4) {
           font-size: 11px !important;
           color: #64748B !important;
           margin-top: 1px !important;
+          line-height: 1.25 !important;
         }
         .workload {
           font-size: 11px !important;
           margin-bottom: 6px !important;
-          text-align: center !important;
+          text-align: right !important;
+          color: #475569 !important;
         }
         table {
           width: 100% !important;
           max-width: 100% !important;
           min-width: 0 !important;
           border-collapse: collapse !important;
-          table-layout: fixed !important;
+          table-layout: auto !important;
           border: 2px solid #000000 !important;
           margin: 0 auto !important;
         }
@@ -212,16 +216,16 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           color: #000000 !important;
         }
         .sig-row, .signature-row {
-          margin-top: 10px !important;
-          gap: 14px !important;
+          margin-top: 16px !important;
+          gap: 16px !important;
           display: flex !important;
           justify-content: space-around !important;
           align-items: flex-start !important;
           text-align: center !important;
-          font-size: 10px !important;
+          font-size: 11px !important;
         }
         .sig-box, .sig-row > div {
-          min-width: 170px !important;
+          min-width: 180px !important;
           max-width: 320px !important;
           flex: 1 !important;
           display: flex !important;
@@ -230,9 +234,9 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           text-align: center !important;
         }
         .sig-stamp-zone {
-          height: 38px !important;
-          min-height: 38px !important;
-          max-height: 38px !important;
+          height: 40px !important;
+          min-height: 40px !important;
+          max-height: 40px !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
@@ -240,29 +244,35 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           margin: 0 auto 3px auto !important;
         }
         .teacher-sig-img, .mhc-sig-img {
-          max-height: 34px !important;
+          max-height: 36px !important;
           max-width: 140px !important;
           object-fit: contain !important;
           display: block !important;
           margin: 0 auto !important;
         }
-        .sig-line {
+        .sig-line, .sig-line:empty {
           border-bottom: 1px dotted #64748B !important;
-          width: 160px !important;
-          margin: 0 auto 3px auto !important;
+          width: 170px !important;
+          margin: 0 auto 4px auto !important;
           padding-bottom: 0 !important;
           min-height: 0 !important;
         }
+        .sig-line:not(:empty) {
+          border-bottom: none !important;
+          width: auto !important;
+        }
         .sig-name {
-          font-size: 10px !important;
-          color: #000000 !important;
+          font-size: 11px !important;
+          color: #0F172A !important;
           font-weight: 600 !important;
           white-space: nowrap !important;
+          margin-top: 2px !important;
         }
         .sig-title {
-          font-size: 9.5px !important;
+          font-size: 10px !important;
           color: #334155 !important;
           white-space: nowrap !important;
+          margin-top: 2px !important;
         }
         .no-print, .no-print-bar, button {
           display: none !important;
@@ -365,21 +375,29 @@ async function generatePdfFromHtml(html, title, action = 'download') {
 
       // ตรวจสอบความสูงเทียบกับหน้ากระดาษ A4
       const sliceHeightPx = Math.floor((maxPageHeightMm / renderWidthMm) * canvas.width);
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const renderHeightMm = (canvas.height / canvas.width) * renderWidthMm;
 
-      if (canvas.height <= sliceHeightPx + 20) {
-        // พอดีใน 1 หน้า A4 (กรณีตารางเรียนรายห้อง / เอกสาร 1 หน้า)
-        if (!isFirstPdfPage) {
-          pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
-        } else {
-          isFirstPdfPage = false;
-        }
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.98);
-        const renderHeightMm = (canvas.height / canvas.width) * renderWidthMm;
-        pdf.addImage(imgData, 'JPEG', marginX, marginY, renderWidthMm, renderHeightMm, undefined, 'FAST');
+      // เพิ่มหน้าใหม่ใน PDF (ยกเว้นหน้าแรก)
+      if (!isFirstPdfPage) {
+        pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
       } else {
-        // หากเอกสารยาวเกิน 1 หน้า A4 ให้แบ่งสัดส่วนความสูงอย่างแม่นยำ
+        isFirstPdfPage = false;
+      }
+
+      // ตรวจสอบว่าพอดี 1 หน้า A4 หรือไม่ (อนุโลมให้สูงเกินได้ถึง 15% โดยสเกลให้พอดี 1 หน้าพอดีเป๊ะ)
+      // รับประกันว่าตารางสอน/ตารางเรียน 1 หน้า จะไม่มีการตัดเศษลายเซ็นต์ไปโผล่หน้า 2 เด็ดขาด
+      if (renderHeightMm <= maxPageHeightMm * 1.15) {
+        const scaleFactor = Math.min(1, maxPageHeightMm / renderHeightMm);
+        const finalW = renderWidthMm * scaleFactor;
+        const finalH = renderHeightMm * scaleFactor;
+        const posX = marginX + Math.max(0, (renderWidthMm - finalW) / 2);
+        const posY = marginY;
+        pdf.addImage(imgData, 'JPEG', posX, posY, finalW, finalH, undefined, 'FAST');
+      } else {
+        // หากเอกสารยาวเกิน 1 หน้า A4 (เช่น บัญชีรายชื่อยาวหลายสิบคน) ให้แบ่งสัดส่วนความสูงตามความเหมาะสม
         let currentY = 0;
+        let isFirstSlice = true;
         while (currentY < canvas.height) {
           const remainingPx = canvas.height - currentY;
           const chunkHeightPx = Math.min(sliceHeightPx, remainingPx);
@@ -399,10 +417,10 @@ async function generatePdfFromHtml(html, title, action = 'download') {
           const chunkImgData = chunkCanvas.toDataURL('image/jpeg', 0.98);
           const chunkH = (chunkHeightPx / canvas.width) * renderWidthMm;
 
-          if (!isFirstPdfPage) {
+          if (!isFirstSlice) {
             pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
           } else {
-            isFirstPdfPage = false;
+            isFirstSlice = false;
           }
 
           pdf.addImage(chunkImgData, 'JPEG', marginX, marginY, renderWidthMm, chunkH, undefined, 'FAST');
@@ -843,10 +861,10 @@ function triggerDirectInAppPrint(html) {
       }
       #inAppPrintArea .schedule-page,
       #inAppPrintArea .print-page-wrapper {
-        width: 95% !important;
-        max-width: 275mm !important;
+        width: 100% !important;
+        max-width: 285mm !important;
         margin: 0 auto !important;
-        padding: 0 !important;
+        padding: 8px 12px !important;
         page-break-after: always !important;
         break-after: page !important;
         page-break-inside: avoid !important;
@@ -863,11 +881,22 @@ function triggerDirectInAppPrint(html) {
         height: 50px !important;
         margin-bottom: 2px !important;
       }
+      #inAppPrintArea .workload {
+        text-align: right !important;
+        margin-bottom: 6px !important;
+        font-size: 11px !important;
+        color: #475569 !important;
+      }
       #inAppPrintArea table {
         width: 100% !important;
         max-width: 100% !important;
-        table-layout: fixed !important;
+        table-layout: auto !important;
         border-collapse: collapse !important;
+        border: 2px solid #000000 !important;
+      }
+      #inAppPrintArea th,
+      #inAppPrintArea td {
+        border: 1px solid #000000 !important;
       }
       #inAppPrintArea th {
         padding: 4px 2px !important;
@@ -880,18 +909,39 @@ function triggerDirectInAppPrint(html) {
       }
       #inAppPrintArea .sig-row,
       #inAppPrintArea .signature-row {
-        margin-top: 10px !important;
-        gap: 14px !important;
+        margin-top: 16px !important;
+        gap: 16px !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
+      #inAppPrintArea .sig-box {
+        min-width: 180px !important;
+        max-width: 320px !important;
+        flex: 1 !important;
+      }
       #inAppPrintArea .sig-stamp-zone {
-        height: 38px !important;
-        min-height: 38px !important;
+        height: 40px !important;
+        min-height: 40px !important;
       }
       #inAppPrintArea .teacher-sig-img,
       #inAppPrintArea .mhc-sig-img {
-        max-height: 34px !important;
+        max-height: 36px !important;
+      }
+      #inAppPrintArea .sig-line:empty {
+        border-bottom: 1px dotted #64748B !important;
+        width: 170px !important;
+        margin: 0 auto 4px auto !important;
+      }
+      #inAppPrintArea .sig-name {
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: #0F172A !important;
+        margin-top: 2px !important;
+      }
+      #inAppPrintArea .sig-title {
+        font-size: 10px !important;
+        color: #334155 !important;
+        margin-top: 2px !important;
       }
     }
   `;
@@ -2520,6 +2570,21 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   document.getElementById('btnClosePrintModalAction').onclick = closeHandler;
 
   const triggerPrintAction = () => {
+    const env = getPrintEnv();
+    if (env.isIOSStandalone) {
+      showIOSPrintOptionsModal(modal._currentHtml, modal._currentTitle, modal._currentDirectUrl);
+      return;
+    }
+    const iframe = document.getElementById('printDocIframe');
+    if (iframe && iframe.contentWindow && !/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        return;
+      } catch (err) {
+        console.warn('iframe print failed, fallback to in-app print:', err);
+      }
+    }
     window.triggerInAppPrint();
   };
 
@@ -2782,12 +2847,28 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             }
             .print-page-wrapper, .print-doc, .pp6-container, .pp5-sheet, .schedule-page, .calendar-container, .receipt-box {
               margin: 0 auto !important;
-              padding: 0 !important;
+              padding: 8px 12px !important;
               box-shadow: none !important;
               border: none !important;
+              border-radius: 0 !important;
               width: 100% !important;
               max-width: 100% !important;
               min-width: 0 !important;
+              box-sizing: border-box !important;
+              page-break-after: always !important;
+              break-after: page !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            .print-page-wrapper:last-child, .schedule-page:last-child {
+              page-break-after: auto !important;
+              break-after: auto !important;
+            }
+            .workload {
+              text-align: right !important;
+              margin-bottom: 6px !important;
+              font-size: 11px !important;
+              color: #475569 !important;
             }
             table:not(.cal-table) {
               width: 100% !important;
@@ -2796,6 +2877,16 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               table-layout: auto !important;
               page-break-inside: auto !important;
               border-collapse: collapse !important;
+              border: 2px solid #000000 !important;
+            }
+            table:not(.cal-table) th,
+            table:not(.cal-table) td {
+              border: 1px solid #000000 !important;
+            }
+            .sig-line:empty {
+              border-bottom: 1px dotted #64748B !important;
+              width: 170px !important;
+              margin: 0 auto 4px auto !important;
             }
             table.cal-table {
               width: 100% !important;

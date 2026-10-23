@@ -1900,10 +1900,10 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   #inAppPrintArea .print-page-wrapper,
   .schedule-page,
   .print-page-wrapper {
-    width: 95% !important;
-    max-width: 275mm !important;
+    width: 100% !important;
+    max-width: 285mm !important;
     margin: 0 auto !important;
-    padding: 0 !important;
+    padding: 8px 12px !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
@@ -1927,6 +1927,13 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     height: 50px !important;
     margin-bottom: 2px !important;
   }
+  #inAppPrintArea .workload,
+  .schedule-page .workload {
+    text-align: right !important;
+    margin-bottom: 6px !important;
+    font-size: 11px !important;
+    color: #475569 !important;
+  }
   #inAppPrintArea table,
   body.is-printing-doc #inAppPrintArea table {
     width: 100% !important;
@@ -1935,7 +1942,14 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     border-collapse: collapse !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    table-layout: fixed !important;
+    table-layout: auto !important;
+    border: 2px solid #000000 !important;
+  }
+  #inAppPrintArea table th,
+  #inAppPrintArea table td,
+  body.is-printing-doc #inAppPrintArea table th,
+  body.is-printing-doc #inAppPrintArea table td {
+    border: 1px solid #000000 !important;
   }
   #inAppPrintArea thead,
   body.is-printing-doc #inAppPrintArea thead {
