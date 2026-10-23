@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.3.13',
+  APP_VERSION    : '3.3.14',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -256,7 +256,11 @@ function doGet(e) {
         return HtmlService.createHtmlOutput('<div style="font-family:sans-serif; text-align:center; padding:50px; color:#64748B;"><h3>เอกสารนี้หมดอายุแล้ว (เกิน 30 นาที)</h3><p>กรุณากลับไปที่แอป MHC Smart School แล้วกดพิมพ์ใหม่อีกครั้ง</p></div>')
           .setTitle('เอกสารหมดอายุ');
       }
-      return HtmlService.createHtmlOutput(html)
+      let renderedHtml = html;
+      if (params.autoprint === '1' && !renderedHtml.includes('window.print()')) {
+        renderedHtml += `<script>(function(){ setTimeout(function(){ window.focus(); window.print(); }, 450); })();</script>`;
+      }
+      return HtmlService.createHtmlOutput(renderedHtml)
         .setTitle(params.title || 'พิมพ์เอกสาร - โรงเรียนมหาชัยพิทยาคาร')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -446,7 +450,7 @@ function routeApi(action, params, token) {
       case 'getDocuments': return getDocuments(params, token);
       case 'saveDocument': return saveDocument(params, token);
       case 'deleteDocument': return deleteDocument(params.id, token);
-      case 'saveTemporaryPrintDoc': return saveTemporaryPrintDoc(params.html, params.title, token);
+      case 'saveTemporaryPrintDoc': return saveTemporaryPrintDoc(params.html || (params.args && params.args[0]), params.title || (params.args && params.args[1]), token || (params.args && params.args[2]));
 
       // ---------- APPROVALS ----------
       case 'getApprovals': return getApprovals(params, token);

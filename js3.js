@@ -58,10 +58,11 @@ async function generatePdfFromHtml(html, title, action = 'download') {
 
     const bodyHtml = doc.body ? doc.body.innerHTML : html;
     const pdfFixCss = `<style>
-      table:not(.cal-table) { width: 100% !important; max-width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; }
+      table { border-collapse: collapse !important; }
+      .schedule-page table, table.schedule-table, .timetable, #inAppPrintArea table { table-layout: fixed !important; width: 100% !important; }
       .sig-line:empty { border-bottom: 1px dotted #64748B !important; width: 170px !important; margin: 0 auto 4px auto !important; }
       .sig-line:not(:empty) { border-bottom: none !important; width: auto !important; white-space: nowrap !important; }
-      .sig-box { min-width: 200px !important; max-width: 340px !important; }
+      .sig-box { min-width: 170px !important; max-width: 340px !important; }
       .sig-dots, .sig-name, .sig-title, .sig-date { white-space: nowrap !important; }
     </style>`;
     parsedContent = styles + pdfFixCss + bodyHtml;
@@ -69,7 +70,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     parsedContent = html;
   }
 
-  // Create temporary container for PDF rendering
+  // Create temporary container for PDF rendering (off-screen, never stuck on user display)
   const container = document.createElement('div');
   container.id = 'tempPdfRenderContainer';
   container.style.position = 'fixed';
@@ -81,130 +82,130 @@ async function generatePdfFromHtml(html, title, action = 'download') {
   container.style.boxSizing = 'border-box';
   container.style.background = '#FFFFFF';
   container.style.color = '#0F172A';
-  container.style.zIndex = '1000';
-  container.style.opacity = '1';
+  container.style.zIndex = '-9999';
+  container.style.opacity = '0.01';
   container.style.pointerEvents = 'none';
   container.innerHTML = parsedContent;
 
   document.body.appendChild(container);
 
-  // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จ และแปลงเป็น Data URL ป้องกัน CORS Error บน iOS WebKit
   try {
-    const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
-    const imgs = Array.from(container.querySelectorAll('img'));
-    for (const img of imgs) {
-      const src = img.getAttribute('src') || '';
-      if (!src) continue;
-
-      // ตรวจสอบว่าเป็นตราโรงเรียนหรือไม่ (URL Google Drive, คำว่า school_logo หรือ class logo)
-      const isSchoolLogo = src.includes('lh3.googleusercontent.com') ||
-                           src.includes('school_logo') ||
-                           src.includes('school-logo') ||
-                           src.includes('app-icon') ||
-                           img.classList.contains('logo') ||
-                           img.classList.contains('school-logo') ||
-                           (img.alt || '').toLowerCase().includes('logo') ||
-                           (img.alt || '').includes('ตรา');
-
-      if (isSchoolLogo) {
-        // ใช้ตราโรงเรียนมหาชัยพิทยาคารที่เป็นทางการแบบ Data URL เสมอ (Zero CORS, 100% คมชัด)
-        img.src = defaultSchoolLogo;
-        continue;
-      }
-
-      if (src.startsWith('data:')) continue;
-
-      try {
-        if (img.complete && img.naturalWidth > 0) {
-          const c = document.createElement('canvas');
-          c.width = img.naturalWidth;
-          c.height = img.naturalHeight;
-          const ctx = c.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          img.src = c.toDataURL('image/png');
-        }
-      } catch (_) {
-        // หากติด CORS canvas ให้คงรูปภาพเดิมไว้ ไม่แทนที่ด้วย app-icon
-      }
-    }
-  } catch (_) {}
-
-  // 4. Page-by-Page Canvas Splitting (ป้องกันขีดจำกัด Canvas 4096px และ Out-of-Memory บน iOS)
-  const pageElems = Array.from(container.querySelectorAll('.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet'));
-  const pagesToRender = pageElems.length > 0 ? pageElems : [container];
-  const jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-
-  if (pagesToRender.length > 0 && jsPdfLib && window.html2canvas) {
+    // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จ และแปลงเป็น Data URL ป้องกัน CORS Error บน iOS WebKit
     try {
-      const pageWidthMm = isLandscape ? 297 : 210;
-      const pageHeightMm = isLandscape ? 210 : 297;
-      const marginMm = 3;
-      const renderWidthMm = pageWidthMm - (marginMm * 2);
-      const renderHeightMm = pageHeightMm - (marginMm * 2);
+      const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
+      const imgs = Array.from(container.querySelectorAll('img'));
+      for (const img of imgs) {
+        const src = img.getAttribute('src') || '';
+        if (!src) continue;
 
-      const pdf = new jsPdfLib({
-        orientation: isLandscape ? 'landscape' : 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true
-      });
+        // ตรวจสอบว่าเป็นตราโรงเรียนหรือไม่ (URL Google Drive, คำว่า school_logo หรือ class logo)
+        const isSchoolLogo = src.includes('lh3.googleusercontent.com') ||
+                             src.includes('school_logo') ||
+                             src.includes('school-logo') ||
+                             src.includes('app-icon') ||
+                             img.classList.contains('logo') ||
+                             img.classList.contains('school-logo') ||
+                             (img.alt || '').toLowerCase().includes('logo') ||
+                             (img.alt || '').includes('ตรา');
 
-      for (let idx = 0; idx < pagesToRender.length; idx++) {
-        if (idx > 0) pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
-        const pageEl = pagesToRender[idx];
+        if (isSchoolLogo) {
+          // ใช้ตราโรงเรียนมหาชัยพิทยาคารที่เป็นทางการแบบ Data URL เสมอ (Zero CORS, 100% คมชัด)
+          img.src = defaultSchoolLogo;
+          continue;
+        }
 
-        const canvas = await window.html2canvas(pageEl, {
-          scale: 1.0,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: isLandscape ? 1123 : 794
+        if (src.startsWith('data:')) continue;
+
+        try {
+          if (img.complete && img.naturalWidth > 0) {
+            const c = document.createElement('canvas');
+            c.width = img.naturalWidth;
+            c.height = img.naturalHeight;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            img.src = c.toDataURL('image/png');
+          }
+        } catch (_) {
+          // หากติด CORS canvas ให้คงรูปภาพเดิมไว้ ไม่แทนที่ด้วย app-icon
+        }
+      }
+    } catch (_) {}
+
+    // 4. Page-by-Page Canvas Splitting (ป้องกันขีดจำกัด Canvas 4096px และ Out-of-Memory บน iOS)
+    const pageElems = Array.from(container.querySelectorAll('.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet'));
+    const pagesToRender = pageElems.length > 0 ? pageElems : [container];
+    const jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+
+    if (pagesToRender.length > 0 && jsPdfLib && window.html2canvas) {
+      try {
+        const pageWidthMm = isLandscape ? 297 : 210;
+        const pageHeightMm = isLandscape ? 210 : 297;
+        const marginMm = 3;
+        const renderWidthMm = pageWidthMm - (marginMm * 2);
+        const renderHeightMm = pageHeightMm - (marginMm * 2);
+
+        const pdf = new jsPdfLib({
+          orientation: isLandscape ? 'landscape' : 'portrait',
+          unit: 'mm',
+          format: 'a4',
+          compress: true
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        pdf.addImage(imgData, 'JPEG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
-      }
+        for (let idx = 0; idx < pagesToRender.length; idx++) {
+          if (idx > 0) pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
+          const pageEl = pagesToRender[idx];
 
-      hideLoading();
+          const canvas = await window.html2canvas(pageEl, {
+            scale: 1.5,
+            useCORS: true,
+            allowTaint: false,
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: isLandscape ? 1123 : 794
+          });
 
-      if (action === 'download') {
-        pdf.save(`${safeTitle}.pdf`);
-        showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
-        return true;
-      } else {
-        const pdfBlob = pdf.output('blob');
-        return pdfBlob;
+          const imgData = canvas.toDataURL('image/jpeg', 0.92);
+          pdf.addImage(imgData, 'JPEG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
+        }
+
+        hideLoading();
+
+        if (action === 'download') {
+          pdf.save(`${safeTitle}.pdf`);
+          showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
+          return true;
+        } else {
+          const pdfBlob = pdf.output('blob');
+          return pdfBlob;
+        }
+      } catch (multiErr) {
+        console.warn('Page-by-page rendering fallback to html2pdf:', multiErr);
       }
-    } catch (multiErr) {
-      console.warn('Page-by-page rendering fallback to html2pdf:', multiErr);
     }
-  }
 
-  // Configure html2pdf options (fallback for single-page documents)
-  const isLargeDoc = container.offsetHeight > 3500;
-  const opt = {
-    margin: [6, 6, 6, 6],
-    filename: `${safeTitle}.pdf`,
-    image: { type: 'jpeg', quality: 0.96 },
-    html2canvas: {
-      scale: env.isMobile ? (isLargeDoc ? 1 : 1.25) : (isLargeDoc ? 1.5 : 2),
-      useCORS: true,
-      logging: false,
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: isLandscape ? 1123 : 794
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: isLandscape ? 'landscape' : 'portrait'
-    },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-  };
+    // Configure html2pdf options (fallback for single-page documents)
+    const isLargeDoc = container.offsetHeight > 3500;
+    const opt = {
+      margin: [6, 6, 6, 6],
+      filename: `${safeTitle}.pdf`,
+      image: { type: 'jpeg', quality: 0.96 },
+      html2canvas: {
+        scale: env.isMobile ? (isLargeDoc ? 1 : 1.25) : (isLargeDoc ? 1.5 : 2),
+        useCORS: true,
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: isLandscape ? 1123 : 794
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: isLandscape ? 'landscape' : 'portrait'
+      },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
 
-  try {
     if (typeof html2pdf === 'undefined') {
       // Dynamic fallback if script not yet initialized
       await new Promise((resolve, reject) => {
@@ -428,13 +429,6 @@ async function prepareDirectPrintUrl(html, title) {
 
 async function openInExternalSafari(directUrl, html, title) {
   let targetUrl = directUrl;
-  if (!targetUrl && html) {
-    showLoading('กำลังเตรียมเปิดใน Safari...');
-    try {
-      targetUrl = await prepareDirectPrintUrl(html, title);
-    } catch (_) {}
-    hideLoading();
-  }
 
   if (targetUrl) {
     if (!targetUrl.includes('autoprint=1')) {
@@ -443,18 +437,54 @@ async function openInExternalSafari(directUrl, html, title) {
     const modal = document.getElementById('printDocModal');
     if (modal) modal._currentDirectUrl = targetUrl;
 
-    // Cross-origin navigation to GAS_URL breaks out of iOS PWA into Safari
-    const a = document.createElement('a');
-    a.href = targetUrl;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      if (a.parentNode) a.parentNode.removeChild(a);
-    }, 200);
-  } else {
-    sharePdfDocument(html, title);
+    const w = window.open(targetUrl, '_blank');
+    if (!w) {
+      const a = document.createElement('a');
+      a.href = targetUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 200);
+    }
+    return;
+  }
+
+  if (html) {
+    showLoading('กำลังเตรียมเปิดใน Safari...');
+    let preparedUrl = null;
+    try {
+      preparedUrl = await prepareDirectPrintUrl(html, title);
+    } catch (_) {}
+    hideLoading();
+
+    if (preparedUrl) {
+      if (!preparedUrl.includes('autoprint=1')) {
+        preparedUrl += (preparedUrl.includes('?') ? '&' : '?') + 'autoprint=1';
+      }
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: '<div class="flex items-center justify-center gap-2 text-indigo-700 text-base font-bold"><i class="bx bx-check-circle text-emerald-500"></i> เอกสารพร้อมพิมพ์แล้ว</div>',
+          html: '<p class="text-xs text-slate-600 mb-2">แตะปุ่มด้านล่างเพื่อเปิดหน้าต่าง Safari และสั่งพิมพ์ AirPrint ขนาด A4 พอดีหน้า 100%</p>',
+          confirmButtonText: '🚀 เปิดใน Safari สั่งพิมพ์',
+          confirmButtonColor: '#4F46E5',
+          showCancelButton: true,
+          cancelButtonText: 'ยกเลิก',
+          cancelButtonColor: '#94A3B8',
+          customClass: { popup: 'rounded-2xl max-w-xs' }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.open(preparedUrl, '_blank');
+          }
+        });
+      } else {
+        window.open(preparedUrl, '_blank');
+      }
+    } else {
+      sharePdfDocument(html, title);
+    }
   }
 }
 
@@ -473,6 +503,16 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
           บน iPhone เมื่อเปิดจากหน้าจอโฮมหรือที่คั่นหน้า กรุณาเลือกวิธีพิมพ์หรือส่งออกเอกสารที่ต้องการ:
         </p>
         <div class="space-y-2">
+          <button id="swalBtnDirectPrint" type="button" class="w-full text-left p-3 rounded-xl border border-violet-200 bg-violet-50/90 hover:bg-violet-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+            <div class="w-10 h-10 rounded-lg bg-violet-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+              <i class="bx bx-printer"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-violet-950 text-xs sm:text-sm">สั่งพิมพ์ AirPrint ในแอปโดยตรง</div>
+              <div class="text-[11px] text-violet-700 truncate">เรียกหน้าต่าง AirPrint สั่งพิมพ์ทันทีแบบเดียวกับบนคอมพิวเตอร์</div>
+            </div>
+          </button>
+
           <button id="swalBtnSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-300 bg-blue-50/90 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
             <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
               <i class="bx bx-globe"></i>
@@ -524,6 +564,7 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
       cancelButton: 'text-xs px-4 py-2 rounded-lg'
     },
     didOpen: () => {
+      const bDirect = document.getElementById('swalBtnDirectPrint');
       const bDownload = document.getElementById('swalBtnDownloadPdf');
       const bShare = document.getElementById('swalBtnSharePdf');
       const bSafari = document.getElementById('swalBtnSafari');
@@ -534,6 +575,12 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
         return (modal && modal._currentHtml) || html;
       };
 
+      if (bDirect) {
+        bDirect.onclick = () => {
+          Swal.close();
+          triggerDirectInAppPrint(getActiveHtml());
+        };
+      }
       if (bDownload) {
         bDownload.onclick = () => {
           Swal.close();
