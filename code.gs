@@ -29,7 +29,7 @@ const CONFIG = {
   APP_NAME       : 'MHC Smart School',
   SCHOOL_NAME    : 'โรงเรียนมหาชัยพิทยาคาร',
   AUTHOR         : 'ครูก้องนที อุ่นเจริญ',
-  APP_VERSION    : '3.3.11',
+  APP_VERSION    : '3.3.12',
   SESSION_TIMEOUT: 3600,
   ITEMS_PER_PAGE : 20,
   DEFAULT_USERS  : {
@@ -8412,34 +8412,39 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   @page { size: A4 landscape; margin: 5mm 6mm 6mm 6mm; }
+  * { box-sizing: border-box; }
   body {
     font-family: 'Sarabun', sans-serif;
-    font-size: 12px; color: #0F172A; margin: 0;
+    font-size: 11px; color: #0F172A; margin: 0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
   @media screen {
-    body { padding: 12px; background: #F8FAFC; }
+    body { padding: 10px; background: #F8FAFC; }
   }
   @media print {
-    html, body { padding: 0 !important; background: #FFF !important; font-size: 11px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
+    html, body { padding: 0 !important; background: #FFF !important; font-size: 10px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .no-print { display: none !important; }
+    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; }
     table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
     thead { display: table-header-group !important; }
     th, td { page-break-inside: avoid !important; break-inside: avoid !important; }
-    .signature-row { flex-wrap: nowrap !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+    .signature-row, .sig-row { flex-wrap: nowrap !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+  }
+  .schedule-page {
+    width: 95%; max-width: 275mm; margin: 0 auto;
+    page-break-after: auto; break-after: auto;
   }
   .header {
-    text-align: center; margin-bottom: 16px;
+    text-align: center; margin-bottom: 6px;
   }
   table {
     width: 100%; border-collapse: collapse;
     border: 2px solid #000;
     table-layout: fixed;
-    min-width: 680px;
   }
   th, td {
     border: 1px solid #000;
@@ -8447,38 +8452,38 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   }
   th {
     background: #FFF !important; color: #000 !important; text-align: center;
-    padding: 8px 6px; font-size: 12px; font-weight: 700; border-bottom: 2px solid #000;
+    padding: 4px 2px; font-size: 10px; font-weight: 700; border-bottom: 2px solid #000;
   }
-  td { vertical-align: middle; min-height: 56px; }
+  td { vertical-align: middle; min-height: 38px; padding: 2px 2px; font-size: 9.5px; }
   .signature-row, .sig-row {
     display: flex; justify-content: space-around; align-items: flex-start;
-    margin-top: 24px; text-align: center; font-size: 11px;
-    gap: 16px; flex-wrap: nowrap;
+    margin-top: 10px; text-align: center; font-size: 10px;
+    gap: 14px; flex-wrap: nowrap;
     page-break-inside: avoid !important; break-inside: avoid !important;
   }
   .sig-box, .signature-row > div {
-    min-width: 190px; max-width: 340px; flex: 1;
+    min-width: 170px; max-width: 320px; flex: 1;
     display: flex; flex-direction: column; align-items: center; text-align: center;
   }
   .sig-stamp-zone {
-    height: 48px; min-height: 48px; max-height: 48px;
+    height: 38px; min-height: 38px; max-height: 38px;
     display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
     margin: 0 auto 3px auto;
   }
   .sig-stamp-zone img, .teacher-sig-img, .mhc-sig-img {
-    max-height: 44px; max-width: 145px; object-fit: contain;
+    max-height: 34px; max-width: 140px; object-fit: contain;
     display: block; margin: 0 auto;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .sig-line {
-    border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 4px auto;
+    border-bottom: 1px dotted #64748B; width: 160px; margin: 0 auto 3px auto;
     padding-bottom: 0; min-height: 0;
   }
   .sig-name {
-    font-weight: 600; font-size: 11px; color: #0F172A; margin-top: 2px; white-space: nowrap;
+    font-weight: 600; font-size: 10px; color: #0F172A; margin-top: 1px; white-space: nowrap;
   }
   .sig-title {
-    font-size: 10.5px; color: #475569; margin-top: 1px; white-space: nowrap;
+    font-size: 9.5px; color: #475569; margin-top: 1px; white-space: nowrap;
   }
   .no-print {
     position: fixed; top: 10px; right: 10px;
@@ -8489,43 +8494,45 @@ function generateSchedulePrintHTML(classroom, academicYear, semester, sessionTok
   }
 </style></head><body>
 <button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
-<div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-  <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:75px; height:75px; object-fit:contain; margin-bottom:8px;">
-  <div style="font-size:22px; font-weight:800; color:#0F172A; margin-bottom:4px;">ตารางเรียน ชั้น ${escapeHTMLServer_(classroom)}</div>
-  <div style="font-size:16px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-  <div style="font-size:14px; color:#64748B; margin-top:2px;">ภาคเรียนที่ ${escapeHTMLServer_(sem)} ปีการศึกษา ${escapeHTMLServer_(ay)}</div>
-</div>
-<table>
-  <thead>
-    <tr>
-      <th style="width:90px;">วัน / คาบ</th>
-      ${headerCells}
-    </tr>
-  </thead>
-  <tbody>${rows.join('')}</tbody>
-</table>
-<div class="signature-row sig-row">
-  <div class="sig-box" data-sig-role="teacher" data-classroom="${escapeHTMLServer_(classroom)}">
-    <div class="sig-stamp-zone">
-      ${homeroomTeacherSig ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(homeroomTeacherSig)}" alt="ลายเซ็น" />` : ''}
-    </div>
-    <div class="sig-line"></div>
-    <div class="sig-name">( ${escapeHTMLServer_(homeroomTeacher || '..............................................................')} )</div>
-    <div class="sig-title">ครูที่ปรึกษา / ครูประจำชั้น</div>
+<div class="schedule-page">
+  <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:6px;">
+    <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
+    <div style="font-size:17px; font-weight:800; color:#0F172A; margin-bottom:2px;">ตารางเรียน ชั้น ${escapeHTMLServer_(classroom)}</div>
+    <div style="font-size:13px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
+    <div style="font-size:11px; color:#64748B; margin-top:1px;">ภาคเรียนที่ ${escapeHTMLServer_(sem)} ปีการศึกษา ${escapeHTMLServer_(ay)}</div>
   </div>
-  <div class="sig-box" data-sig-role="evaluator">
-    <div class="sig-stamp-zone"></div>
-    <div class="sig-line"></div>
-    <div class="sig-name">( .............................................................. )</div>
-    <div class="sig-title">หัวหน้ากลุ่มบริหารวิชาการ</div>
-  </div>
-  <div class="sig-box" data-sig-role="director">
-    <div class="sig-stamp-zone">
-      ${dirSigImg ? `<img class="teacher-sig-img mhc-sig-img" src="${escapeHTMLServer_(dirSigImg)}" alt="ลายเซ็น" />` : ''}
+  <table>
+    <thead>
+      <tr>
+        <th style="width:85px; padding:4px 2px; font-size:10px;">วัน / คาบ</th>
+        ${headerCells}
+      </tr>
+    </thead>
+    <tbody>${rows.join('')}</tbody>
+  </table>
+  <div class="signature-row sig-row" style="margin-top:10px;">
+    <div class="sig-box" data-sig-role="teacher" data-classroom="${escapeHTMLServer_(classroom)}">
+      <div class="sig-stamp-zone" style="height:38px; min-height:38px; max-height:38px;">
+        ${homeroomTeacherSig ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(homeroomTeacherSig)}" alt="ลายเซ็น" style="max-height:34px;" />` : ''}
+      </div>
+      <div class="sig-line"></div>
+      <div class="sig-name" style="font-size:10px;">( ${escapeHTMLServer_(homeroomTeacher || '..............................................................')} )</div>
+      <div class="sig-title" style="font-size:9.5px;">ครูที่ปรึกษา / ครูประจำชั้น</div>
     </div>
-    <div class="sig-line"></div>
-    <div class="sig-name">( ${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')} )</div>
-    <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+    <div class="sig-box" data-sig-role="evaluator">
+      <div class="sig-stamp-zone" style="height:38px; min-height:38px; max-height:38px;"></div>
+      <div class="sig-line"></div>
+      <div class="sig-name" style="font-size:10px;">( .............................................................. )</div>
+      <div class="sig-title" style="font-size:9.5px;">หัวหน้ากลุ่มบริหารวิชาการ</div>
+    </div>
+    <div class="sig-box" data-sig-role="director">
+      <div class="sig-stamp-zone" style="height:38px; min-height:38px; max-height:38px;">
+        ${dirSigImg ? `<img class="teacher-sig-img mhc-sig-img" src="${escapeHTMLServer_(dirSigImg)}" alt="ลายเซ็น" style="max-height:34px;" />` : ''}
+      </div>
+      <div class="sig-line"></div>
+      <div class="sig-name" style="font-size:10px;">( ${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')} )</div>
+      <div class="sig-title" style="font-size:9.5px;">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+    </div>
   </div>
 </div>
 </body></html>`;
@@ -8660,56 +8667,63 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   @page { size: A4 landscape; margin: 5mm 6mm 6mm 6mm; }
+  * { box-sizing: border-box; }
   body {
-    font-family:'Sarabun',sans-serif; font-size:12px; color:#0F172A; margin:0;
+    font-family:'Sarabun',sans-serif; font-size:11px; color:#0F172A; margin:0;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
     overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
   @media screen {
-    body { padding: 12px; background: #F8FAFC; }
+    body { padding: 10px; background: #F8FAFC; }
   }
   @media print {
-    html, body { padding: 0 !important; background: #FFF !important; font-size: 11px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
+    html, body { padding: 0 !important; background: #FFF !important; font-size: 10px; margin: 0 !important; width: 100% !important; overflow: visible !important; }
     .no-print { display: none !important; }
+    .schedule-page { min-height: auto; padding: 0; margin: 0 auto; overflow: visible !important; }
     table { width: 100% !important; max-width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
     tr { page-break-inside: avoid !important; break-inside: avoid !important; }
     thead { display: table-header-group !important; }
     th, td { page-break-inside: avoid !important; break-inside: avoid !important; }
     .sig-row { flex-wrap: nowrap !important; page-break-inside: avoid !important; break-inside: avoid !important; }
   }
-  .header { text-align:center; margin-bottom:16px; }
-  .workload { text-align:right; font-size:11px; color:#64748B; margin-bottom:6px; }
-  table { width:100%; border-collapse:collapse; border:2px solid #000; table-layout:fixed; min-width: 680px; }
+  .schedule-page {
+    width: 95%; max-width: 275mm; margin: 0 auto;
+    page-break-after: auto; break-after: auto;
+  }
+  .header { text-align:center; margin-bottom:6px; }
+  .workload { text-align:right; font-size:10px; color:#64748B; margin-bottom:4px; }
+  table { width:100%; border-collapse:collapse; border:2px solid #000; table-layout:fixed; }
   th,td { border:1px solid #000; vertical-align:top; }
-  th { background:#FFF !important; color:#000 !important; text-align:center; padding:8px 6px; font-size:12px; font-weight:700; border-bottom:2px solid #000; }
+  th { background:#FFF !important; color:#000 !important; text-align:center; padding:4px 2px; font-size:10px; font-weight:700; border-bottom:2px solid #000; }
+  td { vertical-align: middle; min-height: 38px; padding: 2px 2px; font-size: 9.5px; }
   .sig-row, .signature-row {
     display: flex; justify-content: space-around; align-items: flex-start;
-    margin-top: 24px; text-align: center; font-size: 11px; gap: 20px;
+    margin-top: 10px; text-align: center; font-size: 10px; gap: 14px;
     page-break-inside: avoid !important; break-inside: avoid !important;
   }
   .sig-box, .sig-row > div {
-    min-width: 190px; max-width: 340px; flex: 1;
+    min-width: 170px; max-width: 320px; flex: 1;
     display: flex; flex-direction: column; align-items: center; text-align: center;
   }
   .sig-stamp-zone {
-    height: 48px; min-height: 48px; max-height: 48px;
+    height: 38px; min-height: 38px; max-height: 38px;
     display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
     margin: 0 auto 3px auto;
   }
   .sig-stamp-zone img, .teacher-sig-img, .mhc-sig-img {
-    max-height: 44px; max-width: 145px; object-fit: contain;
+    max-height: 34px; max-width: 140px; object-fit: contain;
     display: block; margin: 0 auto;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .sig-line {
-    border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 4px auto;
+    border-bottom: 1px dotted #64748B; width: 160px; margin: 0 auto 3px auto;
     padding-bottom: 0; min-height: 0;
   }
   .sig-name {
-    font-weight: 600; font-size: 11px; color: #0F172A; margin-top: 2px; white-space: nowrap;
+    font-weight: 600; font-size: 10px; color: #0F172A; margin-top: 1px; white-space: nowrap;
   }
   .sig-title {
-    font-size: 10.5px; color: #475569; margin-top: 1px; white-space: nowrap;
+    font-size: 9.5px; color: #475569; margin-top: 1px; white-space: nowrap;
   }
   .no-print {
     position:fixed; top:10px; right:10px;
@@ -8720,34 +8734,36 @@ function generateTeacherScheduleHTML(teacherId, academicYear, semester, sessionT
   }
 </style></head><body>
 <button class="no-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">🖨 พิมพ์เอกสาร</button>
-<div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-  <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:75px; height:75px; object-fit:contain; margin-bottom:8px;">
-  <div style="font-size:22px; font-weight:800; color:#0F172A; margin-bottom:4px;">ตารางสอน ${escapeHTMLServer_(teacherName)}</div>
-  <div style="font-size:16px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-  <div style="font-size:14px; color:#64748B; margin-top:2px;">${escapeHTMLServer_(teacherPos)} | ภาคเรียนที่ ${sem} ปีการศึกษา ${ay}</div>
-</div>
-<div class="workload">ภาระงานสอน: <b>${totalPeriods}</b> คาบ/สัปดาห์</div>
-<table>
-  <thead>
-    <tr>
-      <th style="width:90px;">วัน / คาบ</th>
-      ${headerCells}
-    </tr>
-  </thead>
-  <tbody>${rows.join('')}</tbody>
-</table>
-<div class="sig-row signature-row">
-  <div class="sig-box" data-sig-role="teacher">
-    <div class="sig-stamp-zone">${per.signature ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(per.signature)}" alt="ลายเซ็น" />` : ''}</div>
-    <div class="sig-line"></div>
-    <div class="sig-name">( ${escapeHTMLServer_(teacherName)} )</div>
-    <div class="sig-title">ครูผู้สอน</div>
+<div class="schedule-page">
+  <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:6px;">
+    <img src="https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN" alt="Logo" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
+    <div style="font-size:17px; font-weight:800; color:#0F172A; margin-bottom:2px;">ตารางสอน ${escapeHTMLServer_(teacherName)}</div>
+    <div style="font-size:13px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
+    <div style="font-size:11px; color:#64748B; margin-top:1px;">${escapeHTMLServer_(teacherPos)} | ภาคเรียนที่ ${sem} ปีการศึกษา ${ay}</div>
   </div>
-  <div class="sig-box" data-sig-role="director">
-    <div class="sig-stamp-zone">${dirSigImg ? `<img class="teacher-sig-img mhc-sig-img" src="${escapeHTMLServer_(dirSigImg)}" alt="ลายเซ็น" />` : ''}</div>
-    <div class="sig-line"></div>
-    <div class="sig-name">( ${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')} )</div>
-    <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+  <div class="workload">ภาระงานสอน: <b>${totalPeriods}</b> คาบ/สัปดาห์</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:85px; padding:4px 2px; font-size:10px;">วัน / คาบ</th>
+        ${headerCells}
+      </tr>
+    </thead>
+    <tbody>${rows.join('')}</tbody>
+  </table>
+  <div class="sig-row signature-row" style="margin-top:10px;">
+    <div class="sig-box" data-sig-role="teacher">
+      <div class="sig-stamp-zone" style="height:38px; min-height:38px; max-height:38px;">${per.signature ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(per.signature)}" alt="ลายเซ็น" style="max-height:34px;" />` : ''}</div>
+      <div class="sig-line"></div>
+      <div class="sig-name" style="font-size:10px;">( ${escapeHTMLServer_(teacherName)} )</div>
+      <div class="sig-title" style="font-size:9.5px;">ครูผู้สอน</div>
+    </div>
+    <div class="sig-box" data-sig-role="director">
+      <div class="sig-stamp-zone" style="height:38px; min-height:38px; max-height:38px;">${dirSigImg ? `<img class="teacher-sig-img mhc-sig-img" src="${escapeHTMLServer_(dirSigImg)}" alt="ลายเซ็น" style="max-height:34px;" />` : ''}</div>
+      <div class="sig-line"></div>
+      <div class="sig-name" style="font-size:10px;">( ${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')} )</div>
+      <div class="sig-title" style="font-size:9.5px;">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+    </div>
   </div>
 </div>
 </body></html>`;
@@ -10220,39 +10236,39 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
       });
 
       const pageHtml = `
-        <div class="schedule-page" style="page-break-after:always; break-after:page; padding:8px 0; margin-bottom:12px;">
-          <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:12px; text-align:center;">
-            <img src="${escapeHTMLServer_(config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN')}" alt="Logo" style="width:70px; height:70px; object-fit:contain; margin-bottom:6px;">
-            <div style="font-size:20px; font-weight:800; color:#0F172A; margin-bottom:3px;">${pageTitle}</div>
-            <div style="font-size:15px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
-            <div style="font-size:13px; color:#64748B; margin-top:2px;">${subHeader}</div>
+        <div class="schedule-page" style="page-break-after:always; break-after:page; padding:0; margin:0 auto 10px auto; width:95%; max-width:275mm;">
+          <div class="header" style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:6px; text-align:center;">
+            <img src="${escapeHTMLServer_(config.school_logo || 'https://lh3.googleusercontent.com/d/19aXvolxpVK5GndtRSMFP6sEdl7oa5PzN')}" alt="Logo" style="width:50px; height:50px; object-fit:contain; margin-bottom:2px;">
+            <div style="font-size:17px; font-weight:800; color:#0F172A; margin-bottom:2px;">${pageTitle}</div>
+            <div style="font-size:13px; font-weight:700; color:#800020;">${escapeHTMLServer_(config.school_name || 'โรงเรียนมหาชัยพิทยาคาร')}</div>
+            <div style="font-size:11px; color:#64748B; margin-top:1px;">${subHeader}</div>
           </div>
           ${workloadHtml}
           <table>
             <thead>
               <tr>
-                <th style="width:85px;">วัน / คาบ</th>
+                <th style="width:85px; padding:4px 2px; font-size:10px;">วัน / คาบ</th>
                 ${headerCells}
               </tr>
             </thead>
             <tbody>${rows.join('')}</tbody>
           </table>
-          <div class="sig-row signature-row">
+          <div class="sig-row signature-row" style="margin-top:10px;">
             <div class="sig-box" data-sig-role="teacher" data-classroom="${escapeHTMLServer_(type === 'class' ? itemKey : '')}">
-              <div class="sig-stamp-zone">
-                ${sigLeftImg ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(sigLeftImg)}" alt="ลายเซ็น" />` : ''}
+              <div class="sig-stamp-zone" style="height:38px; min-height:38px; max-height:38px;">
+                ${sigLeftImg ? `<img class="teacher-sig-img" src="${escapeHTMLServer_(sigLeftImg)}" alt="ลายเซ็น" style="max-height:34px;" />` : ''}
               </div>
               <div class="sig-line"></div>
-              <div class="sig-name">( ${escapeHTMLServer_(sigLeftName || '......................................................')} )</div>
-              <div class="sig-title">${sigLeftRole}</div>
+              <div class="sig-name" style="font-size:10px;">( ${escapeHTMLServer_(sigLeftName || '......................................................')} )</div>
+              <div class="sig-title" style="font-size:9.5px;">${sigLeftRole}</div>
             </div>
             <div class="sig-box" data-sig-role="director">
-              <div class="sig-stamp-zone">
-                ${dirSigImg ? `<img class="teacher-sig-img mhc-sig-img" src="${escapeHTMLServer_(dirSigImg)}" alt="ลายเซ็น" />` : ''}
+              <div class="sig-stamp-zone" style="height:38px; min-height:38px; max-height:38px;">
+                ${dirSigImg ? `<img class="teacher-sig-img mhc-sig-img" src="${escapeHTMLServer_(dirSigImg)}" alt="ลายเซ็น" style="max-height:34px;" />` : ''}
               </div>
               <div class="sig-line"></div>
-              <div class="sig-name">( ${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')} )</div>
-              <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="sig-name" style="font-size:10px;">( ${escapeHTMLServer_(config.director_name || 'นายอธิการ สุขศรี')} )</div>
+              <div class="sig-title" style="font-size:9.5px;">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
             </div>
           </div>
         </div>`;
@@ -10311,37 +10327,37 @@ function generateAllSchedulesPrintHTML(type, ids, academicYear, semester, sessio
   }
   th {
     background: #FFF !important; color: #000 !important; text-align: center;
-    padding: 8px 6px; font-size: 12px; font-weight: 700; border-bottom: 2px solid #000;
+    padding: 4px 2px; font-size: 10px; font-weight: 700; border-bottom: 2px solid #000;
   }
-  td { vertical-align: middle; min-height: 50px; }
+  td { vertical-align: middle; min-height: 38px; padding: 2px 2px; font-size: 9.5px; }
   .sig-row, .signature-row {
     display: flex; justify-content: space-around; align-items: flex-start;
-    margin-top: 24px; text-align: center; font-size: 11px; gap: 20px;
+    margin-top: 10px; text-align: center; font-size: 10px; gap: 14px;
     page-break-inside: avoid !important; break-inside: avoid !important;
   }
   .sig-box, .sig-row > div {
-    min-width: 190px; max-width: 340px; flex: 1;
+    min-width: 170px; max-width: 320px; flex: 1;
     display: flex; flex-direction: column; align-items: center; text-align: center;
   }
   .sig-stamp-zone {
-    height: 48px; min-height: 48px; max-height: 48px;
+    height: 38px; min-height: 38px; max-height: 38px;
     display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
     margin: 0 auto 3px auto;
   }
   .sig-stamp-zone img, .teacher-sig-img, .mhc-sig-img {
-    max-height: 44px; max-width: 145px; object-fit: contain;
+    max-height: 34px; max-width: 140px; object-fit: contain;
     display: block; margin: 0 auto;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .sig-line {
-    border-bottom: 1px dotted #64748B; width: 170px; margin: 0 auto 4px auto;
+    border-bottom: 1px dotted #64748B; width: 160px; margin: 0 auto 3px auto;
     padding-bottom: 0; min-height: 0;
   }
   .sig-name {
-    font-weight: 600; font-size: 11px; color: #0F172A; margin-top: 2px; white-space: nowrap;
+    font-weight: 600; font-size: 10px; color: #0F172A; margin-top: 1px; white-space: nowrap;
   }
   .sig-title {
-    font-size: 10.5px; color: #475569; margin-top: 1px; white-space: nowrap;
+    font-size: 9.5px; color: #475569; margin-top: 1px; white-space: nowrap;
   }
   .workload {
     text-align: right; margin-bottom: 6px; font-size: 11px; color: #475569;

@@ -1896,14 +1896,46 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
   body.is-printing-doc #inAppPrintArea * {
     overflow: visible !important;
   }
+  #inAppPrintArea .schedule-page,
+  #inAppPrintArea .print-page-wrapper,
+  .schedule-page,
+  .print-page-wrapper {
+    width: 95% !important;
+    max-width: 275mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-sizing: border-box !important;
+  }
+  #inAppPrintArea .schedule-page:last-child,
+  #inAppPrintArea .print-page-wrapper:last-child,
+  .schedule-page:last-child,
+  .print-page-wrapper:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+  #inAppPrintArea .header,
+  .schedule-page .header {
+    margin-bottom: 6px !important;
+  }
+  #inAppPrintArea .header img,
+  .schedule-page .header img {
+    width: 50px !important;
+    height: 50px !important;
+    margin-bottom: 2px !important;
+  }
   #inAppPrintArea table,
   body.is-printing-doc #inAppPrintArea table {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     border-collapse: collapse !important;
-    page-break-inside: auto !important;
-    table-layout: auto !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    table-layout: fixed !important;
   }
   #inAppPrintArea thead,
   body.is-printing-doc #inAppPrintArea thead {
@@ -1927,6 +1959,46 @@ html.dark-mode ::-webkit-scrollbar-thumb:hover {
     break-inside: avoid !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
+  }
+  #inAppPrintArea th,
+  body.is-printing-doc #inAppPrintArea th {
+    padding: 4px 2px !important;
+    font-size: 10px !important;
+  }
+  #inAppPrintArea td,
+  body.is-printing-doc #inAppPrintArea td {
+    padding: 2px 2px !important;
+    font-size: 9.5px !important;
+    min-height: 38px !important;
+  }
+  #inAppPrintArea .sig-row,
+  .schedule-page .sig-row,
+  #inAppPrintArea .signature-row,
+  .schedule-page .signature-row {
+    margin-top: 10px !important;
+    gap: 14px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  #inAppPrintArea .sig-stamp-zone,
+  .schedule-page .sig-stamp-zone {
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+  }
+  #inAppPrintArea .teacher-sig-img,
+  .schedule-page .teacher-sig-img,
+  #inAppPrintArea .mhc-sig-img,
+  .schedule-page .mhc-sig-img {
+    max-height: 34px !important;
+  }
+  #inAppPrintArea .sig-name,
+  .schedule-page .sig-name {
+    font-size: 10px !important;
+  }
+  #inAppPrintArea .sig-title,
+  .schedule-page .sig-title {
+    font-size: 9.5px !important;
   }
   #inAppPrintArea .no-print,
   #inAppPrintArea .no-print-bar,

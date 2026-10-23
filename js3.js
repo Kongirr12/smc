@@ -88,30 +88,38 @@ async function generatePdfFromHtml(html, title, action = 'download') {
 
   document.body.appendChild(container);
 
-  // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จก่อนแปลงเป็น PDF (Timeout ป้องกันการค้างบนมือถือ)
+  // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จ และแปลงเป็น Data URL ป้องกัน CORS Error บน iOS WebKit
   try {
     const imgs = Array.from(container.querySelectorAll('img'));
-    if (imgs.length > 0) {
-      await Promise.all(imgs.map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(res => {
-          img.onload = res;
-          img.onerror = res;
-          setTimeout(res, 800);
-        });
-      }));
+    for (const img of imgs) {
+      const src = img.getAttribute('src') || '';
+      if (!src || src.startsWith('data:')) continue;
+      try {
+        if (img.complete && img.naturalWidth > 0) {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          img.src = c.toDataURL('image/png');
+        }
+      } catch (_) {
+        // หากติด CORS canvas ให้ใช้ fallback image ในเครื่อง
+        img.src = 'app-icon.jpg';
+      }
     }
   } catch (_) {}
 
-  // 4. Multi-Page Canvas Splitting for iOS (Prevent 4096px canvas memory limits on 40+ page documents)
+  // 4. Page-by-Page Canvas Splitting (ป้องกันขีดจำกัด Canvas 4096px และ Out-of-Memory บน iOS)
   const pageElems = Array.from(container.querySelectorAll('.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet'));
+  const pagesToRender = pageElems.length > 0 ? pageElems : [container];
   const jsPdfLib = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
 
-  if (pageElems.length > 1 && jsPdfLib && window.html2canvas) {
+  if (pagesToRender.length > 0 && jsPdfLib && window.html2canvas) {
     try {
       const pageWidthMm = isLandscape ? 297 : 210;
       const pageHeightMm = isLandscape ? 210 : 297;
-      const marginMm = 4;
+      const marginMm = 3;
       const renderWidthMm = pageWidthMm - (marginMm * 2);
       const renderHeightMm = pageHeightMm - (marginMm * 2);
 
@@ -122,20 +130,21 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         compress: true
       });
 
-      for (let idx = 0; idx < pageElems.length; idx++) {
+      for (let idx = 0; idx < pagesToRender.length; idx++) {
         if (idx > 0) pdf.addPage('a4', isLandscape ? 'landscape' : 'portrait');
-        const pageEl = pageElems[idx];
+        const pageEl = pagesToRender[idx];
 
         const canvas = await window.html2canvas(pageEl, {
-          scale: env.isMobile ? 1.25 : 1.5,
+          scale: 1.0,
           useCORS: true,
+          allowTaint: false,
           logging: false,
           scrollX: 0,
           scrollY: 0,
           windowWidth: isLandscape ? 1123 : 794
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.94);
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
         pdf.addImage(imgData, 'JPEG', marginMm, marginMm, renderWidthMm, renderHeightMm, undefined, 'FAST');
       }
 
@@ -438,37 +447,37 @@ function showIOSPrintOptionsModal(html, title, directUrl) {
     html: `
       <div class="text-left text-sm text-slate-600 space-y-3 pt-1">
         <p class="text-xs text-indigo-900 bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-200 leading-relaxed font-medium">
-          <i class="bx bx-check-circle mr-1 text-base align-middle text-indigo-600"></i>
-          ระบบจัดทำเอกสาร PDF ขนาด A4 คมชัดสูง พร้อมตราโรงเรียนและลายมือชื่อ:
+          <i class="bx bx-info-circle mr-1 text-base align-middle text-indigo-600"></i>
+          บน iPhone เมื่อเปิดจากหน้าจอโฮมหรือที่คั่นหน้า กรุณาเลือกวิธีพิมพ์หรือส่งออกเอกสารที่ต้องการ:
         </p>
         <div class="space-y-2">
-          <button id="swalBtnDownloadPdf" type="button" class="w-full text-left p-3 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
-            <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
-              <i class="bx bxs-file-pdf"></i>
+          <button id="swalBtnSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-300 bg-blue-50/90 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+            <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+              <i class="bx bx-globe"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-emerald-950 text-xs sm:text-sm">ดาวน์โหลดไฟล์ PDF (แนะนำ)</div>
-              <div class="text-[11px] text-emerald-700 truncate">สร้างไฟล์ .pdf ขนาด A4 บันทึกเก็บไว้ในแอปไฟล์หรืออุปกรณ์</div>
+              <div class="font-bold text-blue-950 text-xs sm:text-sm">เปิดใน Safari เพื่อสั่งพิมพ์ (แนะนำ)</div>
+              <div class="text-[11px] text-blue-700 truncate">เปิดหน้าเอกสารใน Safari เพื่อสั่งพิมพ์ AirPrint พอดีกระดาษ A4 (100%)</div>
             </div>
           </button>
-          
+
           <button id="swalBtnSharePdf" type="button" class="w-full text-left p-3 rounded-xl border border-indigo-200 bg-indigo-50/90 hover:bg-indigo-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
             <div class="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
               <i class="bx bx-share-alt"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ไฟล์ PDF / พิมพ์ AirPrint</div>
-              <div class="text-[11px] text-indigo-700 truncate">เปิดเมนู iOS ส่งไฟล์ PDF ทาง LINE หรือเลือกพิมพ์ AirPrint</div>
+              <div class="font-bold text-indigo-950 text-xs sm:text-sm">แชร์ไฟล์ PDF / พิมพ์ AirPrint (ในแอป)</div>
+              <div class="text-[11px] text-indigo-700 truncate">เปิดเมนู iOS ส่งไฟล์ PDF ทาง LINE หรือเลือกพิมพ์ AirPrint ได้ทันที</div>
             </div>
           </button>
 
-          <button id="swalBtnSafari" type="button" class="w-full text-left p-3 rounded-xl border border-blue-200 bg-blue-50/90 hover:bg-blue-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
-            <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
-              <i class="bx bx-globe"></i>
+          <button id="swalBtnDownloadPdf" type="button" class="w-full text-left p-3 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 flex items-center gap-3 transition cursor-pointer shadow-xs">
+            <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-2xl flex-shrink-0 shadow-sm">
+              <i class="bx bxs-file-pdf"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-blue-950 text-xs sm:text-sm">เปิดใน Safari เพื่อสั่งพิมพ์</div>
-              <div class="text-[11px] text-blue-700 truncate">เปิดหน้าเอกสารใน Safari และเรียกคำสั่งพิมพ์ให้อัตโนมัติ</div>
+              <div class="font-bold text-emerald-950 text-xs sm:text-sm">ดาวน์โหลดไฟล์ PDF ขนาด A4</div>
+              <div class="text-[11px] text-emerald-700 truncate">สร้างไฟล์ .pdf ขนาด A4 บันทึกเก็บไว้ในแอปไฟล์หรืออุปกรณ์</div>
             </div>
           </button>
 
@@ -578,6 +587,58 @@ function triggerDirectInAppPrint(html) {
         background: #FFFFFF !important;
         overflow: visible !important;
       }
+      #inAppPrintArea .schedule-page,
+      #inAppPrintArea .print-page-wrapper {
+        width: 95% !important;
+        max-width: 275mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        box-sizing: border-box !important;
+      }
+      #inAppPrintArea .schedule-page:last-child,
+      #inAppPrintArea .print-page-wrapper:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+      #inAppPrintArea .header img {
+        width: 50px !important;
+        height: 50px !important;
+        margin-bottom: 2px !important;
+      }
+      #inAppPrintArea table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+      #inAppPrintArea th {
+        padding: 4px 2px !important;
+        font-size: 10px !important;
+      }
+      #inAppPrintArea td {
+        padding: 2px 2px !important;
+        font-size: 9.5px !important;
+        min-height: 38px !important;
+      }
+      #inAppPrintArea .sig-row,
+      #inAppPrintArea .signature-row {
+        margin-top: 10px !important;
+        gap: 14px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      #inAppPrintArea .sig-stamp-zone {
+        height: 38px !important;
+        min-height: 38px !important;
+      }
+      #inAppPrintArea .teacher-sig-img,
+      #inAppPrintArea .mhc-sig-img {
+        max-height: 34px !important;
+      }
     }
   `;
 
@@ -603,9 +664,20 @@ function triggerDirectInAppPrint(html) {
 window.triggerInAppPrint = function() {
   const modal = document.getElementById('printDocModal');
   const html = (modal && modal._currentHtml) || '';
+  const title = (modal && modal._currentTitle) || 'เอกสาร';
+  const directUrl = (modal && modal._currentDirectUrl) || '';
 
-  // สั่งพิมพ์ออกเครื่องพิมพ์หรือบันทึก PDF ทันที (AirPrint บน iOS / ระบบพิมพ์บน Desktop ทันที)
-  // รักษา User Gesture สดใหม่เสมอ ไม่เกิด NotAllowedError และแสดงผลหน้ากระดาษ A4 เสมือนจริง 100%
+  const env = getPrintEnv();
+
+  // บน iOS เมื่อเปิดจากที่คั่นหน้า / หน้าจอโฮม (PWA Standalone):
+  // ระบบ iOS ปิดกั้นคำสั่ง window.print() ในโหมด Standalone ทำให้ไม่มีหน้าต่าง AirPrint เด้งขึ้นมา
+  // ให้เปิดกล่องตัวเลือกเพื่อ: 1. แชร์ไฟล์ PDF / พิมพ์ AirPrint (ในแอป) หรือ 2. เปิดใน Safari เพื่อพิมพ์ทันที
+  if (env.isIOSStandalone) {
+    showIOSPrintOptionsModal(html, title, directUrl);
+    return;
+  }
+
+  // บน Safari ปกติ หรือคอมพิวเตอร์: เรียกใช้งาน AirPrint / Print Dialog ทันที
   triggerDirectInAppPrint(html);
 };
 
