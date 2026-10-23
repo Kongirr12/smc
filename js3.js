@@ -75,7 +75,9 @@ async function generatePdfFromHtml(html, title, action = 'download') {
   container.style.position = 'fixed';
   container.style.left = '0';
   container.style.top = '0';
-  container.style.width = isLandscape ? '297mm' : '210mm';
+  container.style.width = isLandscape ? '1123px' : '794px';
+  container.style.minWidth = isLandscape ? '1123px' : '794px';
+  container.style.maxWidth = isLandscape ? '1123px' : '794px';
   container.style.boxSizing = 'border-box';
   container.style.background = '#FFFFFF';
   container.style.color = '#0F172A';
@@ -86,7 +88,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
 
   document.body.appendChild(container);
 
-  // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จก่อนแปลงเป็น PDF
+  // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จก่อนแปลงเป็น PDF (Timeout ป้องกันการค้างบนมือถือ)
   try {
     const imgs = Array.from(container.querySelectorAll('img'));
     if (imgs.length > 0) {
@@ -95,7 +97,7 @@ async function generatePdfFromHtml(html, title, action = 'download') {
         return new Promise(res => {
           img.onload = res;
           img.onerror = res;
-          setTimeout(res, 2000);
+          setTimeout(res, 800);
         });
       }));
     }
@@ -208,56 +210,123 @@ async function generatePdfFromHtml(html, title, action = 'download') {
   }
 }
 
+function downloadPdfBlob(blob, filename) {
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    if (a.parentNode) a.parentNode.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 2000);
+}
+
 async function downloadPdfDocument(html, title) {
-  return await generatePdfFromHtml(html, title, 'download');
+  if (!html) return;
+  const safeTitle = getSafePrintTitle(title);
+  const pdfBlob = await generatePdfFromHtml(html, title, 'blob');
+  if (pdfBlob) {
+    downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
+    showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
+    return true;
+  }
+  return false;
 }
 
 async function sharePdfDocument(html, title) {
   if (!html) return;
   const safeTitle = getSafePrintTitle(title);
-  const pdfBlob = await generatePdfFromHtml(html, title, 'blob');
-  if (!pdfBlob) return;
+  const canShare = !!navigator.share;
 
-  if (navigator.share) {
-    try {
-      const file = new File([pdfBlob], `${safeTitle}.pdf`, { type: 'application/pdf' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
+  showLoading('กำลังจัดเตรียมไฟล์ PDF...');
+
+  let pdfBlob = null;
+  try {
+    pdfBlob = await generatePdfFromHtml(html, title, 'blob');
+  } catch (err) {
+    console.error('generatePdfFromHtml error:', err);
+  } finally {
+    hideLoading();
+  }
+
+  if (!pdfBlob) {
+    showToast('error', 'ไม่สามารถสร้างไฟล์ PDF ได้');
+    return;
+  }
+
+  const file = new File([pdfBlob], `${safeTitle}.pdf`, { type: 'application/pdf' });
+  const isShareableFile = canShare && navigator.canShare && navigator.canShare({ files: [file] });
+
+  // WebKit Transient Activation fix:
+  // บน iOS WebKit การประมวลผล PDF ใช้เวลามากกว่า 1 วินาที ทำให้ User Activation หมดอายุ
+  // การเรียก navigator.share ทันทีจะถูกปฏิเสธด้วย NotAllowedError
+  // จึงใช้ SweetAlert เพื่อให้ผู้ใช้แตะปุ่ม เป็น Direct User Gesture ครั้งใหม่
+  // และเรียก navigator.share({ files: [file] }) แบบ Synchronous ทันทีที่แตะ!
+  if (canShare && (isShareableFile || navigator.canShare)) {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        icon: 'success',
+        title: 'ไฟล์ PDF พร้อมส่งออกแล้ว',
+        html: `
+          <div class="text-left text-xs sm:text-sm text-slate-600 space-y-2 mt-2">
+            <p>สร้างเอกสาร <b>"${escapeHtml(title)}"</b> เรียบร้อย</p>
+            <p class="text-slate-500">แตะปุ่ม <b>"เปิดเมนูแชร์"</b> ด้านล่างเพื่อส่งไฟล์ทาง LINE หรือบันทึกไฟล์</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="bx bx-share-alt mr-1"></i> เปิดเมนูแชร์ (Share Sheet)',
+        cancelButtonText: '<i class="bx bx-download mr-1"></i> ดาวน์โหลด PDF',
+        confirmButtonColor: '#4F46E5',
+        cancelButtonColor: '#059669',
+        reverseButtons: true,
+        allowOutsideClick: false
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Direct Synchronous User Gesture!
+          if (isShareableFile) {
+            navigator.share({
+              files: [file],
+              title: `${title} (PDF)`,
+              text: `เอกสาร PDF: ${title} โรงเรียนมหาชัยพิทยาคาร`
+            }).catch((err) => {
+              if (err.name === 'AbortError') return;
+              console.warn('Share file failed, fallback to download:', err);
+              downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
+            });
+          } else {
+            const modal = document.getElementById('printDocModal');
+            const shareUrl = (modal && modal._currentDirectUrl) || '';
+            if (shareUrl) {
+              navigator.share({
+                title: `${title} (PDF)`,
+                text: `เอกสาร PDF: ${title} โรงเรียนมหาชัยพิทยาคาร`,
+                url: shareUrl
+              }).catch(() => downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`));
+            } else {
+              downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
+            }
+          }
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
+        }
+      });
+    } else {
+      if (isShareableFile) {
+        navigator.share({
           files: [file],
           title: `${title} (PDF)`,
           text: `เอกสาร PDF: ${title} โรงเรียนมหาชัยพิทยาคาร`
-        });
-        return;
+        }).catch(() => downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`));
+      } else {
+        downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
       }
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-      console.warn('Share PDF fallback', e);
-    }
-
-    try {
-      const modal = document.getElementById('printDocModal');
-      await navigator.share({
-        title: `${title} (PDF)`,
-        text: `เอกสาร PDF ${title} โรงเรียนมหาชัยพิทยาคาร`,
-        url: (modal && modal._currentDirectUrl) || window.location.href
-      });
-      return;
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      showToast('error', 'ไม่สามารถเปิดเมนูแชร์ได้');
     }
   } else {
-    // If Web Share not supported, download PDF directly
-    const url = URL.createObjectURL(pdfBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${safeTitle}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 1500);
+    // กรณี Browser ไม่รองรับ navigator.share (เช่น เดสก์ท็อปเก่า): ดาวน์โหลดไฟล์ทันที
+    downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
     showToast('success', 'ดาวน์โหลดไฟล์ PDF เรียบร้อย');
   }
 }
@@ -467,11 +536,18 @@ function triggerDirectInAppPrint(html) {
   if (!printArea) {
     printArea = document.createElement('div');
     printArea.id = 'inAppPrintArea';
+    printArea.className = 'in-app-print-area';
     document.body.appendChild(printArea);
   }
 
   const modal = document.getElementById('printDocModal');
-  const isLand = (modal && modal._currentOrientation === 'landscape');
+  const currentOri = (modal && modal._currentOrientation) || '';
+  const isLand = currentOri === 'landscape' || 
+                 (html || '').toLowerCase().includes('size: a4 landscape') || 
+                 (html || '').toLowerCase().includes('a4 landscape') || 
+                 (html || '').toLowerCase().includes('แนวนอน') ||
+                 (html || '').toLowerCase().includes('landscape');
+
   let dynamicStyle = document.getElementById('mhcDynamicPrintPageStyle');
   if (!dynamicStyle) {
     dynamicStyle = document.createElement('style');
@@ -499,7 +575,7 @@ function triggerDirectInAppPrint(html) {
   // Safe 45-second fallback for slow mobile print spoolers (prevents blank page on Android)
   setTimeout(cleanup, 45000);
 
-  const printDelay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 60 : 200;
+  const printDelay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 30 : 150;
   setTimeout(() => {
     try {
       window.focus();
@@ -514,60 +590,9 @@ function triggerDirectInAppPrint(html) {
 window.triggerInAppPrint = function() {
   const modal = document.getElementById('printDocModal');
   const html = (modal && modal._currentHtml) || '';
-  const title = (modal && modal._currentTitle) || 'เอกสาร';
 
-  const env = getPrintEnv();
-
-  // บน iOS เมื่อเปิดจากหน้าจอโฮม (PWA Standalone):
-  // ใช้ปุ่มเดิม "พิมพ์เอกสาร" โดยสร้างไฟล์ PDF คุณภาพสูงแล้วเปิด iOS Share Sheet กลางหน้าจอทันที
-  // ผู้ใช้สามารถกด "พิมพ์" (AirPrint) หรือบันทึก/ส่ง LINE ได้ครบถ้วนในหน้าเดียว ไม่ต้องสลับไป Safari และไม่เพิ่มปุ่มใหม่
-  if (env.isIOSStandalone) {
-    sharePdfDocument(html, title);
-    return;
-  }
-
-  // บน iOS ใน Safari ปกติ: สั่งพิมพ์ผ่าน AirPrint บน Top Window
-  if (env.isIOS) {
-    triggerDirectInAppPrint(html);
-    return;
-  }
-
-  // 1. พิมพ์ตรงจาก iframe ทันที เพื่อให้การแสดงผลตัวอักษร เส้นตาราง ลายเซ็น และหน้ากระดาษ A4 เหมือนกับที่เห็นบนหน้าจอ 100%
-  const iframe = document.getElementById('printDocIframe');
-  if (iframe && iframe.contentWindow) {
-    try {
-      const idoc = iframe.contentDocument || iframe.contentWindow.document;
-      const imgs = idoc ? Array.from(idoc.images) : [];
-      const pending = imgs.filter(img => !img.complete);
-      if (pending.length > 0) {
-        let loaded = 0;
-        const doPrint = () => {
-          try {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-          } catch (e) {
-            triggerDirectInAppPrint(html);
-          }
-        };
-        pending.forEach(img => {
-          img.onload = img.onerror = () => {
-            loaded++;
-            if (loaded >= pending.length) doPrint();
-          };
-        });
-        setTimeout(doPrint, 500);
-        return;
-      }
-
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-      return;
-    } catch (e) {
-      console.warn('Iframe print failed, fallback to printArea:', e);
-    }
-  }
-
-  // 2. แผนสำรองสำหรับกรณี iframe ไม่รองรับการ print
+  // สั่งพิมพ์ออกเครื่องพิมพ์หรือบันทึก PDF ทันที (AirPrint บน iOS / ระบบพิมพ์บน Desktop ทันที)
+  // รักษา User Gesture สดใหม่เสมอ ไม่เกิด NotAllowedError และแสดงผลหน้ากระดาษ A4 เสมือนจริง 100%
   triggerDirectInAppPrint(html);
 };
 
@@ -2111,8 +2136,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         </button>
       </div>
     </div>
-    <div class="flex-1 w-full bg-slate-200 overflow-auto relative flex flex-col p-0 sm:p-2" style="-webkit-overflow-scrolling: touch;">
-      <iframe id="printDocIframe" class="w-full h-full border-0 bg-white sm:rounded-lg sm:shadow-lg" style="min-width:0; flex-shrink:0;"></iframe>
+    <div class="flex-1 w-full bg-slate-200 overflow-hidden relative flex flex-col p-0 sm:p-2" style="-webkit-overflow-scrolling: touch;">
+      <iframe id="printDocIframe" class="w-full h-full border-0 bg-slate-100 sm:rounded-lg sm:shadow-lg" style="min-width:0; min-height:0; width:100%; height:100%; flex:1 1 0%;"></iframe>
     </div>
   `;
 
@@ -2227,38 +2252,38 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const iframe = document.getElementById('printDocIframe');
     if (iframe) {
       const cleanOverride = `
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
         <style id="cleanPreviewOverride">
           @page {
             size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
             margin: ${isLand ? '5mm 6mm 6mm 6mm' : '8mm 8mm 8mm 8mm'} !important;
           }
           .no-print, .no-print-bar { display: none !important; }
-          html, body {
+          html {
+            width: 100% !important;
+            min-width: 0 !important;
+            overflow-x: hidden !important;
             -webkit-text-size-adjust: 100% !important;
             text-size-adjust: 100% !important;
-            min-width: 0 !important;
-            width: 100% !important;
           }
           body {
             background: #F1F5F9 !important;
-            padding: 0 !important;
+            padding: 8px 4px !important;
             margin: 0 auto !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            overflow-x: auto !important;
+            overflow-x: hidden !important;
             -webkit-overflow-scrolling: touch !important;
+            box-sizing: border-box !important;
           }
           .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container, .pp5-sheet {
             margin: 8px auto !important;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
             padding: ${isLand ? '10px 14px' : '10px 12px'} !important;
-            max-width: ${isLand ? '285mm' : '205mm'} !important;
             width: 100% !important;
+            max-width: 100% !important;
             box-sizing: border-box !important;
             background: #FFFFFF !important;
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch !important;
           }
           table:not(.cal-table) {
             max-width: 100% !important;
@@ -2357,12 +2382,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             clear: both !important;
             page-break-inside: avoid !important;
           }
-          @media screen and (max-width: 640px) {
-            .print-page-wrapper, .print-doc, .pp6-container, .schedule-page, .calendar-container, .pp5-sheet {
-              min-width: ${isLand ? '860px' : '640px'} !important;
-              margin: 4px auto !important;
-            }
-          }
           @media print {
             @page {
               size: A4 ${isLand ? 'landscape' : 'portrait'} !important;
@@ -2375,10 +2394,10 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               width: 100% !important;
               height: auto !important;
               overflow: visible !important;
+              zoom: 1 !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            /* ยกเลิก overflow clipping ทั้งหมดในเวลาพิมพ์ เพื่อให้พิมพ์ตารางหลายหน้าได้สมบูรณ์ */
             .print-page-wrapper, .print-doc, .pp6-container, .pp5-sheet, .schedule-page, .calendar-container, .receipt-box, div {
               overflow: visible !important;
               height: auto !important;
@@ -2393,7 +2412,6 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               max-width: 100% !important;
               min-width: 0 !important;
             }
-            /* ป้องกันตารางตกขอบกระดาษ: ปรับให้ยืดหยุ่นเต็มพื้นที่ 100% และตรงกับหน้าตัวอย่าง 100% */
             table:not(.cal-table) {
               width: 100% !important;
               max-width: 100% !important;
@@ -2410,16 +2428,9 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               page-break-inside: auto !important;
               border-collapse: collapse !important;
             }
-            thead {
-              display: table-header-group !important;
-            }
-            tfoot {
-              display: table-footer-group !important;
-            }
-            tr {
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
-            }
+            thead { display: table-header-group !important; }
+            tfoot { display: table-footer-group !important; }
+            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
             th, td {
               min-width: 0 !important;
               page-break-inside: avoid !important;
@@ -2442,8 +2453,61 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             .no-print, .no-print-bar { display: none !important; }
           }
         </style>
+        <script>
+          (function() {
+            function fitDocToScreen() {
+              try {
+                var isLand = ${isLand ? 'true' : 'false'};
+                var targetWidth = isLand ? 1020 : 760;
+                var availWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth || 0;
+                if (!availWidth || availWidth < 50) {
+                  try {
+                    if (window.parent && window.parent.innerWidth) {
+                      availWidth = window.parent.innerWidth;
+                    }
+                  } catch(_) {}
+                }
+                if (!availWidth) availWidth = 375;
+
+                if (availWidth > 0 && availWidth < targetWidth) {
+                  var pad = availWidth < 480 ? 10 : 20;
+                  var scale = (availWidth - pad) / targetWidth;
+                  if (scale < 0.2) scale = 0.2;
+                  if (scale > 1) scale = 1;
+
+                  document.documentElement.style.overflowX = 'hidden';
+                  document.body.style.zoom = scale;
+                  document.body.style.width = targetWidth + 'px';
+                  document.body.style.maxWidth = targetWidth + 'px';
+                  document.body.style.minWidth = targetWidth + 'px';
+                  document.body.style.margin = '4px auto';
+                  document.body.style.boxSizing = 'border-box';
+                } else {
+                  document.documentElement.style.overflowX = 'auto';
+                  document.body.style.zoom = '1';
+                  document.body.style.width = '100%';
+                  document.body.style.maxWidth = isLand ? '285mm' : '205mm';
+                  document.body.style.minWidth = '0';
+                  document.body.style.margin = '0 auto';
+                }
+              } catch(err) {
+                console.warn('fitDocToScreen err:', err);
+              }
+            }
+            window.addEventListener('resize', fitDocToScreen);
+            window.addEventListener('orientationchange', fitDocToScreen);
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', fitDocToScreen);
+            } else {
+              fitDocToScreen();
+            }
+            setTimeout(fitDocToScreen, 20);
+            setTimeout(fitDocToScreen, 120);
+            setTimeout(fitDocToScreen, 450);
+          })();
+        <\/script>
       `;
-      iframe.style.minHeight = '500px';
+      iframe.style.minHeight = '0';
       iframe.srcdoc = modal._currentHtml.includes('</head>')
         ? modal._currentHtml.replace('</head>', cleanOverride + '</head>')
         : cleanOverride + modal._currentHtml;
