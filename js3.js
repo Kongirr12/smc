@@ -69,32 +69,52 @@ async function generatePdfFromHtml(html, title, action = 'download') {
     parsedContent = html;
   }
 
-  // Create temporary container offscreen
+  // Create temporary container for PDF rendering
   const container = document.createElement('div');
   container.id = 'tempPdfRenderContainer';
   container.style.position = 'fixed';
-  container.style.left = '-9999px';
+  container.style.left = '0';
   container.style.top = '0';
   container.style.width = isLandscape ? '297mm' : '210mm';
-  container.style.minHeight = isLandscape ? '210mm' : '297mm';
   container.style.boxSizing = 'border-box';
   container.style.background = '#FFFFFF';
   container.style.color = '#0F172A';
   container.style.zIndex = '-9999';
+  container.style.opacity = '0.001';
+  container.style.pointerEvents = 'none';
   container.innerHTML = parsedContent;
 
   document.body.appendChild(container);
 
+  // รอให้รูปภาพทั้งหมดใน container โหลดเสร็จก่อนแปลงเป็น PDF
+  try {
+    const imgs = Array.from(container.querySelectorAll('img'));
+    if (imgs.length > 0) {
+      await Promise.all(imgs.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(res => {
+          img.onload = res;
+          img.onerror = res;
+          setTimeout(res, 2000);
+        });
+      }));
+    }
+  } catch (_) {}
+
   // Configure html2pdf options
+  const env = getPrintEnv();
+  const isLargeDoc = container.offsetHeight > 3500;
   const opt = {
     margin: [6, 6, 6, 6],
     filename: `${safeTitle}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
+    image: { type: 'jpeg', quality: 0.96 },
     html2canvas: {
-      scale: 2,
+      scale: env.isMobile ? (isLargeDoc ? 1 : 1.25) : (isLargeDoc ? 1.5 : 2),
       useCORS: true,
       logging: false,
-      scrollY: 0
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: isLandscape ? 1123 : 794
     },
     jsPDF: {
       unit: 'mm',
@@ -429,6 +449,7 @@ function triggerDirectInAppPrint(html) {
   // Safe 45-second fallback for slow mobile print spoolers (prevents blank page on Android)
   setTimeout(cleanup, 45000);
 
+  const printDelay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 60 : 200;
   setTimeout(() => {
     try {
       window.focus();
@@ -436,7 +457,7 @@ function triggerDirectInAppPrint(html) {
     } catch (e) {
       console.warn('In-app print error', e);
     }
-  }, 250);
+  }, printDelay);
 }
 
 // Global handler called from top bar or from inside the iframe preview
@@ -446,9 +467,13 @@ window.triggerInAppPrint = function() {
   const title = (modal && modal._currentTitle) || 'เอกสาร';
 
   const env = getPrintEnv();
-  if (env.isIOSStandalone) {
-    // บน iPhone หน้าจอโฮม: เปิดแชร์ไฟล์ PDF เข้าเมนูระบบ iOS ทันที (พร้อมปุ่ม AirPrint และ LINE)
-    sharePdfDocument(html, title);
+
+  // บน iOS (ทั้ง Safari และ iPhone PWA หน้าจอโฮม):
+  // สั่งพิมพ์ผ่าน window.print() บน Top Window เสมอ (ผ่าน inAppPrintArea)
+  // เนื่องจาก WebKit บน iOS ไม่อนุญาตให้ iframe.contentWindow.print() เรียกหน้าต่างการพิมพ์ได้
+  // และการเรียก window.print() จะเปิดหน้าต่าง AirPrint เต็มรูปแบบของ Apple (เหมือนบน Mac 100% ไม่ถูกตัดเป็นไฟล์ 3 KB)
+  if (env.isIOS) {
+    triggerDirectInAppPrint(html);
     return;
   }
 
@@ -1979,6 +2004,12 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               <i class='bx bx-slider-alt text-base leading-none'></i>
             </button>
 
+            <!-- ปุ่มดาวน์โหลด PDF -->
+            <button id="btnDownloadPdfAction" type="button" class="print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs" title="ดาวน์โหลดเป็นไฟล์ PDF เก็บไว้">
+              <i class='bx bxs-file-pdf text-sm text-rose-600'></i>
+              <span>ดาวน์โหลด PDF</span>
+            </button>
+
             <!-- ปุ่มพิมพ์เอกสาร / บันทึก PDF -->
             <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
               <i class='bx bx-printer text-base leading-none'></i>
@@ -1999,6 +2030,12 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
         <button id="btnPrintModalActionMobile" type="button" class="flex-shrink-0 h-8 px-3 text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow-xs flex items-center gap-1.5 font-bold text-xs active:scale-95 border-0">
           <i class='bx bx-printer text-sm'></i>
           <span>พิมพ์เอกสาร</span>
+        </button>
+
+        <!-- ปุ่มแชร์ / ส่งออกไฟล์ PDF -->
+        <button id="btnShareModalActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg font-semibold text-xs flex items-center gap-1 shadow-2xs" title="แชร์ไฟล์ PDF ทาง LINE หรือแอปอื่น">
+          <i class='bx bx-share-alt text-sm text-indigo-600'></i>
+          <span>แชร์ PDF</span>
         </button>
 
         <!-- สลับทิศทางหน้ากระดาษ -->
@@ -2041,6 +2078,20 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   const btnPrintMobile = document.getElementById('btnPrintModalActionMobile');
   if (btnPrintDesktop) btnPrintDesktop.onclick = triggerPrintAction;
   if (btnPrintMobile) btnPrintMobile.onclick = triggerPrintAction;
+
+  const btnDownloadPdf = document.getElementById('btnDownloadPdfAction');
+  if (btnDownloadPdf) {
+    btnDownloadPdf.onclick = () => {
+      downloadPdfDocument(modal._currentHtml, modal._currentTitle);
+    };
+  }
+
+  const btnShareMobile = document.getElementById('btnShareModalActionMobile');
+  if (btnShareMobile) {
+    btnShareMobile.onclick = () => {
+      sharePdfDocument(modal._currentHtml, modal._currentTitle);
+    };
+  }
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.style.display !== 'none') {
