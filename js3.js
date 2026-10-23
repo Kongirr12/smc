@@ -79,8 +79,8 @@ async function generatePdfFromHtml(html, title, action = 'download') {
   container.style.boxSizing = 'border-box';
   container.style.background = '#FFFFFF';
   container.style.color = '#0F172A';
-  container.style.zIndex = '-9999';
-  container.style.opacity = '0.001';
+  container.style.zIndex = '1000';
+  container.style.opacity = '1';
   container.style.pointerEvents = 'none';
   container.innerHTML = parsedContent;
 
@@ -2010,6 +2010,14 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               <span>ดาวน์โหลด PDF</span>
             </button>
 
+            ${directUrl ? `
+            <!-- ปุ่มเปิดในแท็บใหม่ / Safari -->
+            <a href="${directUrl}" target="_blank" rel="noopener noreferrer" class="print-topbar-btn px-2.5 sm:px-3 border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 shadow-2xs gap-1.5 font-semibold text-xs" title="เปิดเอกสารในเบราว์เซอร์สำหรับพิมพ์โดยตรง">
+              <i class='bx bx-compass text-sm text-sky-600'></i>
+              <span>เปิดในแท็บใหม่</span>
+            </a>
+            ` : ''}
+
             <!-- ปุ่มพิมพ์เอกสาร / บันทึก PDF -->
             <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือบันทึกเป็น PDF ทันที">
               <i class='bx bx-printer text-base leading-none'></i>
@@ -2037,6 +2045,14 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           <i class='bx bx-share-alt text-sm text-indigo-600'></i>
           <span>แชร์ PDF</span>
         </button>
+
+        ${directUrl ? `
+        <!-- ปุ่มเปิดใน Safari สำหรับ iPhone หน้าจอโฮม -->
+        <a href="${directUrl}" target="_blank" rel="noopener noreferrer" class="flex-shrink-0 h-8 px-2.5 border border-sky-300 bg-sky-50 text-sky-800 rounded-lg font-bold text-xs flex items-center gap-1 shadow-2xs" title="เปิดในเบราว์เซอร์ Safari สำหรับพิมพ์ AirPrint เต็มรูปแบบ">
+          <i class='bx bx-compass text-sm text-sky-600'></i>
+          <span>เปิดใน Safari</span>
+        </a>
+        ` : ''}
 
         <!-- สลับทิศทางหน้ากระดาษ -->
         <button id="btnToggleOrientationActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white rounded-lg text-slate-700 font-semibold text-xs flex items-center gap-1 shadow-2xs">
