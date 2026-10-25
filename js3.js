@@ -626,9 +626,7 @@ async function sharePdfDocument(html, title) {
           // Direct Synchronous User Gesture!
           if (isShareableFile) {
             navigator.share({
-              files: [file],
-              title: `${title} (PDF)`,
-              text: `เอกสาร PDF: ${title} โรงเรียนมหาชัยพิทยาคาร`
+              files: [file]
             }).catch((err) => {
               if (err.name === 'AbortError') return;
               console.warn('Share file failed, fallback to download:', err);
@@ -654,9 +652,7 @@ async function sharePdfDocument(html, title) {
     } else {
       if (isShareableFile) {
         navigator.share({
-          files: [file],
-          title: `${title} (PDF)`,
-          text: `เอกสาร PDF: ${title} โรงเรียนมหาชัยพิทยาคาร`
+          files: [file]
         }).catch(() => downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`));
       } else {
         downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
@@ -1176,8 +1172,7 @@ async function triggerIOSStandaloneAirPrint(html, title) {
   if (modal && modal._prebuiltPdfFile && navigator.share && (!navigator.canShare || navigator.canShare({ files: [modal._prebuiltPdfFile] }))) {
     try {
       await navigator.share({
-        files: [modal._prebuiltPdfFile],
-        title: `${activeTitle}`
+        files: [modal._prebuiltPdfFile]
       });
       return;
     } catch (err) {
@@ -1223,7 +1218,7 @@ async function triggerIOSStandaloneAirPrint(html, title) {
     }).then((res) => {
       if (res.isConfirmed) {
         if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-          navigator.share({ files: [file], title: activeTitle }).catch((err) => {
+          navigator.share({ files: [file] }).catch((err) => {
             if (err && err.name === 'AbortError') return;
             downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
           });
@@ -1233,7 +1228,7 @@ async function triggerIOSStandaloneAirPrint(html, title) {
       }
     });
   } else if (navigator.share) {
-    navigator.share({ files: [file], title: activeTitle }).catch(() => downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`));
+    navigator.share({ files: [file] }).catch(() => downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`));
   } else {
     downloadPdfBlob(pdfBlob, `${safeTitle}.pdf`);
   }
