@@ -2172,8 +2172,12 @@ function renderExtSgs(container) {
  *  พัฒนาโดย: ครูก้องนที อุ่นเจริญ
  * ============================================================ */
 function renderExtOnesqa(container) {
-  const defaultUrl = 'https://script.google.com/macros/s/AKfycby-VtmQLws5CpY0xOTfyhRm1rYZKAjUyvH69t4dR72MArXGYbb2uYZA_uLfR3i0hnPm/exec';
-  const savedUrl = localStorage.getItem('MHC_ONESQA_URL') || defaultUrl;
+  const defaultUrl = 'https://script.google.com/macros/s/AKfycbzuXHycE0lUzam6f5syPKmhgoET9QVrxe5vUpuRGqMQB6yYUIsPQdP4vrfEj9JT2RJL5Q/exec';
+  let savedUrl = localStorage.getItem('MHC_ONESQA_URL');
+  if (!savedUrl || savedUrl.includes('AKfycby-VtmQLws5CpY0xOTfyhRm1rYZKAjUyvH69t4dR72MArXGYbb2uYZA_uLfR3i0hnPm')) {
+    savedUrl = defaultUrl;
+    localStorage.setItem('MHC_ONESQA_URL', defaultUrl);
+  }
 
   container.innerHTML = `
     <div class="flex flex-col gap-3" style="min-height: calc(100vh - 120px);">
@@ -2186,7 +2190,7 @@ function renderExtOnesqa(container) {
           <div>
             <div class="flex items-center gap-2">
               <h2 class="font-bold text-slate-800 dark:text-slate-100 text-base">ระบบงานประกันคุณภาพภายนอก สมศ.</h2>
-              <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">รอบ 5 (พ.ศ. 2567-2571)</span>
+              <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">รอบที่ 6 (พ.ศ. 2572-2576)</span>
             </div>
             <p class="text-xs text-slate-500 dark:text-slate-400">
               คลังร่องรอยหลักฐาน • ครูส่งงานได้ทันทีโดยไม่ต้องล็อกอิน • พัฒนาโดย ครูก้องนที อุ่นเจริญ
@@ -2229,7 +2233,8 @@ function refreshExtOnesqa() {
 }
 
 function setExtOnesqaUrl() {
-  const current = localStorage.getItem('MHC_ONESQA_URL') || 'https://script.google.com/macros/s/AKfycby-VtmQLws5CpY0xOTfyhRm1rYZKAjUyvH69t4dR72MArXGYbb2uYZA_uLfR3i0hnPm/exec';
+  const defaultUrl = 'https://script.google.com/macros/s/AKfycbzuXHycE0lUzam6f5syPKmhgoET9QVrxe5vUpuRGqMQB6yYUIsPQdP4vrfEj9JT2RJL5Q/exec';
+  const current = localStorage.getItem('MHC_ONESQA_URL') || defaultUrl;
   if (typeof Swal !== 'undefined') {
     Swal.fire({
       title: 'ตั้งค่า Google Apps Script Web App URL',

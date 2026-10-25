@@ -3,7 +3,20 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.3.25] - 2026-10-25 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.3.26] - 2026-10-25 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🔗 อัปเดตลิงก์ระบบประกันคุณภาพ สมศ. (รอบที่ 6 พ.ศ. 2567-2571) ในส่วนเสริม
+- **อัปเดตระบบประกันคุณภาพ สมศ. ในส่วนเสริม (`js1.js`):**
+  - เชื่อมโยง URL Google Apps Script Web App ใหม่ตามคำขอ: `https://script.google.com/macros/s/AKfycbzuXHycE0lUzam6f5syPKmhgoET9QVrxe5vUpuRGqMQB6yYUIsPQdP4vrfEj9JT2RJL5Q/exec`
+  - เพิ่มระบบ Auto-Migration อัปเดต URL ใน LocalStorage ของเบราว์เซอร์ให้เป็น URL ใหม่อัตโนมัติทันที
+  - รองรับการเปิดระบบแบบฝัง (Embedded Iframe), การรีเฟรช และปุ่ม **"เปิดเต็มจอ"** (`target="_blank"`)
+- **อัปเดตคู่มือการใช้งาน (`js_manual.js`):**
+  - เพิ่มรายการ "ระบบประกันคุณภาพ สมศ." ในตารางสรุประบบภายนอกและส่วนเสริมที่เชื่อมโยง
+- **ไม่แก้ไขไฟล์ Backend (`code.gs`):** ปรับปรุงเฉพาะฝั่ง Frontend เท่านั้น ไม่ต้อง Redeploy Google Apps Script
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.26` พร้อมอัปเดต Query String `?v=3.3.26` ใน `index.html`
+
+---
+
+## [v3.3.25] - 2026-10-25
 ### 🔗 อัปเดตลิงก์ระบบส่งแผนการสอน (วPA & สื่อ) และปรับปรุง Iframe Header ให้เปิดเต็มจอได้สะดวก
 - **อัปเดตระบบส่งแผนการสอน (วPA & สื่อ) ในส่วนเสริม (`js1.js`):**
   - เชื่อมโยง URL Google Apps Script Web App ใหม่ตามคำขอ: `https://script.google.com/macros/s/AKfycbxoD2eFyAi1Ih7Bb_I3hhL0xEM6tU2po3YiXwS4ggIA8tMF2fuTfWSlEqL_eMPesUP1/exec`
