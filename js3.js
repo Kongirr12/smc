@@ -85,11 +85,10 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
       .map(s => s.outerHTML)
       .join('\n');
 
-    // ลบ @media screen blocks และปรับ table-layout: fixed เป็น auto ให้ตรงกับฟอร์มในหน้าพรีวิว 100%
+    // ลบ @media screen blocks ออกเพื่อใช้กฎ @media print สำหรับการแปลงเป็น PDF คมชัดสูง
     const cleanStyles = rawStyles
       .replace(/@media\s+screen\s*\{[\s\S]*?\}\s*\}/gi, '')
-      .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '')
-      .replace(/table-layout\s*:\s*fixed(\s*!important)?/gi, 'table-layout: auto !important');
+      .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '');
 
     // ลบองค์ประกอบควบคุมที่ไม่ต้องการพิมพ์
     doc.querySelectorAll('.no-print, .no-print-bar, .no-print-toolbar, button, script').forEach(el => el.remove());
@@ -116,10 +115,12 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
       }
     }
 
-    // 4. CSS พิเศษที่ถอดแบบมาจาก @media print ใน styles.css 100%
-    // รับประกันว่า PDF จะออกมาเหมือนกับการสั่งพิมพ์ผ่าน "พิมพ์เอกสาร" ทุกประการ:
-    // ขอบกระดาษเรียบตรง (ไม่ติดขอบมน 8px), ไม่มีเงาการ์ด, เส้นตารางหนา 2px คมชัด, ตรา รร. และลายเซ็นต์อยู่ครบสมบูรณ์
-    const hostWidthPx = isLandscape ? 1020 : 760;
+    // 4. CSS พิเศษที่ถอดแบบมาจาก @media print และหน้าพรีวิว 100%
+    // รับประกันว่า PDF บนมือถือและคอมพิวเตอร์จะออกมาสมบูรณ์แบบตรงกับภาพต้นฉบับทุกประการ:
+    // อัตราส่วน A4 มาตรฐาน (Landscape: 1060x744px, Portrait: 760x1075px) ตารางขยายเต็มหน้า ช่องคาบเรียนสม่ำเสมอเท่ากัน
+    const hostWidthPx = isLandscape ? 1060 : 760;
+    const hostHeightPx = isLandscape ? 744 : 1075;
+
     const pdfFixCss = `
       <style>
         * {
@@ -135,7 +136,7 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
           width: ${hostWidthPx}px !important;
           min-width: ${hostWidthPx}px !important;
           max-width: ${hostWidthPx}px !important;
-          font-family: 'Sarabun', 'TH Sarabun New', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          font-family: 'Sarabun', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
           -webkit-font-smoothing: antialiased !important;
         }
         .schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .print-doc, .form-doc-wrapper {
@@ -143,11 +144,16 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
           box-shadow: none !important;
           border: none !important;
           margin: 0 auto !important;
-          padding: 0 !important;
           background: #FFFFFF !important;
-          width: 100% !important;
+          width: ${hostWidthPx}px !important;
+          min-width: ${hostWidthPx}px !important;
           max-width: ${hostWidthPx}px !important;
-          min-width: 0 !important;
+          min-height: ${hostHeightPx}px !important;
+          height: ${hostHeightPx}px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: space-between !important;
+          padding: ${isLandscape ? '14px 18px' : '14px 16px'} !important;
           box-sizing: border-box !important;
         }
         .header {
@@ -156,71 +162,145 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
           align-items: center !important;
           justify-content: center !important;
           text-align: center !important;
-          margin-bottom: 6px !important;
+          margin-bottom: 4px !important;
+          flex-shrink: 0 !important;
         }
         .header img, .logo, .school-logo {
-          width: 50px !important;
-          height: 50px !important;
+          width: 48px !important;
+          height: 48px !important;
           object-fit: contain !important;
-          margin: 0 auto 2px auto !important;
+          margin: 0 auto 3px auto !important;
           display: block !important;
         }
-        .header > div:nth-child(2) {
-          font-size: 17px !important;
+        .header > div:nth-child(2), .header .title {
+          font-size: 16px !important;
           font-weight: 800 !important;
           color: #0F172A !important;
           margin-bottom: 2px !important;
           line-height: 1.25 !important;
         }
-        .header > div:nth-child(3) {
-          font-size: 13px !important;
+        .header > div:nth-child(3), .header .subtitle {
+          font-size: 12.5px !important;
           font-weight: 700 !important;
           color: #800020 !important;
           line-height: 1.25 !important;
         }
-        .header > div:nth-child(4) {
-          font-size: 11px !important;
+        .header > div:nth-child(4), .header .meta {
+          font-size: 10.5px !important;
           color: #64748B !important;
           margin-top: 1px !important;
           line-height: 1.25 !important;
         }
         .workload {
-          font-size: 11px !important;
+          font-size: 10.5px !important;
+          font-weight: 600 !important;
           margin-bottom: 6px !important;
           text-align: right !important;
           color: #475569 !important;
+          flex-shrink: 0 !important;
         }
-        table:not(.cal-table) {
+        .summary-bar {
+          display: flex !important;
+          justify-content: space-between !important;
+          font-size: 10.5px !important;
+          background: #F8FAFC !important;
+          border: 1px solid #CBD5E1 !important;
+          padding: 6px 12px !important;
+          margin-bottom: 8px !important;
+          flex-shrink: 0 !important;
+        }
+        /* สไตล์ตารางตารางสอน / ตารางเรียน */
+        .schedule-page table, table.schedule-table {
           width: 100% !important;
-          max-width: 100% !important;
-          min-width: 0 !important;
+          table-layout: fixed !important;
           border-collapse: collapse !important;
-          table-layout: auto !important;
-          margin: 0 auto !important;
-          border-radius: 0 !important;
-          overflow: visible !important;
-          box-shadow: none !important;
-        }
-        .schedule-page table {
           border: 2px solid #000000 !important;
+          flex: 1 1 auto !important;
+          height: 440px !important;
+          min-height: 400px !important;
+          margin: 0 !important;
         }
-        thead, tbody, tfoot, colgroup, caption, tr, th, td {
-          border-radius: 0 !important;
-          letter-spacing: normal !important;
-          text-transform: none !important;
+        .schedule-page table th, .schedule-page table td {
+          border: 1px solid #000000 !important;
+          text-align: center !important;
+          vertical-align: middle !important;
+          box-sizing: border-box !important;
         }
-        .sig-row, .signature-row {
-          margin-top: 16px !important;
-          gap: 16px !important;
+        .schedule-page table th {
+          background: #FFFFFF !important;
+          color: #000000 !important;
+          font-weight: 700 !important;
+          font-size: 10.5px !important;
+          padding: 5px 2px !important;
+          height: 40px !important;
+          border-bottom: 2px solid #000000 !important;
+        }
+        .schedule-page table tr {
+          height: calc((100% - 40px) / 5) !important;
+          min-height: 72px !important;
+        }
+        .schedule-page table td {
+          font-size: 10px !important;
+          line-height: 1.35 !important;
+          padding: 4px 3px !important;
+        }
+        .schedule-page table td:first-child {
+          font-weight: 700 !important;
+          font-size: 11px !important;
+          color: #0F172A !important;
+        }
+        .schedule-page table th:nth-child(1), .schedule-page table td:nth-child(1) { width: 9% !important; }
+        .schedule-page table th:nth-child(2), .schedule-page table td:nth-child(2) { width: 10% !important; }
+        .schedule-page table th:nth-child(3), .schedule-page table td:nth-child(3) { width: 9.6% !important; }
+        .schedule-page table th:nth-child(4), .schedule-page table td:nth-child(4) { width: 9.6% !important; }
+        .schedule-page table th:nth-child(5), .schedule-page table td:nth-child(5) { width: 9.6% !important; }
+        .schedule-page table th:nth-child(6), .schedule-page table td:nth-child(6) { width: 9.6% !important; }
+        .schedule-page table th:nth-child(7), .schedule-page table td:nth-child(7) { width: 7.6% !important; }
+        .schedule-page table th:nth-child(8), .schedule-page table td:nth-child(8) { width: 9.6% !important; }
+        .schedule-page table th:nth-child(9), .schedule-page table td:nth-child(9) { width: 9.6% !important; }
+        .schedule-page table th:nth-child(10), .schedule-page table td:nth-child(10) { width: 9.6% !important; }
+
+        /* สไตล์ตารางรายงานการเช็คแถว / เข้าเรียน */
+        .print-page-wrapper table, .print-doc table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          border: 2px solid #000000 !important;
+          flex: 1 1 auto !important;
+          margin: 0 auto !important;
+        }
+        .print-page-wrapper table th, .print-page-wrapper table td,
+        .print-doc table th, .print-doc table td {
+          border: 1px solid #000000 !important;
+          box-sizing: border-box !important;
+        }
+        .print-page-wrapper table th, .print-doc table th {
+          background: #FFFFFF !important;
+          color: #000000 !important;
+          font-weight: 700 !important;
+          font-size: 10px !important;
+          padding: 5px 2px !important;
+          border-bottom: 2px solid #000000 !important;
+        }
+        .print-page-wrapper table td, .print-doc table td {
+          font-size: 9.5px !important;
+          padding: 3.5px 3px !important;
+          vertical-align: middle !important;
+        }
+
+        /* ลายเซ็นทุกฝ่าย */
+        .sig-row, .signature-row, .signatures {
           display: flex !important;
           justify-content: space-around !important;
           align-items: flex-start !important;
+          margin-top: 14px !important;
           text-align: center !important;
-          font-size: 11px !important;
+          font-size: 10.5px !important;
+          flex-shrink: 0 !important;
+          gap: 20px !important;
         }
         .sig-box, .sig-row > div {
           min-width: 180px !important;
-          max-width: 320px !important;
+          max-width: 340px !important;
           flex: 1 !important;
           display: flex !important;
           flex-direction: column !important;
@@ -228,9 +308,9 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
           text-align: center !important;
         }
         .sig-stamp-zone {
-          height: 40px !important;
-          min-height: 40px !important;
-          max-height: 40px !important;
+          height: 38px !important;
+          min-height: 38px !important;
+          max-height: 38px !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
@@ -245,28 +325,38 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
           margin: 0 auto !important;
         }
         .sig-line, .sig-line:empty {
-          border-bottom: 1px dotted #64748B !important;
-          width: 170px !important;
+          border-bottom: 1px dotted #000000 !important;
+          width: 180px !important;
           margin: 0 auto 4px auto !important;
-          padding-bottom: 0 !important;
-          min-height: 0 !important;
         }
-        .sig-line:not(:empty) {
-          border-bottom: none !important;
-          width: auto !important;
+        .sig-dots {
+          font-size: 10px !important;
+          color: #0F172A !important;
+          margin-top: 2px !important;
         }
         .sig-name {
           font-size: 11px !important;
-          color: #0F172A !important;
-          font-weight: 600 !important;
-          white-space: nowrap !important;
+          font-weight: 700 !important;
+          color: #000000 !important;
           margin-top: 2px !important;
         }
         .sig-title {
           font-size: 10px !important;
           color: #334155 !important;
-          white-space: nowrap !important;
           margin-top: 2px !important;
+        }
+        .sig-date {
+          font-size: 9.5px !important;
+          color: #475569 !important;
+          margin-top: 2px !important;
+        }
+        .footer {
+          display: flex !important;
+          justify-content: space-between !important;
+          font-size: 8.5px !important;
+          color: #94A3B8 !important;
+          margin-top: 8px !important;
+          flex-shrink: 0 !important;
         }
         .no-print, .no-print-bar, .no-print-toolbar, button {
           display: none !important;
@@ -274,8 +364,7 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
       </style>
     `;
 
-    // 5. สร้าง Render Host ใต้หน้าต่างพรีวิว (z-index: 10 ใต้ #printDocModal z-index: 99999)
-    // ไม่รบกวนสายตาผู้ใช้ แต่มี opacity: 1 เต็มร้อยเพื่อให้ WebKit วาดภาพคมชัด 100%
+    // 5. สร้าง Render Host ใต้หน้าต่างพรีวิว
     const existingHost = document.getElementById('pdfRenderHost');
     if (existingHost && existingHost.parentNode) existingHost.parentNode.removeChild(existingHost);
 
@@ -287,13 +376,14 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
     renderHost.style.width = `${hostWidthPx}px`;
     renderHost.style.minWidth = `${hostWidthPx}px`;
     renderHost.style.maxWidth = `${hostWidthPx}px`;
+    renderHost.style.minHeight = `${hostHeightPx}px`;
     renderHost.style.background = '#FFFFFF';
     renderHost.style.color = '#000000';
     renderHost.style.zIndex = '10';
     renderHost.style.opacity = '1';
     renderHost.style.pointerEvents = 'none';
     renderHost.style.boxSizing = 'border-box';
-    renderHost.style.padding = isLandscape ? '10px 14px' : '10px 12px';
+    renderHost.style.padding = '0';
     renderHost.style.margin = '0';
     renderHost.style.overflow = 'hidden';
     document.body.appendChild(renderHost);
@@ -308,8 +398,8 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
 
     const pageWidthMm = isLandscape ? 297 : 210;
     const pageHeightMm = isLandscape ? 210 : 297;
-    const marginX = isLandscape ? 6.0 : 8.0;
-    const marginY = isLandscape ? 5.0 : 8.0;
+    const marginX = isLandscape ? 6.0 : 7.0;
+    const marginY = isLandscape ? 5.0 : 6.0;
     const renderWidthMm = pageWidthMm - (marginX * 2);
     const maxPageHeightMm = pageHeightMm - (marginY * 2);
 
@@ -350,7 +440,7 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
       await new Promise(r => setTimeout(r, 40));
 
       const canvas = await window.html2canvas(renderHost, {
-        scale: 2.0,
+        scale: 2.5,
         useCORS: true,
         allowTaint: false,
         logging: false,
@@ -374,12 +464,30 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
         isFirstPdfPage = false;
       }
 
+      const canvasAspect = canvas.width / canvas.height;
+      const pageAspect = renderWidthMm / maxPageHeightMm;
+
       if (renderHeightMm <= maxPageHeightMm * 1.15) {
-        const scaleFactor = Math.min(1, maxPageHeightMm / renderHeightMm);
-        const finalW = renderWidthMm * scaleFactor;
-        const finalH = renderHeightMm * scaleFactor;
-        const posX = marginX + Math.max(0, (renderWidthMm - finalW) / 2);
-        const posY = marginY;
+        let finalW = renderWidthMm;
+        let finalH = maxPageHeightMm;
+        let posX = marginX;
+        let posY = marginY;
+
+        if (Math.abs(canvasAspect - pageAspect) < 0.1) {
+          finalW = renderWidthMm;
+          finalH = maxPageHeightMm;
+          posX = marginX;
+          posY = marginY;
+        } else if (canvasAspect > pageAspect) {
+          finalW = renderWidthMm;
+          finalH = renderWidthMm / canvasAspect;
+          posY = marginY + Math.max(0, (maxPageHeightMm - finalH) / 2);
+        } else {
+          finalH = maxPageHeightMm;
+          finalW = maxPageHeightMm * canvasAspect;
+          posX = marginX + Math.max(0, (renderWidthMm - finalW) / 2);
+        }
+
         pdf.addImage(imgData, 'JPEG', posX, posY, finalW, finalH, undefined, 'FAST');
       } else {
         let currentY = 0;
@@ -1024,8 +1132,7 @@ function prepareInAppPrintArea(html, isLandOverride) {
         .map(s => s.outerHTML)
         .join('\n')
         .replace(/@media\s+screen\s*\{[\s\S]*?\}\s*\}/gi, '')
-        .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '')
-        .replace(/table-layout\s*:\s*fixed\s*!important/gi, 'table-layout: auto !important');
+        .replace(/@media\s+screen\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gi, '');
 
       const defaultSchoolLogo = window.OFFICIAL_SCHOOL_LOGO_DATA_URL || 'school-logo.png';
       doc.querySelectorAll('img').forEach(img => {
@@ -2891,12 +2998,37 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             box-sizing: border-box !important;
             background: #FFFFFF !important;
           }
-          table:not(.cal-table) {
+          table:not(.cal-table):not(.schedule-table) {
             max-width: 100% !important;
             width: 100% !important;
             table-layout: auto !important;
             border-collapse: collapse !important;
           }
+          .schedule-page table, table.schedule-table {
+            max-width: 100% !important;
+            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            border: 2px solid #000000 !important;
+          }
+          .schedule-page table tr {
+            min-height: 48px !important;
+          }
+          .schedule-page table th, .schedule-page table td {
+            border: 1px solid #000000 !important;
+            vertical-align: middle !important;
+            box-sizing: border-box !important;
+          }
+          .schedule-page table th:nth-child(1), .schedule-page table td:nth-child(1) { width: 9% !important; }
+          .schedule-page table th:nth-child(2), .schedule-page table td:nth-child(2) { width: 10% !important; }
+          .schedule-page table th:nth-child(3), .schedule-page table td:nth-child(3) { width: 9.6% !important; }
+          .schedule-page table th:nth-child(4), .schedule-page table td:nth-child(4) { width: 9.6% !important; }
+          .schedule-page table th:nth-child(5), .schedule-page table td:nth-child(5) { width: 9.6% !important; }
+          .schedule-page table th:nth-child(6), .schedule-page table td:nth-child(6) { width: 9.6% !important; }
+          .schedule-page table th:nth-child(7), .schedule-page table td:nth-child(7) { width: 7.6% !important; }
+          .schedule-page table th:nth-child(8), .schedule-page table td:nth-child(8) { width: 9.6% !important; }
+          .schedule-page table th:nth-child(9), .schedule-page table td:nth-child(9) { width: 9.6% !important; }
+          .schedule-page table th:nth-child(10), .schedule-page table td:nth-child(10) { width: 9.6% !important; }
           table.cal-table {
             max-width: 100% !important;
             width: 100% !important;
@@ -3044,14 +3176,30 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               border-radius: 0 !important;
               overflow: visible !important;
             }
-            .schedule-page table {
+            .schedule-page table, table.schedule-table {
               border: 2px solid #000000 !important;
-              table-layout: auto !important;
+              table-layout: fixed !important;
+              width: 100% !important;
+            }
+            .schedule-page table tr {
+              min-height: 48px !important;
             }
             .schedule-page th,
             .schedule-page td {
               border: 1px solid #000000 !important;
+              vertical-align: middle !important;
+              box-sizing: border-box !important;
             }
+            .schedule-page table th:nth-child(1), .schedule-page table td:nth-child(1) { width: 9% !important; }
+            .schedule-page table th:nth-child(2), .schedule-page table td:nth-child(2) { width: 10% !important; }
+            .schedule-page table th:nth-child(3), .schedule-page table td:nth-child(3) { width: 9.6% !important; }
+            .schedule-page table th:nth-child(4), .schedule-page table td:nth-child(4) { width: 9.6% !important; }
+            .schedule-page table th:nth-child(5), .schedule-page table td:nth-child(5) { width: 9.6% !important; }
+            .schedule-page table th:nth-child(6), .schedule-page table td:nth-child(6) { width: 9.6% !important; }
+            .schedule-page table th:nth-child(7), .schedule-page table td:nth-child(7) { width: 7.6% !important; }
+            .schedule-page table th:nth-child(8), .schedule-page table td:nth-child(8) { width: 9.6% !important; }
+            .schedule-page table th:nth-child(9), .schedule-page table td:nth-child(9) { width: 9.6% !important; }
+            .schedule-page table th:nth-child(10), .schedule-page table td:nth-child(10) { width: 9.6% !important; }
             .sig-line:empty {
               border-bottom: 1px dotted #64748B !important;
               width: 170px !important;
