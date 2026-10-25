@@ -445,7 +445,9 @@ function navigate(page) {
     ext_nited: 'ระบบนิเทศภายใน',
     ext_homevisit: 'ระบบเยี่ยมบ้าน',
     ext_portfolio: 'ระบบเก็บผลงานและข้อมูลการอบรม',
-    ext_training: 'ระบบเก็บผลงานและข้อมูลการอบรม'
+    ext_training: 'ระบบเก็บผลงานและข้อมูลการอบรม',
+    ext_lessonplan: 'ระบบส่งแผนการสอน (วPA & สื่อ)',
+    ext_onesqa: 'ระบบประกันคุณภาพภายนอก สมศ.'
   };
   document.getElementById('pageTitle').textContent = titles[page] || 'หน้าหลัก';
 
@@ -488,6 +490,8 @@ function navigate(page) {
     case 'ext_homevisit': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbzPVxRjrQ-693tDZa1XdaGxNkLYH_dlZnxQQ-P_co0lxWlXrTbgvvhGIOgJ0NUMpn4B/exec', 'ระบบเยี่ยมบ้าน');
     case 'ext_training':
     case 'ext_portfolio': return renderIframe(content, 'https://script.google.com/macros/s/AKfycby38tVx6RFc9CNsWuP8AZG4RPTGZ9PsjbFS-tLnydiTLDooW2z7x1nwmDlSng1TQm2M/exec', 'ระบบเก็บผลงานและข้อมูลการอบรม');
+    case 'ext_lessonplan': return renderIframe(content, 'https://script.google.com/macros/s/AKfycbxoD2eFyAi1Ih7Bb_I3hhL0xEM6tU2po3YiXwS4ggIA8tMF2fuTfWSlEqL_eMPesUP1/exec', 'ระบบส่งแผนการสอน (วPA & สื่อ)');
+    case 'ext_onesqa': return renderExtOnesqa(content);
   }
   // ถ้าไม่มี renderer ใน Part นี้ → แสดง placeholder
   renderComingSoon(content, titles[page] || page);
@@ -540,6 +544,8 @@ window.openGlobalSearch = function() {
     { title: 'ระบบนิเทศภายใน', icon: 'bxs-chalkboard', page: 'ext_nited', cat: 'ส่วนเสริม' },
     { title: 'ระบบเยี่ยมบ้าน', icon: 'bxs-home-heart', page: 'ext_homevisit', cat: 'ส่วนเสริม' },
     { title: 'ระบบเก็บผลงานและข้อมูลการอบรม (Portfolio)', icon: 'bxs-briefcase', page: 'ext_portfolio', cat: 'ส่วนเสริม' },
+    { title: 'ระบบส่งแผนการสอน (วPA & สื่อการเรียนรู้)', icon: 'bxs-file-doc', page: 'ext_lessonplan', cat: 'ส่วนเสริม' },
+    { title: 'ระบบประกันคุณภาพภายนอก สมศ. (Evidence Map)', icon: 'bxs-award', page: 'ext_onesqa', cat: 'ส่วนเสริม' },
     { title: 'คู่มือการใช้งานระบบ', icon: 'bxs-book-reader', page: 'manual', cat: 'ช่วยเหลือ' },
   ];
   if (APP.role === 'admin' || APP.role === 'director' || APP.role === 'deputy') {
@@ -1840,11 +1846,22 @@ function renderBudget(container) {
 }
 
 function renderIframe(container, url, title) {
+  const safeTitle = (typeof escapeHTML === 'function') ? escapeHTML(title) : (title || '');
   container.innerHTML = `
     <div style="width: 100%; height: calc(100vh - 140px); display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); background: var(--bg-surface);">
+      <div style="padding: 10px 16px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+          <i class='bx bx-window-open text-indigo-600 text-lg'></i>
+          <span style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeTitle}</span>
+        </div>
+        <a href="${url}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 5px 12px; text-decoration: none; border-radius: 8px; white-space: nowrap; background: var(--primary); color: #FFFFFF; font-weight: 600; box-shadow: 0 1px 3px rgba(79,70,229,0.3); transition: all 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+          <i class='bx bx-link-external'></i> เปิดเต็มจอ
+        </a>
+      </div>
       <iframe src="${url}" 
-              style="flex: 1; width: 100%; height: 100%; border: none; zoom: 0.95;" 
-              title="${title}"></iframe>
+              style="flex: 1; width: 100%; height: 100%; border: none;" 
+              title="${safeTitle}"
+              allow="camera; microphone; geolocation; clipboard-read; clipboard-write;"></iframe>
     </div>
   `;
 }
@@ -2149,3 +2166,94 @@ function renderExtSgs(container) {
     </div>
   `;
 }
+
+/* ============================================================
+ *  EXTERNAL ADDONS: ระบบงานประกันคุณภาพภายนอก สมศ. (MHC Smart School)
+ *  พัฒนาโดย: ครูก้องนที อุ่นเจริญ
+ * ============================================================ */
+function renderExtOnesqa(container) {
+  const defaultUrl = 'https://script.google.com/macros/s/AKfycby-VtmQLws5CpY0xOTfyhRm1rYZKAjUyvH69t4dR72MArXGYbb2uYZA_uLfR3i0hnPm/exec';
+  const savedUrl = localStorage.getItem('MHC_ONESQA_URL') || defaultUrl;
+
+  container.innerHTML = `
+    <div class="flex flex-col gap-3" style="min-height: calc(100vh - 120px);">
+      <!-- Header Toolbar -->
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white flex items-center justify-center text-xl shadow-md shadow-blue-500/20">
+            <i class='bx bxs-award'></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-slate-800 dark:text-slate-100 text-base">ระบบงานประกันคุณภาพภายนอก สมศ.</h2>
+              <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">รอบ 5 (พ.ศ. 2567-2571)</span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              คลังร่องรอยหลักฐาน • ครูส่งงานได้ทันทีโดยไม่ต้องล็อกอิน • พัฒนาโดย ครูก้องนที อุ่นเจริญ
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button class="btn btn-ghost text-xs px-3 py-2" onclick="setExtOnesqaUrl()" title="ตั้งค่า URL เว็บแอป">
+            <i class='bx bx-cog mr-1'></i> ตั้งค่า URL
+          </button>
+          <button class="btn btn-ghost text-xs px-3 py-2" onclick="refreshExtOnesqa()" title="รีโหลดหน้าระบบ">
+            <i class='bx bx-refresh mr-1'></i> รีเฟรช
+          </button>
+          <a class="btn btn-blue text-xs px-3 py-2 font-semibold" href="${savedUrl}" target="_blank" title="เปิดในแท็บใหม่แบบเต็มหน้าจอ">
+            <i class='bx bx-link-external mr-1'></i> เปิดเต็มจอ
+          </a>
+        </div>
+      </div>
+
+      <!-- Iframe Container -->
+      <div class="flex-1 w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden" style="min-height: calc(100vh - 200px); display: flex;">
+        <iframe id="onesqaFrame" src="${savedUrl}" 
+                style="flex: 1; width: 100%; height: 100%; min-height: calc(100vh - 205px); border: none;" 
+                allow="camera; microphone; clipboard-write;"
+                title="ระบบงานประกันคุณภาพภายนอก สมศ."></iframe>
+      </div>
+    </div>
+  `;
+}
+
+function refreshExtOnesqa() {
+  const f = document.getElementById('onesqaFrame');
+  if (f) {
+    f.src = f.src;
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'รีเฟรชระบบ สมศ. แล้ว', showConfirmButton: false, timer: 1500 });
+    }
+  }
+}
+
+function setExtOnesqaUrl() {
+  const current = localStorage.getItem('MHC_ONESQA_URL') || 'https://script.google.com/macros/s/AKfycby-VtmQLws5CpY0xOTfyhRm1rYZKAjUyvH69t4dR72MArXGYbb2uYZA_uLfR3i0hnPm/exec';
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'ตั้งค่า Google Apps Script Web App URL',
+      input: 'url',
+      inputValue: current,
+      inputPlaceholder: 'https://script.google.com/macros/s/.../exec',
+      showCancelButton: true,
+      confirmButtonText: 'บันทึก',
+      cancelButtonText: 'ยกเลิก'
+    }).then(res => {
+      if (res.isConfirmed && res.value) {
+        localStorage.setItem('MHC_ONESQA_URL', res.value.trim());
+        const f = document.getElementById('onesqaFrame');
+        if (f) f.src = res.value.trim();
+        Swal.fire({ icon: 'success', title: 'บันทึก URL เรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+      }
+    });
+  } else {
+    const next = prompt('ใส่ URL Web App ของระบบ สมศ.:', current);
+    if (next) {
+      localStorage.setItem('MHC_ONESQA_URL', next.trim());
+      const f = document.getElementById('onesqaFrame');
+      if (f) f.src = next.trim();
+    }
+  }
+}
+
