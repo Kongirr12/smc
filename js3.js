@@ -2629,64 +2629,66 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           </div>
         </div>
 
-        <!-- Right / Desktop Action Buttons (Visible on sm and up) -->
+        <!-- Right: Actions (Desktop Secondary Tools + Universal Print Button + Close Button) -->
         <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          <div class="hidden sm:flex items-center gap-1.5 sm:gap-2">
+          <!-- Desktop Secondary Tools (Hidden on mobile via pure CSS .print-topbar-desktop-only) -->
+          <div class="print-topbar-desktop-only">
             <!-- ปุ่มสลับทิศทางหน้ากระดาษ -->
-            <button id="btnToggleOrientationAction" type="button" class="print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs" title="คลิกเพื่อสลับทิศทางหน้ากระดาษ">
+            <button id="btnToggleOrientationAction" type="button" class="print-topbar-btn print-btn-secondary px-2.5 sm:px-3 text-xs" title="คลิกเพื่อสลับทิศทางหน้ากระดาษ">
               <i id="orientationIcon" class='bx bx-layout text-sm text-indigo-600'></i>
               <span id="orientationText">แนวนอน (A4)</span>
             </button>
 
             <!-- ปุ่มเปิด/ปิดลายเซ็น -->
-            <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs" title="คลิกเพื่อเปิด/ปิดการใส่ลายเซ็น">
-              <span id="sigToggleDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0"></span>
+            <button id="btnToggleSignatureAction" type="button" class="print-topbar-btn print-btn-secondary px-2.5 sm:px-3.5 text-xs" title="คลิกเพื่อเปิด/ปิดการใส่ลายเซ็น">
+              <span id="sigToggleDot" class="sig-status-dot"></span>
               <i class='bx bx-edit-alt text-sm'></i>
               <span id="sigToggleText">ลายเซ็น: ปิดอยู่</span>
             </button>
 
             <!-- ปุ่มตั้งค่าลายเซ็นทุกฝ่าย -->
-            <button id="btnConfigSignatureAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-white hover:bg-indigo-50 border border-slate-200/90 hover:border-indigo-300 text-slate-600 hover:text-indigo-600 shadow-2xs" title="ศูนย์จัดการลายเซ็นทุกฝ่าย">
+            <button id="btnConfigSignatureAction" type="button" class="print-topbar-btn print-topbar-btn-icon print-btn-secondary" title="ศูนย์จัดการลายเซ็นทุกฝ่าย">
               <i class='bx bx-slider-alt text-base leading-none'></i>
-            </button>
-
-            <!-- ปุ่มพิมพ์เอกสาร / AirPrint -->
-            <button id="btnPrintModalAction" type="button" class="print-topbar-btn px-3 sm:px-4 text-white bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-sm active:scale-95 gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm border-0" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือ AirPrint ทันที">
-              <i class='bx bx-printer text-base leading-none'></i>
-              <span>พิมพ์เอกสาร</span>
             </button>
           </div>
 
+          <!-- UNIVERSAL PRIMARY PRINT BUTTON: Always visible in Row 1 on BOTH Mobile and Desktop! -->
+          <button id="btnPrintModalAction" type="button" class="print-topbar-btn print-btn-primary" title="พิมพ์เอกสารออกทางเครื่องพิมพ์ หรือ AirPrint ทันที">
+            <i class='bx bx-printer text-base sm:text-lg leading-none'></i>
+            <span class="print-lbl-desktop">พิมพ์เอกสาร</span>
+            <span class="print-lbl-mobile">พิมพ์</span>
+          </button>
+
           <!-- Close Button (Always visible on BOTH Mobile and Desktop, fixed at top-right) -->
-          <button id="btnClosePrintModalAction" type="button" class="print-topbar-btn print-topbar-btn-icon bg-slate-100 hover:bg-rose-50 hover:border-rose-200 border border-slate-200/80 text-slate-500 hover:text-rose-600 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg" title="ปิดหน้าต่าง">
+          <button id="btnClosePrintModalAction" type="button" class="print-topbar-btn print-topbar-btn-icon print-btn-close w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg" title="ปิดหน้าต่าง">
             <i class='bx bx-x text-2xl leading-none'></i>
           </button>
         </div>
       </div>
 
-      <!-- Mobile Sub-Toolbar (Row 2, visible on < 640px) -->
-      <div class="flex sm:hidden items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 overflow-x-auto no-scrollbar py-0.5">
-        <!-- ปุ่มพิมพ์เอกสาร / AirPrint เด่นชัดบนมือถือ -->
-        <button id="btnPrintModalActionMobile" type="button" class="flex-shrink-0 h-8 px-3.5 text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-lg shadow-xs flex items-center gap-1.5 font-bold text-xs active:scale-95 border-0">
+      <!-- Mobile Sub-Toolbar (Row 2, visible on <= 640px via pure CSS .print-topbar-mobile-subbar) -->
+      <div class="print-topbar-mobile-subbar">
+        <!-- ปุ่มพิมพ์เอกสารซ้ำใน Row 2 เพื่อความสะดวกพิเศษของผู้ใช้มือถือ -->
+        <button id="btnPrintModalActionMobile" type="button" class="print-topbar-btn print-btn-primary print-btn-sm" title="พิมพ์เอกสาร / AirPrint">
           <i class='bx bx-printer text-sm'></i>
           <span>พิมพ์เอกสาร</span>
         </button>
 
         <!-- สลับทิศทางหน้ากระดาษ -->
-        <button id="btnToggleOrientationActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white rounded-lg text-slate-700 font-semibold text-xs flex items-center gap-1 shadow-2xs">
+        <button id="btnToggleOrientationActionMobile" type="button" class="print-topbar-btn print-btn-secondary print-btn-sm" title="สลับทิศทางหน้ากระดาษ">
           <i id="orientationIconMobile" class='bx bx-layout text-sm text-indigo-600'></i>
           <span id="orientationTextMobile">แนวนอน</span>
         </button>
 
         <!-- เปิด/ปิดลายเซ็น -->
-        <button id="btnToggleSignatureActionMobile" type="button" class="flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white rounded-lg text-slate-700 font-semibold text-xs flex items-center gap-1.5 shadow-2xs">
-          <span id="sigToggleDotMobile" class="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0"></span>
+        <button id="btnToggleSignatureActionMobile" type="button" class="print-topbar-btn print-btn-secondary print-btn-sm" title="เปิด/ปิดลายเซ็น">
+          <span id="sigToggleDotMobile" class="sig-status-dot"></span>
           <span id="sigToggleTextMobile">ลายเซ็น</span>
         </button>
 
         <!-- ตั้งค่าลายเซ็น -->
-        <button id="btnConfigSignatureActionMobile" type="button" class="flex-shrink-0 w-8 h-8 bg-white border border-slate-200 rounded-lg text-slate-600 flex items-center justify-center shadow-2xs">
-          <i class='bx bx-slider-alt text-base'></i>
+        <button id="btnConfigSignatureActionMobile" type="button" class="print-topbar-btn print-topbar-btn-icon print-btn-secondary print-btn-sm" title="ตั้งค่าลายเซ็นทุกฝ่าย">
+          <i class='bx bx-slider-alt text-base leading-none'></i>
         </button>
       </div>
     </div>
@@ -2733,6 +2735,19 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
   if (btnPrintDesktop) btnPrintDesktop.onclick = triggerPrintAction;
   if (btnPrintMobile) btnPrintMobile.onclick = triggerPrintAction;
 
+  // ป้องกันค้างสถานะ is-printing-doc เมื่อผู้ใช้พิมพ์เสร็จหรือปิดกล่องพิมพ์
+  if (!window._mhcPrintCleanupInit) {
+    window._mhcPrintCleanupInit = true;
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('is-printing-doc');
+    });
+    window.addEventListener('focus', () => {
+      if (document.body.classList.contains('is-printing-doc')) {
+        setTimeout(() => document.body.classList.remove('is-printing-doc'), 400);
+      }
+    });
+  }
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.style.display !== 'none') {
       closeHandler();
@@ -2752,17 +2767,17 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const btnM = document.getElementById('btnToggleOrientationActionMobile');
 
     if (isLand) {
-      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 shadow-2xs gap-1.5 font-bold text-xs';
+      if (btn) btn.className = 'print-topbar-btn print-btn-secondary px-2.5 sm:px-3 text-indigo-900 bg-indigo-50 border-indigo-300 font-bold text-xs';
       if (icon) icon.className = 'bx bx-layout text-sm text-indigo-600';
       if (txt) txt.textContent = 'แนวนอน (A4)';
-      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-indigo-300 bg-indigo-50 text-indigo-900 rounded-lg font-bold text-xs flex items-center gap-1 shadow-2xs';
+      if (btnM) btnM.className = 'print-topbar-btn print-btn-secondary print-btn-sm text-indigo-900 bg-indigo-50 border-indigo-300 font-bold';
       if (iconM) iconM.className = 'bx bx-layout text-sm text-indigo-600';
       if (txtM) txtM.textContent = 'แนวนอน';
     } else {
-      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 font-semibold text-xs';
+      if (btn) btn.className = 'print-topbar-btn print-btn-secondary px-2.5 sm:px-3 text-slate-700 font-semibold text-xs';
       if (icon) icon.className = 'bx bx-file text-sm text-slate-500';
       if (txt) txt.textContent = 'แนวตั้ง (A4)';
-      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white text-slate-700 rounded-lg font-semibold text-xs flex items-center gap-1 shadow-2xs';
+      if (btnM) btnM.className = 'print-topbar-btn print-btn-secondary print-btn-sm text-slate-700 font-semibold';
       if (iconM) iconM.className = 'bx bx-file text-sm text-slate-500';
       if (txtM) txtM.textContent = 'แนวตั้ง';
     }
@@ -2786,18 +2801,18 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
     const hasAnyActive = multi.masterEnabled && activeList.length > 0;
 
     if (hasAnyActive) {
-      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 shadow-2xs gap-1.5 sm:gap-2 font-bold text-xs';
-      if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
+      if (btn) btn.className = 'print-topbar-btn print-btn-secondary px-2.5 sm:px-3.5 border-emerald-300 bg-emerald-50 text-emerald-800 font-bold text-xs';
+      if (dot) dot.className = 'sig-status-dot bg-emerald-500 animate-pulse';
       if (txt) txt.textContent = activeList.length >= 3 ? 'ลายเซ็น: ครบทุกฝ่าย (เปิด)' : `ลายเซ็น: เปิด (${activeList.join(', ')})`;
-      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-emerald-300 bg-emerald-50 text-emerald-800 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-2xs';
-      if (dotM) dotM.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0';
+      if (btnM) btnM.className = 'print-topbar-btn print-btn-secondary print-btn-sm border-emerald-300 bg-emerald-50 text-emerald-800 font-bold';
+      if (dotM) dotM.className = 'sig-status-dot bg-emerald-500 animate-pulse';
       if (txtM) txtM.textContent = `ลายเซ็น (${activeList.length} ฝ่าย)`;
     } else {
-      if (btn) btn.className = 'print-topbar-btn px-2.5 sm:px-3.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 shadow-2xs gap-1.5 sm:gap-2 font-semibold text-xs';
-      if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-300 flex-shrink-0';
+      if (btn) btn.className = 'print-topbar-btn print-btn-secondary px-2.5 sm:px-3.5 text-slate-600 font-semibold text-xs';
+      if (dot) dot.className = 'sig-status-dot bg-slate-300';
       if (txt) txt.textContent = 'ลายเซ็น: ปิดอยู่';
-      if (btnM) btnM.className = 'flex-shrink-0 h-8 px-2.5 border border-slate-200 bg-white text-slate-600 rounded-lg font-semibold text-xs flex items-center gap-1.5 shadow-2xs';
-      if (dotM) dotM.className = 'w-2 h-2 rounded-full bg-slate-300 flex-shrink-0';
+      if (btnM) btnM.className = 'print-topbar-btn print-btn-secondary print-btn-sm text-slate-600 font-semibold';
+      if (dotM) dotM.className = 'sig-status-dot bg-slate-300';
       if (txtM) txtM.textContent = 'ลายเซ็น: ปิด';
     }
   };
