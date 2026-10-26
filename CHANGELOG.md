@@ -3,8 +3,23 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.3.26] - 2026-10-25 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
-### 🔗 อัปเดตลิงก์ระบบประกันคุณภาพ สมศ. (รอบที่ 6 พ.ศ. 2567-2571) ในส่วนเสริม
+## [v3.3.27] - 2026-10-26 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 🖨️ แก้ไขปุ่ม "พิมพ์ใบเช็คชื่อ" ประจำวันกดไม่ได้บนโทรศัพท์มือถือและ Mac
+- **แก้ปัญหาปุ่มพิมพ์ใบเช็คชื่อไม่ตอบสนอง (`js2.js`):**
+  - **สาเหตุ:** ฟังก์ชันคำนวณระดับชั้น `getGradeLevelFromClass()` และ `getGradeLevelFullThai()` เดิมถูกประกาศอยู่เฉพาะภายในฟังก์ชัน `printAttendanceReport()` ทำให้เมื่อผู้ใช้กดปุ่ม **"พิมพ์ใบเช็คชื่อ"** (`printDailyAttendanceRecord()`) เกิดข้อผิดพลาด `ReferenceError: getGradeLevelFromClass is not defined` ทำให้ JavaScript หยุดการทำงานทันที และหน้าต่างพรีวิวเอกสารไม่เปิดขึ้นมาทั้งบนมือถือและคอมพิวเตอร์
+  - **การแก้ไข:**
+    - ยกระดับ (Hoist) ฟังก์ชัน `getGradeLevelFromClass()` และ `getGradeLevelFullThai()` ขึ้นมาไว้ในระดับ Global/Module Scope พร้อมผูกเข้ากับ `window`
+    - เพิ่มความแข็งแกร่งในการแปลงวันที่ (Date Parsing) ให้รองรับทั้งรูปแบบ ISO (`YYYY-MM-DD`), รูปแบบไทย/สากล (`DD/MM/YYYY`) และ Fallback วันที่ปัจจุบันอัตโนมัติ
+    - เพิ่ม Fallback ดึงค่าชั้นเรียนจาก Element Dropdown (`#attClassroom`) ในกรณีที่ตัวแปร State ยังไม่พร้อม
+    - ครอบการทำงานด้วยบล็อก `try...catch` และแสดงการแจ้งเตือน Toast/Alert หากมีข้อผิดพลาดที่ไม่คาดคิด
+    - ผูกฟังก์ชัน `printDailyAttendanceRecord` เข้ากับ `window.printDailyAttendanceRecord` เพื่อความเข้ากันได้ 100% กับอีเวนต์ `onclick` บนเบราว์เซอร์ทุกแพลตฟอร์ม
+- **ไม่แก้ไขไฟล์ Backend (`code.gs`):** ปรับปรุงเฉพาะฝั่ง Frontend เท่านั้น ไม่ต้อง Redeploy Google Apps Script
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.27` พร้อมอัปเดต Query String `?v=3.3.27` ใน `index.html`
+
+---
+
+## [v3.3.26] - 2026-10-25
+### 🔗 อัปเดตลิงก์ระบบประกันคุณภาพ สมศ. (รอบที่ 6 พ.ศ. 2572-2576) ในส่วนเสริม
 - **อัปเดตระบบประกันคุณภาพ สมศ. ในส่วนเสริม (`js1.js`):**
   - เชื่อมโยง URL Google Apps Script Web App ใหม่ตามคำขอ: `https://script.google.com/macros/s/AKfycbzuXHycE0lUzam6f5syPKmhgoET9QVrxe5vUpuRGqMQB6yYUIsPQdP4vrfEj9JT2RJL5Q/exec`
   - เพิ่มระบบ Auto-Migration อัปเดต URL ใน LocalStorage ของเบราว์เซอร์ให้เป็น URL ใหม่อัตโนมัติทันที

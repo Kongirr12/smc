@@ -3774,29 +3774,83 @@ function printAttendanceDashboardOverview() {
 
   if (typeof openHTMLDocument === 'function') {
     openHTMLDocument(html, docTitle);
+  } else if (typeof window.openHTMLDocument === 'function') {
+    window.openHTMLDocument(html, docTitle);
   } else {
     window.print();
   }
 }
 
+// Helper to determine Grade Level from Classroom string (e.g. 'ม.1/1' -> 'ม.1')
+function getGradeLevelFromClass(cls) {
+  if (!cls) return 'ไม่ระบุชั้น';
+  const str = String(cls).trim();
+  const m = str.match(/^(ม\.[1-6]|ป\.[1-6]|อ\.[1-3])/i);
+  if (m) return m[1];
+  return str.split('/')[0].trim() || str;
+}
+
+function getGradeLevelFullThai(gLevel) {
+  if (!gLevel || gLevel === 'ทุกระดับชั้น') return 'ทุกระดับชั้น';
+  if (gLevel === 'ม.1') return 'ระดับชั้นมัธยมศึกษาปีที่ 1 (ม.1)';
+  if (gLevel === 'ม.2') return 'ระดับชั้นมัธยมศึกษาปีที่ 2 (ม.2)';
+  if (gLevel === 'ม.3') return 'ระดับชั้นมัธยมศึกษาปีที่ 3 (ม.3)';
+  if (gLevel === 'ม.4') return 'ระดับชั้นมัธยมศึกษาปีที่ 4 (ม.4)';
+  if (gLevel === 'ม.5') return 'ระดับชั้นมัธยมศึกษาปีที่ 5 (ม.5)';
+  if (gLevel === 'ม.6') return 'ระดับชั้นมัธยมศึกษาปีที่ 6 (ม.6)';
+  if (gLevel.startsWith('ม.')) return 'ระดับชั้นมัธยมศึกษาปีที่ ' + gLevel.replace('ม.', '') + ` (${gLevel})`;
+  return 'ระดับชั้น ' + gLevel;
+}
+if (typeof window !== 'undefined') {
+  window.getGradeLevelFromClass = getGradeLevelFromClass;
+  window.getGradeLevelFullThai = getGradeLevelFullThai;
+}
+
 function printDailyAttendanceRecord() {
-  if (!AttendanceState.records || AttendanceState.records.length === 0) {
-    return showToast('warning', 'กรุณาเลือกชั้นเรียนและวันที่ให้มีรายชื่อนักเรียนก่อนพิมพ์');
-  }
+  try {
+    if (!AttendanceState.records || AttendanceState.records.length === 0) {
+      if (typeof showToast === 'function') {
+        return showToast('warning', 'กรุณาเลือกชั้นเรียนและวันที่ให้มีรายชื่อนักเรียนก่อนพิมพ์');
+      } else {
+        alert('กรุณาเลือกชั้นเรียนและวันที่ให้มีรายชื่อนักเรียนก่อนพิมพ์');
+        return;
+      }
+    }
 
-  const dateStr = AttendanceState.date || new Date().toISOString().slice(0, 10);
-  const parts = dateStr.split('-');
-  const y = parseInt(parts[0], 10);
-  const m = parseInt(parts[1], 10);
-  const d = parseInt(parts[2], 10);
-  const dt = new Date(y, m - 1, d);
-  const thDays = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
-  const thMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-  const dateThaiFull = `${thDays[dt.getDay()]}ที่ ${d} ${thMonths[m]} พ.ศ. ${y > 2400 ? y : y + 543}`;
+    const dateInput = document.getElementById('attDate');
+    const dateStr = AttendanceState.date || (dateInput ? dateInput.value : '') || new Date().toISOString().slice(0, 10);
+    let y = 2026, m = 1, d = 1;
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      y = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10);
+      d = parseInt(parts[2], 10);
+    } else if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts[0].length === 4) {
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10);
+        d = parseInt(parts[2], 10);
+      } else {
+        d = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10);
+        y = parseInt(parts[2], 10);
+      }
+    }
+    if (isNaN(y) || isNaN(m) || isNaN(d)) {
+      const today = new Date();
+      y = today.getFullYear();
+      m = today.getMonth() + 1;
+      d = today.getDate();
+    }
+    const dt = new Date(y, m - 1, d);
+    const thDays = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+    const thMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const dateThaiFull = `${thDays[dt.getDay()]}ที่ ${d} ${thMonths[m] || ''} พ.ศ. ${y > 2400 ? y : y + 543}`;
 
-  const mode = AttendanceState.mode;
-  const isSubject = (mode === 'subject');
-  const classroom = AttendanceState.classroom || '';
+    const mode = AttendanceState.mode;
+    const isSubject = (mode === 'subject');
+    const classroom = AttendanceState.classroom || (document.getElementById('attClassroom')?.value) || '';
   const schoolLogoUrl = (typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL)
     || (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo) 
     || localStorage.getItem('cached_school_logo') 
@@ -4116,9 +4170,22 @@ function printDailyAttendanceRecord() {
 
   if (typeof openHTMLDocument === 'function') {
     openHTMLDocument(html, docTitle);
+  } else if (typeof window.openHTMLDocument === 'function') {
+    window.openHTMLDocument(html, docTitle);
   } else {
     window.print();
   }
+} catch (err) {
+  console.error('Error in printDailyAttendanceRecord:', err);
+  if (typeof showToast === 'function') {
+    showToast('error', 'เกิดข้อผิดพลาดในการเปิดแบบพิมพ์: ' + (err.message || err));
+  } else {
+    alert('เกิดข้อผิดพลาดในการเปิดแบบพิมพ์: ' + (err.message || err));
+  }
+}
+}
+if (typeof window !== 'undefined') {
+  window.printDailyAttendanceRecord = printDailyAttendanceRecord;
 }
 
 function printAttendanceReport() {
@@ -4188,27 +4255,6 @@ function printAttendanceReport() {
     } else {
       reportTitle = 'รายงานสรุปการมาเรียนและเช็คแถวหน้าเสาธง';
     }
-  }
-
-  // Helper to determine Grade Level from Classroom string (e.g. 'ม.1/1' -> 'ม.1')
-  function getGradeLevelFromClass(cls) {
-    if (!cls) return 'ไม่ระบุชั้น';
-    const str = String(cls).trim();
-    const m = str.match(/^(ม\.[1-6]|ป\.[1-6]|อ\.[1-3])/i);
-    if (m) return m[1];
-    return str.split('/')[0].trim() || str;
-  }
-
-  function getGradeLevelFullThai(gLevel) {
-    if (!gLevel || gLevel === 'ทุกระดับชั้น') return 'ทุกระดับชั้น';
-    if (gLevel === 'ม.1') return 'ระดับชั้นมัธยมศึกษาปีที่ 1 (ม.1)';
-    if (gLevel === 'ม.2') return 'ระดับชั้นมัธยมศึกษาปีที่ 2 (ม.2)';
-    if (gLevel === 'ม.3') return 'ระดับชั้นมัธยมศึกษาปีที่ 3 (ม.3)';
-    if (gLevel === 'ม.4') return 'ระดับชั้นมัธยมศึกษาปีที่ 4 (ม.4)';
-    if (gLevel === 'ม.5') return 'ระดับชั้นมัธยมศึกษาปีที่ 5 (ม.5)';
-    if (gLevel === 'ม.6') return 'ระดับชั้นมัธยมศึกษาปีที่ 6 (ม.6)';
-    if (gLevel.startsWith('ม.')) return 'ระดับชั้นมัธยมศึกษาปีที่ ' + gLevel.replace('ม.', '') + ` (${gLevel})`;
-    return 'ระดับชั้น ' + gLevel;
   }
 
   // Determine distinct grade levels
