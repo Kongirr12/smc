@@ -286,12 +286,18 @@ if (typeof _origRenderDashboard === 'function') {
     _origRenderDashboard(container);
     const appendLineBadge = (hasToken) => {
       const wRow = document.querySelector('.welcome-row .sub');
-      if (!wRow || wRow.querySelector('.mhc-line-oa-badge')) return;
+      if (!wRow) return;
+      const existing = wRow.querySelector('.mhc-line-oa-badge');
+      // หากยังไม่ได้ตั้งค่า LINE OA ไม่ต้องแสดง Badge ให้รกสายตา
+      if (!hasToken) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing) return;
       const badge = document.createElement('span');
       badge.className = 'mhc-line-oa-badge';
-      badge.style.cssText = 'margin-left:8px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px;' +
-        (hasToken ? 'background:#DCFCE7; color:#15803D;' : 'background:#FEE2E2; color:#B91C1C;');
-      badge.innerHTML = hasToken ? '🟢 LINE OA เชื่อมต่อแล้ว' : '⚪ ยังไม่ได้ตั้งค่า LINE OA';
+      badge.style.cssText = 'margin-left:8px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:#DCFCE7; color:#15803D;';
+      badge.innerHTML = '🟢 LINE OA เชื่อมต่อแล้ว';
       wRow.appendChild(badge);
     };
     if (window.APP && APP.dashboardData && APP.dashboardData.config && APP.dashboardData.config.line_oa_connected !== undefined) {

@@ -3902,10 +3902,10 @@ function printDailyAttendanceRecord() {
 
       const rowsHtml = roomRecords.map((r, idx) => {
         let stText = '<span style="color:#94A3B8;">[ &nbsp; ] ยังไม่ระบุ</span>';
-        if (r.status === 'present') stText = '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>';
-        else if (r.status === 'absent') stText = '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>';
+        if (r.status === 'present') stText = isSubject ? '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>' : '<span style="color:#15803D; font-weight:bold;">✓ มา</span>';
+        else if (r.status === 'absent') stText = isSubject ? '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>' : '<span style="color:#B91C1C; font-weight:bold;">✗ ขาด</span>';
         else if (r.status === 'leave') stText = '<span style="color:#B45309; font-weight:bold;">∆ ลา</span>';
-        else if (r.status === 'late') stText = '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
+        else if (r.status === 'late') stText = isSubject ? '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>' : '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
 
         return `
           <tr>
@@ -4009,10 +4009,10 @@ function printDailyAttendanceRecord() {
 
     const rowsHtml = AttendanceState.records.map((r, idx) => {
       let stText = '<span style="color:#94A3B8;">[ &nbsp; ] ยังไม่ระบุ</span>';
-      if (r.status === 'present') stText = '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>';
-      else if (r.status === 'absent') stText = '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>';
+      if (r.status === 'present') stText = isSubject ? '<span style="color:#15803D; font-weight:bold;">✓ มาเรียน</span>' : '<span style="color:#15803D; font-weight:bold;">✓ มา</span>';
+      else if (r.status === 'absent') stText = isSubject ? '<span style="color:#B91C1C; font-weight:bold;">✗ ขาดเรียน</span>' : '<span style="color:#B91C1C; font-weight:bold;">✗ ขาด</span>';
       else if (r.status === 'leave') stText = '<span style="color:#B45309; font-weight:bold;">∆ ลา</span>';
-      else if (r.status === 'late') stText = '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
+      else if (r.status === 'late') stText = isSubject ? '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>' : '<span style="color:#1D4ED8; font-weight:bold;">⏱ มาสาย</span>';
 
       return `
         <tr>
