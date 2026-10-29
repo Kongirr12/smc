@@ -90,6 +90,11 @@ html, body {
   margin: 0; padding: 0;
   font-size: 15px;
   min-height: 100vh;
+  min-height: 100dvh;
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -104,7 +109,10 @@ html, body {
   display: flex;
   padding: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 html.dark-mode #loginScreen {
   background: #090D16 !important;
@@ -428,7 +436,14 @@ select {
 .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
 /* ─── Layout ────────────────────────────────────────────────── */
-.layout { display: flex; min-height: 100vh; }
+.layout {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
 
 /* ─── Sidebar ───────────────────────────────────────────────── */
 .sidebar {
@@ -557,8 +572,10 @@ select {
 /* ─── Main Content ──────────────────────────────────────────── */
 .main {
   flex: 1; margin-left: 260px; min-width: 0;
+  width: 100%; max-width: 100%; overflow-x: hidden;
   transition: margin-left .28s;
-  display: flex; flex-direction: column; min-height: 100vh;
+  display: flex; flex-direction: column;
+  min-height: 100vh; min-height: 100dvh;
   background: var(--bg-page);
 }
 
@@ -1047,30 +1064,58 @@ select {
 @media (max-width: 480px) {
   .topbar {
     height: calc(56px + var(--sat)) !important;
-    padding-left: max(10px, var(--sal)) !important;
-    padding-right: max(10px, var(--sar)) !important;
+    padding-left: max(12px, var(--sal)) !important;
+    padding-right: max(12px, var(--sar)) !important;
     gap: 6px !important;
   }
   .topbar .page-title {
-    font-size: 14px !important;
-    max-width: 130px !important;
+    font-size: 13.5px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   .topbar .actions {
-    gap: 4px !important;
+    gap: 3px !important;
+    flex-shrink: 0 !important;
   }
   .topbar .icon-btn {
-    width: 34px !important;
-    height: 34px !important;
-    font-size: 16px !important;
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 15px !important;
     border-radius: 8px !important;
   }
   .menu-toggle {
-    width: 36px !important;
-    height: 36px !important;
-    font-size: 20px !important;
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 19px !important;
+    flex-shrink: 0 !important;
   }
   .content {
-    padding: 12px 8px !important;
+    padding: 14px max(14px, var(--sal)) calc(84px + max(8px, var(--sab))) max(14px, var(--sar)) !important;
+  }
+  .welcome-row {
+    padding: 16px 14px !important;
+    border-radius: 16px !important;
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+  .welcome-row h1 {
+    font-size: 17px !important;
+    line-height: 1.25 !important;
+  }
+  .welcome-row .sub {
+    font-size: 11.5px !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  .welcome-row .date-pill {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    padding: 6px 12px !important;
   }
   .stat-grid {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -1088,9 +1133,20 @@ select {
   }
   .stat-card .value {
     font-size: 18px !important;
+    line-height: 1.15;
   }
   .stat-card .label {
-    font-size: 11px !important;
+    font-size: 10.5px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stat-card .trend {
+    font-size: 10px !important;
+    margin-top: 6px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .btn {
     font-size: 12.5px !important;
@@ -1120,6 +1176,12 @@ select {
   .cal-dow { font-size: 10px !important; padding: 4px 0 !important; }
   input, select, textarea, .form-input, .input-wrap input {
     font-size: 16px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #btnGlobalSearch {
+    display: none !important;
   }
 }
 
@@ -2234,7 +2296,7 @@ html.dark-mode .stat-card {
     border-top: 1px solid rgba(79, 70, 229, 0.12);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
     padding-top: 6px;
-    padding-bottom: max(6px, var(--sab));
+    padding-bottom: calc(6px + max(4px, var(--sab)));
     padding-left: max(8px, var(--sal));
     padding-right: max(8px, var(--sar));
     justify-content: space-around;
@@ -2250,20 +2312,20 @@ html.dark-mode .stat-card {
     gap: 3px;
     background: transparent;
     border: none;
-    padding: 6px 2px;
+    padding: 4px 2px;
     color: #64748B;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-tap-highlight-color: transparent;
     border-radius: var(--radius-sm);
-    min-height: 48px;
+    min-height: 44px;
   }
 
   .bottom-nav-item i {
-    font-size: 21px;
+    font-size: 20px;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
   }
 
@@ -2282,12 +2344,14 @@ html.dark-mode .stat-card {
   }
 
   .content {
-    padding-bottom: calc(76px + var(--sab)) !important;
+    padding-bottom: calc(84px + max(8px, var(--sab))) !important;
   }
 
   /* Make sure app footer does not block bottom nav */
   .app-footer {
-    margin-bottom: calc(56px + var(--sab)) !important;
+    margin-bottom: calc(64px + max(8px, var(--sab))) !important;
+    font-size: 11px !important;
+    padding: 12px 14px !important;
   }
 }
 
@@ -2411,18 +2475,22 @@ html.dark-mode .bottom-nav-item.active i {
     margin-bottom: 14px;
   }
   .quick-action-btn {
-    padding: 10px 12px;
-    gap: 9px;
-    min-height: 52px;
+    padding: 8px 10px;
+    gap: 8px;
+    min-height: 48px;
+    border-radius: 12px;
   }
   .qa-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 19px;
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
     border-radius: 10px;
+    flex-shrink: 0;
   }
   .qa-title {
-    font-size: 12.5px;
+    font-size: 12px;
+    line-height: 1.25;
+    word-break: break-word;
   }
   .qa-desc {
     display: none;

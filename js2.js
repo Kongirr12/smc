@@ -2112,25 +2112,25 @@ function renderAttendanceRecord() {
 
   c.innerHTML = `
     <div class="flex gap-2 mb-3 flex-wrap items-center">
-      <div class="flex rounded-lg overflow-hidden border border-slate-200" style="font-size:13px;">
+      <div class="flex rounded-lg overflow-hidden border border-slate-200 w-full sm:w-auto" style="font-size:13px;">
         <button id="attModeSubject" onclick="switchAttMode('subject')"
-          class="px-3 py-1.5 font-semibold transition-colors ${mode==='subject'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
+          class="flex-1 sm:flex-none px-3 py-1.5 font-semibold transition-colors ${mode==='subject'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
           <i class='bx bx-book-open'>\x3c/i> รายวิชา
         </button>
         <button id="attModeClass" onclick="switchAttMode('class')"
-          class="px-3 py-1.5 font-semibold transition-colors ${mode==='class'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
+          class="flex-1 sm:flex-none px-3 py-1.5 font-semibold transition-colors ${mode==='class'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
           <i class='bx bxs-building'>\x3c/i> หน้าเสาธง / โฮมรูม
         </button>
       </div>
 
       <select id="attClassroom" onchange="onAttClassroomChange()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[150px]">
+              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[120px]">
         <option value="">เลือกชั้น\x3c/option>
         ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}\x3c/option>`).join('')}
       </select>
 
       <input type="date" id="attDate" onchange="onAttDateChange()"
-             class="rounded-lg border border-slate-200 px-3 py-2 text-sm" value="${AttendanceState.date}">
+             class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[130px]" value="${AttendanceState.date}">
 
       ${mode === 'subject' ? `
       <div class="flex items-center gap-2 w-full mt-2">
@@ -2535,6 +2535,7 @@ function renderAttendanceList() {
       }
 
       /* ===== Desktop: show table, hide mobile cards ===== */
+      .att-list-wrap     { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .att-desktop-table { display: table; width: 100%; }
       .att-mobile-list   { display: none; }
 
@@ -2547,7 +2548,7 @@ function renderAttendanceList() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 10px 4px;
+          padding: 10px 8px;
           border-bottom: 1px solid #F1F5F9;
           gap: 8px;
           box-sizing: border-box;

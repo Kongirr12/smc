@@ -773,12 +773,29 @@ function initFloatingChatWidget() {
   // ปรับตำแหน่งตาม Safe Area ของมือถือหากมี Bottom Nav
   const adjustMobilePos = () => {
     const mobileNav = document.getElementById('mobileBottomNav');
-    if (mobileNav && window.innerWidth <= 768 && window.getComputedStyle(mobileNav).display !== 'none') {
-      btn.style.bottom = 'calc(68px + var(--sab))';
-      win.style.bottom = 'calc(118px + var(--sab))';
+    const isMobile = window.innerWidth <= 860;
+    if (mobileNav && isMobile && window.getComputedStyle(mobileNav).display !== 'none') {
+      btn.style.bottom = 'calc(74px + max(4px, var(--sab)))';
+      btn.style.right = 'max(14px, var(--sar))';
+      win.style.bottom = 'calc(126px + max(4px, var(--sab)))';
+      if (window.innerWidth <= 640) {
+        win.style.left = 'max(10px, var(--sal))';
+        win.style.right = 'max(10px, var(--sar))';
+        win.style.width = 'auto';
+        win.style.maxWidth = 'calc(100vw - 20px)';
+        win.style.height = 'calc(100dvh - 160px)';
+        win.style.maxHeight = '520px';
+      }
     } else {
       btn.style.bottom = 'calc(20px + var(--sab))';
+      btn.style.right = '20px';
       win.style.bottom = 'calc(75px + var(--sab))';
+      win.style.left = 'auto';
+      win.style.right = '20px';
+      win.style.width = '380px';
+      win.style.maxWidth = 'calc(100vw - 32px)';
+      win.style.height = '560px';
+      win.style.maxHeight = 'calc(100vh - 100px)';
     }
   };
   window.addEventListener('resize', adjustMobilePos);

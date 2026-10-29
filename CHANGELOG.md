@@ -3,7 +3,28 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.3.33] - 2026-10-29 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.3.34] - 2026-10-29 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 📱 ยกระดับ Responsive ครบวงจรสำหรับสมาร์ทโฟน Android และหน้าจอ Quad-Curved (OPPO Reno 12)
+- **แก้ปัญหาหน้าจอล้นและโค้งขอบ (Quad-Curved Display & Width Overflow Protection):**
+  - ล็อก `overflow-x: hidden !important; width: 100% !important; max-width: 100vw !important;` บน `html, body`, `.layout` และ `.main` เพื่อขจัดอาการจอดิ้น / เลื่อนซ้ายขวาได้บนเบราว์เซอร์ Android Chrome
+  - เพิ่มระยะขอบข้างปลอดภัย (`padding: 14px max(14px, var(--sal)) ... max(14px, var(--sar))`) ป้องกันข้อความและปุ่มสัมผัสหลุดไปแตะบริเวณขอบจอโค้ง (Quad-Curved AMOLED) ของ OPPO Reno 12
+- **ปรับแต่ง Topbar และแถบควบคุมไม่ให้เบียดล้นจอแคบ (Compact Mobile Topbar):**
+  - ปรับขนาดปุ่มไอคอน Topbar ให้กะทัดรัด 32px บนมือถือจอแคบ (`<= 480px`) พร้อมเปิดให้ชื่อหัวข้อ (`.page-title`) ย่อและตัดท้ายด้วย ellipsis อย่างยืดหยุ่น (`flex: 1 1 auto; min-width: 0;`)
+  - ซ่อนปุ่มค้นหาด่วนบนหน้าจอแคบมาก (`<= 420px`) เพื่อให้ปุ่มจำเป็น (รีเฟรช, โหมดมืด, โปรไฟล์, แจ้งเตือน) อยู่ครบในแถวเดียว ไม่หลุดขอบจอ
+- **ปรับปรุงแถบเมนูล่าง (Mobile Bottom Nav) สำหรับระบบ Android:**
+  - เพิ่มระยะเว้นขอบล่าง `calc(6px + max(4px, var(--sab)))` เพื่อรองรับทั้งปุ่มนำทาง 3 ปุ่ม (3-Button Navigation) และแถบควบคุม Gesture ของ Android โดยไม่โดนบังหรือกดทับ
+  - ปรับความสูงและขนาดไอคอนปุ่มให้แตะง่าย ไม่ชนแถบระบบ
+- **ปรับปรุงหน้าต่างแชทลอยตัว (Floating Chat Launcher & Window):**
+  - ปรับตำแหน่งปุ่มลอยให้อยู่เหนือแถบเมนูล่างอย่างเหมาะสม (`bottom: calc(74px + max(4px, var(--sab)))`)
+  - เมื่อเปิดหน้าต่างแชทบนมือถือ จะแสดงผลแบบโมบายชีทจัดกึ่งกลางสวยงาม ไม่หลุดออกนอกจอ
+- **ปรับปรุงระบบพิมพ์สำหรับ Android Chrome:**
+  - เปลี่ยนการพิมพ์บนมือถือ Android ให้ใช้ระบบ In-App Print (`window.triggerInAppPrint`) โดยตรง ป้องกันปัญหาเบราว์เซอร์ Android Chrome ปริ้นต์ผ่าน iframe ไม่ติด
+- **ไม่แก้ไขไฟล์ Backend (`code.gs`):** ปรับปรุงเฉพาะฝั่ง Frontend เท่านั้น ไม่ต้อง Redeploy Google Apps Script
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.34` พร้อมอัปเดต Query String `?v=3.3.34` ใน `index.html`
+
+---
+
+## [v3.3.33] - 2026-10-29
 ### 📑 ย้ายลายเซ็นและท้ายกระดาษชิดขอบล่าง พร้อมจัดสัดส่วนตารางปฏิทินให้เต็มแผ่น A4 แนวนอนสวยงามสมบูรณ์แบบ
 - **ย้ายส่วนล่าง (บล็อกลายเซ็นและท้ายกระดาษ) ชิดขอบกระดาษด้านล่าง (`js4.js` & `js3.js`):**
   - กำหนด `.sig-container` ด้วย `margin-top: auto !important;` และจัดหน้า `.grid-month-page` เป็น Flexbox ความสูงคงที่ `height: 188mm !important; justify-content: space-between !important;`

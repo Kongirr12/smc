@@ -2942,17 +2942,20 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
       triggerIOSStandaloneAirPrint(modal._currentHtml, modal._currentTitle);
       return;
     }
-    const iframe = document.getElementById('printDocIframe');
-    if (iframe && iframe.contentWindow && !/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        return;
-      } catch (err) {
-        console.warn('iframe print failed, fallback to in-app print:', err);
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+    if (!isMobileDevice) {
+      const iframe = document.getElementById('printDocIframe');
+      if (iframe && iframe.contentWindow) {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          return;
+        } catch (err) {
+          console.warn('iframe print failed, fallback to in-app print:', err);
+        }
       }
     }
-    // บน Safari iPhone / iPad หรือเบราว์เซอร์ทั่วไป เรียกใช้งาน AirPrint (window.print) ทันที
+    // บนอุปกรณ์มือถือ (Android / iOS / OPPO Reno) หรือเบราว์เซอร์ทั่วไป เรียกใช้งาน in-app print ทันที
     window.triggerInAppPrint();
   };
 
