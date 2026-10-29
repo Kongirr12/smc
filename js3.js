@@ -94,12 +94,17 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
     doc.querySelectorAll('.no-print, .no-print-bar, .no-print-toolbar, button, script').forEach(el => el.remove());
 
     // 3. แยกเอกสารออกเป็นหน้ารายบุคคล / รายห้องเรียน (Page-by-Page Isolation)
-    const pageSelector = '.schedule-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .print-doc, .form-doc-wrapper';
+    const pageSelector = '.schedule-page, .grid-month-page, .print-page-wrapper, .pp6-container, .pp5-sheet, .calendar-container, .form-doc-wrapper';
     let pageNodes = Array.from(doc.querySelectorAll(pageSelector));
 
     if (pageNodes.length > 1) {
       // กรองเฉพาะ element ชั้นนอกสุด ไม่ซ้อนกัน
       pageNodes = pageNodes.filter(node => !pageNodes.some(parent => parent !== node && parent.contains(node)));
+    }
+
+    if (pageNodes.length === 0) {
+      const docNodes = Array.from(doc.querySelectorAll('.print-doc'));
+      if (docNodes.length > 0) pageNodes = docNodes;
     }
 
     if (pageNodes.length === 0) {
@@ -261,19 +266,19 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
         .schedule-page table th:nth-child(10), .schedule-page table td:nth-child(10) { width: 9.6% !important; }
 
         /* สไตล์ตารางรายงานการเช็คแถว / เข้าเรียน */
-        .print-page-wrapper table, .print-doc table {
+        .print-page-wrapper table:not(.cal-table):not(.compact-events-table), .print-doc table:not(.cal-table):not(.compact-events-table) {
           width: 100% !important;
           border-collapse: collapse !important;
           border: 2px solid #000000 !important;
           flex: 1 1 auto !important;
           margin: 0 auto !important;
         }
-        .print-page-wrapper table th, .print-page-wrapper table td,
-        .print-doc table th, .print-doc table td {
+        .print-page-wrapper table:not(.cal-table):not(.compact-events-table) th, .print-page-wrapper table:not(.cal-table):not(.compact-events-table) td,
+        .print-doc table:not(.cal-table):not(.compact-events-table) th, .print-doc table:not(.cal-table):not(.compact-events-table) td {
           border: 1px solid #000000 !important;
           box-sizing: border-box !important;
         }
-        .print-page-wrapper table th, .print-doc table th {
+        .print-page-wrapper table:not(.cal-table):not(.compact-events-table) th, .print-doc table:not(.cal-table):not(.compact-events-table) th {
           background: #FFFFFF !important;
           color: #000000 !important;
           font-weight: 700 !important;
@@ -281,10 +286,106 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
           padding: 5px 2px !important;
           border-bottom: 2px solid #000000 !important;
         }
-        .print-page-wrapper table td, .print-doc table td {
+        .print-page-wrapper table:not(.cal-table):not(.compact-events-table) td, .print-doc table:not(.cal-table):not(.compact-events-table) td {
           font-size: 9.5px !important;
           padding: 3.5px 3px !important;
           vertical-align: middle !important;
+        }
+
+        /* สไตล์ปฏิทินรายเดือน (MHC Calendar 2-Column Full A4 Fit) */
+        .cal-month-body {
+          flex: 1 1 auto !important;
+          display: flex !important;
+          flex-direction: row !important;
+          gap: 12px !important;
+          align-items: stretch !important;
+          margin: 4px 0 !important;
+          height: 570px !important;
+          min-height: 520px !important;
+        }
+        .cal-grid-col {
+          flex: 0 0 65% !important;
+          max-width: 65% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          height: 100% !important;
+        }
+        .cal-events-col {
+          flex: 0 0 35% !important;
+          max-width: 35% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          height: 100% !important;
+        }
+        .cal-table {
+          width: 100% !important;
+          height: 100% !important;
+          table-layout: fixed !important;
+          border-collapse: collapse !important;
+          border: 1.5px solid #0F172A !important;
+        }
+        .cal-table th {
+          background: #F8FAFC !important;
+          color: #0F172A !important;
+          font-weight: 700 !important;
+          font-size: 10.5px !important;
+          padding: 4px 2px !important;
+          text-align: center !important;
+          border: 1px solid #CBD5E1 !important;
+          height: 26px !important;
+        }
+        .cal-table td {
+          border: 1px solid #CBD5E1 !important;
+          vertical-align: top !important;
+          padding: 3px 4px !important;
+          box-sizing: border-box !important;
+        }
+        .events-panel {
+          border: 1.5px solid #CBD5E1 !important;
+          border-radius: 6px !important;
+          background: #FFFFFF !important;
+          display: flex !important;
+          flex-direction: column !important;
+          height: 100% !important;
+          overflow: hidden !important;
+        }
+        .events-panel-body {
+          flex: 1 1 auto !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+        .compact-events-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          table-layout: auto !important;
+          font-size: 9.5px !important;
+        }
+        .compact-events-table th {
+          background: #F1F5F9 !important;
+          color: #475569 !important;
+          font-weight: 700 !important;
+          padding: 4px 5px !important;
+          border-bottom: 1.5px solid #CBD5E1 !important;
+          font-size: 9.5px !important;
+        }
+        .compact-events-table td {
+          border-bottom: 1px solid #F1F5F9 !important;
+          padding: 4px 5px !important;
+          vertical-align: middle !important;
+        }
+        .events-panel-notes {
+          margin-top: auto !important;
+          padding: 8px 10px !important;
+          background: #F8FAFC !important;
+          border-top: 1px solid #E2E8F0 !important;
+          flex: 1 1 auto !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-end !important;
+        }
+        .notes-line {
+          border-bottom: 1px dotted #CBD5E1 !important;
+          height: 24px !important;
         }
 
         /* ลายเซ็นทุกฝ่าย */
@@ -3033,17 +3134,21 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           .cal-month-body {
             display: flex !important;
             flex-direction: row !important;
-            gap: 10px !important;
+            gap: 12px !important;
             align-items: stretch !important;
+            flex: 1 1 auto !important;
+            min-height: 520px !important;
           }
           .cal-grid-col {
-            flex: 0 0 62% !important;
-            max-width: 62% !important;
+            flex: 0 0 65% !important;
+            max-width: 65% !important;
             min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
           .cal-events-col {
-            flex: 0 0 38% !important;
-            max-width: 38% !important;
+            flex: 0 0 35% !important;
+            max-width: 35% !important;
             min-width: 0 !important;
             display: flex !important;
             flex-direction: column !important;
@@ -3229,26 +3334,44 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             .cal-month-body {
               display: flex !important;
               flex-direction: row !important;
-              gap: 10px !important;
+              gap: 12px !important;
               align-items: stretch !important;
+              flex: 1 1 auto !important;
+              min-height: 520px !important;
+              margin: 4px 0 6px 0 !important;
             }
             .cal-grid-col {
-              flex: 0 0 62% !important;
-              max-width: 62% !important;
+              flex: 0 0 65% !important;
+              max-width: 65% !important;
               min-width: 0 !important;
+              display: flex !important;
+              flex-direction: column !important;
             }
             .cal-events-col {
-              flex: 0 0 38% !important;
-              max-width: 38% !important;
+              flex: 0 0 35% !important;
+              max-width: 35% !important;
               min-width: 0 !important;
               display: flex !important;
               flex-direction: column !important;
             }
             .grid-month-page {
+              width: 100% !important;
+              max-width: 100% !important;
+              height: 198mm !important;
               max-height: 198mm !important;
               overflow: hidden !important;
               page-break-inside: avoid !important;
               break-inside: avoid !important;
+              page-break-after: always !important;
+              break-after: page !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              box-sizing: border-box !important;
+            }
+            .grid-month-page:last-child {
+              page-break-after: auto !important;
+              break-after: auto !important;
             }
             thead { display: table-header-group !important; }
             tfoot { display: table-footer-group !important; }

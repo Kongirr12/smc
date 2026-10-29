@@ -2714,12 +2714,12 @@ function generateCalendarPrintHTML(options) {
         return sMonth <= ym && ym <= eMonth;
       });
 
-      // Calendar Grid Rows
+      // Calendar Grid Rows: Sized to fill full A4 landscape height (~540px body)
       let gridRows = '';
       let dayCounter = 1;
       const totalWeeks = Math.ceil((startDay + daysInMonth) / 7);
-      const cellHeight = (totalWeeks === 6) ? '37px' : '45px';
-      const maxPillsPerCell = 2;
+      const cellHeight = (totalWeeks === 6) ? '88px' : '108px';
+      const maxPillsPerCell = (totalWeeks === 6) ? 3 : 4;
 
       for (let week = 0; week < totalWeeks; week++) {
         gridRows += '<tr>';
@@ -2745,7 +2745,7 @@ function generateCalendarPrintHTML(options) {
               const t = typeConfig[e.type] || typeConfig.general;
               const timePrefix = e.start_time ? `<span class="ev-time">${safeEscape(e.start_time)}</span> ` : '';
               evHTML += `
-                <div class="ev-pill" style="border-left: 2px solid ${t.color}; background:${t.bg}; color:${t.color};">
+                <div class="ev-pill" style="border-left: 2.5px solid ${t.color}; background:${t.bg}; color:${t.color};">
                   ${timePrefix}${safeEscape(e.title)}
                 </div>
               `;
@@ -2766,22 +2766,24 @@ function generateCalendarPrintHTML(options) {
         gridRows += '</tr>';
       }
 
-      // Compact Event Schedule (Right Column)
+      // Compact Event Schedule (Right Column) - Sized to match full A4 height
       let rightEventsHTML = '';
-      const maxEventRows = (totalWeeks === 6) ? 7 : 8;
+      const maxEventRows = (totalWeeks === 6) ? 10 : 12;
 
       if (monthEvents.length === 0) {
+        let noteLinesHTML = '';
+        for (let l = 0; l < 8; l++) {
+          noteLinesHTML += '<div class="notes-line"></div>';
+        }
         rightEventsHTML = `
           <div class="empty-events-box">
-            <div style="font-size:20px; margin-bottom:4px;">📅</div>
-            <div style="font-size:10.5px; font-weight:700; color:#334155;">ไม่มีกิจกรรมหรือกำหนดการพิเศษในเดือนนี้</div>
-            <div style="font-size:9px; color:#64748B; margin-top:2px;">(ดำเนินกิจกรรมและการเรียนการสอนตามปกติ)</div>
+            <div style="font-size:24px; margin-bottom:4px;">📅</div>
+            <div style="font-size:11px; font-weight:700; color:#334155;">ไม่มีกิจกรรมหรือกำหนดการพิเศษในเดือนนี้</div>
+            <div style="font-size:9.5px; color:#64748B; margin-top:2px;">(ดำเนินกิจกรรมและการเรียนการสอนตามปกติ)</div>
           </div>
           <div class="events-panel-notes">
             <div class="notes-title">📝 บันทึก / หมายเหตุประจำเดือน:</div>
-            <div class="notes-line"></div>
-            <div class="notes-line"></div>
-            <div class="notes-line"></div>
+            ${noteLinesHTML}
           </div>
         `;
       } else {
@@ -2795,14 +2797,14 @@ function generateCalendarPrintHTML(options) {
           const dateBadge = formatCompactRange(e.start_date, e.end_date);
           evTableRows += `
             <tr>
-              <td style="width:68px; text-align:center; vertical-align:top; white-space:nowrap; padding:3px 2px;">
+              <td style="width:72px; text-align:center; vertical-align:top; white-space:nowrap; padding:4px 3px;">
                 <div class="ev-date-badge">${dateBadge}</div>
                 ${timeStr ? `<div class="ev-time-badge">${timeStr}</div>` : ''}
               </td>
-              <td style="width:48px; text-align:center; vertical-align:top; padding:3px 2px;">
+              <td style="width:50px; text-align:center; vertical-align:top; padding:4px 3px;">
                 <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
               </td>
-              <td style="vertical-align:top; padding:3px 4px;">
+              <td style="vertical-align:top; padding:4px 5px;">
                 <div class="ev-title-text">${safeEscape(e.title)}</div>
                 ${e.location ? `<div class="ev-loc-text">📍 ${safeEscape(e.location)}</div>` : ''}
               </td>
@@ -2821,12 +2823,16 @@ function generateCalendarPrintHTML(options) {
         }
 
         let notesSection = '';
-        if (displayEvents.length <= 4) {
+        if (displayEvents.length < 8) {
+          const linesNeeded = Math.max(3, 9 - displayEvents.length);
+          let noteLinesHTML = '';
+          for (let l = 0; l < linesNeeded; l++) {
+            noteLinesHTML += '<div class="notes-line"></div>';
+          }
           notesSection = `
             <div class="events-panel-notes">
               <div class="notes-title">📝 บันทึก / ข้อสั่งการประจำเดือน:</div>
-              <div class="notes-line"></div>
-              <div class="notes-line"></div>
+              ${noteLinesHTML}
             </div>
           `;
         }
@@ -2835,8 +2841,8 @@ function generateCalendarPrintHTML(options) {
           <table class="compact-events-table">
             <thead>
               <tr>
-                <th style="width:68px; text-align:center;">วัน/เวลา</th>
-                <th style="width:48px; text-align:center;">ประเภท</th>
+                <th style="width:72px; text-align:center;">วัน/เวลา</th>
+                <th style="width:50px; text-align:center;">ประเภท</th>
                 <th style="text-align:left;">กิจกรรม / กำหนดการ</th>
               </tr>
             </thead>
@@ -3028,7 +3034,7 @@ function generateCalendarPrintHTML(options) {
     }
     .print-doc {
       width: 100%;
-      max-width: 282mm;
+      max-width: 100%;
       margin: 0 auto;
     }
     .print-page-wrapper {
@@ -3038,8 +3044,22 @@ function generateCalendarPrintHTML(options) {
     }
     .grid-month-page {
       box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+      height: 198mm;
+      max-height: 198mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       page-break-inside: avoid;
       break-inside: avoid;
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
+    }
+    .grid-month-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
     }
     .no-print-bar {
       background: #1E293B;
@@ -3114,6 +3134,7 @@ function generateCalendarPrintHTML(options) {
       padding-bottom: 5px;
       border-bottom: 2px solid #800020;
       margin-bottom: 6px;
+      flex-shrink: 0;
     }
     .cal-header .logo {
       width: 44px;
@@ -3142,21 +3163,25 @@ function generateCalendarPrintHTML(options) {
       line-height: 1.2;
     }
 
-    /* 2-Column Side-by-Side Monthly Body */
+    /* 2-Column Side-by-Side Monthly Body: Fills full A4 landscape printable area */
     .cal-month-body {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: stretch;
-      margin-bottom: 6px;
+      flex: 1 1 auto;
+      margin: 4px 0 6px 0;
+      min-height: 520px;
     }
     .cal-grid-col {
-      flex: 0 0 62%;
-      max-width: 62%;
+      flex: 0 0 65%;
+      max-width: 65%;
       min-width: 0;
+      display: flex;
+      flex-direction: column;
     }
     .cal-events-col {
-      flex: 0 0 38%;
-      max-width: 38%;
+      flex: 0 0 35%;
+      max-width: 35%;
       min-width: 0;
       display: flex;
       flex-direction: column;
@@ -3188,6 +3213,7 @@ function generateCalendarPrintHTML(options) {
     /* Calendar Grid Table */
     .cal-table {
       width: 100%;
+      height: 100%;
       table-layout: fixed;
       border-collapse: collapse;
       border: 1.5px solid #0F172A;
@@ -3196,18 +3222,19 @@ function generateCalendarPrintHTML(options) {
       background: #F8FAFC;
       color: #0F172A;
       font-weight: 700;
-      font-size: 9.5px;
-      padding: 3px 2px;
+      font-size: 10.5px;
+      padding: 4px 2px;
       text-align: center;
       border: 1px solid #CBD5E1;
       width: 14.285%;
+      height: 26px;
     }
     .cal-table th.sun-th { color: #DC2626; background: #FEF2F2; }
     .cal-table th.sat-th { color: #B45309; background: #FFFBEB; }
     .cal-table td {
       border: 1px solid #CBD5E1;
       vertical-align: top;
-      padding: 2px 2px;
+      padding: 3px 4px;
       background: #FFFFFF;
       box-sizing: border-box;
     }
@@ -3215,11 +3242,11 @@ function generateCalendarPrintHTML(options) {
       background: #F8FAFC;
     }
     .day-num {
-      font-weight: 700;
-      font-size: 10px;
+      font-weight: 800;
+      font-size: 13px;
       color: #1E293B;
       line-height: 1;
-      margin-bottom: 1.5px;
+      margin-bottom: 3px;
       text-align: right;
       padding-right: 2px;
     }
@@ -3228,34 +3255,36 @@ function generateCalendarPrintHTML(options) {
     .ev-cell-body {
       display: flex;
       flex-direction: column;
-      gap: 1.5px;
+      gap: 2px;
       overflow: hidden;
     }
     .ev-pill {
-      font-size: 8px;
-      line-height: 1.2;
-      padding: 1px 2px;
-      border-radius: 2px;
+      font-size: 8.5px;
+      line-height: 1.25;
+      padding: 2px 4px;
+      border-radius: 3px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-weight: 500;
+      font-weight: 600;
+      margin-bottom: 2px;
     }
     .ev-time {
-      font-weight: 600;
-      opacity: 0.85;
+      font-weight: 700;
+      opacity: 0.9;
+      margin-right: 2px;
     }
     .ev-more {
-      font-size: 7.5px;
+      font-size: 8px;
       color: #64748B;
       font-weight: 700;
       padding-left: 2px;
-      line-height: 1.1;
+      line-height: 1.2;
     }
 
     /* Right Column: Events Panel */
     .events-panel {
-      border: 1px solid #CBD5E1;
+      border: 1.5px solid #CBD5E1;
       border-radius: 6px;
       background: #FFFFFF;
       display: flex;
@@ -3265,29 +3294,30 @@ function generateCalendarPrintHTML(options) {
     }
     .events-panel-header {
       background: #F8FAFC;
-      border-bottom: 1px solid #CBD5E1;
-      padding: 4px 8px;
+      border-bottom: 1.5px solid #CBD5E1;
+      padding: 6px 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
     .events-panel-title {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       color: #1E293B;
     }
     .events-badge {
-      font-size: 8.5px;
+      font-size: 9.5px;
       font-weight: 700;
       background: #EEF2FF;
       color: #4338CA;
       border: 1px solid #C7D2FE;
-      padding: 1px 6px;
-      border-radius: 10px;
+      padding: 2px 8px;
+      border-radius: 12px;
     }
     .events-panel-body {
       padding: 0;
-      flex: 1;
+      flex: 1 1 auto;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -3296,18 +3326,20 @@ function generateCalendarPrintHTML(options) {
       width: 100%;
       border-collapse: collapse;
       table-layout: auto;
-      font-size: 9px;
+      font-size: 9.5px;
     }
     .compact-events-table th {
       background: #F1F5F9;
       color: #475569;
       font-weight: 700;
-      padding: 3px 4px;
-      border-bottom: 1px solid #CBD5E1;
+      padding: 4px 5px;
+      border-bottom: 1.5px solid #CBD5E1;
+      font-size: 9.5px;
     }
     .compact-events-table td {
       border-bottom: 1px solid #F1F5F9;
-      line-height: 1.2;
+      line-height: 1.3;
+      padding: 4px 5px;
     }
     .compact-events-table tr:last-child td {
       border-bottom: none;
@@ -3315,7 +3347,7 @@ function generateCalendarPrintHTML(options) {
     .ev-date-badge {
       font-weight: 700;
       color: #1E293B;
-      font-size: 9px;
+      font-size: 9.5px;
     }
     .ev-time-badge {
       font-size: 8px;
@@ -3325,7 +3357,7 @@ function generateCalendarPrintHTML(options) {
     .ev-title-text {
       font-weight: 600;
       color: #0F172A;
-      font-size: 9px;
+      font-size: 9.5px;
       line-height: 1.25;
     }
     .ev-loc-text {
@@ -3339,33 +3371,37 @@ function generateCalendarPrintHTML(options) {
       color: #475569;
       font-weight: 600;
       background: #F8FAFC;
-      padding: 4px;
+      padding: 5px;
       border-top: 1px dashed #CBD5E1;
     }
     .empty-events-box {
-      flex: 1;
+      flex: 0 0 auto;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 16px 10px;
+      padding: 24px 12px;
       text-align: center;
     }
     .events-panel-notes {
       margin-top: auto;
-      padding: 5px 8px;
+      padding: 8px 10px;
       background: #F8FAFC;
       border-top: 1px solid #E2E8F0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
     }
     .notes-title {
-      font-size: 8.5px;
+      font-size: 9px;
       font-weight: 700;
       color: #64748B;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
     .notes-line {
       border-bottom: 1px dotted #CBD5E1;
-      height: 15px;
+      height: 24px;
     }
 
     /* Event List Table (Full Schedule Mode) */
@@ -3412,18 +3448,19 @@ function generateCalendarPrintHTML(options) {
 
     /* Signatures */
     .sig-container {
-      margin-top: 8px;
+      margin-top: 6px;
       display: flex;
       justify-content: space-around;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
       padding: 0 16px;
       gap: 20px;
+      flex-shrink: 0;
     }
     .sig-box {
       text-align: center;
       font-size: 10px;
-      line-height: 1.4;
+      line-height: 1.35;
       min-width: 180px;
       max-width: 320px;
       flex: 1;
@@ -3443,7 +3480,7 @@ function generateCalendarPrintHTML(options) {
 
     /* Footer */
     .print-footer {
-      margin-top: 6px;
+      margin-top: 4px;
       padding-top: 4px;
       border-top: 1px solid #CBD5E1;
       display: flex;
@@ -3452,6 +3489,7 @@ function generateCalendarPrintHTML(options) {
       color: #64748B;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
+      flex-shrink: 0;
     }
 
     @media print {
@@ -3464,6 +3502,7 @@ function generateCalendarPrintHTML(options) {
         padding: 0 !important;
         overflow: visible !important;
         width: 100% !important;
+        height: 100% !important;
       }
       .print-doc {
         max-width: 100% !important;
@@ -3472,37 +3511,56 @@ function generateCalendarPrintHTML(options) {
         padding: 0 !important;
         box-shadow: none !important;
         border: none !important;
-        overflow: visible !important;
       }
       .print-page-wrapper {
         box-sizing: border-box !important;
       }
       .grid-month-page {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 198mm !important;
         max-height: 198mm !important;
         overflow: hidden !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+      }
+      .grid-month-page:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
       }
       .cal-month-body {
         display: flex !important;
         flex-direction: row !important;
-        gap: 10px !important;
+        gap: 12px !important;
         align-items: stretch !important;
+        flex: 1 1 auto !important;
+        min-height: 520px !important;
+        margin: 4px 0 6px 0 !important;
       }
       .cal-grid-col {
-        flex: 0 0 62% !important;
-        max-width: 62% !important;
-        min-width: 0 !important;
-      }
-      .cal-events-col {
-        flex: 0 0 38% !important;
-        max-width: 38% !important;
+        flex: 0 0 65% !important;
+        max-width: 65% !important;
         min-width: 0 !important;
         display: flex !important;
         flex-direction: column !important;
+        height: 100% !important;
+      }
+      .cal-events-col {
+        flex: 0 0 35% !important;
+        max-width: 35% !important;
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
       }
       .cal-table {
         width: 100% !important;
+        height: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
         table-layout: fixed !important;
@@ -3512,6 +3570,16 @@ function generateCalendarPrintHTML(options) {
         width: 100% !important;
         table-layout: auto !important;
         border-collapse: collapse !important;
+      }
+      .events-panel {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      .events-panel-body {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
       }
       .event-table {
         width: 100% !important;
@@ -3534,10 +3602,12 @@ function generateCalendarPrintHTML(options) {
       .sig-container {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        flex-shrink: 0 !important;
       }
       .print-footer {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        flex-shrink: 0 !important;
       }
     }
   </style>
