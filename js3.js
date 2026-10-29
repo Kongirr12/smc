@@ -293,29 +293,43 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
         }
 
         /* สไตล์ปฏิทินรายเดือน (MHC Calendar 2-Column Full A4 Fit) */
+        .grid-month-page {
+          height: auto !important;
+          max-height: 185mm !important;
+          overflow: hidden !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-start !important;
+          box-sizing: border-box !important;
+        }
+        .grid-month-page:last-child {
+          page-break-after: auto !important;
+          break-after: auto !important;
+        }
         .cal-month-body {
           flex: 1 1 auto !important;
           display: flex !important;
           flex-direction: row !important;
-          gap: 12px !important;
+          gap: 10px !important;
           align-items: stretch !important;
-          margin: 4px 0 !important;
-          height: 570px !important;
-          min-height: 520px !important;
+          margin: 3px 0 5px 0 !important;
+          height: auto !important;
         }
         .cal-grid-col {
-          flex: 0 0 65% !important;
-          max-width: 65% !important;
+          flex: 0 0 64% !important;
+          max-width: 64% !important;
           display: flex !important;
           flex-direction: column !important;
-          height: 100% !important;
         }
         .cal-events-col {
-          flex: 0 0 35% !important;
-          max-width: 35% !important;
+          flex: 0 0 36% !important;
+          max-width: 36% !important;
           display: flex !important;
           flex-direction: column !important;
-          height: 100% !important;
         }
         .cal-table {
           width: 100% !important;
@@ -3134,20 +3148,32 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
           .cal-month-body {
             display: flex !important;
             flex-direction: row !important;
-            gap: 12px !important;
+            gap: 10px !important;
             align-items: stretch !important;
             flex: 1 1 auto !important;
-            min-height: 520px !important;
+            margin: 3px 0 5px 0 !important;
+            height: auto !important;
           }
           .cal-grid-col {
-            flex: 0 0 65% !important;
-            max-width: 65% !important;
+            flex: 0 0 64% !important;
+            max-width: 64% !important;
             min-width: 0 !important;
             display: flex !important;
             flex-direction: column !important;
           }
           .cal-events-col {
-            flex: 0 0 35% !important;
+            flex: 0 0 36% !important;
+            max-width: 36% !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          .grid-month-page {
+            height: auto !important;
+            max-height: 185mm !important;
+            overflow: hidden !important;
+            justify-content: flex-start !important;
+          }
             max-width: 35% !important;
             min-width: 0 !important;
             display: flex !important;
@@ -3334,22 +3360,22 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             .cal-month-body {
               display: flex !important;
               flex-direction: row !important;
-              gap: 12px !important;
+              gap: 10px !important;
               align-items: stretch !important;
               flex: 1 1 auto !important;
-              min-height: 520px !important;
-              margin: 4px 0 6px 0 !important;
+              margin: 3px 0 5px 0 !important;
+              height: auto !important;
             }
             .cal-grid-col {
-              flex: 0 0 65% !important;
-              max-width: 65% !important;
+              flex: 0 0 64% !important;
+              max-width: 64% !important;
               min-width: 0 !important;
               display: flex !important;
               flex-direction: column !important;
             }
             .cal-events-col {
-              flex: 0 0 35% !important;
-              max-width: 35% !important;
+              flex: 0 0 36% !important;
+              max-width: 36% !important;
               min-width: 0 !important;
               display: flex !important;
               flex-direction: column !important;
@@ -3357,8 +3383,8 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             .grid-month-page {
               width: 100% !important;
               max-width: 100% !important;
-              height: 198mm !important;
-              max-height: 198mm !important;
+              height: auto !important;
+              max-height: 185mm !important;
               overflow: hidden !important;
               page-break-inside: avoid !important;
               break-inside: avoid !important;
@@ -3366,7 +3392,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               break-after: page !important;
               display: flex !important;
               flex-direction: column !important;
-              justify-content: space-between !important;
+              justify-content: flex-start !important;
               box-sizing: border-box !important;
             }
             .grid-month-page:last-child {
@@ -3389,10 +3415,13 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               flex-wrap: nowrap !important;
               page-break-inside: avoid !important;
               break-inside: avoid !important;
+              margin-top: 6px !important;
+              margin-bottom: 2px !important;
             }
             .footer, .print-footer {
               position: static !important;
-              margin-top: 14px !important;
+              margin-top: 4px !important;
+              padding-top: 3px !important;
               page-break-inside: avoid !important;
             }
             .no-print, .no-print-bar { display: none !important; }

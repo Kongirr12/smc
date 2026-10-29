@@ -2714,12 +2714,12 @@ function generateCalendarPrintHTML(options) {
         return sMonth <= ym && ym <= eMonth;
       });
 
-      // Calendar Grid Rows: Sized to fill full A4 landscape height (~540px body)
+      // Calendar Grid Rows: Safe height preventing any bottom clipping (A4 Landscape safe: ~410px grid)
       let gridRows = '';
       let dayCounter = 1;
       const totalWeeks = Math.ceil((startDay + daysInMonth) / 7);
-      const cellHeight = (totalWeeks === 6) ? '88px' : '108px';
-      const maxPillsPerCell = (totalWeeks === 6) ? 3 : 4;
+      const cellHeight = (totalWeeks === 6) ? '64px' : '78px';
+      const maxPillsPerCell = (totalWeeks === 6) ? 3 : 3;
 
       for (let week = 0; week < totalWeeks; week++) {
         gridRows += '<tr>';
@@ -2745,7 +2745,7 @@ function generateCalendarPrintHTML(options) {
               const t = typeConfig[e.type] || typeConfig.general;
               const timePrefix = e.start_time ? `<span class="ev-time">${safeEscape(e.start_time)}</span> ` : '';
               evHTML += `
-                <div class="ev-pill" style="border-left: 2.5px solid ${t.color}; background:${t.bg}; color:${t.color};">
+                <div class="ev-pill" style="border-left: 2px solid ${t.color}; background:${t.bg}; color:${t.color};">
                   ${timePrefix}${safeEscape(e.title)}
                 </div>
               `;
@@ -2766,20 +2766,20 @@ function generateCalendarPrintHTML(options) {
         gridRows += '</tr>';
       }
 
-      // Compact Event Schedule (Right Column) - Sized to match full A4 height
+      // Compact Event Schedule (Right Column) - Sized safely for A4 Landscape
       let rightEventsHTML = '';
-      const maxEventRows = (totalWeeks === 6) ? 10 : 12;
+      const maxEventRows = (totalWeeks === 6) ? 8 : 9;
 
       if (monthEvents.length === 0) {
         let noteLinesHTML = '';
-        for (let l = 0; l < 8; l++) {
+        for (let l = 0; l < 5; l++) {
           noteLinesHTML += '<div class="notes-line"></div>';
         }
         rightEventsHTML = `
           <div class="empty-events-box">
-            <div style="font-size:24px; margin-bottom:4px;">📅</div>
-            <div style="font-size:11px; font-weight:700; color:#334155;">ไม่มีกิจกรรมหรือกำหนดการพิเศษในเดือนนี้</div>
-            <div style="font-size:9.5px; color:#64748B; margin-top:2px;">(ดำเนินกิจกรรมและการเรียนการสอนตามปกติ)</div>
+            <div style="font-size:22px; margin-bottom:3px;">📅</div>
+            <div style="font-size:10.5px; font-weight:700; color:#334155;">ไม่มีกิจกรรมหรือกำหนดการพิเศษในเดือนนี้</div>
+            <div style="font-size:9px; color:#64748B; margin-top:2px;">(ดำเนินกิจกรรมและการเรียนการสอนตามปกติ)</div>
           </div>
           <div class="events-panel-notes">
             <div class="notes-title">📝 บันทึก / หมายเหตุประจำเดือน:</div>
@@ -2797,14 +2797,14 @@ function generateCalendarPrintHTML(options) {
           const dateBadge = formatCompactRange(e.start_date, e.end_date);
           evTableRows += `
             <tr>
-              <td style="width:72px; text-align:center; vertical-align:top; white-space:nowrap; padding:4px 3px;">
+              <td style="width:70px; text-align:center; vertical-align:top; white-space:nowrap; padding:3px 2px;">
                 <div class="ev-date-badge">${dateBadge}</div>
                 ${timeStr ? `<div class="ev-time-badge">${timeStr}</div>` : ''}
               </td>
-              <td style="width:50px; text-align:center; vertical-align:top; padding:4px 3px;">
+              <td style="width:48px; text-align:center; vertical-align:top; padding:3px 2px;">
                 <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
               </td>
-              <td style="vertical-align:top; padding:4px 5px;">
+              <td style="vertical-align:top; padding:3px 4px;">
                 <div class="ev-title-text">${safeEscape(e.title)}</div>
                 ${e.location ? `<div class="ev-loc-text">📍 ${safeEscape(e.location)}</div>` : ''}
               </td>
@@ -2823,8 +2823,8 @@ function generateCalendarPrintHTML(options) {
         }
 
         let notesSection = '';
-        if (displayEvents.length < 8) {
-          const linesNeeded = Math.max(3, 9 - displayEvents.length);
+        if (displayEvents.length < 6) {
+          const linesNeeded = Math.max(2, 6 - displayEvents.length);
           let noteLinesHTML = '';
           for (let l = 0; l < linesNeeded; l++) {
             noteLinesHTML += '<div class="notes-line"></div>';
@@ -2841,8 +2841,8 @@ function generateCalendarPrintHTML(options) {
           <table class="compact-events-table">
             <thead>
               <tr>
-                <th style="width:72px; text-align:center;">วัน/เวลา</th>
-                <th style="width:50px; text-align:center;">ประเภท</th>
+                <th style="width:70px; text-align:center;">วัน/เวลา</th>
+                <th style="width:48px; text-align:center;">ประเภท</th>
                 <th style="text-align:left;">กิจกรรม / กำหนดการ</th>
               </tr>
             </thead>
@@ -3016,7 +3016,7 @@ function generateCalendarPrintHTML(options) {
   <style>
     @page {
       size: A4 landscape;
-      margin: 5mm 6mm 6mm 6mm;
+      margin: 8mm 10mm 10mm 10mm;
     }
     * {
       box-sizing: border-box;
@@ -3046,11 +3046,11 @@ function generateCalendarPrintHTML(options) {
       box-sizing: border-box;
       width: 100%;
       max-width: 100%;
-      height: 198mm;
-      max-height: 198mm;
+      height: auto;
+      max-height: 185mm;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-start;
       page-break-inside: avoid;
       break-inside: avoid;
       page-break-after: always;
@@ -3130,58 +3130,57 @@ function generateCalendarPrintHTML(options) {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      padding-bottom: 5px;
+      gap: 10px;
+      padding-bottom: 4px;
       border-bottom: 2px solid #800020;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       flex-shrink: 0;
     }
     .cal-header .logo {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       object-fit: contain;
     }
     .cal-header-text {
       text-align: center;
     }
     .cal-header-school {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 800;
       color: #800020;
       line-height: 1.15;
     }
     .cal-header-title {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
       color: #0F172A;
       margin: 1px 0;
       line-height: 1.2;
     }
     .cal-header-sub {
-      font-size: 9.5px;
+      font-size: 9px;
       color: #64748B;
       line-height: 1.2;
     }
 
-    /* 2-Column Side-by-Side Monthly Body: Fills full A4 landscape printable area */
+    /* 2-Column Side-by-Side Monthly Body: Balanced to never clip at bottom */
     .cal-month-body {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: stretch;
       flex: 1 1 auto;
-      margin: 4px 0 6px 0;
-      min-height: 520px;
+      margin: 3px 0 5px 0;
     }
     .cal-grid-col {
-      flex: 0 0 65%;
-      max-width: 65%;
+      flex: 0 0 64%;
+      max-width: 64%;
       min-width: 0;
       display: flex;
       flex-direction: column;
     }
     .cal-events-col {
-      flex: 0 0 35%;
-      max-width: 35%;
+      flex: 0 0 36%;
+      max-width: 36%;
       min-width: 0;
       display: flex;
       flex-direction: column;
@@ -3222,19 +3221,19 @@ function generateCalendarPrintHTML(options) {
       background: #F8FAFC;
       color: #0F172A;
       font-weight: 700;
-      font-size: 10.5px;
-      padding: 4px 2px;
+      font-size: 10px;
+      padding: 3px 2px;
       text-align: center;
       border: 1px solid #CBD5E1;
       width: 14.285%;
-      height: 26px;
+      height: 24px;
     }
     .cal-table th.sun-th { color: #DC2626; background: #FEF2F2; }
     .cal-table th.sat-th { color: #B45309; background: #FFFBEB; }
     .cal-table td {
       border: 1px solid #CBD5E1;
       vertical-align: top;
-      padding: 3px 4px;
+      padding: 2px 3px;
       background: #FFFFFF;
       box-sizing: border-box;
     }
@@ -3243,10 +3242,10 @@ function generateCalendarPrintHTML(options) {
     }
     .day-num {
       font-weight: 800;
-      font-size: 13px;
+      font-size: 12px;
       color: #1E293B;
       line-height: 1;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       text-align: right;
       padding-right: 2px;
     }
@@ -3255,19 +3254,19 @@ function generateCalendarPrintHTML(options) {
     .ev-cell-body {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1.5px;
       overflow: hidden;
     }
     .ev-pill {
-      font-size: 8.5px;
-      line-height: 1.25;
-      padding: 2px 4px;
-      border-radius: 3px;
+      font-size: 8px;
+      line-height: 1.2;
+      padding: 1px 3px;
+      border-radius: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       font-weight: 600;
-      margin-bottom: 2px;
+      margin-bottom: 1.5px;
     }
     .ev-time {
       font-weight: 700;
@@ -3275,11 +3274,11 @@ function generateCalendarPrintHTML(options) {
       margin-right: 2px;
     }
     .ev-more {
-      font-size: 8px;
+      font-size: 7.5px;
       color: #64748B;
       font-weight: 700;
       padding-left: 2px;
-      line-height: 1.2;
+      line-height: 1.1;
     }
 
     /* Right Column: Events Panel */
@@ -3295,24 +3294,24 @@ function generateCalendarPrintHTML(options) {
     .events-panel-header {
       background: #F8FAFC;
       border-bottom: 1.5px solid #CBD5E1;
-      padding: 6px 10px;
+      padding: 5px 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-shrink: 0;
     }
     .events-panel-title {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       color: #1E293B;
     }
     .events-badge {
-      font-size: 9.5px;
+      font-size: 9px;
       font-weight: 700;
       background: #EEF2FF;
       color: #4338CA;
       border: 1px solid #C7D2FE;
-      padding: 2px 8px;
+      padding: 1.5px 7px;
       border-radius: 12px;
     }
     .events-panel-body {
@@ -3326,20 +3325,20 @@ function generateCalendarPrintHTML(options) {
       width: 100%;
       border-collapse: collapse;
       table-layout: auto;
-      font-size: 9.5px;
+      font-size: 9px;
     }
     .compact-events-table th {
       background: #F1F5F9;
       color: #475569;
       font-weight: 700;
-      padding: 4px 5px;
+      padding: 3px 4px;
       border-bottom: 1.5px solid #CBD5E1;
-      font-size: 9.5px;
+      font-size: 9px;
     }
     .compact-events-table td {
       border-bottom: 1px solid #F1F5F9;
-      line-height: 1.3;
-      padding: 4px 5px;
+      line-height: 1.25;
+      padding: 3px 4px;
     }
     .compact-events-table tr:last-child td {
       border-bottom: none;
@@ -3347,31 +3346,31 @@ function generateCalendarPrintHTML(options) {
     .ev-date-badge {
       font-weight: 700;
       color: #1E293B;
-      font-size: 9.5px;
+      font-size: 9px;
     }
     .ev-time-badge {
-      font-size: 8px;
+      font-size: 7.5px;
       color: #64748B;
       margin-top: 1px;
     }
     .ev-title-text {
       font-weight: 600;
       color: #0F172A;
-      font-size: 9.5px;
+      font-size: 9px;
       line-height: 1.25;
     }
     .ev-loc-text {
-      font-size: 8px;
+      font-size: 7.5px;
       color: #64748B;
       margin-top: 1px;
     }
     .ev-more-row td {
       text-align: center;
-      font-size: 8.5px;
+      font-size: 8px;
       color: #475569;
       font-weight: 600;
       background: #F8FAFC;
-      padding: 5px;
+      padding: 4px;
       border-top: 1px dashed #CBD5E1;
     }
     .empty-events-box {
@@ -3380,12 +3379,12 @@ function generateCalendarPrintHTML(options) {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px 12px;
+      padding: 16px 10px;
       text-align: center;
     }
     .events-panel-notes {
       margin-top: auto;
-      padding: 8px 10px;
+      padding: 6px 8px;
       background: #F8FAFC;
       border-top: 1px solid #E2E8F0;
       flex: 1 1 auto;
@@ -3394,14 +3393,14 @@ function generateCalendarPrintHTML(options) {
       justify-content: flex-end;
     }
     .notes-title {
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #64748B;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
     .notes-line {
       border-bottom: 1px dotted #CBD5E1;
-      height: 24px;
+      height: 18px;
     }
 
     /* Event List Table (Full Schedule Mode) */
@@ -3446,9 +3445,10 @@ function generateCalendarPrintHTML(options) {
       border-radius: 3px;
     }
 
-    /* Signatures */
+    /* Signatures: Positioned comfortably without edge-clipping */
     .sig-container {
       margin-top: 6px;
+      margin-bottom: 2px;
       display: flex;
       justify-content: space-around;
       page-break-inside: avoid !important;
@@ -3459,16 +3459,16 @@ function generateCalendarPrintHTML(options) {
     }
     .sig-box {
       text-align: center;
-      font-size: 10px;
+      font-size: 9.5px;
       line-height: 1.35;
       min-width: 180px;
       max-width: 320px;
       flex: 1;
     }
     .sig-stamp-zone {
-      height: 38px;
-      min-height: 38px;
-      max-height: 38px;
+      height: 32px;
+      min-height: 32px;
+      max-height: 32px;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -3478,14 +3478,14 @@ function generateCalendarPrintHTML(options) {
       white-space: nowrap;
     }
 
-    /* Footer */
+    /* Footer: Guaranteed to never touch or clip the paper bottom */
     .print-footer {
       margin-top: 4px;
-      padding-top: 4px;
+      padding-top: 3px;
       border-top: 1px solid #CBD5E1;
       display: flex;
       justify-content: space-between;
-      font-size: 8.5px;
+      font-size: 8px;
       color: #64748B;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
@@ -3502,7 +3502,7 @@ function generateCalendarPrintHTML(options) {
         padding: 0 !important;
         overflow: visible !important;
         width: 100% !important;
-        height: 100% !important;
+        height: auto !important;
       }
       .print-doc {
         max-width: 100% !important;
@@ -3518,8 +3518,8 @@ function generateCalendarPrintHTML(options) {
       .grid-month-page {
         width: 100% !important;
         max-width: 100% !important;
-        height: 198mm !important;
-        max-height: 198mm !important;
+        height: auto !important;
+        max-height: 185mm !important;
         overflow: hidden !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
@@ -3527,7 +3527,8 @@ function generateCalendarPrintHTML(options) {
         break-after: page !important;
         display: flex !important;
         flex-direction: column !important;
-        justify-content: space-between !important;
+        justify-content: flex-start !important;
+        box-sizing: border-box !important;
       }
       .grid-month-page:last-child {
         page-break-after: auto !important;
@@ -3536,27 +3537,24 @@ function generateCalendarPrintHTML(options) {
       .cal-month-body {
         display: flex !important;
         flex-direction: row !important;
-        gap: 12px !important;
+        gap: 10px !important;
         align-items: stretch !important;
         flex: 1 1 auto !important;
-        min-height: 520px !important;
-        margin: 4px 0 6px 0 !important;
+        margin: 3px 0 5px 0 !important;
       }
       .cal-grid-col {
-        flex: 0 0 65% !important;
-        max-width: 65% !important;
+        flex: 0 0 64% !important;
+        max-width: 64% !important;
         min-width: 0 !important;
         display: flex !important;
         flex-direction: column !important;
-        height: 100% !important;
       }
       .cal-events-col {
-        flex: 0 0 35% !important;
-        max-width: 35% !important;
+        flex: 0 0 36% !important;
+        max-width: 36% !important;
         min-width: 0 !important;
         display: flex !important;
         flex-direction: column !important;
-        height: 100% !important;
       }
       .cal-table {
         width: 100% !important;
@@ -3603,6 +3601,8 @@ function generateCalendarPrintHTML(options) {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         flex-shrink: 0 !important;
+        margin-top: 6px !important;
+        margin-bottom: 2px !important;
       }
       .print-footer {
         page-break-inside: avoid !important;
