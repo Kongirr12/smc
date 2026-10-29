@@ -2627,6 +2627,21 @@ function generateCalendarPrintHTML(options) {
     return `${sFormatted} - ${ep[2]} ${thaiMonthsShort[ep[1]] || ''} ${ep[0] + 543}`;
   }
 
+  function formatCompactRange(sStr, eStr) {
+    if (!sStr) return '-';
+    const sp = sStr.split('-').map(Number);
+    const sDay = sp[2];
+    const sMon = thaiMonthsShort[sp[1]] || '';
+    if (!eStr || sStr === eStr) return `${sDay} ${sMon}`;
+    const ep = eStr.split('-').map(Number);
+    const eDay = ep[2];
+    const eMon = thaiMonthsShort[ep[1]] || '';
+    if (sp[0] === ep[0] && sp[1] === ep[1]) {
+      return `${sDay}-${eDay} ${sMon}`;
+    }
+    return `${sDay} ${sMon} - ${eDay} ${eMon}`;
+  }
+
   const typeConfig = {
     academic: { label: 'วิชาการ', color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE' },
     activity: { label: 'กิจกรรม', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
@@ -2703,13 +2718,15 @@ function generateCalendarPrintHTML(options) {
       let gridRows = '';
       let dayCounter = 1;
       const totalWeeks = Math.ceil((startDay + daysInMonth) / 7);
+      const cellHeight = (totalWeeks === 6) ? '37px' : '45px';
+      const maxPillsPerCell = 2;
 
       for (let week = 0; week < totalWeeks; week++) {
         gridRows += '<tr>';
         for (let dow = 0; dow < 7; dow++) {
           const cellIndex = week * 7 + dow;
           if (cellIndex < startDay || dayCounter > daysInMonth) {
-            gridRows += '<td class="empty-cell">&nbsp;</td>';
+            gridRows += `<td class="empty-cell" style="height:${cellHeight};">&nbsp;</td>`;
           } else {
             const d = dayCounter;
             const ds = `${ym}-${String(d).padStart(2, '0')}`;
@@ -2724,21 +2741,21 @@ function generateCalendarPrintHTML(options) {
             const dateClass = isSun ? 'day-num num-sun' : (isSat ? 'day-num num-sat' : 'day-num');
 
             let evHTML = '';
-            dayEvents.slice(0, 3).forEach(e => {
+            dayEvents.slice(0, maxPillsPerCell).forEach(e => {
               const t = typeConfig[e.type] || typeConfig.general;
               const timePrefix = e.start_time ? `<span class="ev-time">${safeEscape(e.start_time)}</span> ` : '';
               evHTML += `
-                <div class="ev-pill" style="border-left: 2.5px solid ${t.color}; background:${t.bg}; color:${t.color};">
+                <div class="ev-pill" style="border-left: 2px solid ${t.color}; background:${t.bg}; color:${t.color};">
                   ${timePrefix}${safeEscape(e.title)}
                 </div>
               `;
             });
-            if (dayEvents.length > 3) {
-              evHTML += `<div style="font-size:8px; color:#64748B; font-weight:600; padding-left:2px;">+${dayEvents.length - 3} อื่นๆ</div>`;
+            if (dayEvents.length > maxPillsPerCell) {
+              evHTML += `<div class="ev-more">+${dayEvents.length - maxPillsPerCell} อื่นๆ</div>`;
             }
 
             gridRows += `
-              <td class="day-cell">
+              <td class="day-cell" style="height:${cellHeight};">
                 <div class="${dateClass}">${d}</div>
                 <div class="ev-cell-body">${evHTML}</div>
               </td>
@@ -2749,90 +2766,142 @@ function generateCalendarPrintHTML(options) {
         gridRows += '</tr>';
       }
 
-      // Event Table for this month
-      let tableRows = '';
+      // Compact Event Schedule (Right Column)
+      let rightEventsHTML = '';
+      const maxEventRows = (totalWeeks === 6) ? 7 : 8;
+
       if (monthEvents.length === 0) {
-        tableRows = `
-          <tr>
-            <td colspan="6" style="text-align:center; padding:12px; color:#64748B; font-size:11px;">
-              ไม่มีกิจกรรมหรือกำหนดการที่บันทึกไว้ในเดือนนี้
-            </td>
-          </tr>
+        rightEventsHTML = `
+          <div class="empty-events-box">
+            <div style="font-size:20px; margin-bottom:4px;">📅</div>
+            <div style="font-size:10.5px; font-weight:700; color:#334155;">ไม่มีกิจกรรมหรือกำหนดการพิเศษในเดือนนี้</div>
+            <div style="font-size:9px; color:#64748B; margin-top:2px;">(ดำเนินกิจกรรมและการเรียนการสอนตามปกติ)</div>
+          </div>
+          <div class="events-panel-notes">
+            <div class="notes-title">📝 บันทึก / หมายเหตุประจำเดือน:</div>
+            <div class="notes-line"></div>
+            <div class="notes-line"></div>
+            <div class="notes-line"></div>
+          </div>
         `;
       } else {
-        monthEvents.forEach((e, idx) => {
+        const displayEvents = monthEvents.slice(0, maxEventRows);
+        const remainingEventsCount = monthEvents.length - displayEvents.length;
+
+        let evTableRows = '';
+        displayEvents.forEach(e => {
           const t = typeConfig[e.type] || typeConfig.general;
-          const timeStr = e.start_time ? (e.end_time ? `${safeEscape(e.start_time)} - ${safeEscape(e.end_time)} น.` : `${safeEscape(e.start_time)} น.`) : 'ตลอดวัน';
-          tableRows += `
+          const timeStr = e.start_time ? (e.end_time ? `${safeEscape(e.start_time)} - ${safeEscape(e.end_time)} น.` : `${safeEscape(e.start_time)} น.`) : '';
+          const dateBadge = formatCompactRange(e.start_date, e.end_date);
+          evTableRows += `
             <tr>
-              <td style="text-align:center; width:35px;">${idx + 1}</td>
-              <td style="white-space:nowrap; width:130px; font-weight:600;">${formatRange(e.start_date, e.end_date)}</td>
-              <td style="white-space:nowrap; width:95px; text-align:center;">${timeStr}</td>
-              <td style="width:75px; text-align:center;">
+              <td style="width:68px; text-align:center; vertical-align:top; white-space:nowrap; padding:3px 2px;">
+                <div class="ev-date-badge">${dateBadge}</div>
+                ${timeStr ? `<div class="ev-time-badge">${timeStr}</div>` : ''}
+              </td>
+              <td style="width:48px; text-align:center; vertical-align:top; padding:3px 2px;">
                 <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
               </td>
-              <td>
-                <div style="font-weight:700; color:#0F172A;">${safeEscape(e.title)}</div>
-                ${e.description ? `<div style="font-size:10px; color:#64748B; margin-top:2px; line-height:1.3;">${safeEscape(e.description)}</div>` : ''}
+              <td style="vertical-align:top; padding:3px 4px;">
+                <div class="ev-title-text">${safeEscape(e.title)}</div>
+                ${e.location ? `<div class="ev-loc-text">📍 ${safeEscape(e.location)}</div>` : ''}
               </td>
-              <td style="width:130px; color:#334155;">${safeEscape(e.location || '-')}</td>
             </tr>
           `;
         });
+
+        if (remainingEventsCount > 0) {
+          evTableRows += `
+            <tr class="ev-more-row">
+              <td colspan="3">
+                + มีกำหนดการอื่นๆ อีก ${remainingEventsCount} รายการ (ตรวจสอบได้ในระบบ MHC Smart School)
+              </td>
+            </tr>
+          `;
+        }
+
+        let notesSection = '';
+        if (displayEvents.length <= 4) {
+          notesSection = `
+            <div class="events-panel-notes">
+              <div class="notes-title">📝 บันทึก / ข้อสั่งการประจำเดือน:</div>
+              <div class="notes-line"></div>
+              <div class="notes-line"></div>
+            </div>
+          `;
+        }
+
+        rightEventsHTML = `
+          <table class="compact-events-table">
+            <thead>
+              <tr>
+                <th style="width:68px; text-align:center;">วัน/เวลา</th>
+                <th style="width:48px; text-align:center;">ประเภท</th>
+                <th style="text-align:left;">กิจกรรม / กำหนดการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${evTableRows}
+            </tbody>
+          </table>
+          ${notesSection}
+        `;
       }
 
       const pageBreakStyle = isLastMonth ? 'page-break-after: auto; break-after: auto;' : 'page-break-after: always; break-after: page;';
 
       return `
-        <div class="print-page-wrapper" style="${pageBreakStyle}">
-          <div class="header">
+        <div class="print-page-wrapper grid-month-page" style="${pageBreakStyle}">
+          <!-- Compact Official Header -->
+          <div class="cal-header">
             <img src="${schoolLogoUrl}" alt="School Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';">
-            <div class="header-text">
-              <div class="header-school">โรงเรียนมหาชัยพิทยาคาร</div>
-              <div class="header-title">ปฏิทินวิชาการและกิจกรรม ประจำเดือน${mName} พ.ศ. ${yBE}</div>
-              <div class="header-sub">ฝ่ายบริหารงานวิชาการ | สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
+            <div class="cal-header-text">
+              <div class="cal-header-school">โรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="cal-header-title">ปฏิทินวิชาการและกิจกรรม ประจำเดือน${mName} พ.ศ. ${yBE}</div>
+              <div class="cal-header-sub">ฝ่ายบริหารงานวิชาการ | สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
             </div>
           </div>
 
-          <!-- Calendar Grid Table -->
-          <table class="cal-table">
-            <thead>
-              <tr>
-                <th class="sun-th">อาทิตย์</th>
-                <th>จันทร์</th>
-                <th>อังคาร</th>
-                <th>พุธ</th>
-                <th>พฤหัสบดี</th>
-                <th>ศุกร์</th>
-                <th class="sat-th">เสาร์</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${gridRows}
-            </tbody>
-          </table>
+          <!-- 2-Column Side-by-Side Body: Fit strictly within single A4 Landscape page -->
+          <div class="cal-month-body">
+            <!-- Left Column: Calendar 7-Day Grid (62% width) -->
+            <div class="cal-grid-col">
+              <table class="cal-table">
+                <thead>
+                  <tr>
+                    <th class="sun-th">อาทิตย์</th>
+                    <th>จันทร์</th>
+                    <th>อังคาร</th>
+                    <th>พุธ</th>
+                    <th>พฤหัสบดี</th>
+                    <th>ศุกร์</th>
+                    <th class="sat-th">เสาร์</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${gridRows}
+                </tbody>
+              </table>
+            </div>
 
-          <!-- Event List -->
-          <div class="section-title">
-            <span>📌 กำหนดการและกิจกรรมในรอบเดือน (${monthEvents.length} รายการ)</span>
+            <!-- Right Column: Monthly Agenda & Events Panel (38% width) -->
+            <div class="cal-events-col">
+              <div class="events-panel">
+                <div class="events-panel-header">
+                  <span class="events-panel-title">📌 กำหนดการและกิจกรรมในรอบเดือน</span>
+                  <span class="events-badge">${monthEvents.length} รายการ</span>
+                </div>
+                <div class="events-panel-body">
+                  ${rightEventsHTML}
+                </div>
+              </div>
+            </div>
           </div>
-          <table class="event-table">
-            <thead>
-              <tr>
-                <th style="width:35px; text-align:center;">ลำดับ</th>
-                <th style="width:130px;">วัน/เดือน/ปี</th>
-                <th style="width:95px; text-align:center;">เวลา</th>
-                <th style="width:75px; text-align:center;">ประเภท</th>
-                <th>กิจกรรม / รายละเอียด</th>
-                <th style="width:130px;">สถานที่</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
 
+          <!-- Signatures Block -->
           ${sigBlockHTML}
+
+          <!-- Page Footer -->
           ${footerHTML}
         </div>
       `;
@@ -2959,13 +3028,18 @@ function generateCalendarPrintHTML(options) {
     }
     .print-doc {
       width: 100%;
-      max-width: 277mm;
+      max-width: 282mm;
       margin: 0 auto;
     }
     .print-page-wrapper {
       width: 100%;
       margin: 0 auto;
       box-sizing: border-box;
+    }
+    .grid-month-page {
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
     .no-print-bar {
       background: #1E293B;
@@ -2996,6 +3070,8 @@ function generateCalendarPrintHTML(options) {
     .btn-print:hover {
       background: #600018;
     }
+    
+    /* Header (Full Schedule Table Layout) */
     .header {
       display: flex;
       align-items: center;
@@ -3029,6 +3105,63 @@ function generateCalendarPrintHTML(options) {
       color: #64748B;
     }
 
+    /* Compact Header (Monthly Grid Layout) */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #800020;
+      margin-bottom: 6px;
+    }
+    .cal-header .logo {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
+    .cal-header-text {
+      text-align: center;
+    }
+    .cal-header-school {
+      font-size: 15px;
+      font-weight: 800;
+      color: #800020;
+      line-height: 1.15;
+    }
+    .cal-header-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0F172A;
+      margin: 1px 0;
+      line-height: 1.2;
+    }
+    .cal-header-sub {
+      font-size: 9.5px;
+      color: #64748B;
+      line-height: 1.2;
+    }
+
+    /* 2-Column Side-by-Side Monthly Body */
+    .cal-month-body {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      margin-bottom: 6px;
+    }
+    .cal-grid-col {
+      flex: 0 0 62%;
+      max-width: 62%;
+      min-width: 0;
+    }
+    .cal-events-col {
+      flex: 0 0 38%;
+      max-width: 38%;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
     /* Summary Stat Bar */
     .summary-stat-bar {
       display: flex;
@@ -3057,61 +3190,185 @@ function generateCalendarPrintHTML(options) {
       width: 100%;
       table-layout: fixed;
       border-collapse: collapse;
-      margin-bottom: 8px;
       border: 1.5px solid #0F172A;
     }
     .cal-table th {
-      background: #F1F5F9;
+      background: #F8FAFC;
       color: #0F172A;
       font-weight: 700;
-      font-size: 11px;
-      padding: 4px;
+      font-size: 9.5px;
+      padding: 3px 2px;
       text-align: center;
       border: 1px solid #CBD5E1;
       width: 14.285%;
     }
     .cal-table th.sun-th { color: #DC2626; background: #FEF2F2; }
-    .cal-table th.sat-th { color: #D97706; background: #FFFBEB; }
+    .cal-table th.sat-th { color: #B45309; background: #FFFBEB; }
     .cal-table td {
       border: 1px solid #CBD5E1;
       vertical-align: top;
-      padding: 3px;
-      height: 48px;
+      padding: 2px 2px;
       background: #FFFFFF;
+      box-sizing: border-box;
     }
     .cal-table td.empty-cell {
       background: #F8FAFC;
     }
     .day-num {
       font-weight: 700;
-      font-size: 11px;
+      font-size: 10px;
       color: #1E293B;
       line-height: 1;
-      margin-bottom: 2px;
+      margin-bottom: 1.5px;
+      text-align: right;
+      padding-right: 2px;
     }
     .num-sun { color: #DC2626; }
-    .num-sat { color: #D97706; }
+    .num-sat { color: #B45309; }
     .ev-cell-body {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1.5px;
       overflow: hidden;
     }
     .ev-pill {
-      font-size: 9px;
-      line-height: 1.25;
-      padding: 1px 3px;
+      font-size: 8px;
+      line-height: 1.2;
+      padding: 1px 2px;
       border-radius: 2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-weight: 500;
     }
     .ev-time {
       font-weight: 600;
       opacity: 0.85;
     }
+    .ev-more {
+      font-size: 7.5px;
+      color: #64748B;
+      font-weight: 700;
+      padding-left: 2px;
+      line-height: 1.1;
+    }
 
-    /* Event List Table */
+    /* Right Column: Events Panel */
+    .events-panel {
+      border: 1px solid #CBD5E1;
+      border-radius: 6px;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .events-panel-header {
+      background: #F8FAFC;
+      border-bottom: 1px solid #CBD5E1;
+      padding: 4px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .events-panel-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: #1E293B;
+    }
+    .events-badge {
+      font-size: 8.5px;
+      font-weight: 700;
+      background: #EEF2FF;
+      color: #4338CA;
+      border: 1px solid #C7D2FE;
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+    .events-panel-body {
+      padding: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .compact-events-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      font-size: 9px;
+    }
+    .compact-events-table th {
+      background: #F1F5F9;
+      color: #475569;
+      font-weight: 700;
+      padding: 3px 4px;
+      border-bottom: 1px solid #CBD5E1;
+    }
+    .compact-events-table td {
+      border-bottom: 1px solid #F1F5F9;
+      line-height: 1.2;
+    }
+    .compact-events-table tr:last-child td {
+      border-bottom: none;
+    }
+    .ev-date-badge {
+      font-weight: 700;
+      color: #1E293B;
+      font-size: 9px;
+    }
+    .ev-time-badge {
+      font-size: 8px;
+      color: #64748B;
+      margin-top: 1px;
+    }
+    .ev-title-text {
+      font-weight: 600;
+      color: #0F172A;
+      font-size: 9px;
+      line-height: 1.25;
+    }
+    .ev-loc-text {
+      font-size: 8px;
+      color: #64748B;
+      margin-top: 1px;
+    }
+    .ev-more-row td {
+      text-align: center;
+      font-size: 8.5px;
+      color: #475569;
+      font-weight: 600;
+      background: #F8FAFC;
+      padding: 4px;
+      border-top: 1px dashed #CBD5E1;
+    }
+    .empty-events-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 10px;
+      text-align: center;
+    }
+    .events-panel-notes {
+      margin-top: auto;
+      padding: 5px 8px;
+      background: #F8FAFC;
+      border-top: 1px solid #E2E8F0;
+    }
+    .notes-title {
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #64748B;
+      margin-bottom: 3px;
+    }
+    .notes-line {
+      border-bottom: 1px dotted #CBD5E1;
+      height: 15px;
+    }
+
+    /* Event List Table (Full Schedule Mode) */
     .section-title {
       font-size: 12px;
       font-weight: 700;
@@ -3155,21 +3412,30 @@ function generateCalendarPrintHTML(options) {
 
     /* Signatures */
     .sig-container {
-      margin-top: 14px;
+      margin-top: 8px;
       display: flex;
       justify-content: space-around;
-      page-break-inside: avoid;
-      break-inside: avoid;
-      padding: 0 20px;
-      gap: 24px;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      padding: 0 16px;
+      gap: 20px;
     }
     .sig-box {
       text-align: center;
-      font-size: 11px;
-      line-height: 1.5;
-      min-width: 210px;
-      max-width: 340px;
+      font-size: 10px;
+      line-height: 1.4;
+      min-width: 180px;
+      max-width: 320px;
       flex: 1;
+    }
+    .sig-stamp-zone {
+      height: 38px;
+      min-height: 38px;
+      max-height: 38px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      margin: 0 auto 2px;
     }
     .sig-dots, .sig-name, .sig-title, .sig-date {
       white-space: nowrap;
@@ -3177,15 +3443,15 @@ function generateCalendarPrintHTML(options) {
 
     /* Footer */
     .print-footer {
-      margin-top: 12px;
-      padding-top: 6px;
+      margin-top: 6px;
+      padding-top: 4px;
       border-top: 1px solid #CBD5E1;
       display: flex;
       justify-content: space-between;
-      font-size: 9px;
+      font-size: 8.5px;
       color: #64748B;
-      page-break-inside: avoid;
-      break-inside: avoid;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
     }
 
     @media print {
@@ -3208,11 +3474,43 @@ function generateCalendarPrintHTML(options) {
         border: none !important;
         overflow: visible !important;
       }
+      .print-page-wrapper {
+        box-sizing: border-box !important;
+      }
+      .grid-month-page {
+        max-height: 198mm !important;
+        overflow: hidden !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .cal-month-body {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 10px !important;
+        align-items: stretch !important;
+      }
+      .cal-grid-col {
+        flex: 0 0 62% !important;
+        max-width: 62% !important;
+        min-width: 0 !important;
+      }
+      .cal-events-col {
+        flex: 0 0 38% !important;
+        max-width: 38% !important;
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
       .cal-table {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
         table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+      .compact-events-table {
+        width: 100% !important;
+        table-layout: auto !important;
         border-collapse: collapse !important;
       }
       .event-table {
@@ -3234,6 +3532,10 @@ function generateCalendarPrintHTML(options) {
         break-inside: avoid !important;
       }
       .sig-container {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .print-footer {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }

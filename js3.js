@@ -3030,6 +3030,24 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             table-layout: fixed !important;
             border-collapse: collapse !important;
           }
+          .cal-month-body {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 10px !important;
+            align-items: stretch !important;
+          }
+          .cal-grid-col {
+            flex: 0 0 62% !important;
+            max-width: 62% !important;
+            min-width: 0 !important;
+          }
+          .cal-events-col {
+            flex: 0 0 38% !important;
+            max-width: 38% !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
           .sig-stamp-zone {
             height: 48px !important;
             min-height: 48px !important;
@@ -3207,6 +3225,30 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               table-layout: fixed !important;
               page-break-inside: auto !important;
               border-collapse: collapse !important;
+            }
+            .cal-month-body {
+              display: flex !important;
+              flex-direction: row !important;
+              gap: 10px !important;
+              align-items: stretch !important;
+            }
+            .cal-grid-col {
+              flex: 0 0 62% !important;
+              max-width: 62% !important;
+              min-width: 0 !important;
+            }
+            .cal-events-col {
+              flex: 0 0 38% !important;
+              max-width: 38% !important;
+              min-width: 0 !important;
+              display: flex !important;
+              flex-direction: column !important;
+            }
+            .grid-month-page {
+              max-height: 198mm !important;
+              overflow: hidden !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
             thead { display: table-header-group !important; }
             tfoot { display: table-footer-group !important; }
