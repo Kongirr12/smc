@@ -294,8 +294,9 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
 
         /* สไตล์ปฏิทินรายเดือน (MHC Calendar 2-Column Full A4 Fit) */
         .grid-month-page {
-          height: auto !important;
-          max-height: 185mm !important;
+          height: 188mm !important;
+          min-height: 188mm !important;
+          max-height: 188mm !important;
           overflow: hidden !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
@@ -303,12 +304,20 @@ async function generatePdfFromHtml(html, title, action = 'download', opts = {}) 
           break-after: page !important;
           display: flex !important;
           flex-direction: column !important;
-          justify-content: flex-start !important;
+          justify-content: space-between !important;
           box-sizing: border-box !important;
         }
         .grid-month-page:last-child {
           page-break-after: auto !important;
           break-after: auto !important;
+        }
+        .grid-month-page .sig-container {
+          margin-top: auto !important;
+          margin-bottom: 2px !important;
+        }
+        .grid-month-page .print-footer {
+          margin-top: 4px !important;
+          padding-top: 3px !important;
         }
         .cal-month-body {
           flex: 1 1 auto !important;
@@ -3169,15 +3178,22 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             flex-direction: column !important;
           }
           .grid-month-page {
-            height: auto !important;
-            max-height: 185mm !important;
+            height: 188mm !important;
+            min-height: 188mm !important;
+            max-height: 188mm !important;
             overflow: hidden !important;
-            justify-content: flex-start !important;
-          }
-            max-width: 35% !important;
-            min-width: 0 !important;
             display: flex !important;
             flex-direction: column !important;
+            justify-content: space-between !important;
+            box-sizing: border-box !important;
+          }
+          .grid-month-page .sig-container {
+            margin-top: auto !important;
+            margin-bottom: 2px !important;
+          }
+          .grid-month-page .print-footer {
+            margin-top: 4px !important;
+            padding-top: 3px !important;
           }
           .sig-stamp-zone {
             height: 48px !important;
@@ -3383,8 +3399,9 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
             .grid-month-page {
               width: 100% !important;
               max-width: 100% !important;
-              height: auto !important;
-              max-height: 185mm !important;
+              height: 188mm !important;
+              min-height: 188mm !important;
+              max-height: 188mm !important;
               overflow: hidden !important;
               page-break-inside: avoid !important;
               break-inside: avoid !important;
@@ -3392,7 +3409,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               break-after: page !important;
               display: flex !important;
               flex-direction: column !important;
-              justify-content: flex-start !important;
+              justify-content: space-between !important;
               box-sizing: border-box !important;
             }
             .grid-month-page:last-child {
@@ -3415,7 +3432,7 @@ function showPrintPreviewModal(html, docTitle, directUrl) {
               flex-wrap: nowrap !important;
               page-break-inside: avoid !important;
               break-inside: avoid !important;
-              margin-top: 6px !important;
+              margin-top: auto !important;
               margin-bottom: 2px !important;
             }
             .footer, .print-footer {
