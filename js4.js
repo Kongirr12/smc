@@ -602,7 +602,7 @@ function renderCalendar(container) {
     ${pageHeader('ปฏิทินและข่าวสาร', 'bxs-calendar-event', `
       <div class="flex gap-2 flex-wrap items-center">
         <button class="btn btn-light" onclick="downloadCalendarTemplateCSV()"><i class='bx bx-download'></i> ตัวอย่าง CSV</button>
-        <button class="btn btn-light" onclick="printCalendar()"><i class='bx bx-printer'></i> พิมพ์ปฏิทิน</button>
+        <button class="btn btn-light" onclick="printCalendar()" title="พิมพ์ปฏิทินและกำหนดการกิจกรรม (เลือกช่วงระยะเวลาได้)"><i class='bx bx-printer'></i> พิมพ์ปฏิทิน / กำหนดการ</button>
         ${APP.role !== 'teacher' ? `
           <button class="btn btn-light" onclick="openCSVImportModal()"><i class='bx bx-upload'></i> นำเข้า CSV</button>
           <button class="btn btn-blue" onclick="openCalendarForm()"><i class='bx bx-plus'></i> เพิ่มเหตุการณ์</button>
@@ -2336,85 +2336,285 @@ function downloadCalendarTemplateCSV() {
 }
 window.downloadCalendarTemplateCSV = downloadCalendarTemplateCSV;
 
-function printCalendar() {
-  const safeEscape = (str) => typeof escapeHTML === 'function' ? escapeHTML(str || '') : String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function openPrintCalendarModal() {
+  const now = new Date();
+  const curY = CalendarState.year || now.getFullYear();
+  const curM = CalendarState.month || (now.getMonth() + 1);
+  const curDaysInMonth = new Date(curY, curM, 0).getDate();
+  const curStart = `${curY}-${String(curM).padStart(2, '0')}-01`;
+  const curEnd = `${curY}-${String(curM).padStart(2, '0')}-${String(curDaysInMonth).padStart(2, '0')}`;
 
-  const y = CalendarState.year || new Date().getFullYear();
-  const m = CalendarState.month || (new Date().getMonth() + 1);
-  const thaiMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-  const thaiMonthsShort = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  const monthName = thaiMonths[m] || '';
-  const yearBE = y + 543;
+  let nY = curY, nM = curM + 1;
+  if (nM > 12) { nM = 1; nY++; }
+  const nextDaysInMonth = new Date(nY, nM, 0).getDate();
+  const nextStart = `${nY}-${String(nM).padStart(2, '0')}-01`;
+  const nextEnd = `${nY}-${String(nM).padStart(2, '0')}-${String(nextDaysInMonth).padStart(2, '0')}`;
 
-  const first = new Date(y, m - 1, 1);
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const startDay = first.getDay(); // 0 = Sun, 1 = Mon ...
+  const ay = parseInt(APP.dashboardData?.config?.academic_year || '2569', 10);
+  const ayCE = ay > 2400 ? ay - 543 : ay;
 
-  const events = (CalendarState.events || []).slice().sort((a, b) => {
-    if (a.start_date !== b.start_date) return a.start_date.localeCompare(b.start_date);
-    return (a.start_time || '').localeCompare(b.start_time || '');
-  });
+  const thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const curMonthName = thaiMonths[curM] || '';
+  const nextMonthName = thaiMonths[nM] || '';
 
-  const typeConfig = {
-    academic: { label: 'วิชาการ', color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE' },
-    activity: { label: 'กิจกรรม', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
-    meeting : { label: 'ประชุม',  color: '#B45309', bg: '#FFFBEB', border: '#FDE68A' },
-    holiday : { label: 'วันหยุด', color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA' },
-    general : { label: 'ทั่วไป',  color: '#475569', bg: '#F8FAFC', border: '#E2E8F0' }
-  };
+  Swal.fire({
+    title: '<div style="font-size:18px; font-weight:800; color:#1E293B; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="bx bx-printer text-indigo-600"></i> พิมพ์ปฏิทินและกำหนดการกิจกรรม</div>',
+    width: 640,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-printer mr-1"></i> ดูตัวอย่างและพิมพ์เอกสาร',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#4338CA',
+    cancelButtonColor: '#64748B',
+    html: `
+      <div style="text-align:left; font-size:13px; line-height:1.45; color:#334155;">
+        <!-- Quick Presets -->
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:#1E293B; margin-bottom:6px;">
+            <i class='bx bx-time-five text-indigo-600'></i> เลือกช่วงเวลาด่วน:
+          </label>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;" id="calPrintPresets">
+            <button type="button" class="btn-cal-preset active" data-start="${curStart}" data-end="${curEnd}">เดือนนี้ (${curMonthName})</button>
+            <button type="button" class="btn-cal-preset" data-start="${nextStart}" data-end="${nextEnd}">เดือนถัดไป (${nextMonthName})</button>
+            <button type="button" class="btn-cal-preset" data-start="${ayCE}-05-01" data-end="${ayCE}-10-31">ภาคเรียนที่ 1 (${ay})</button>
+            <button type="button" class="btn-cal-preset" data-start="${ayCE}-11-01" data-end="${ayCE+1}-04-30">ภาคเรียนที่ 2 (${ay})</button>
+            <button type="button" class="btn-cal-preset" data-start="${ayCE}-05-01" data-end="${ayCE+1}-04-30">ตลอดปีการศึกษา (${ay})</button>
+            <button type="button" class="btn-cal-preset" id="btnPresetCustom">กำหนดเอง</button>
+          </div>
+        </div>
 
-  // Calendar Grid Rows (7 columns)
-  let gridRowsHTML = '';
-  let dayCounter = 1;
-  const totalWeeks = Math.ceil((startDay + daysInMonth) / 7);
+        <!-- Custom Date Range -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">
+              <i class='bx bx-calendar'></i> ตั้งแต่วันที่:
+            </label>
+            <input type="date" id="print_cal_start" style="width:100%; height:38px; font-size:13px; padding:6px 10px; border-radius:8px; border:1.5px solid #CBD5E1; box-sizing:border-box;" value="${curStart}">
+          </div>
+          <div>
+            <label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">
+              <i class='bx bx-calendar'></i> ถึงวันที่:
+            </label>
+            <input type="date" id="print_cal_end" style="width:100%; height:38px; font-size:13px; padding:6px 10px; border-radius:8px; border:1.5px solid #CBD5E1; box-sizing:border-box;" value="${curEnd}">
+          </div>
+        </div>
 
-  for (let week = 0; week < totalWeeks; week++) {
-    gridRowsHTML += '<tr>';
-    for (let dow = 0; dow < 7; dow++) {
-      const cellIndex = week * 7 + dow;
-      if (cellIndex < startDay || dayCounter > daysInMonth) {
-        gridRowsHTML += '<td class="empty-cell">&nbsp;</td>';
-      } else {
-        const d = dayCounter;
-        const ds = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-        const dayEvents = events.filter(e => {
-          const s = e.start_date;
-          const en = e.end_date || s;
-          return s <= ds && ds <= en;
-        });
+        <!-- Event Type Filter -->
+        <div style="margin-bottom:14px;">
+          <label style="display:block; font-size:11px; font-weight:700; color:#475569; margin-bottom:4px;">
+            <i class='bx bx-filter-alt'></i> หมวดหมู่กิจกรรม:
+          </label>
+          <select id="print_cal_type" style="width:100%; height:38px; font-size:13px; padding:6px 10px; border-radius:8px; border:1.5px solid #CBD5E1; background:white; box-sizing:border-box;">
+            <option value="all">ทุกประเภทกิจกรรม (วิชาการ, กิจกรรม, ประชุม, วันหยุด, ทั่วไป)</option>
+            <option value="academic">เฉพาะด้านวิชาการ</option>
+            <option value="activity">เฉพาะกิจกรรมโรงเรียน</option>
+            <option value="meeting">เฉพาะการประชุม</option>
+            <option value="holiday">เฉพาะวันหยุด / ปิดภาคเรียน</option>
+            <option value="general">เฉพาะเหตุการณ์ทั่วไป</option>
+          </select>
+        </div>
 
-        const isSun = dow === 0;
-        const isSat = dow === 6;
-        const dateClass = isSun ? 'day-num num-sun' : (isSat ? 'day-num num-sat' : 'day-num');
+        <!-- Document Format Selection -->
+        <div style="margin-bottom:6px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:#1E293B; margin-bottom:6px;">
+            <i class='bx bx-layout text-indigo-600'></i> รูปแบบเอกสารสำหรับพิมพ์:
+          </label>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <label id="cardLayoutGrid" style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:10px; border:1.5px solid #4338CA; background:#F5F3FF; cursor:pointer; transition:all .15s;">
+              <input type="radio" name="cal_layout" value="grid" checked style="margin-top:2px;">
+              <div>
+                <div style="font-weight:700; color:#1E293B; font-size:13px;">📅 ปฏิทินรายเดือน (Grid ช่องวัน + รายการกิจกรรม)</div>
+                <div style="font-size:11px; color:#64748B; margin-top:2px;">แสดงตารางปฏิทินช่องวัน 7 วัน พร้อมตารางรายการกิจกรรมด้านล่าง (หากเลือกหลายเดือนจะแบ่งหน้ากระดาษ A4 รายเดือนให้อัตโนมัติ)</div>
+              </div>
+            </label>
+            <label id="cardLayoutTable" style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:10px; border:1.5px solid #E2E8F0; background:#FFFFFF; cursor:pointer; transition:all .15s;">
+              <input type="radio" name="cal_layout" value="table" style="margin-top:2px;">
+              <div>
+                <div style="font-weight:700; color:#1E293B; font-size:13px;">📋 ตารางสรุปกำหนดการกิจกรรม (Activity Schedule Table)</div>
+                <div style="font-size:11px; color:#64748B; margin-top:2px;">ตารางสรุปรายการกิจกรรมทั้งหมดแบบกระชับต่อเนื่อง เหมาะสำหรับพิมพ์แจกครูบุคลากรหรือติดบอร์ดสรุปกิจกรรมตลอดภาคเรียน/ปีการศึกษา</div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
 
-        let evHTML = '';
-        dayEvents.slice(0, 3).forEach(e => {
-          const t = typeConfig[e.type] || typeConfig.general;
-          const timePrefix = e.start_time ? `<span class="ev-time">${safeEscape(e.start_time)}</span> ` : '';
-          evHTML += `
-            <div class="ev-pill" style="border-left: 2.5px solid ${t.color}; background:${t.bg}; color:${t.color};">
-              ${timePrefix}${safeEscape(e.title)}
-            </div>
-          `;
-        });
-        if (dayEvents.length > 3) {
-          evHTML += `<div style="font-size:8px; color:#64748B; font-weight:600; padding-left:2px;">+${dayEvents.length - 3} อื่นๆ</div>`;
+      <style>
+        .btn-cal-preset {
+          padding: 4px 11px;
+          font-size: 11px;
+          font-weight: 600;
+          border-radius: 999px;
+          border: 1px solid #CBD5E1;
+          background: #F8FAFC;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.15s ease;
         }
+        .btn-cal-preset:hover {
+          background: #EEF2FF;
+          color: #4338CA;
+          border-color: #A5B4FC;
+        }
+        .btn-cal-preset.active {
+          background: #4338CA;
+          color: #FFFFFF;
+          border-color: #4338CA;
+          box-shadow: 0 1px 3px rgba(67, 56, 202, 0.3);
+        }
+      </style>
+    `,
+    didOpen: () => {
+      const startInp = document.getElementById('print_cal_start');
+      const endInp = document.getElementById('print_cal_end');
+      const presets = document.querySelectorAll('.btn-cal-preset');
+      const customBtn = document.getElementById('btnPresetCustom');
 
-        gridRowsHTML += `
-          <td class="day-cell">
-            <div class="${dateClass}">${d}</div>
-            <div class="ev-cell-body">${evHTML}</div>
-          </td>
-        `;
-        dayCounter++;
+      presets.forEach(btn => {
+        btn.addEventListener('click', () => {
+          presets.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const s = btn.getAttribute('data-start');
+          const e = btn.getAttribute('data-end');
+          if (s && e) {
+            startInp.value = s;
+            endInp.value = e;
+          }
+        });
+      });
+
+      const onManualChange = () => {
+        presets.forEach(b => b.classList.remove('active'));
+        if (customBtn) customBtn.classList.add('active');
+      };
+      startInp.addEventListener('change', onManualChange);
+      endInp.addEventListener('change', onManualChange);
+
+      const radios = document.querySelectorAll('input[name="cal_layout"]');
+      const cardGrid = document.getElementById('cardLayoutGrid');
+      const cardTable = document.getElementById('cardLayoutTable');
+      radios.forEach(r => {
+        r.addEventListener('change', () => {
+          if (r.value === 'grid') {
+            cardGrid.style.borderColor = '#4338CA';
+            cardGrid.style.background = '#F5F3FF';
+            cardTable.style.borderColor = '#E2E8F0';
+            cardTable.style.background = '#FFFFFF';
+          } else {
+            cardTable.style.borderColor = '#4338CA';
+            cardTable.style.background = '#F5F3FF';
+            cardGrid.style.borderColor = '#E2E8F0';
+            cardGrid.style.background = '#FFFFFF';
+          }
+        });
+      });
+    },
+    preConfirm: () => {
+      const startDate = document.getElementById('print_cal_start')?.value;
+      const endDate = document.getElementById('print_cal_end')?.value;
+      const type = document.getElementById('print_cal_type')?.value || 'all';
+      const layoutRadio = document.querySelector('input[name="cal_layout"]:checked');
+      const layout = layoutRadio ? layoutRadio.value : 'grid';
+
+      if (!startDate || !endDate) {
+        Swal.showValidationMessage('กรุณาระบุวันที่เริ่มต้นและวันที่สิ้นสุด');
+        return false;
       }
+      if (startDate > endDate) {
+        Swal.showValidationMessage('วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด');
+        return false;
+      }
+      return { startDate, endDate, type, layout };
     }
-    gridRowsHTML += '</tr>';
+  }).then(result => {
+    if (result.isConfirmed && result.value) {
+      executePrintCalendar(result.value);
+    }
+  });
+}
+
+function executePrintCalendar(options) {
+  const { startDate, endDate, type, layout } = options;
+  if (typeof showLoading === 'function') {
+    showLoading('กำลังรวบรวมข้อมูลกำหนดการและปฏิทิน...');
   }
 
-  // Format Date Range
+  google.script.run
+    .withSuccessHandler(res => {
+      if (typeof hideLoading === 'function') hideLoading();
+      if (!res || res.status !== 'success') {
+        return showToast('error', res?.message || 'ไม่สามารถโหลดข้อมูลปฏิทินได้');
+      }
+
+      const allEvents = res.data || [];
+      const filtered = allEvents.filter(e => {
+        const s = (e.start_date || '').slice(0, 10);
+        const en = (e.end_date || e.start_date || '').slice(0, 10);
+        const matchesRange = (s <= endDate && en >= startDate);
+        const matchesType = (type === 'all' || !type || e.type === type);
+        return matchesRange && matchesType;
+      }).sort((a, b) => {
+        if (a.start_date !== b.start_date) return a.start_date.localeCompare(b.start_date);
+        return (a.start_time || '').localeCompare(b.start_time || '');
+      });
+
+      const html = generateCalendarPrintHTML({
+        startDate,
+        endDate,
+        type,
+        layout,
+        events: filtered
+      });
+
+      const docTitle = getCalendarPrintDocTitle(startDate, endDate, layout);
+
+      if (typeof openHTMLDocument === 'function') {
+        openHTMLDocument(html, docTitle);
+      } else {
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.open();
+          w.document.write(html);
+          w.document.close();
+        } else {
+          showToast('warning', 'กรุณาอนุญาตเปิด Pop-up เพื่อดูหน้าพิมพ์เอกสาร');
+        }
+      }
+    })
+    .withFailureHandler(err => {
+      if (typeof hideLoading === 'function') hideLoading();
+      showToast('error', err.message || err);
+    })
+    .getCalendarEvents({}, APP.token);
+}
+
+function getCalendarPrintDocTitle(startDate, endDate, layout) {
+  const thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const [sY, sM, sD] = startDate.split('-').map(Number);
+  const [eY, eM, eD] = endDate.split('-').map(Number);
+
+  if (sY === eY && sM === eM && sD === 1 && eD === new Date(sY, sM, 0).getDate()) {
+    return `ปฏิทินวิชาการและกิจกรรม_ประจำเดือน${thaiMonths[sM]}_${sY + 543}`;
+  }
+  return `กำหนดการและปฏิทินกิจกรรม_${startDate}_ถึง_${endDate}`;
+}
+
+function generateCalendarPrintHTML(options) {
+  const safeEscape = (str) => typeof escapeHTML === 'function' ? escapeHTML(str || '') : String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const { startDate, endDate, type, layout, events } = options;
+
+  const thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const thaiMonthsShort = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+  function formatThaiDateFull(dStr) {
+    if (!dStr) return '-';
+    const p = dStr.split('-').map(Number);
+    if (p.length < 3 || isNaN(p[0])) return dStr;
+    return `${p[2]} ${thaiMonths[p[1]] || ''} พ.ศ. ${p[0] + 543}`;
+  }
+
   function formatRange(sStr, eStr) {
     if (!sStr) return '-';
     const sp = sStr.split('-').map(Number);
@@ -2427,47 +2627,316 @@ function printCalendar() {
     return `${sFormatted} - ${ep[2]} ${thaiMonthsShort[ep[1]] || ''} ${ep[0] + 543}`;
   }
 
-  let tableRowsHTML = '';
-  if (events.length === 0) {
-    tableRowsHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center; padding:16px; color:#64748B; font-size:11px;">
-          ไม่มีกิจกรรมหรือกำหนดการที่บันทึกไว้ในเดือนนี้
-        </td>
-      </tr>
-    `;
-  } else {
-    events.forEach((e, idx) => {
-      const t = typeConfig[e.type] || typeConfig.general;
-      const timeStr = e.start_time ? (e.end_time ? `${safeEscape(e.start_time)} - ${safeEscape(e.end_time)} น.` : `${safeEscape(e.start_time)} น.`) : 'ตลอดวัน';
-      tableRowsHTML += `
-        <tr>
-          <td style="text-align:center; width:35px;">${idx + 1}</td>
-          <td style="white-space:nowrap; width:130px; font-weight:600;">${formatRange(e.start_date, e.end_date)}</td>
-          <td style="white-space:nowrap; width:95px; text-align:center;">${timeStr}</td>
-          <td style="width:75px; text-align:center;">
-            <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
-          </td>
-          <td>
-            <div style="font-weight:700; color:#0F172A;">${safeEscape(e.title)}</div>
-            ${e.description ? `<div style="font-size:10px; color:#64748B; margin-top:2px; line-height:1.3;">${safeEscape(e.description)}</div>` : ''}
-          </td>
-          <td style="width:130px; color:#334155;">${safeEscape(e.location || '-')}</td>
-        </tr>
-      `;
-    });
-  }
+  const typeConfig = {
+    academic: { label: 'วิชาการ', color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE' },
+    activity: { label: 'กิจกรรม', color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
+    meeting : { label: 'ประชุม',  color: '#B45309', bg: '#FFFBEB', border: '#FDE68A' },
+    holiday : { label: 'วันหยุด', color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA' },
+    general : { label: 'ทั่วไป',  color: '#475569', bg: '#F8FAFC', border: '#E2E8F0' }
+  };
+
+  const schoolLogoUrl = (typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL)
+    || (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo)
+    || localStorage.getItem('cached_school_logo')
+    || 'school-logo.png';
 
   const printTimeStr = new Date().toLocaleDateString('th-TH', {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
 
-  const html = `<!DOCTYPE html>
+  const sigBlockHTML = `
+    <div class="sig-container">
+      <div class="sig-box" data-sig-role="teacher">
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots">ลงชื่อ ........................................ ผู้จัดทำ</div>
+        <div class="sig-name">( ........................................ )</div>
+        <div class="sig-title">ผู้ประสานงาน / ฝ่ายบริหารงานวิชาการ</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ........</div>
+      </div>
+      <div class="sig-box" data-sig-role="director">
+        <div class="sig-stamp-zone"></div>
+        <div class="sig-dots">ลงชื่อ ........................................ ผู้อนุมัติ</div>
+        <div class="sig-name">( นายอธิการ สุขศรี )</div>
+        <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ........</div>
+      </div>
+    </div>
+  `;
+
+  const footerHTML = `
+    <div class="print-footer">
+      <div>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</div>
+      <div>พิมพ์เมื่อ: ${printTimeStr} น.</div>
+    </div>
+  `;
+
+  let mainBodyHTML = '';
+
+  if (layout === 'grid') {
+    // Determine all months in date range
+    const [sY, sM] = startDate.split('-').map(Number);
+    const [eY, eM] = endDate.split('-').map(Number);
+    const monthList = [];
+    let curY = sY, curM = sM;
+    while (curY < eY || (curY === eY && curM <= eM)) {
+      monthList.push({ year: curY, month: curM });
+      curM++;
+      if (curM > 12) { curM = 1; curY++; }
+    }
+
+    mainBodyHTML = monthList.map((item, mIdx) => {
+      const isLastMonth = (mIdx === monthList.length - 1);
+      const ym = `${item.year}-${String(item.month).padStart(2, '0')}`;
+      const mName = thaiMonths[item.month] || '';
+      const yBE = item.year + 543;
+      const daysInMonth = new Date(item.year, item.month, 0).getDate();
+      const startDay = new Date(item.year, item.month - 1, 1).getDay();
+
+      const monthEvents = events.filter(e => {
+        const sMonth = (e.start_date || '').slice(0, 7);
+        const eMonth = (e.end_date || e.start_date || '').slice(0, 7);
+        return sMonth <= ym && ym <= eMonth;
+      });
+
+      // Calendar Grid Rows
+      let gridRows = '';
+      let dayCounter = 1;
+      const totalWeeks = Math.ceil((startDay + daysInMonth) / 7);
+
+      for (let week = 0; week < totalWeeks; week++) {
+        gridRows += '<tr>';
+        for (let dow = 0; dow < 7; dow++) {
+          const cellIndex = week * 7 + dow;
+          if (cellIndex < startDay || dayCounter > daysInMonth) {
+            gridRows += '<td class="empty-cell">&nbsp;</td>';
+          } else {
+            const d = dayCounter;
+            const ds = `${ym}-${String(d).padStart(2, '0')}`;
+            const dayEvents = monthEvents.filter(e => {
+              const s = e.start_date || '';
+              const en = e.end_date || s;
+              return s <= ds && ds <= en;
+            });
+
+            const isSun = dow === 0;
+            const isSat = dow === 6;
+            const dateClass = isSun ? 'day-num num-sun' : (isSat ? 'day-num num-sat' : 'day-num');
+
+            let evHTML = '';
+            dayEvents.slice(0, 3).forEach(e => {
+              const t = typeConfig[e.type] || typeConfig.general;
+              const timePrefix = e.start_time ? `<span class="ev-time">${safeEscape(e.start_time)}</span> ` : '';
+              evHTML += `
+                <div class="ev-pill" style="border-left: 2.5px solid ${t.color}; background:${t.bg}; color:${t.color};">
+                  ${timePrefix}${safeEscape(e.title)}
+                </div>
+              `;
+            });
+            if (dayEvents.length > 3) {
+              evHTML += `<div style="font-size:8px; color:#64748B; font-weight:600; padding-left:2px;">+${dayEvents.length - 3} อื่นๆ</div>`;
+            }
+
+            gridRows += `
+              <td class="day-cell">
+                <div class="${dateClass}">${d}</div>
+                <div class="ev-cell-body">${evHTML}</div>
+              </td>
+            `;
+            dayCounter++;
+          }
+        }
+        gridRows += '</tr>';
+      }
+
+      // Event Table for this month
+      let tableRows = '';
+      if (monthEvents.length === 0) {
+        tableRows = `
+          <tr>
+            <td colspan="6" style="text-align:center; padding:12px; color:#64748B; font-size:11px;">
+              ไม่มีกิจกรรมหรือกำหนดการที่บันทึกไว้ในเดือนนี้
+            </td>
+          </tr>
+        `;
+      } else {
+        monthEvents.forEach((e, idx) => {
+          const t = typeConfig[e.type] || typeConfig.general;
+          const timeStr = e.start_time ? (e.end_time ? `${safeEscape(e.start_time)} - ${safeEscape(e.end_time)} น.` : `${safeEscape(e.start_time)} น.`) : 'ตลอดวัน';
+          tableRows += `
+            <tr>
+              <td style="text-align:center; width:35px;">${idx + 1}</td>
+              <td style="white-space:nowrap; width:130px; font-weight:600;">${formatRange(e.start_date, e.end_date)}</td>
+              <td style="white-space:nowrap; width:95px; text-align:center;">${timeStr}</td>
+              <td style="width:75px; text-align:center;">
+                <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
+              </td>
+              <td>
+                <div style="font-weight:700; color:#0F172A;">${safeEscape(e.title)}</div>
+                ${e.description ? `<div style="font-size:10px; color:#64748B; margin-top:2px; line-height:1.3;">${safeEscape(e.description)}</div>` : ''}
+              </td>
+              <td style="width:130px; color:#334155;">${safeEscape(e.location || '-')}</td>
+            </tr>
+          `;
+        });
+      }
+
+      const pageBreakStyle = isLastMonth ? 'page-break-after: auto; break-after: auto;' : 'page-break-after: always; break-after: page;';
+
+      return `
+        <div class="print-page-wrapper" style="${pageBreakStyle}">
+          <div class="header">
+            <img src="${schoolLogoUrl}" alt="School Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';">
+            <div class="header-text">
+              <div class="header-school">โรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="header-title">ปฏิทินวิชาการและกิจกรรม ประจำเดือน${mName} พ.ศ. ${yBE}</div>
+              <div class="header-sub">ฝ่ายบริหารงานวิชาการ | สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
+            </div>
+          </div>
+
+          <!-- Calendar Grid Table -->
+          <table class="cal-table">
+            <thead>
+              <tr>
+                <th class="sun-th">อาทิตย์</th>
+                <th>จันทร์</th>
+                <th>อังคาร</th>
+                <th>พุธ</th>
+                <th>พฤหัสบดี</th>
+                <th>ศุกร์</th>
+                <th class="sat-th">เสาร์</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${gridRows}
+            </tbody>
+          </table>
+
+          <!-- Event List -->
+          <div class="section-title">
+            <span>📌 กำหนดการและกิจกรรมในรอบเดือน (${monthEvents.length} รายการ)</span>
+          </div>
+          <table class="event-table">
+            <thead>
+              <tr>
+                <th style="width:35px; text-align:center;">ลำดับ</th>
+                <th style="width:130px;">วัน/เดือน/ปี</th>
+                <th style="width:95px; text-align:center;">เวลา</th>
+                <th style="width:75px; text-align:center;">ประเภท</th>
+                <th>กิจกรรม / รายละเอียด</th>
+                <th style="width:130px;">สถานที่</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+
+          ${sigBlockHTML}
+          ${footerHTML}
+        </div>
+      `;
+    }).join('');
+
+  } else {
+    // Layout === 'table' (ตารางสรุปกำหนดการกิจกรรม)
+    let acadCount = 0, actCount = 0, meetCount = 0, holCount = 0, genCount = 0;
+    events.forEach(e => {
+      if (e.type === 'academic') acadCount++;
+      else if (e.type === 'activity') actCount++;
+      else if (e.type === 'meeting') meetCount++;
+      else if (e.type === 'holiday') holCount++;
+      else genCount++;
+    });
+
+    let tableRows = '';
+    if (events.length === 0) {
+      tableRows = `
+        <tr>
+          <td colspan="7" style="text-align:center; padding:24px; color:#64748B; font-size:12px;">
+            ไม่มีกิจกรรมหรือกำหนดการที่บันทึกไว้ในช่วงระยะเวลานี้
+          </td>
+        </tr>
+      `;
+    } else {
+      events.forEach((e, idx) => {
+        const t = typeConfig[e.type] || typeConfig.general;
+        const timeStr = e.start_time ? (e.end_time ? `${safeEscape(e.start_time)} - ${safeEscape(e.end_time)} น.` : `${safeEscape(e.start_time)} น.`) : 'ตลอดวัน';
+        tableRows += `
+          <tr>
+            <td style="text-align:center; width:36px;">${idx + 1}</td>
+            <td style="white-space:nowrap; width:135px; font-weight:600;">${formatRange(e.start_date, e.end_date)}</td>
+            <td style="white-space:nowrap; width:95px; text-align:center;">${timeStr}</td>
+            <td style="width:80px; text-align:center;">
+              <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
+            </td>
+            <td>
+              <div style="font-weight:700; color:#0F172A; font-size:11px;">${safeEscape(e.title)}</div>
+              ${e.description ? `<div style="font-size:9.5px; color:#64748B; margin-top:2px; line-height:1.35;">${safeEscape(e.description)}</div>` : ''}
+            </td>
+            <td style="width:130px; color:#334155;">${safeEscape(e.location || '-')}</td>
+            <td style="width:120px; color:#475569; font-size:9.5px;">${safeEscape(e.coordinator || e.organizer || e.remark || '-')}</td>
+          </tr>
+        `;
+      });
+    }
+
+    const rangeTitleStr = (startDate === endDate)
+      ? `ประจำวันที่ ${formatThaiDateFull(startDate)}`
+      : `ระหว่างวันที่ ${formatThaiDateFull(startDate)} ถึง วันที่ ${formatThaiDateFull(endDate)}`;
+
+    mainBodyHTML = `
+      <div class="print-page-wrapper">
+        <div class="header">
+          <img src="${schoolLogoUrl}" alt="School Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';">
+          <div class="header-text">
+            <div class="header-school">โรงเรียนมหาชัยพิทยาคาร</div>
+            <div class="header-title">ปฏิทินวิชาการและกำหนดการกิจกรรม</div>
+            <div class="header-sub">${rangeTitleStr} | ฝ่ายบริหารงานวิชาการ สพม.มหาสารคาม</div>
+          </div>
+        </div>
+
+        <!-- Summary Stat Pills -->
+        <div class="summary-stat-bar">
+          <div class="stat-pill stat-total"><b>รวมทั้งหมด:</b> ${events.length} รายการ</div>
+          <div class="stat-pill stat-acad"><b>วิชาการ:</b> ${acadCount}</div>
+          <div class="stat-pill stat-act"><b>กิจกรรม:</b> ${actCount}</div>
+          <div class="stat-pill stat-meet"><b>ประชุม:</b> ${meetCount}</div>
+          <div class="stat-pill stat-hol"><b>วันหยุด:</b> ${holCount}</div>
+          <div class="stat-pill stat-gen"><b>ทั่วไป:</b> ${genCount}</div>
+        </div>
+
+        <!-- Full Schedule Table -->
+        <table class="event-table">
+          <thead>
+            <tr>
+              <th style="width:36px; text-align:center;">ลำดับ</th>
+              <th style="width:135px;">วัน/เดือน/ปี</th>
+              <th style="width:95px; text-align:center;">เวลา</th>
+              <th style="width:80px; text-align:center;">ประเภท</th>
+              <th>กิจกรรม / รายละเอียด</th>
+              <th style="width:130px;">สถานที่</th>
+              <th style="width:120px;">หมายเหตุ / ผู้รับผิดชอบ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+
+        ${sigBlockHTML}
+        ${footerHTML}
+      </div>
+    `;
+  }
+
+  const docTitle = getCalendarPrintDocTitle(startDate, endDate, layout);
+
+  return `<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>ปฏิทินวิชาการ_${monthName}_${yearBE}</title>
+  <title>${safeEscape(docTitle)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     @page {
@@ -2492,6 +2961,11 @@ function printCalendar() {
       width: 100%;
       max-width: 277mm;
       margin: 0 auto;
+    }
+    .print-page-wrapper {
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
     }
     .no-print-bar {
       background: #1E293B;
@@ -2554,13 +3028,36 @@ function printCalendar() {
       font-size: 10px;
       color: #64748B;
     }
-    
+
+    /* Summary Stat Bar */
+    .summary-stat-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      padding: 5px 12px;
+      border-radius: 6px;
+      margin: 6px 0 10px 0;
+      font-size: 10px;
+    }
+    .stat-pill {
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .stat-total { background: #E2E8F0; color: #0F172A; font-weight: 700; }
+    .stat-acad  { background: #EEF2FF; color: #4338CA; font-weight: 600; }
+    .stat-act   { background: #F0FDF4; color: #15803D; font-weight: 600; }
+    .stat-meet  { background: #FFFBEB; color: #B45309; font-weight: 600; }
+    .stat-hol   { background: #FEF2F2; color: #B91C1C; font-weight: 600; }
+    .stat-gen   { background: #F1F5F9; color: #475569; font-weight: 600; }
+
     /* Calendar Grid Table */
     .cal-table {
       width: 100%;
       table-layout: fixed;
       border-collapse: collapse;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       border: 1.5px solid #0F172A;
     }
     .cal-table th {
@@ -2579,7 +3076,7 @@ function printCalendar() {
       border: 1px solid #CBD5E1;
       vertical-align: top;
       padding: 3px;
-      height: 52px;
+      height: 48px;
       background: #FFFFFF;
     }
     .cal-table td.empty-cell {
@@ -2614,7 +3111,7 @@ function printCalendar() {
       opacity: 0.85;
     }
 
-    /* List Table */
+    /* Event List Table */
     .section-title {
       font-size: 12px;
       font-weight: 700;
@@ -2629,21 +3126,24 @@ function printCalendar() {
       border-collapse: collapse;
       table-layout: auto;
       font-size: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       border: 1px solid #CBD5E1;
     }
     .event-table th {
       background: #F1F5F9;
       color: #0F172A;
       border: 1px solid #CBD5E1;
-      padding: 4px 6px;
+      padding: 5px 6px;
       font-weight: 700;
       text-align: left;
     }
     .event-table td {
       border: 1px solid #CBD5E1;
       padding: 4px 6px;
-      vertical-align: top;
+      vertical-align: middle;
+    }
+    tr:nth-child(even) {
+      background: #FAFAFA;
     }
     .type-tag {
       display: inline-block;
@@ -2655,10 +3155,11 @@ function printCalendar() {
 
     /* Signatures */
     .sig-container {
-      margin-top: 16px;
+      margin-top: 14px;
       display: flex;
       justify-content: space-around;
       page-break-inside: avoid;
+      break-inside: avoid;
       padding: 0 20px;
       gap: 24px;
     }
@@ -2684,6 +3185,7 @@ function printCalendar() {
       font-size: 9px;
       color: #64748B;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     @media print {
@@ -2742,84 +3244,15 @@ function printCalendar() {
   <div class="print-doc">
     <div class="no-print no-print-bar">
       <div>
-        <strong>ตัวอย่างก่อนพิมพ์: ปฏิทินวิชาการและกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}</strong>
-        <span style="font-size:11px; opacity:0.8; margin-left:8px;">(กระดาษ A4 แนวนอน)</span>
+        <strong>ตัวอย่างก่อนพิมพ์: ${safeEscape(docTitle)}</strong>
+        <span style="font-size:11px; opacity:0.85; margin-left:8px;">(กระดาษ A4 แนวนอน)</span>
       </div>
       <button class="btn-print" onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}">
         🖨 พิมพ์เอกสาร
       </button>
     </div>
 
-    <div class="header">
-      <img src="${(typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL) || 'school-logo.png'}" alt="School Logo" class="logo school-logo" onerror="this.onerror=null; this.src='school-logo.png';">
-      <div class="header-text">
-        <div class="header-school">โรงเรียนมหาชัยพิทยาคาร</div>
-        <div class="header-title">ปฏิทินวิชาการและกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}</div>
-        <div class="header-sub">ฝ่ายบริหารงานวิชาการ | สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม</div>
-      </div>
-    </div>
-
-    <!-- Calendar Grid -->
-    <table class="cal-table">
-      <thead>
-        <tr>
-          <th class="sun-th">อาทิตย์</th>
-          <th>จันทร์</th>
-          <th>อังคาร</th>
-          <th>พุธ</th>
-          <th>พฤหัสบดี</th>
-          <th>ศุกร์</th>
-          <th class="sat-th">เสาร์</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${gridRowsHTML}
-      </tbody>
-    </table>
-
-    <!-- Event List -->
-    <div class="section-title">
-      <span>📌 กำหนดการและกิจกรรมในรอบเดือน</span>
-    </div>
-    <table class="event-table">
-      <thead>
-        <tr>
-          <th style="width:35px; text-align:center;">ลำดับ</th>
-          <th style="width:130px;">วัน/เดือน/ปี</th>
-          <th style="width:95px; text-align:center;">เวลา</th>
-          <th style="width:75px; text-align:center;">ประเภท</th>
-          <th>กิจกรรม / รายละเอียด</th>
-          <th style="width:130px;">สถานที่</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${tableRowsHTML}
-      </tbody>
-    </table>
-
-    <!-- Signature -->
-    <div class="sig-container">
-      <div class="sig-box" data-sig-role="teacher">
-        <div class="sig-stamp-zone"></div>
-        <div class="sig-dots">ลงชื่อ ........................................ ผู้จัดทำ</div>
-        <div class="sig-name">( ........................................ )</div>
-        <div class="sig-title">ผู้ประสานงาน / ฝ่ายบริหารงานวิชาการ</div>
-        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ........</div>
-      </div>
-      <div class="sig-box" data-sig-role="director">
-        <div class="sig-stamp-zone"></div>
-        <div class="sig-dots">ลงชื่อ ........................................ ผู้อนุมัติ</div>
-        <div class="sig-name">( นายอธิการ สุขศรี )</div>
-        <div class="sig-title">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-        <div class="sig-date">วันที่ ..... เดือน .................... พ.ศ. ........</div>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="print-footer">
-      <div>ระบบ MHC Smart School | โรงเรียนมหาชัยพิทยาคาร | พัฒนาโดย ครูก้องนที อุ่นเจริญ</div>
-      <div>พิมพ์เมื่อ: ${printTimeStr} น.</div>
-    </div>
+    ${mainBodyHTML}
   </div>
 
   <script>
@@ -2833,23 +3266,16 @@ function printCalendar() {
   </script>
 </body>
 </html>`;
+}
 
-  if (typeof openHTMLDocument === 'function') {
-    openHTMLDocument(html, `ปฏิทินกิจกรรม ประจำเดือน${monthName} พ.ศ. ${yearBE}`);
+function printCalendar(options) {
+  if (options && (options.startDate || options.layout)) {
+    executePrintCalendar(options);
   } else {
-    const w = window.open('', '_blank');
-    if (w) {
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-    } else {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Popup ถูกปิด',
-        text: 'กรุณาอนุญาตให้เปิด pop-up จาก URL นี้เพื่อพิมพ์เอกสาร'
-      });
-    }
+    openPrintCalendarModal();
   }
 }
+
 window.printCalendar = printCalendar;
+window.openPrintCalendarModal = openPrintCalendarModal;
 
