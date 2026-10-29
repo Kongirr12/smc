@@ -409,6 +409,14 @@ function canEditModule(moduleName) {
 function navigate(page) {
   APP.currentPage = page;
 
+  // Toggle page-specific class on body for responsive rules & floating chat suppression
+  if (page === 'attendance') {
+    document.body.classList.add('page-attendance');
+  } else {
+    document.body.classList.remove('page-attendance');
+  }
+  document.body.setAttribute('data-current-page', page);
+
   // active state
   document.querySelectorAll('.menu-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);

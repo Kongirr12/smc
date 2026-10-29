@@ -1783,6 +1783,8 @@ const AttendanceState = {
 };
 
 function renderAttendance(container) {
+  document.body.classList.add('page-attendance');
+  document.body.setAttribute('data-current-page', 'attendance');
   const currentTab = AttendanceState.tab || 'record';
 
   container.innerHTML = `
@@ -1792,7 +1794,7 @@ function renderAttendance(container) {
       <div class="page-card-body">
         <div class="tab-pill" style="max-width:540px;">
           <button id="tabAttOverview" class="${currentTab==='overview'?'active':''}" onclick="switchAttendanceTab('overview')">
-            <i class='bx bx-pie-chart-alt-2'></i> ภาพรวมแดชบอร์ด
+            <i class='bx bx-pie-chart-alt-2'></i> <span class="hidden sm:inline">ภาพรวมแดชบอร์ด</span><span class="sm:hidden">ภาพรวม</span>
           </button>
           <button id="tabRecord" class="${currentTab==='record'?'active':''}" onclick="switchAttendanceTab('record')">
             <i class='bx bx-edit-alt'></i> บันทึกรายวัน
@@ -2111,26 +2113,36 @@ function renderAttendanceRecord() {
   const classrooms = AttendanceState.classrooms || [];
 
   c.innerHTML = `
-    <div class="flex gap-2 mb-3 flex-wrap items-center">
-      <div class="flex rounded-lg overflow-hidden border border-slate-200 w-full sm:w-auto" style="font-size:13px;">
-        <button id="attModeSubject" onclick="switchAttMode('subject')"
-          class="flex-1 sm:flex-none px-3 py-1.5 font-semibold transition-colors ${mode==='subject'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bx-book-open'>\x3c/i> รายวิชา
-        </button>
+    <div class="att-controls-bar flex flex-col sm:flex-row gap-2.5 mb-3.5 items-stretch sm:items-center">
+      <!-- Mode Toggle Segmented Control (Zero wrapping, responsive pill) -->
+      <div class="flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-full sm:w-auto shrink-0 shadow-xs">
         <button id="attModeClass" onclick="switchAttMode('class')"
-          class="flex-1 sm:flex-none px-3 py-1.5 font-semibold transition-colors ${mode==='class'?'bg-blue-500 text-white':'bg-white text-slate-600 hover:bg-slate-50'}">
-          <i class='bx bxs-building'>\x3c/i> หน้าเสาธง / โฮมรูม
+          class="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all text-center whitespace-nowrap flex items-center justify-center gap-1.5 ${mode==='class'?'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs':'text-slate-600 dark:text-slate-400 hover:text-slate-900'}">
+          <i class='bx bxs-flag-checkered text-sm'></i> หน้าเสาธง / โฮมรูม
+        </button>
+        <button id="attModeSubject" onclick="switchAttMode('subject')"
+          class="flex-1 sm:flex-none px-3 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all text-center whitespace-nowrap flex items-center justify-center gap-1.5 ${mode==='subject'?'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs':'text-slate-600 dark:text-slate-400 hover:text-slate-900'}">
+          <i class='bx bx-book-open text-sm'></i> รายวิชา
         </button>
       </div>
 
-      <select id="attClassroom" onchange="onAttClassroomChange()"
-              class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[120px]">
-        <option value="">เลือกชั้น\x3c/option>
-        ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}\x3c/option>`).join('')}
-      </select>
+      <!-- Classroom & Date Select (2-Column Grid on Mobile, Flex on Desktop) -->
+      <div class="grid grid-cols-2 gap-2 flex-1 w-full min-w-0">
+        <div class="relative min-w-0">
+          <select id="attClassroom" onchange="onAttClassroomChange()"
+                  class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-3 py-2 text-xs sm:text-sm font-semibold truncate shadow-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden">
+            <option value="">เลือกชั้นเรียน</option>
+            ${classrooms.map(r => `<option value="${escapeHTML(r)}" ${AttendanceState.classroom===r?'selected':''}>${escapeHTML(r)}</option>`).join('')}
+          </select>
+        </div>
 
-      <input type="date" id="attDate" onchange="onAttDateChange()"
-             class="rounded-lg border border-slate-200 px-3 py-2 text-sm flex-1 min-w-[130px]" value="${AttendanceState.date}">
+        <div class="relative min-w-0">
+          <input type="date" id="attDate" onchange="onAttDateChange()"
+                 class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-2.5 py-2 text-xs sm:text-sm font-semibold shadow-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                 value="${AttendanceState.date}">
+        </div>
+      </div>
+    </div>
 
       ${mode === 'subject' ? `
       <div class="flex items-center gap-2 w-full mt-2">
@@ -2419,33 +2431,44 @@ function renderAttendanceList() {
         <i class='bx bx-user-x'>\x3c/i>
         ไม่มีนักเรียนในชั้นนี้ — กรุณาเพิ่มนักเรียนก่อน
       </div>`;
-    document.getElementById('attSaveBtn').style.display = 'none';
+    const sBtn = document.getElementById('attSaveBtn');
+    if (sBtn) sBtn.style.display = 'none';
     return;
   }
 
-  document.getElementById('attSaveBtn').style.display = '';
+  const sBtn = document.getElementById('attSaveBtn');
+  if (sBtn) sBtn.style.display = '';
 
   area.innerHTML = `
-    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <div class="flex items-center gap-2">
-        <div class="text-xs sm:text-sm font-bold text-slate-800">รายชื่อนักเรียน</div>
-        <button type="button" class="btn btn-light border border-slate-200 text-xs px-2.5 py-1 hover:bg-slate-50 inline-flex items-center gap-1 cursor-pointer" onclick="printDailyAttendanceRecord()" title="พิมพ์ใบเช็คชื่อประจำวัน A4">
+    <!-- Attendance Subheader & Quick Check (Responsive 2-Tier on Mobile) -->
+    <div class="att-header-bar flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">รายชื่อนักเรียน</span>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            ${AttendanceState.records.length} คน
+          </span>
+        </div>
+        <button type="button" class="btn btn-light border border-slate-200 dark:border-slate-700 text-xs px-2.5 py-1 hover:bg-slate-50 inline-flex items-center gap-1 cursor-pointer" onclick="printDailyAttendanceRecord()" title="พิมพ์ใบเช็คชื่อประจำวัน A4">
           <i class="bx bx-printer text-indigo-600"></i> พิมพ์ใบเช็คชื่อ
         </button>
       </div>
-      <div class="flex items-center gap-1.5">
-        <span class="text-[10px] sm:text-xs font-semibold text-slate-500">เช็คด่วนทั้งหมด:</span>
-        <button class="btn btn-light text-emerald-600 border-emerald-200 hover:bg-emerald-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('present')">มา</button>
-        <button class="btn btn-light text-rose-600 border-rose-200 hover:bg-rose-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('absent')">ขาด</button>
-        <button class="btn btn-light text-amber-600 border-amber-200 hover:bg-amber-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('leave')">ลา</button>
-        <button class="btn btn-light text-red-800 border-red-200 hover:bg-red-50 px-2 py-1 text-[10px] sm:text-xs" onclick="setAllAttendance('late')">สาย</button>
+      <div class="flex items-center gap-1.5 justify-between sm:justify-end bg-slate-50 dark:bg-slate-800/60 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
+        <span class="text-[11px] font-bold text-slate-500 shrink-0 mr-1">เช็คด่วน:</span>
+        <div class="grid grid-cols-4 gap-1 w-full sm:w-auto">
+          <button class="btn btn-light text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('present')">มา</button>
+          <button class="btn btn-light text-rose-700 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 hover:bg-rose-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('absent')">ขาด</button>
+          <button class="btn btn-light text-amber-700 dark:text-amber-400 bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 hover:bg-amber-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('leave')">ลา</button>
+          <button class="btn btn-light text-indigo-700 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('late')">สาย</button>
+        </div>
       </div>
     </div>
 
     <div class="att-list-wrap">
+      <!-- Desktop Table (>= 641px) -->
       <table class="min-w-full text-sm att-desktop-table">
         <thead>
-          <tr class="bg-slate-50 text-slate-600 text-xs uppercase">
+          <tr class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs uppercase">
             <th class="px-3 py-2.5 text-center rounded-l-lg" style="width:60px;">เลขที่\x3c/th>
             <th class="px-3 py-2.5 text-left">นักเรียน\x3c/th>
             <th class="px-3 py-2.5 text-center rounded-r-lg" style="width:280px;">สถานะ\x3c/th>
@@ -2453,12 +2476,12 @@ function renderAttendanceList() {
         \x3c/thead>
         <tbody>
           ${AttendanceState.records.map((r, i) => `
-            <tr class="border-b border-slate-100" data-row="${i}">
-              <td class="px-3 py-2 text-center text-slate-700 font-bold">${r.student_number ? r.student_number : (i+1)}\x3c/td>
+            <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50" data-row="${i}">
+              <td class="px-3 py-2 text-center text-slate-700 dark:text-slate-300 font-bold">${r.student_number ? r.student_number : (i+1)}\x3c/td>
               <td class="px-3 py-2">
                 <div class="flex items-center gap-2">
                   <div>
-                    <div class="font-semibold text-slate-800 text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
+                    <div class="font-semibold text-slate-800 dark:text-slate-100 text-sm">${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
                     ${r.student_code ? `<div class="text-[11px] text-slate-400 font-mono">รหัส ${escapeHTML(r.student_code)}\x3c/div>` : ''}
                   </div>
                 </div>
@@ -2476,23 +2499,35 @@ function renderAttendanceList() {
         \x3c/tbody>
       \x3c/table>
 
+      <!-- Mobile List (<= 640px): 2-Tier Touch-Friendly Cards (Full Name Never Cut Off) -->
       <div class="att-mobile-list">
-        ${AttendanceState.records.map((r, i) => `
-          <div class="att-mobile-row" data-row="${i}">
-            <div class="att-mobile-name"><span class="inline-block bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-xs font-bold mr-1">เลขที่ ${r.student_number || (i+1)}\x3c/span> ${escapeHTML((r.prefix||'') + (r.first_name||'') + ' ' + (r.last_name||''))}\x3c/div>
-            <div class="att-status-group">
+        ${AttendanceState.records.map((r, i) => {
+          const num = r.student_number ? r.student_number : (i + 1);
+          const fullName = (r.prefix || '') + (r.first_name || '') + ' ' + (r.last_name || '');
+          return `
+          <div class="att-mobile-card" data-row="${i}" data-status="${r.status || ''}">
+            <div class="att-card-header">
+              <div class="att-student-meta">
+                <span class="att-card-badge">เลขที่ ${num}</span>
+                <span class="att-student-name">${escapeHTML(fullName)}</span>
+              </div>
+              ${r.student_code ? `<span class="att-card-code">รหัส ${escapeHTML(r.student_code)}\x3c/span>` : ''}
+            </div>
+            <div class="att-card-actions">
               ${attStatusButton(i, 'present', r.status, '#10B981', 'มา')}
               ${attStatusButton(i, 'absent',  r.status, '#DC2626', 'ขาด')}
               ${attStatusButton(i, 'leave',   r.status, '#F59E0B', 'ลา')}
               ${attStatusButton(i, 'late',    r.status, '#4F46E5', 'สาย')}
             </div>
           </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
     </div>
 
-    <div class="flex justify-between items-center gap-3 mt-4 pt-3 border-t border-slate-100 flex-wrap">
-      <div class="flex flex-wrap gap-1.5 text-xs text-slate-600">
+    <!-- Attendance Summary Footer -->
+    <div class="att-summary-footer flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800">
+      <div class="grid grid-cols-5 gap-1.5 text-xs text-slate-600 sm:flex sm:flex-wrap">
         <div class="att-summary-pill" style="background:#DCFCE7;color:#15803D;">
           <span>มา</span> <b id="cntPresent">0</b>
         </div>
@@ -2502,19 +2537,19 @@ function renderAttendanceList() {
         <div class="att-summary-pill" style="background:#FEF3C7;color:#B45309;">
           <span>ลา</span> <b id="cntLeave">0</b>
         </div>
-        <div class="att-summary-pill" style="background:#F2D5DA;color:#3730A3;">
+        <div class="att-summary-pill" style="background:#EEF2FF;color:#3730A3;">
           <span>สาย</span> <b id="cntLate">0</b>
         </div>
         <div class="att-summary-pill" style="background:#F1F5F9;color:#334155;">
           <span>รวม</span> <b>${AttendanceState.records.length}</b>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button type="button" class="btn btn-light border border-slate-200 text-xs sm:text-sm px-3 py-1.5 hover:bg-slate-50 inline-flex items-center gap-1.5 cursor-pointer" onclick="printDailyAttendanceRecord()" title="พิมพ์แบบบันทึกการเช็คชื่อประจำวัน A4">
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <button type="button" class="btn btn-light border border-slate-200 dark:border-slate-700 flex-1 sm:flex-none text-xs sm:text-sm py-2 px-3 hover:bg-slate-50 inline-flex items-center justify-center gap-1.5 cursor-pointer" onclick="printDailyAttendanceRecord()" title="พิมพ์แบบบันทึกการเช็คชื่อประจำวัน A4">
           <i class="bx bx-printer text-indigo-600"></i> พิมพ์ใบเช็คชื่อ
         </button>
-        <button class="btn btn-blue" onclick="saveAttendance()" style="padding:6px 16px; font-size:13px; box-shadow: 0 2px 8px rgba(128, 0, 32, 0.2);">
-          <i class='bx bx-save'></i> บันทึก
+        <button class="btn btn-blue flex-1 sm:flex-none py-2 px-6 text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5" onclick="saveAttendance()">
+          <i class='bx bx-save text-base'></i> บันทึก
         </button>
       </div>
     </div>
@@ -2523,56 +2558,157 @@ function renderAttendanceList() {
       /* ===== Common ===== */
       .att-status-group { display:inline-flex; gap:4px; flex-shrink:0; }
       .att-status-btn {
-        padding:5px 10px; border-radius:6px; border:1.5px solid #E2E8F0;
-        background:white; font-family:inherit; font-size:12px; font-weight:700;
-        cursor:pointer; color:#64748B; transition:all .1s;
-        white-space:nowrap;
+        padding: 5px 12px;
+        border-radius: 8px;
+        border: 1.5px solid #CBD5E1;
+        background: #FFFFFF;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        color: #475569;
+        transition: all .12s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
       }
-      .att-status-btn.active { color:white; }
+      .att-status-btn:active { transform: scale(0.94); }
+      .att-status-btn.active { color: #FFFFFF !important; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
       .att-summary-pill {
-        display:inline-flex; gap:6px; padding:4px 12px; border-radius:999px;
-        font-weight:600; align-items:center;
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-weight: 700;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
       }
 
-      /* ===== Desktop: show table, hide mobile cards ===== */
+      /* ===== Desktop ===== */
       .att-list-wrap     { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .att-desktop-table { display: table; width: 100%; }
       .att-mobile-list   { display: none; }
 
-      /* ===== Mobile (<= 640px): hide table, show cards ===== */
+      /* ===== Mobile (<= 640px): 2-Tier Card Layout ===== */
       @media (max-width: 640px) {
         .att-desktop-table { display: none !important; }
-        .att-mobile-list   { display: block !important; }
+        .att-mobile-list   { display: flex !important; flex-direction: column; gap: 8px; width: 100%; box-sizing: border-box; }
 
-        .att-mobile-row {
+        .att-mobile-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 10px 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          width: 100%;
+          box-sizing: border-box;
+          transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .att-mobile-card[data-status="present"] { border-left: 4px solid #10B981 !important; }
+        .att-mobile-card[data-status="absent"]  { border-left: 4px solid #DC2626 !important; background: #FEF2F2 !important; }
+        .att-mobile-card[data-status="leave"]   { border-left: 4px solid #F59E0B !important; background: #FFFBEB !important; }
+        .att-mobile-card[data-status="late"]    { border-left: 4px solid #4F46E5 !important; background: #EEF2FF !important; }
+
+        .att-card-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 10px 8px;
-          border-bottom: 1px solid #F1F5F9;
           gap: 8px;
-          box-sizing: border-box;
           width: 100%;
-          overflow: hidden;
-        }
-        .att-mobile-name {
-          flex: 1 1 auto;
           min-width: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        }
+
+        .att-student-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .att-card-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2px 7px;
+          border-radius: 6px;
+          background: #F1F5F9;
+          color: #334155;
+          font-size: 11px;
+          font-weight: 700;
           white-space: nowrap;
-          font-size: 13px;
-          font-weight: 600;
-          color: #1E293B;
-        }
-        .att-status-group {
           flex-shrink: 0;
-          gap: 3px !important;
         }
-        .att-status-btn {
-          padding: 5px 8px !important;
-          font-size: 11px !important;
+
+        .att-student-name {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #0F172A;
+          line-height: 1.35;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          min-width: 0;
         }
+
+        .att-card-code {
+          font-size: 10.5px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          color: #94A3B8;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .att-card-actions {
+          display: grid !important;
+          grid-template-columns: repeat(4, 1fr) !important;
+          gap: 6px !important;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .att-card-actions .att-status-btn {
+          width: 100% !important;
+          min-height: 40px !important;
+          padding: 8px 2px !important;
+          border-radius: 8px !important;
+          font-size: 13px !important;
+          font-weight: 700 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          text-align: center !important;
+        }
+
+        #attRecordArea {
+          padding-bottom: 96px;
+        }
+      }
+
+      /* Dark Mode Adjustments */
+      html.dark-mode .att-mobile-card {
+        background: #1E293B;
+        border-color: #334155;
+      }
+      html.dark-mode .att-mobile-card[data-status="absent"] { background: #3B1219 !important; }
+      html.dark-mode .att-mobile-card[data-status="leave"]  { background: #3A230B !important; }
+      html.dark-mode .att-mobile-card[data-status="late"]   { background: #1E1B4B !important; }
+      html.dark-mode .att-card-badge {
+        background: #334155;
+        color: #E2E8F0;
+      }
+      html.dark-mode .att-student-name {
+        color: #F8FAFC;
+      }
+      html.dark-mode .att-card-actions .att-status-btn {
+        background: #0F172A;
+        border-color: #334155;
+        color: #94A3B8;
       }
     </style>
   `;
@@ -2583,7 +2719,7 @@ function renderAttendanceList() {
 function attStatusButton(rowIdx, status, currentStatus, color, label) {
   const active = currentStatus === status;
   return `
-    <button class="att-status-btn ${active ? 'active' : ''}"
+    <button type="button" class="att-status-btn ${active ? 'active' : ''}"
             data-status="${status}" data-color="${color}"
             style="${active ? `background:${color}; border-color:${color};` : ''}"
             onclick="setAttendanceStatus(${rowIdx}, '${status}')">
@@ -2601,6 +2737,7 @@ function setAttendanceStatus(rowIdx, status) {
   // High-speed direct DOM update (0.5ms response, no full-table re-render, no flicker)
   const rows = document.querySelectorAll(`[data-row="${rowIdx}"]`);
   rows.forEach(r => {
+    r.setAttribute('data-status', status);
     r.querySelectorAll('.att-status-btn').forEach(btn => {
       const bStatus = btn.getAttribute('data-status');
       const bColor = btn.getAttribute('data-color');
@@ -2626,6 +2763,7 @@ function setAllAttendance(status) {
   });
 
   // Fast batch DOM update
+  document.querySelectorAll('.att-mobile-card').forEach(c => c.setAttribute('data-status', status));
   document.querySelectorAll('.att-status-btn').forEach(btn => {
     const bStatus = btn.getAttribute('data-status');
     const bColor = btn.getAttribute('data-color');
