@@ -1286,9 +1286,12 @@ function renderUsers(container) {
   }
   container.innerHTML = `
     ${pageHeader('จัดการผู้ใช้งาน', 'bxs-user-account', `
+      <button class="btn btn-light text-indigo-600 border-indigo-200 hover:bg-indigo-50" onclick="triggerSyncPersonnelWithUsers()" title="ซิงค์ข้อมูลกับครูและบุคลากร">
+        <i class='bx bx-sync'></i> ซิงค์ข้อมูลกับบุคลากร
+      </button>
       <button class="btn btn-blue" onclick="openUserForm()">
-        <i class='bx bx-plus'>\x3c/i> เพิ่มผู้ใช้
-      \x3c/button>
+        <i class='bx bx-plus'></i> เพิ่มผู้ใช้
+      </button>
     `)}
 
     <div class="page-card">

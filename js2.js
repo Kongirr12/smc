@@ -1244,17 +1244,20 @@ function renderPersonnel(container) {
   container.innerHTML = `
     ${pageHeader('ครูและบุคลากร', 'bxs-group', (typeof canEditModule === 'function' ? canEditModule('personnel') : true) ? `
       <button class="btn btn-light" onclick="exportPersonnel()">
-        <i class='bx bx-download'>\x3c/i> Export
-      <\/button>
+        <i class='bx bx-download'></i> Export
+      </button>
       <button class="btn btn-light" onclick="showImportPersonnelCSV()">
-        <i class='bx bx-upload'>\x3c/i> นำเข้า CSV
-      <\/button>
-      <button class="btn btn-light" class="text-success border-success" onclick="bulkCreateUsersFromPersonnel()">
-        <i class='bx bx-user-check'>\x3c/i> สร้างบัญชีทั้งหมด
-      <\/button>
+        <i class='bx bx-upload'></i> นำเข้า CSV
+      </button>
+      <button class="btn btn-light text-indigo-600 border-indigo-200 hover:bg-indigo-50" onclick="triggerSyncPersonnelWithUsers()" title="ซิงค์รหัสบุคลากรให้ตรงกับ Username ในจัดการผู้ใช้งาน">
+        <i class='bx bx-sync'></i> ซิงค์รหัสกับผู้ใช้งาน
+      </button>
+      <button class="btn btn-light text-emerald-600 border-emerald-200 hover:bg-emerald-50" onclick="bulkCreateUsersFromPersonnel()">
+        <i class='bx bx-user-check'></i> สร้างบัญชีทั้งหมด
+      </button>
       <button class="btn btn-blue" onclick="openPersonnelForm()">
-        <i class='bx bx-plus'>\x3c/i> เพิ่มบุคลากร
-      <\/button>
+        <i class='bx bx-plus'></i> เพิ่มบุคลากร
+      </button>
     ` : '')}
 
     <div class="page-card">
@@ -1539,33 +1542,38 @@ function showPersonnelForm(data) {
         \x3c/div>
 
         <!-- Job Info -->
-        <div class="text-xs font-semibold text-blue-600 mb-2 uppercase">ข้อมูลตำแหน่ง\x3c/div>
+        <div class="text-xs font-semibold text-blue-600 mb-2 uppercase">ข้อมูลตำแหน่งและรหัสบุคลากร</div>
         <div class="grid grid-cols-12 gap-2 mb-4">
-          <div class="col-span-6">
-            <label class="form-label">ตำแหน่ง\x3c/label>
+          <div class="col-span-12 sm:col-span-4">
+            <label class="form-label">รหัสบุคลากร <span class="text-xs text-slate-400 font-normal">(Username)</span></label>
+            <input type="text" id="pf_personnel_id" class="form-input font-mono font-semibold" value="${escapeHTML(p.personnel_id||'')}" placeholder="เช่น kru_kong, T001">
+            <div class="text-[10.5px] text-slate-400 mt-0.5">ตรงกับ Username ในจัดการผู้ใช้งาน</div>
+          </div>
+          <div class="col-span-12 sm:col-span-4">
+            <label class="form-label">ตำแหน่ง</label>
             <input type="text" id="pf_position" class="form-input" value="${escapeHTML(p.position||'')}" placeholder="ครูชำนาญการ, เจ้าหน้าที่ธุรการ ...">
-          \x3c/div>
-          <div class="col-span-6">
-            <label class="form-label">ฝ่าย / กลุ่มสาระ\x3c/label>
+          </div>
+          <div class="col-span-12 sm:col-span-4">
+            <label class="form-label">ฝ่าย / กลุ่มสาระ</label>
             <input type="text" id="pf_department" class="form-input" value="${escapeHTML(p.department||'')}" placeholder="คณิตศาสตร์, ฝ่ายปกครอง ...">
-          \x3c/div>
-          <div class="col-span-4">
-            <label class="form-label">ประเภท\x3c/label>
+          </div>
+          <div class="col-span-12 sm:col-span-4">
+            <label class="form-label">ประเภท</label>
             <select id="pf_type" class="form-input">
-              <option value="admin"   ${p.type==='admin'?'selected':''}>ฝ่ายบริหาร\x3c/option>
-              <option value="teacher" ${p.type==='teacher'?'selected':''}>ครูผู้สอน\x3c/option>
-              <option value="support" ${p.type==='support'?'selected':''}>สายสนับสนุน\x3c/option>
-            \x3c/select>
-          \x3c/div>
-          <div class="col-span-4">
-            <label class="form-label">วิทยฐานะ\x3c/label>
+              <option value="admin"   ${p.type==='admin'?'selected':''}>ฝ่ายบริหาร</option>
+              <option value="teacher" ${p.type==='teacher'?'selected':''}>ครูผู้สอน</option>
+              <option value="support" ${p.type==='support'?'selected':''}>สายสนับสนุน</option>
+            </select>
+          </div>
+          <div class="col-span-12 sm:col-span-4">
+            <label class="form-label">วิทยฐานะ</label>
             <input type="text" id="pf_academic_level" class="form-input" value="${escapeHTML(p.academic_level||'')}">
-          \x3c/div>
-          <div class="col-span-4">
-            <label class="form-label">วันเริ่มงาน\x3c/label>
+          </div>
+          <div class="col-span-12 sm:col-span-4">
+            <label class="form-label">วันเริ่มงาน</label>
             <input type="date" id="pf_start_date" class="form-input" value="${escapeHTML((p.start_date||'').slice(0,10))}">
-          \x3c/div>
-        \x3c/div>
+          </div>
+        </div>
 
         <!-- Contact -->
         <div class="text-xs font-semibold text-blue-600 mb-2 uppercase">การติดต่อ\x3c/div>
@@ -1613,6 +1621,7 @@ function showPersonnelForm(data) {
 
       return {
         id            : document.getElementById('pf_id').value || null,
+        personnel_id  : (document.getElementById('pf_personnel_id')?.value || '').trim(),
         prefix        : document.getElementById('pf_prefix').value,
         first_name    : fn,
         last_name     : ln,
@@ -5695,3 +5704,56 @@ function confirmImportPersonnelCSV(records) {
       .importPersonnelCSV(records, APP.token);
   });
 }
+
+function triggerSyncPersonnelWithUsers() {
+  Swal.fire({
+    title: 'ซิงค์รหัสและข้อมูลบุคลากรกับผู้ใช้งาน',
+    html: `
+      <div style="text-align:left;font-size:13px;line-height:1.6;color:#475569;">
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px;margin-bottom:14px;color:#1E40AF;">
+          <strong>ยึดระบบจัดการผู้ใช้งานเป็นหลัก:</strong>
+          <ul style="list-style:disc;margin-left:18px;margin-top:6px;font-size:12px;">
+            <li>ปรับปรุงรหัสบุคลากร (personnel_id) ให้ตรงกับ Username ในจัดการผู้ใช้งาน 100%</li>
+            <li>ดึงบัญชีผู้ใช้ในจัดการผู้ใช้งานที่ยังไม่มีในทะเบียนบุคลากร มาสร้างเป็นบุคลากรให้อัตโนมัติ</li>
+            <li>รักษาข้อมูลตารางสอนและรหัส UUID เดิมไว้ครบถ้วน ไม่ทำให้ข้อมูลเสียหาย</li>
+          </ul>
+        </div>
+        <p class="text-xs text-slate-500 mb-0">ระบบจะทำการตรวจสอบและจับคู่ข้อมูลอัตโนมัติ</p>
+      </div>
+    `,
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-sync"></i> เริ่มซิงค์ข้อมูล',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#4F46E5'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    showLoading('กำลังซิงค์ข้อมูลระหว่างผู้ใช้งานและบุคลากร...');
+    google.script.run
+      .withSuccessHandler(res => {
+        hideLoading();
+        if (res && res.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'ซิงค์ข้อมูลสำเร็จ',
+            text: res.message || 'ปรับปรุงรหัสและเชื่อมโยงข้อมูลเรียบร้อยแล้ว'
+          }).then(() => {
+            if (typeof loadPersonnel === 'function') loadPersonnel();
+            if (typeof loadUsers === 'function') loadUsers();
+          });
+        } else {
+          Swal.fire({ icon:'error', title:'ซิงค์ไม่สำเร็จ', text: res ? res.message : 'เกิดข้อผิดพลาด' });
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        Swal.fire({
+          icon:'error',
+          title:'เกิดข้อผิดพลาดในการเชื่อมต่อ',
+          html: `<div style="text-align:left;font-size:13px;">${escapeHTML(err.message||err)}<br><br><span class="text-xs text-slate-500">หมายเหตุ: กรุณาคัดลอกไฟล์ <code>code.gs</code> ไปบันทึกใน Google Apps Script เพื่อเปิดใช้งานฟังก์ชันซิงค์ในเซิร์ฟเวอร์</span></div>`
+        });
+      })
+      .syncPersonnelWithUsers(APP.token);
+  });
+}
+window.triggerSyncPersonnelWithUsers = triggerSyncPersonnelWithUsers;

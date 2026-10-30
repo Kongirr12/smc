@@ -379,7 +379,8 @@ function routeApi(action, params, token) {
       case 'getTeachersForDropdown': return getTeachersForDropdown(token);
       case 'getUsersAndTeachers': return getUsersAndTeachers(token);
       case 'deletePersonnel': return deletePersonnel(params.id, token);
-      case 'createUsersFromPersonnel': return createUsersFromPersonnel(token);
+      case 'syncPersonnelWithUsers': return syncPersonnelWithUsers(token);
+      case 'createUsersFromPersonnel': return createUsersFromPersonnel(params.role, token);
       case 'importPersonnel': return importPersonnel(params, token);
       case 'importPersonnelCSV': return importPersonnelCSV(JSON.parse(params.records || '[]'), token);
       case 'exportData': return exportData(params.type, token);
@@ -493,6 +494,7 @@ function routeApi(action, params, token) {
       case 'deleteUser': return deleteUser(params.id, token);
       case 'toggleUserActive': return toggleUserActive(params.id, token);
       case 'adminResetPassword': return adminResetPassword(params.user_id, token);
+      case 'syncPersonnelWithUsers': return syncPersonnelWithUsers(token);
 
       // ---------- SCHEDULE ----------
       case 'getSchedule': return getSchedule(params, token);
@@ -2380,12 +2382,194 @@ function ensureExecutivePersonnel_() {
   }
 }
 
+/**
+ * แยกคำนำหน้า ชื่อ และนามสกุลภาษาไทย
+ */
+function parseThaiPersonnelName_(nameStr) {
+  let str = String(nameStr || '').trim();
+  let prefix = '';
+  const knownPrefixes = [
+    'ว่าที่ร้อยตรี', 'ว่าที่ ร.ต.', 'ว่าที่ร.ต.',
+    'นางสาว', 'น.ส.',
+    'นาย', 'นาง',
+    'ดร.', 'อาจารย์', 'อ.',
+    'ครู'
+  ];
+  for (const kp of knownPrefixes) {
+    if (str.startsWith(kp)) {
+      prefix = kp;
+      str = str.substring(kp.length).trim();
+      break;
+    }
+  }
+  const parts = str.split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || '';
+  const lastName = parts.slice(1).join(' ') || '';
+  return { prefix, firstName, lastName };
+}
+
+/**
+ * ซิงค์รหัสและข้อมูลระหว่าง Users (จัดการผู้ใช้งาน) และ Personnel (ครูและบุคลากร)
+ * - ยึดรหัส (Username) ใน Users เป็นหลัก
+ * - บุคลากรที่มีอยู่แล้ว จะได้รับการปรับปรุง personnel_id ให้ตรงกับ Username โดยคง ID เดิมไว้ 100% ไม่กระทบตารางสอน
+ * - ผู้ใช้งานที่ยังไม่มีข้อมูลใน Personnel จะได้รับการสร้างให้อัตโนมัติ
+ * - ไม่ลบข้อมูลบุคลากรใดๆ เพื่อความปลอดภัยสูงสุดต่อข้อมูลในระบบ
+ */
+function syncPersonnelWithUsers_() {
+  try {
+    const users = readJsonSheet_('Users');
+    const personnel = readJsonSheet_('Personnel');
+    const now = new Date().toISOString();
+    let hasChanges = false;
+    let updatedCount = 0;
+    let createdCount = 0;
+
+    const normName = str => String(str || '')
+      .replace(/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|ว่าที่\s*ร\.ต\.|ว่าที่ร้อยตรี|ครู|อ\.|อาจารย์|ผอ\.)\s*/i, '')
+      .replace(/[\s\.\-_]/g, '')
+      .toLowerCase();
+
+    const personnelByCode = {};
+    const personnelByNormName = {};
+    const personnelByEmail = {};
+
+    personnel.forEach(p => {
+      if (p.personnel_id) {
+        personnelByCode[String(p.personnel_id).toLowerCase()] = p;
+      }
+      const fn = ((p.prefix || '') + (p.first_name || '') + ' ' + (p.last_name || '')).trim();
+      const norm = normName(fn);
+      if (norm) personnelByNormName[norm] = p;
+      if (p.email) personnelByEmail[String(p.email).toLowerCase()] = p;
+    });
+
+    users.forEach(u => {
+      const uUsername = String(u.username || '').trim();
+      if (!uUsername) return;
+      const uUsernameLower = uUsername.toLowerCase();
+      const uNorm = normName(u.name);
+      const uEmailLower = u.email ? String(u.email).toLowerCase().trim() : '';
+
+      // ค้นหาบุคลากรที่ตรงกัน: 1) ตามรหัส 2) ตามชื่อ 3) ตามอีเมล
+      let match = personnelByCode[uUsernameLower] ||
+                  (uNorm ? personnelByNormName[uNorm] : null) ||
+                  (uEmailLower ? personnelByEmail[uEmailLower] : null);
+
+      if (match) {
+        // มีบุคลากรคนนี้อยู่แล้ว → ปรับปรุง personnel_id ให้ตรงกับ Username (ยึดตามจัดการผู้ใช้งานเป็นหลัก)
+        let needsUpdate = false;
+        if (String(match.personnel_id || '').trim() !== uUsername) {
+          match.personnel_id = uUsername;
+          needsUpdate = true;
+        }
+        if (!match.email && u.email) { match.email = sanitize(u.email); needsUpdate = true; }
+        if (!match.phone && u.phone) { match.phone = sanitize(u.phone); needsUpdate = true; }
+        if (!match.department && u.department) { match.department = sanitize(u.department); needsUpdate = true; }
+        if (!match.photo && u.avatar) { match.photo = u.avatar; needsUpdate = true; }
+        if (!match.signature && u.signature) { match.signature = u.signature; needsUpdate = true; }
+
+        if (needsUpdate) {
+          updateJsonById_('Personnel', match.id, p => {
+            p.personnel_id = match.personnel_id;
+            p.email = match.email;
+            p.phone = match.phone;
+            p.department = match.department;
+            p.photo = match.photo;
+            p.signature = match.signature;
+            p.updated_at = now;
+            return p;
+          });
+          personnelByCode[uUsernameLower] = match;
+          hasChanges = true;
+          updatedCount++;
+        }
+      } else {
+        // ผู้ใช้งานนี้ยังไม่มีในทะเบียนบุคลากร → สร้างใหม่โดยใช้ Username เป็น personnel_id
+        const parsed = parseThaiPersonnelName_(u.name);
+        let gender = '';
+        if (['นาย', 'ว่าที่ร้อยตรี', 'ว่าที่ ร.ต.', 'ว่าที่ร.ต.'].includes(parsed.prefix)) gender = 'male';
+        else if (['นาง', 'นางสาว', 'น.ส.'].includes(parsed.prefix)) gender = 'female';
+
+        let pos = 'ครูผู้สอน';
+        let pType = 'teacher';
+        if (u.role === 'director') { pos = 'ผู้อำนวยการโรงเรียน'; pType = 'admin'; }
+        else if (u.role === 'deputy') { pos = 'รองผู้อำนวยการโรงเรียน'; pType = 'admin'; }
+        else if (u.role === 'admin') { pos = 'ผู้ดูแลระบบ'; pType = 'admin'; }
+        else if (u.role === 'staff') { pos = 'เจ้าหน้าที่'; pType = 'support'; }
+        else if (u.role === 'teacher') { pos = 'ครูผู้สอน'; pType = 'teacher'; }
+
+        const newPersonnel = {
+          id: generateId(),
+          personnel_id: uUsername,
+          prefix: parsed.prefix,
+          first_name: parsed.firstName || u.name,
+          last_name: parsed.lastName || '',
+          national_id: '',
+          birth_date: null,
+          gender: gender,
+          position: pos,
+          department: u.department || (pType === 'teacher' ? 'กลุ่มสาระการเรียนรู้' : 'ฝ่ายบริหาร'),
+          type: pType,
+          academic_level: (u.role === 'director' || u.role === 'deputy') ? 'ชำนาญการพิเศษ' : '',
+          start_date: null,
+          phone: sanitize(u.phone || ''),
+          email: sanitize(u.email || ''),
+          address: 'โรงเรียนมหาชัยพิทยาคาร',
+          photo: u.avatar || '',
+          signature: u.signature || '',
+          status: u.active !== false ? 'active' : 'inactive',
+          created_at: now,
+          updated_at: now
+        };
+
+        appendJsonRow_('Personnel', newPersonnel);
+        personnel.push(newPersonnel);
+        personnelByCode[uUsernameLower] = newPersonnel;
+        if (uNorm) personnelByNormName[uNorm] = newPersonnel;
+        hasChanges = true;
+        createdCount++;
+      }
+    });
+
+    if (hasChanges) {
+      clearCachedKeys_('teachers_dropdown', 'classroom_teachers_map');
+    }
+    return { hasChanges: true, updatedCount: updatedCount, createdCount: createdCount };
+  } catch (e) {
+    logError({ fn:'syncPersonnelWithUsers_', error:e.message });
+    return { hasChanges: false, error:e.message };
+  }
+}
+
+function syncPersonnelWithUsers(sessionToken) {
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+
+    const res = syncPersonnelWithUsers_();
+    if (res.error) {
+      return { status:'error', message:res.error };
+    }
+    return {
+      status: 'success',
+      data: res,
+      message: `ซิงค์ข้อมูลสำเร็จ: ปรับปรุงรหัสให้ตรงกับผู้ใช้งาน ${res.updatedCount || 0} รายการ, เพิ่มบุคลากรใหม่ ${res.createdCount || 0} รายการ`
+    };
+  } catch (e) {
+    logError({ fn:'syncPersonnelWithUsers', error:e.message });
+    return { status:'error', message:e.message };
+  }
+}
+
 function getPersonnel(params, sessionToken) {
   try {
     const auth = _requireAuth_(sessionToken);
     if (!auth.ok) return auth.response;
 
     ensureExecutivePersonnel_();
+    try {
+      syncPersonnelWithUsers_();
+    } catch (_) {}
 
     const all = readJsonSheet_('Personnel');
     params = params || {};
@@ -2505,10 +2689,18 @@ function savePersonnel(data, sessionToken) {
       if (dup) return { status:'error', message:'เลขบัตรประชาชนนี้มีในระบบแล้ว' };
     }
 
+    if (data.personnel_id) {
+      clean.personnel_id = sanitize(data.personnel_id).trim();
+      const all = readJsonSheet_('Personnel');
+      const dupP = all.find(p => String(p.personnel_id || '').toLowerCase() === clean.personnel_id.toLowerCase() && p.id !== data.id);
+      if (dupP) return { status:'error', message:'รหัสบุคลากรนี้มีในระบบแล้ว' };
+    }
+
     if (data.id) {
       let updated = null;
       const found = updateJsonById_('Personnel', data.id, p => {
         Object.assign(p, clean);
+        if (clean.personnel_id) p.personnel_id = clean.personnel_id;
         p.updated_at = new Date().toISOString();
         updated = p;
         return p;
@@ -2520,7 +2712,7 @@ function savePersonnel(data, sessionToken) {
       const now = new Date().toISOString();
       const obj = Object.assign({
         id           : generateId(),
-        personnel_id : generatePersonnelId()
+        personnel_id : clean.personnel_id || generatePersonnelId()
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Personnel', obj);
       clearCachedKeys_('teachers_dropdown', 'classroom_teachers_map');
@@ -2576,7 +2768,7 @@ function importPersonnelCSV(rows, sessionToken) {
         }
         const obj = Object.assign({
           id           : generateId(),
-          personnel_id : generatePersonnelId()
+          personnel_id : (row.personnel_id ? sanitize(row.personnel_id).trim() : '') || generatePersonnelId()
         }, clean, { created_at: now, updated_at: now });
         appendJsonRow_('Personnel', obj);
         inserted.push(obj);
@@ -7329,6 +7521,7 @@ function saveUser(data, sessionToken) {
         return u;
       });
       if (!found) return { status:'error', message:'ไม่พบผู้ใช้' };
+      try { syncPersonnelWithUsers_(); } catch(_) {}
       const safe = Object.assign({}, updated);
       delete safe.password;
       return { status:'success', data:safe, message:'แก้ไขผู้ใช้สำเร็จ' };
@@ -7344,6 +7537,7 @@ function saveUser(data, sessionToken) {
         last_login: null
       }, clean, { created_at: now, updated_at: now });
       appendJsonRow_('Users', obj);
+      try { syncPersonnelWithUsers_(); } catch(_) {}
       const safe = Object.assign({}, obj);
       delete safe.password;
       return { status:'success', data:safe, message:'เพิ่มผู้ใช้สำเร็จ' };
