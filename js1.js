@@ -14,6 +14,13 @@ const APP = {
   dashboardData: null
 };
 
+window.CalendarState = window.CalendarState || {
+  year : new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  events: []
+};
+var CalendarState = window.CalendarState;
+
 
 /* ============================================================
  *  Boot
@@ -407,6 +414,7 @@ function canEditModule(moduleName) {
  *  Navigation
  * ============================================================ */
 function navigate(page) {
+  if (page === 'announcements') page = 'calendar';
   APP.currentPage = page;
 
   // Toggle page-specific class on body for responsive rules & floating chat suppression
@@ -485,7 +493,8 @@ function navigate(page) {
     case 'budget':    return renderBudget(content);
     case 'documents': if (typeof renderDocuments === 'function') return renderDocuments(content); break;
     case 'approvals': if (typeof renderApprovals === 'function') return renderApprovals(content); break;
-    case 'calendar':  if (typeof renderCalendar  === 'function') return renderCalendar(content);  break;
+    case 'calendar':
+    case 'announcements': if (typeof renderCalendar  === 'function') return renderCalendar(content);  break;
     case 'files':     if (typeof renderFiles     === 'function') return renderFiles(content);     break;
     case 'templates': if (typeof renderTemplates === 'function') return renderTemplates(content); break;
     case 'reports':   if (typeof renderReports   === 'function') return renderReports(content);   break;
@@ -860,9 +869,12 @@ function renderDashboard(container) {
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 m-0 flex items-center gap-1.5 text-left">
             <i class="bx bxs-megaphone text-primary"></i>
-            <span>ประกาศและกิจกรรมล่าสุด</span>
+            <span>ประกาศและกิจกรรม</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900" id="announceMonthBadge">
+              เดือน${['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'][new Date().getMonth()+1]}
+            </span>
           </h3>
-          <a href="#" onclick="event.preventDefault(); navigate('announcements');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5">
+          <a href="#" onclick="event.preventDefault(); navigate('calendar');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5" title="ไปที่ปฏิทินและข่าวสาร">
             ดูทั้งหมด <i class="bx bx-chevron-right"></i>
           </a>
         </div>
@@ -901,6 +913,7 @@ function renderDashboard(container) {
   } else {
     loadDashboardData();
   }
+  loadDashboardMonthEvents();
 }
 
 function loadDashboardData(silent) {
@@ -916,6 +929,7 @@ function loadDashboardData(silent) {
       if (typeof ensureClassroomTeachersMap === 'function') {
         ensureClassroomTeachersMap();
       }
+      loadDashboardMonthEvents();
     })
     .withFailureHandler(err => {
       if (!silent) showToast('error', err.message || err);
@@ -1012,28 +1026,12 @@ function renderDashboardData(d) {
   const netBal = document.getElementById('netBalance');
   if (netBal) netBal.textContent = formatMoney(d.stats.balance);
 
-  // ประกาศ
-  // ประกาศ
-  const list = document.getElementById('announceList');
-  if (list) {
-    if (!d.announcements || d.announcements.length === 0) {
-      list.innerHTML = `
-        <div class="empty-state">
-          <i class='bx bx-news'>\x3c/i>
-          ยังไม่มีประกาศ
-        \x3c/div>`;
-    } else {
-      list.innerHTML = d.announcements.slice(0,4).map(a => `
-        <div class="announce-item">
-          <div class="icn"><i class='bx bxs-megaphone'>\x3c/i>\x3c/div>
-          <div style="flex:1; min-width:0;">
-            <div class="title">${escapeHTML(a.title || '(ไม่มีหัวข้อ)')}\x3c/div>
-            <div class="meta">${formatThaiDate(new Date(a.created_at || a.start_date))}\x3c/div>
-          \x3c/div>
-        \x3c/div>
-      `).join('');
-    }
-  }
+  // ประกาศและกิจกรรมประจำเดือน (กรองเฉพาะเดือนปัจจุบันตามความต้องการของผู้ใช้)
+  renderDashboardAnnouncements(
+    (typeof CalendarState !== 'undefined' && CalendarState.events && CalendarState.events.length > 0)
+      ? CalendarState.events
+      : (d.announcements || [])
+  );
 
   // Sidebar badge & Topbar Dot
   const badge = document.getElementById('badgeApprovals');
@@ -1052,6 +1050,149 @@ function renderDashboardData(d) {
   // แจ้งเตือน (Notifications)
   if (d.unread_notifications !== undefined) {
     updateNotificationsUI(d.unread_notifications);
+  }
+}
+
+/* ─── ระบบแสดงประกาศและกิจกรรมประจำเดือนปัจจุบันบนหน้าหลัก ─────────────────────── */
+function formatEventDateThai(startStr, endStr) {
+  const thaiMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const parseParts = dStr => {
+    if (!dStr) return null;
+    if (dStr instanceof Date) return { year: dStr.getFullYear(), month: dStr.getMonth() + 1, day: dStr.getDate() };
+    const str = String(dStr).slice(0, 10);
+    const parts = str.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return { year: y, month: m, day: d };
+    }
+    const dt = new Date(dStr);
+    if (!isNaN(dt.getTime())) return { year: dt.getFullYear(), month: dt.getMonth() + 1, day: dt.getDate() };
+    return null;
+  };
+
+  const s = parseParts(startStr);
+  if (!s) return '-';
+  const e = endStr ? parseParts(endStr) : null;
+  const sYearThai = s.year + 543;
+
+  if (!e || (s.year === e.year && s.month === e.month && s.day === e.day)) {
+    return `${s.day} ${thaiMonths[s.month]} ${sYearThai}`;
+  }
+  if (s.year === e.year && s.month === e.month) {
+    return `${s.day} - ${e.day} ${thaiMonths[s.month]} ${sYearThai}`;
+  }
+  if (s.year === e.year) {
+    return `${s.day} ${thaiMonths[s.month]} - ${e.day} ${thaiMonths[e.month]} ${sYearThai}`;
+  }
+  return `${s.day} ${thaiMonths[s.month]} ${sYearThai} - ${e.day} ${thaiMonths[e.month]} ${e.year + 543}`;
+}
+
+function isEventInMonth(e, targetYear, targetMonth) {
+  const ym = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+  const sYM = (e.start_date || e.date || '').slice(0, 7);
+  const endVal = e.end_date || e.start_date || e.date || '';
+  const eYM = endVal.slice(0, 7);
+  if (!sYM) return false;
+  return sYM <= ym && ym <= eYM;
+}
+
+function renderDashboardAnnouncements(events, targetDate = new Date()) {
+  const list = document.getElementById('announceList');
+  if (!list) return;
+
+  const y = targetDate.getFullYear();
+  const m = targetDate.getMonth() + 1;
+  const thaiMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+  const badgeEl = document.getElementById('announceMonthBadge');
+  if (badgeEl) badgeEl.textContent = 'เดือน' + thaiMonths[m];
+
+  // กรองเฉพาะกิจกรรมและประกาศที่จัดขึ้นในเดือนนี้เท่านั้น
+  const monthEvents = (events || []).filter(e => isEventInMonth(e, y, m));
+
+  // เรียงลำดับตามวันที่จัดกิจกรรม (start_date) จากต้นเดือนไปปลายเดือน
+  monthEvents.sort((a, b) => {
+    const da = a.start_date || a.date || '';
+    const db = b.start_date || b.date || '';
+    return da.localeCompare(db);
+  });
+
+  if (monthEvents.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state" style="padding: 24px 16px;">
+        <i class='bx bx-calendar-event text-slate-300 dark:text-slate-600' style="font-size: 32px; margin-bottom: 6px;"></i>
+        <div class="text-xs text-slate-500 font-medium">ยังไม่มีประกาศหรือกิจกรรมในเดือน${thaiMonths[m]}</div>
+        <button type="button" class="btn btn-light text-xs mt-2.5 py-1 px-3 inline-flex items-center gap-1 cursor-pointer" onclick="navigate('calendar')">
+          <i class='bx bx-calendar'></i> ไปที่ปฏิทินวิชาการ
+        </button>
+      </div>`;
+    return;
+  }
+
+  const typeConfig = {
+    academic: { label: 'วิชาการ', color: '#4F46E5', bg: 'rgba(79, 70, 229, 0.1)', icon: 'bxs-graduation' },
+    activity: { label: 'กิจกรรม', color: '#10B981', bg: 'rgba(16, 185, 129, 0.1)', icon: 'bxs-flag-checkered' },
+    meeting : { label: 'ประชุม',  color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', icon: 'bxs-conversation' },
+    holiday : { label: 'วันหยุด', color: '#DC2626', bg: 'rgba(220, 38, 38, 0.1)',  icon: 'bxs-calendar-star' },
+    general : { label: 'ทั่วไป',   color: '#64748B', bg: 'rgba(100, 116, 139, 0.1)', icon: 'bxs-megaphone' }
+  };
+
+  list.innerHTML = monthEvents.slice(0, 5).map(e => {
+    const t = typeConfig[e.type] || typeConfig.general;
+    const dateStr = formatEventDateThai(e.start_date || e.date, e.end_date);
+
+    return `
+      <div class="announce-item cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 p-2.5 rounded-xl transition-all"
+           onclick="navigate('calendar')"
+           title="คลิกเพื่อดูรายละเอียดในปฏิทินและข่าวสาร">
+        <div class="icn" style="background:${t.bg}; color:${t.color}; border: 1.5px solid ${t.color}35;">
+          <i class='bx ${t.icon}'></i>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div class="flex items-center justify-between gap-2 mb-0.5">
+            <div class="title truncate font-bold text-slate-800 dark:text-slate-100 text-sm">
+              ${escapeHTML(e.title || '(ไม่มีหัวข้อ)')}
+            </div>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style="background:${t.bg}; color:${t.color};">
+              ${t.label}
+            </span>
+          </div>
+          <div class="meta text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
+            <span class="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+              <i class='bx bx-calendar-event text-primary'></i>
+              ${dateStr}
+            </span>
+            ${e.location ? `<span class="truncate text-slate-400 dark:text-slate-500">• <i class='bx bx-map-pin'></i> ${escapeHTML(e.location)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function loadDashboardMonthEvents() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.status === 'success' && Array.isArray(res.data)) {
+          if (typeof window.CalendarState !== 'undefined') {
+            window.CalendarState.year = year;
+            window.CalendarState.month = month;
+            window.CalendarState.events = res.data;
+          }
+          renderDashboardAnnouncements(res.data, now);
+        }
+      })
+      .withFailureHandler(err => {
+        console.warn('Load dashboard month events error:', err);
+      })
+      .getCalendarEvents({ year: year, month: month }, APP.token);
   }
 }
 

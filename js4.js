@@ -583,11 +583,12 @@ function openReportDialog(reportType, title) {
 /* ============================================================
  *  CALENDAR
  * ============================================================ */
-const CalendarState = {
+window.CalendarState = window.CalendarState || {
   year : new Date().getFullYear(),
   month: new Date().getMonth() + 1,   // 1-12
   events: []
 };
+var CalendarState = window.CalendarState;
 
 const EVENT_TYPES = {
   academic: { label:'วิชาการ',  color:'#4F46E5' },
