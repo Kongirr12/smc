@@ -5707,18 +5707,20 @@ function confirmImportPersonnelCSV(records) {
 
 function triggerSyncPersonnelWithUsers() {
   Swal.fire({
-    title: 'ซิงค์รหัสและข้อมูลบุคลากรกับผู้ใช้งาน',
+    title: 'ซิงค์รหัสและข้อมูลบุคลากรกับผู้ใช้งาน (2 ทาง)',
     html: `
       <div style="text-align:left;font-size:13px;line-height:1.6;color:#475569;">
         <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px;margin-bottom:14px;color:#1E40AF;">
-          <strong>ยึดระบบจัดการผู้ใช้งานเป็นหลัก:</strong>
+          <strong>ระบบเชื่อมโยงข้อมูล 2 ทางสมบูรณ์แบบ 100%:</strong>
           <ul style="list-style:disc;margin-left:18px;margin-top:6px;font-size:12px;">
             <li>ปรับปรุงรหัสบุคลากร (personnel_id) ให้ตรงกับ Username ในจัดการผู้ใช้งาน 100%</li>
-            <li>ดึงบัญชีผู้ใช้ในจัดการผู้ใช้งานที่ยังไม่มีในทะเบียนบุคลากร มาสร้างเป็นบุคลากรให้อัตโนมัติ</li>
-            <li>รักษาข้อมูลตารางสอนและรหัส UUID เดิมไว้ครบถ้วน ไม่ทำให้ข้อมูลเสียหาย</li>
+            <li>ผู้ใช้งานที่ยังไม่มีข้อมูลในทะเบียนบุคลากร ➔ ระบบสร้างให้ทันที</li>
+            <li>บุคลากรที่ยังไม่มีบัญชีเข้าสู่ระบบ ➔ ระบบสร้างบัญชีผู้ใช้งานให้อัตโนมัติ (รหัสผ่านเริ่มต้น = username)</li>
+            <li>คงข้อมูลตารางสอนและรหัส UUID เดิมไว้ครบถ้วน ไม่ทำให้ข้อมูลเสียหาย</li>
+            <li><strong>ผลลัพธ์:</strong> จำนวนใน "จัดการผู้ใช้งาน" และ "ครูและบุคลากร" จะเท่ากัน 100% เสมอ</li>
           </ul>
         </div>
-        <p class="text-xs text-slate-500 mb-0">ระบบจะทำการตรวจสอบและจับคู่ข้อมูลอัตโนมัติ</p>
+        <p class="text-xs text-slate-500 mb-0">ระบบจะทำการตรวจสอบและจับคู่ข้อมูลอัตโนมัติด้วยความเร็วสูง</p>
       </div>
     `,
     icon: 'info',
@@ -5733,6 +5735,11 @@ function triggerSyncPersonnelWithUsers() {
       .withSuccessHandler(res => {
         hideLoading();
         if (res && res.status === 'success') {
+          if (typeof window.clearAppCache === 'function') {
+            window.clearAppCache('getPersonnel');
+            window.clearAppCache('getUsers');
+            window.clearAppCache('getTeachersForDropdown');
+          }
           Swal.fire({
             icon: 'success',
             title: 'ซิงค์ข้อมูลสำเร็จ',

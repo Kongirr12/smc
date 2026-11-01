@@ -3115,11 +3115,13 @@ function getIconByFormat(format) {
   return 'bxs-file-blank';
 }
 
-function formatFileSize(bytes) {
-  if (!bytes || isNaN(bytes)) return '';
-  const kb = bytes / 1024;
-  if (kb < 1000) return `${kb.toFixed(1)} KB`;
-  return `${(kb / 1024).toFixed(2)} MB`;
+if (typeof formatFileSize !== 'function') {
+  function formatFileSize(bytes) {
+    if (!bytes || isNaN(bytes)) return '';
+    const kb = bytes / 1024;
+    if (kb < 1000) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+  }
 }
 
 /**

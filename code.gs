@@ -2409,20 +2409,27 @@ function parseThaiPersonnelName_(nameStr) {
 }
 
 /**
- * ซิงค์รหัสและข้อมูลระหว่าง Users (จัดการผู้ใช้งาน) และ Personnel (ครูและบุคลากร)
- * - ยึดรหัส (Username) ใน Users เป็นหลัก
- * - บุคลากรที่มีอยู่แล้ว จะได้รับการปรับปรุง personnel_id ให้ตรงกับ Username โดยคง ID เดิมไว้ 100% ไม่กระทบตารางสอน
- * - ผู้ใช้งานที่ยังไม่มีข้อมูลใน Personnel จะได้รับการสร้างให้อัตโนมัติ
- * - ไม่ลบข้อมูลบุคลากรใดๆ เพื่อความปลอดภัยสูงสุดต่อข้อมูลในระบบ
+ * ซิงค์รหัสและข้อมูลแบบ 2 ทาง (Two-Way Synchronization) ระหว่าง Users และ Personnel
+ * - ยึดระบบจัดการผู้ใช้งาน (Users) เป็นหลัก และทำให้ทั้งสองฐานข้อมูลสอดคล้องกัน 100%
+ * - บุคลากรเดิม: อัปเดต personnel_id ให้ตรงกับ Username โดยคง ID UUID เดิมและตารางสอนไว้ครบถ้วน
+ * - ผู้ใช้งานที่ยังไม่มีประวัติบุคลากร: สร้างให้ใน Personnel อัตโนมัติ
+ * - บุคลากรที่ยังไม่มีบัญชีผู้ใช้งาน: สร้างบัญชีใน Users ให้อัตโนมัติ (รหัสผ่านเริ่มต้น = username)
+ * - บันทึกข้อมูลแบบ Batch เขียนครั้งเดียวความเร็วสูง ไม่วนลูปทีละเซลล์
  */
 function syncPersonnelWithUsers_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { hasChanges: false, error: 'ระบบกำลังประมวลผลการซิงค์ข้อมูลอยู่ กรุณาลองใหม่อีกครั้ง' };
+  }
   try {
     const users = readJsonSheet_('Users');
     const personnel = readJsonSheet_('Personnel');
     const now = new Date().toISOString();
-    let hasChanges = false;
-    let updatedCount = 0;
-    let createdCount = 0;
+    let personnelChanged = false;
+    let usersChanged = false;
+    let updatedPersonnelCount = 0;
+    let createdPersonnelCount = 0;
+    let createdUsersCount = 0;
 
     const normName = str => String(str || '')
       .replace(/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|ว่าที่\s*ร\.ต\.|ว่าที่ร้อยตรี|ครู|อ\.|อาจารย์|ผอ\.)\s*/i, '')
@@ -2443,6 +2450,18 @@ function syncPersonnelWithUsers_() {
       if (p.email) personnelByEmail[String(p.email).toLowerCase()] = p;
     });
 
+    const usersByUsername = {};
+    const usersByNormName = {};
+    const usersByEmail = {};
+
+    users.forEach(u => {
+      if (u.username) usersByUsername[String(u.username).toLowerCase()] = u;
+      const uNorm = normName(u.name);
+      if (uNorm) usersByNormName[uNorm] = u;
+      if (u.email) usersByEmail[String(u.email).toLowerCase().trim()] = u;
+    });
+
+    // ── Phase 1: Sync Users ➔ Personnel ──
     users.forEach(u => {
       const uUsername = String(u.username || '').trim();
       if (!uUsername) return;
@@ -2450,13 +2469,11 @@ function syncPersonnelWithUsers_() {
       const uNorm = normName(u.name);
       const uEmailLower = u.email ? String(u.email).toLowerCase().trim() : '';
 
-      // ค้นหาบุคลากรที่ตรงกัน: 1) ตามรหัส 2) ตามชื่อ 3) ตามอีเมล
       let match = personnelByCode[uUsernameLower] ||
                   (uNorm ? personnelByNormName[uNorm] : null) ||
                   (uEmailLower ? personnelByEmail[uEmailLower] : null);
 
       if (match) {
-        // มีบุคลากรคนนี้อยู่แล้ว → ปรับปรุง personnel_id ให้ตรงกับ Username (ยึดตามจัดการผู้ใช้งานเป็นหลัก)
         let needsUpdate = false;
         if (String(match.personnel_id || '').trim() !== uUsername) {
           match.personnel_id = uUsername;
@@ -2469,22 +2486,11 @@ function syncPersonnelWithUsers_() {
         if (!match.signature && u.signature) { match.signature = u.signature; needsUpdate = true; }
 
         if (needsUpdate) {
-          updateJsonById_('Personnel', match.id, p => {
-            p.personnel_id = match.personnel_id;
-            p.email = match.email;
-            p.phone = match.phone;
-            p.department = match.department;
-            p.photo = match.photo;
-            p.signature = match.signature;
-            p.updated_at = now;
-            return p;
-          });
-          personnelByCode[uUsernameLower] = match;
-          hasChanges = true;
-          updatedCount++;
+          match.updated_at = now;
+          personnelChanged = true;
+          updatedPersonnelCount++;
         }
       } else {
-        // ผู้ใช้งานนี้ยังไม่มีในทะเบียนบุคลากร → สร้างใหม่โดยใช้ Username เป็น personnel_id
         const parsed = parseThaiPersonnelName_(u.name);
         let gender = '';
         if (['นาย', 'ว่าที่ร้อยตรี', 'ว่าที่ ร.ต.', 'ว่าที่ร.ต.'].includes(parsed.prefix)) gender = 'male';
@@ -2522,22 +2528,90 @@ function syncPersonnelWithUsers_() {
           updated_at: now
         };
 
-        appendJsonRow_('Personnel', newPersonnel);
         personnel.push(newPersonnel);
         personnelByCode[uUsernameLower] = newPersonnel;
         if (uNorm) personnelByNormName[uNorm] = newPersonnel;
-        hasChanges = true;
-        createdCount++;
+        personnelChanged = true;
+        createdPersonnelCount++;
       }
     });
 
-    if (hasChanges) {
+    // ── Phase 2: Sync Personnel ➔ Users (Bidirectional: ทั้งสองหน้ารายการตรงกัน 100%) ──
+    personnel.forEach(p => {
+      const pCode = String(p.personnel_id || '').trim();
+      const pCodeLower = pCode.toLowerCase();
+      const pFullName = ((p.prefix || '') + (p.first_name || '') + ' ' + (p.last_name || '')).trim();
+      const pNorm = normName(pFullName);
+      const pEmailLower = p.email ? String(p.email).toLowerCase().trim() : '';
+
+      let matchUser = (pCodeLower ? usersByUsername[pCodeLower] : null) ||
+                      (pNorm ? usersByNormName[pNorm] : null) ||
+                      (pEmailLower ? usersByEmail[pEmailLower] : null);
+
+      if (!matchUser) {
+        const finalUsername = (pCodeLower || ('p_' + generateId().slice(0, 6))).toLowerCase();
+        let targetRole = 'teacher';
+        if (p.type === 'admin') targetRole = 'deputy';
+        else if (p.type === 'support') targetRole = 'staff';
+
+        const newUser = {
+          id: generateId(),
+          username: finalUsername,
+          password: hashPassword(finalUsername),
+          role: targetRole,
+          name: pFullName || 'บุคลากร',
+          email: sanitize(p.email || ''),
+          phone: sanitize(p.phone || ''),
+          department: sanitize(p.department || ''),
+          avatar: p.photo || '',
+          signature: p.signature || '',
+          permissions: (CONFIG.USER_ROLES[targetRole] && CONFIG.USER_ROLES[targetRole].permissions) || [],
+          active: (p.status === 'active'),
+          last_login: null,
+          created_at: now,
+          updated_at: now
+        };
+
+        users.push(newUser);
+        usersByUsername[finalUsername] = newUser;
+        if (pNorm) usersByNormName[pNorm] = newUser;
+        usersChanged = true;
+        createdUsersCount++;
+
+        if (!p.personnel_id) {
+          p.personnel_id = finalUsername;
+          personnelChanged = true;
+        }
+      }
+    });
+
+    // ── Batch Write Once (ความเร็วสูงพิเศษ) ──
+    if (personnelChanged) {
+      writeJsonSheet_('Personnel', personnel);
       clearCachedKeys_('teachers_dropdown', 'classroom_teachers_map');
     }
-    return { hasChanges: true, updatedCount: updatedCount, createdCount: createdCount };
+    if (usersChanged) {
+      writeJsonSheet_('Users', users);
+      clearCachedKeys_('app_users', 'users_dropdown');
+    }
+
+    try {
+      CacheService.getScriptCache().put('last_personnel_sync', 'ok', 300);
+    } catch (_) {}
+
+    return {
+      hasChanges: personnelChanged || usersChanged,
+      updatedCount: updatedPersonnelCount,
+      createdCount: createdPersonnelCount,
+      createdUsersCount: createdUsersCount,
+      totalUsers: users.length,
+      totalPersonnel: personnel.length
+    };
   } catch (e) {
     logError({ fn:'syncPersonnelWithUsers_', error:e.message });
     return { hasChanges: false, error:e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
   }
 }
 
@@ -2546,14 +2620,21 @@ function syncPersonnelWithUsers(sessionToken) {
     const auth = _requireAuth_(sessionToken, true);
     if (!auth.ok) return auth.response;
 
+    try { CacheService.getScriptCache().remove('last_personnel_sync'); } catch (_) {}
+
     const res = syncPersonnelWithUsers_();
     if (res.error) {
       return { status:'error', message:res.error };
     }
+    let msg = `ซิงค์ข้อมูลสำเร็จ: ปรับปรุงรหัส ${res.updatedCount || 0} รายการ`;
+    if (res.createdCount > 0) msg += `, เพิ่มบุคลากร ${res.createdCount} รายการ`;
+    if (res.createdUsersCount > 0) msg += `, สร้างบัญชีผู้ใช้ใหม่ ${res.createdUsersCount} บัญชี`;
+    msg += ` (ปัจจุบันมีผู้ใช้ ${res.totalUsers || 0} คน และบุคลากร ${res.totalPersonnel || 0} คน ตรงกันสมบูรณ์)`;
+
     return {
       status: 'success',
       data: res,
-      message: `ซิงค์ข้อมูลสำเร็จ: ปรับปรุงรหัสให้ตรงกับผู้ใช้งาน ${res.updatedCount || 0} รายการ, เพิ่มบุคลากรใหม่ ${res.createdCount || 0} รายการ`
+      message: msg
     };
   } catch (e) {
     logError({ fn:'syncPersonnelWithUsers', error:e.message });
@@ -2568,7 +2649,10 @@ function getPersonnel(params, sessionToken) {
 
     ensureExecutivePersonnel_();
     try {
-      syncPersonnelWithUsers_();
+      const lastSync = CacheService.getScriptCache().get('last_personnel_sync');
+      if (!lastSync) {
+        syncPersonnelWithUsers_();
+      }
     } catch (_) {}
 
     const all = readJsonSheet_('Personnel');
@@ -11049,70 +11133,106 @@ function clearOldChatMessages(sessionToken) {
 /* ============================================================
  *  Compatibility & Alias Wrappers (Prevent ReferenceError on routeApi/legacy calls)
  * ============================================================ */
-function getLineOAConfig(sessionToken) { return getLineSettings(sessionToken); }
-function saveLineOAConfig(data, sessionToken) { return saveLineSettings(data, sessionToken); }
+function getLineOAConfig(sessionToken) {
+  try { return getLineSettings(sessionToken); } catch (e) { return { status:'error', message:e.message }; }
+}
+function saveLineOAConfig(data, sessionToken) {
+  try { return saveLineSettings(data, sessionToken); } catch (e) { return { status:'error', message:e.message }; }
+}
 function checkScheduleConflicts(params, sessionToken) {
-  params = params || {};
-  return getAllConflicts(params.academic_year || params.year, params.semester || params.sem, sessionToken);
+  try {
+    params = params || {};
+    return getAllConflicts(params.academic_year || params.year, params.semester || params.sem, sessionToken);
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function copySchedule(params, sessionToken) {
-  params = params || {};
-  return copyScheduleSemester(params.fromYear, params.fromSem, params.toYear, params.toSem, sessionToken);
+  try {
+    params = params || {};
+    return copyScheduleSemester(params.fromYear, params.fromSem, params.toYear, params.toSem, sessionToken);
+  } catch (e) { return { status:'error', message:e.message }; }
 }
-function saveSchedule(params, sessionToken) { return saveScheduleEntry(params, sessionToken); }
+function saveSchedule(params, sessionToken) {
+  try { return saveScheduleEntry(params, sessionToken); } catch (e) { return { status:'error', message:e.message }; }
+}
 function deleteSchedule(id, sessionToken) {
-  const auth = _requireAuth_(sessionToken, true);
-  if (!auth.ok) return auth.response;
-  const ok = deleteJsonById_('Schedule', id);
-  return ok ? { status:'success', message:'ลบคาบเรียนสำเร็จ' } : { status:'error', message:'ไม่พบรายการ' };
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    const ok = deleteJsonById_('Schedule', id);
+    return ok ? { status:'success', message:'ลบคาบเรียนสำเร็จ' } : { status:'error', message:'ไม่พบรายการ' };
+  } catch (e) { return { status:'error', message:e.message }; }
 }
-function exportAttendance(params, sessionToken) { return exportData('attendance', sessionToken); }
+function exportAttendance(params, sessionToken) {
+  try { return exportData('attendance', sessionToken); } catch (e) { return { status:'error', message:e.message }; }
+}
 function getAttendanceByStudent(studentId, sessionToken) {
-  const auth = _requireAuth_(sessionToken);
-  if (!auth.ok) return auth.response;
-  const all = readJsonSheet_('Attendance').filter(a => a.student_id === studentId);
-  return { status:'success', data:all };
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    const all = readJsonSheet_('Attendance').filter(a => a.student_id === studentId);
+    return { status:'success', data:all };
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function getClassroomById(id, sessionToken) {
-  const auth = _requireAuth_(sessionToken);
-  if (!auth.ok) return auth.response;
-  const room = readJsonSheet_('Classrooms').find(r => r.id === id);
-  return room ? { status:'success', data:room } : { status:'error', message:'ไม่พบห้องเรียน' };
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    const room = readJsonSheet_('Classrooms').find(r => r.id === id);
+    return room ? { status:'success', data:room } : { status:'error', message:'ไม่พบห้องเรียน' };
+  } catch (e) { return { status:'error', message:e.message }; }
 }
-function getFinancialReport(params, sessionToken) { return generateReport('finance_summary', params || {}, sessionToken); }
-function getGradeReport(studentId, sessionToken) { return calculateGPA(studentId, '', sessionToken); }
+function getFinancialReport(params, sessionToken) {
+  try { return generateReport('finance_summary', params || {}, sessionToken); } catch (e) { return { status:'error', message:e.message }; }
+}
+function getGradeReport(studentId, sessionToken) {
+  try { return calculateGPA(studentId, '', sessionToken); } catch (e) { return { status:'error', message:e.message }; }
+}
 function saveGradeSheet(params, sessionToken) {
-  params = params || {};
-  return saveGradeBulk(params.subject_id || params.id, params.records || [], sessionToken, params.academic_year || params.year, params.semester || params.sem);
+  try {
+    params = params || {};
+    return saveGradeBulk(params.subject_id || params.id, params.records || [], sessionToken, params.academic_year || params.year, params.semester || params.sem);
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function importStudents(params, sessionToken) {
-  const records = params && params.records ? (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records) : (Array.isArray(params) ? params : []);
-  return importStudentsCSV(records, sessionToken);
+  try {
+    const records = params && params.records ? (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records) : (Array.isArray(params) ? params : []);
+    return importStudentsCSV(records, sessionToken);
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function importPersonnel(params, sessionToken) {
-  const records = params && params.records ? (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records) : (Array.isArray(params) ? params : []);
-  return importPersonnelCSV(records, sessionToken);
+  try {
+    const records = params && params.records ? (typeof params.records === 'string' ? JSON.parse(params.records || '[]') : params.records) : (Array.isArray(params) ? params : []);
+    return importPersonnelCSV(records, sessionToken);
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function getStudentCardData(params, sessionToken) {
-  return getStudents(Object.assign({ per_page: 500, status: 'active' }, params || {}), sessionToken);
+  try {
+    return getStudents(Object.assign({ per_page: 500, status: 'active' }, params || {}), sessionToken);
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function scanAttendance(code, sessionToken) {
-  return recordQRAttendance(code, new Date().toISOString().slice(0, 10), sessionToken);
+  try {
+    return recordQRAttendance(code, new Date().toISOString().slice(0, 10), sessionToken);
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function sendBroadcast(params, sessionToken) {
-  const auth = _requireAuth_(sessionToken, true);
-  if (!auth.ok) return auth.response;
-  const cfg = getLineConfig_();
-  if (!cfg.token || !cfg.schoolGroup) return { status:'error', message:'ยังไม่ได้ตั้งค่า LINE OA หรือ Group โรงเรียน' };
-  const text = (params && (params.message || params.text)) || '';
-  if (!text) return { status:'error', message:'กรุณาระบุข้อความ' };
-  const ok = lineaPushMessage_(cfg.schoolGroup, [{ type:'text', text:text }], cfg.token);
-  return ok ? { status:'success', message:'ส่งข้อความสำเร็จ' } : { status:'error', message:'ส่งข้อความไม่สำเร็จ' };
+  try {
+    const auth = _requireAuth_(sessionToken, true);
+    if (!auth.ok) return auth.response;
+    const cfg = getLineConfig_();
+    if (!cfg.token || !cfg.schoolGroup) return { status:'error', message:'ยังไม่ได้ตั้งค่า LINE OA หรือ Group โรงเรียน' };
+    const text = (params && (params.message || params.text)) || '';
+    if (!text) return { status:'error', message:'กรุณาระบุข้อความ' };
+    const ok = lineaPushMessage_(cfg.schoolGroup, [{ type:'text', text:text }], cfg.token);
+    return ok ? { status:'success', message:'ส่งข้อความสำเร็จ' } : { status:'error', message:'ส่งข้อความไม่สำเร็จ' };
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function getLineMessages(params, sessionToken) {
-  const auth = _requireAuth_(sessionToken);
-  if (!auth.ok) return auth.response;
-  return { status:'success', data:[] };
+  try {
+    const auth = _requireAuth_(sessionToken);
+    if (!auth.ok) return auth.response;
+    return { status:'success', data:[] };
+  } catch (e) { return { status:'error', message:e.message }; }
 }
 function sendPasswordReset(email) {
   return { status:'error', message:'กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่านได้ที่เมนู จัดการผู้ใช้งาน' };

@@ -3,9 +3,11 @@
  *  ระบบตารางสอน มาตรฐาน สพฐ.
  * ============================================================ */
 
-function normalizeGradeLevel(str) {
-  if (!str) return '';
-  return String(str).trim().split('/')[0].trim();
+if (typeof normalizeGradeLevel !== 'function') {
+  function normalizeGradeLevel(str) {
+    if (!str) return '';
+    return String(str).trim().split('/')[0].trim();
+  }
 }
 
 /* ---------- State ---------- */
