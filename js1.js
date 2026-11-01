@@ -479,8 +479,10 @@ function navigate(page, options = {}) {
   if (topBackBtn) {
     if (page === 'dashboard') {
       topBackBtn.classList.add('hidden');
+      topBackBtn.style.display = 'none';
     } else {
       topBackBtn.classList.remove('hidden');
+      topBackBtn.style.display = 'inline-flex';
     }
   }
 
