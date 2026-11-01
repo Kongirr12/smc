@@ -7,15 +7,25 @@
 /* ============================================================
  *  Shared UI Helpers ของ Part 2
  * ============================================================ */
-function pageHeader(title, icon, actions) {
+function pageHeader(title, icon, actions, options = {}) {
+  const isHome = APP.currentPage === 'dashboard';
+  const showBack = !isHome && options.showBack !== false;
   return `
     <div class="welcome-row">
-      <div>
-        <h1><i class='bx ${icon} text-primary' >\x3c/i> ${escapeHTML(title)}\x3c/h1>
-        <div class="sub"><i class='bx bx-chevron-right'>\x3c/i> ${escapeHTML(title)}\x3c/div>
-      \x3c/div>
+      <div class="flex items-center gap-2.5">
+        ${showBack ? `
+          <button type="button" class="btn btn-light btn-icon text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border-slate-200 transition shadow-sm"
+                  onclick="goBack()" title="ย้อนกลับ">
+            <i class='bx bx-arrow-back text-lg'>\x3c/i>
+          </button>
+        ` : ''}
+        <div>
+          <h1><i class='bx ${icon} text-primary' >\x3c/i> ${escapeHTML(title)}\x3c/h1>
+          <div class="sub"><i class='bx bx-chevron-right'>\x3c/i> ${escapeHTML(title)}\x3c/div>
+        </div>
+      </div>
       <div class="flex gap-2 flex-wrap">${actions || ''}\x3c/div>
-    \x3c/div>`;
+    </div>`;
 }
 
 function paginationHTML(page, totalPages, fnName) {

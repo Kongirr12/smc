@@ -322,7 +322,9 @@ function enterApp() {
     el.style.display = '';
   });
 
-  navigate('dashboard');
+  const initialHash = (location.hash || '').replace(/^#/, '').trim();
+  const targetPage = initialHash || 'dashboard';
+  navigate(targetPage, { fromHistory: false, replace: true });
   refreshBadges();
   if (APP._badgeInterval) clearInterval(APP._badgeInterval);
   APP._badgeInterval = setInterval(refreshBadges, 120000);
@@ -411,11 +413,58 @@ function canEditModule(moduleName) {
 
 
 /* ============================================================
- *  Navigation
+ *  Navigation & Browser History (Back / Forward & Swipe Back)
  * ============================================================ */
-function navigate(page) {
+function goBack() {
+  if (window.history.length > 1 && location.hash && location.hash !== '#dashboard') {
+    window.history.back();
+  } else {
+    navigate('dashboard');
+  }
+}
+window.goBack = goBack;
+
+// Global popstate listener for back/forward navigation and modal dismissal
+window.addEventListener('popstate', function(e) {
+  // 1. If SweetAlert modal is open, close it first and prevent page shift
+  if (window.Swal && typeof Swal.isVisible === 'function' && Swal.isVisible()) {
+    Swal.close();
+    return;
+  }
+  // 2. If any print modal / preview overlay is open, dismiss it
+  const modals = document.querySelectorAll('.print-preview-modal, #academicCalendarPrintModal, #reportPrintModal');
+  let modalClosed = false;
+  modals.forEach(m => {
+    if (m && m.style.display !== 'none') {
+      m.style.display = 'none';
+      modalClosed = true;
+    }
+  });
+  if (modalClosed) return;
+
+  if (!APP.token) return;
+  const targetPage = (e.state && e.state.page) || (location.hash || '').replace(/^#/, '').trim() || 'dashboard';
+  if (targetPage !== APP.currentPage) {
+    navigate(targetPage, { fromHistory: true });
+  }
+});
+
+function navigate(page, options = {}) {
   if (page === 'announcements') page = 'calendar';
+  if (!page) page = 'dashboard';
   APP.currentPage = page;
+
+  // Manage browser history & URL hash for 100% Back Button & Swipe Back support
+  try {
+    const hash = '#' + page;
+    if (options.replace) {
+      if (location.hash !== hash) history.replaceState({ page: page }, '', hash);
+    } else if (!options.fromHistory) {
+      if (location.hash !== hash) {
+        history.pushState({ page: page }, '', hash);
+      }
+    }
+  } catch (_) {}
 
   // Toggle page-specific class on body for responsive rules & floating chat suppression
   if (page === 'attendance') {
@@ -424,6 +473,16 @@ function navigate(page) {
     document.body.classList.remove('page-attendance');
   }
   document.body.setAttribute('data-current-page', page);
+
+  // Update Topbar Back button visibility
+  const topBackBtn = document.getElementById('topbarBackBtn');
+  if (topBackBtn) {
+    if (page === 'dashboard') {
+      topBackBtn.classList.add('hidden');
+    } else {
+      topBackBtn.classList.remove('hidden');
+    }
+  }
 
   // active state
   document.querySelectorAll('.menu-item').forEach(el => {
@@ -465,7 +524,12 @@ function navigate(page) {
     ext_lessonplan: 'ระบบส่งแผนการสอน (วPA & สื่อ)',
     ext_onesqa: 'ระบบประกันคุณภาพภายนอก สมศ.'
   };
-  document.getElementById('pageTitle').textContent = titles[page] || 'หน้าหลัก';
+  const pageTitle = titles[page] || 'หน้าหลัก';
+  const titleEl = document.getElementById('pageTitle');
+  if (titleEl) titleEl.textContent = pageTitle;
+  document.title = (page === 'dashboard')
+    ? 'MHC Smart School | โรงเรียนมหาชัยพิทยาคาร'
+    : `${pageTitle} — MHC Smart School`;
 
   toggleSidebar(false);
 
