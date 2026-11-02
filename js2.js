@@ -6351,55 +6351,59 @@ function printAttendanceCheckRoster(students, params) {
 
     return `
       <div class="roster-page density-${density}" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
-        ${headerHtml}
+        <div class="page-top-block">
+          ${headerHtml}
 
-        <div class="meta-bar">
-          <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
-          <div><b>ภาคเรียนที่:</b> ${escapeHTML(semester)} / ${escapeHTML(year)}</div>
-          <div><b>รายวิชา:</b> ${escapeHTML(subjectName || '...................................................')}</div>
-          <div><b>ครูผู้สอน:</b> ${escapeHTML(displayTeacher || '...................................................')}</div>
-        </div>
-
-        <table class="roster-table">
-          <thead>
-            <tr>
-              <th rowspan="2" class="th-num">เลขที่</th>
-              <th rowspan="2" class="th-code">รหัสประจำตัว</th>
-              <th rowspan="2" class="th-name">ชื่อ - นามสกุล</th>
-              <th colspan="${slots}" class="th-slots">บันทึกเวลาเรียน / บันทึกคะแนน (ครั้งที่ / สัปดาห์ที่ / วันที่)</th>
-              <th rowspan="2" class="th-total">รวม</th>
-              <th rowspan="2" class="th-rem">หมายเหตุ</th>
-            </tr>
-            <tr>
-              ${Array.from({ length: slots }, (_, i) => `<th class="th-slot-num">${i + 1}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
-
-        <div class="summary-bar">
-          <div>สถิตินักเรียน: ชาย <b>${mCount}</b> คน &nbsp;|&nbsp; หญิง <b>${fCount}</b> คน &nbsp;|&nbsp; รวมทั้งสิ้น <b>${tCount}</b> คน</div>
-          <div>ห้องเรียน: <b>ชั้น ${escapeHTML(room)}</b></div>
-        </div>
-
-        <div class="signatures">
-          <div class="sig-box">
-            <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
-            <div class="sig-name">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
-            <div class="sig-date">วันที่ .......... / .......... / ................</div>
+          <div class="meta-bar">
+            <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
+            <div><b>ภาคเรียนที่:</b> ${escapeHTML(semester)} / ${escapeHTML(year)}</div>
+            <div><b>รายวิชา:</b> ${escapeHTML(subjectName || '...................................................')}</div>
+            <div><b>ครูผู้สอน:</b> ${escapeHTML(displayTeacher || '...................................................')}</div>
           </div>
-          <div class="sig-box">
-            <div>ลงชื่อ ................................................................ ครูผู้สอน</div>
-            <div class="sig-name">( ${escapeHTML(displayTeacher || '................................................................')} )</div>
-            <div class="sig-date">วันที่ .......... / .......... / ................</div>
+
+          <table class="roster-table">
+            <thead>
+              <tr>
+                <th rowspan="2" class="th-num">เลขที่</th>
+                <th rowspan="2" class="th-code">รหัสประจำตัว</th>
+                <th rowspan="2" class="th-name">ชื่อ - นามสกุล</th>
+                <th colspan="${slots}" class="th-slots">บันทึกเวลาเรียน / บันทึกคะแนน (ครั้งที่ / สัปดาห์ที่ / วันที่)</th>
+                <th rowspan="2" class="th-total">รวม</th>
+                <th rowspan="2" class="th-rem">หมายเหตุ</th>
+              </tr>
+              <tr>
+                ${Array.from({ length: slots }, (_, i) => `<th class="th-slot-num">${i + 1}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div class="summary-bar">
+            <div>สถิตินักเรียน: ชาย <b>${mCount}</b> คน &nbsp;|&nbsp; หญิง <b>${fCount}</b> คน &nbsp;|&nbsp; รวมทั้งสิ้น <b>${tCount}</b> คน</div>
+            <div>ห้องเรียน: <b>ชั้น ${escapeHTML(room)}</b></div>
           </div>
         </div>
 
-        <div class="footer">
-          <div>ระบบ MHC Smart School • โรงเรียนมหาชัยพิทยาคาร</div>
-          <div>พิมพ์เมื่อ: ${printDate} • พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ</div>
+        <div class="page-bottom-block">
+          <div class="signatures">
+            <div class="sig-box">
+              <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
+              <div class="sig-name">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
+              <div class="sig-date">วันที่ .......... / .......... / ................</div>
+            </div>
+            <div class="sig-box">
+              <div>ลงชื่อ ................................................................ ครูผู้สอน</div>
+              <div class="sig-name">( ${escapeHTML(displayTeacher || '................................................................')} )</div>
+              <div class="sig-date">วันที่ .......... / .......... / ................</div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <div>ระบบ MHC Smart School • โรงเรียนมหาชัยพิทยาคาร</div>
+            <div>พิมพ์เมื่อ: ${printDate} • พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ</div>
+          </div>
         </div>
       </div>
     `;
@@ -6425,6 +6429,7 @@ function printAttendanceCheckRoster(students, params) {
       margin: 0;
       padding: 0;
       background: #F8FAFC;
+      height: 100%;
     }
     .no-print {
       position: sticky;
@@ -6441,16 +6446,31 @@ function printAttendanceCheckRoster(students, params) {
     .print-page-wrapper {
       max-width: ${isLandscape ? '285mm' : '205mm'};
       margin: 15px auto;
-      padding: ${isLandscape ? '6mm 8mm' : '5mm 7mm'};
+      padding: ${isLandscape ? '6mm 8mm' : '6mm 7mm'};
       background: #ffffff;
       box-shadow: 0 4px 15px rgba(0,0,0,0.06);
       border-radius: 4px;
       box-sizing: border-box;
     }
     .roster-page {
-      margin-bottom: 24px;
+      box-sizing: border-box;
+      width: 100%;
+      min-height: ${isLandscape ? '198mm' : '284mm'};
+      height: ${isLandscape ? '198mm' : '284mm'};
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       page-break-inside: avoid;
       break-inside: avoid;
+      margin-bottom: 24px;
+    }
+    .page-top-block {
+      flex: 1 0 auto;
+    }
+    .page-bottom-block {
+      flex: 0 0 auto;
+      margin-top: auto;
+      padding-top: 4px;
     }
 
     /* Standard Header */
@@ -6526,7 +6546,7 @@ function printAttendanceCheckRoster(students, params) {
 
     /* Signatures */
     .signatures {
-      margin-top: 14px;
+      margin-top: 8px;
       display: flex;
       justify-content: space-around;
       page-break-inside: avoid;
@@ -6540,9 +6560,9 @@ function printAttendanceCheckRoster(students, params) {
 
     /* Footer */
     .footer {
-      margin-top: 10px;
+      margin-top: 6px;
       padding-top: 3px;
-      border-top: 1px solid #E2E8F0;
+      border-top: 1px solid #CBD5E1;
       display: flex;
       justify-content: space-between;
       font-size: 7.5pt;
@@ -6551,44 +6571,44 @@ function printAttendanceCheckRoster(students, params) {
     }
 
     /* Density Overrides */
-    /* Compact Density (>= 34 students, e.g. ม.3) */
+    /* Compact Density (>= 34 students, e.g. ม.3 ที่มี 39 คน) */
     .density-compact .meta-bar {
       font-size: 7.5pt;
-      padding: 2px 6px;
+      padding: 2.5px 6px;
       margin-top: 2px;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
     }
     .density-compact table.roster-table {
       margin-top: 2px;
     }
     .density-compact table.roster-table th {
-      padding: 2px 1px;
+      padding: 2.5px 1px;
       font-size: 7pt;
       line-height: 1.15;
     }
     .density-compact table.roster-table td {
       padding: 1px 2px;
-      font-size: 7.2pt;
+      font-size: 7.5pt;
       line-height: 1.15;
-      height: 15px;
+      height: ${isLandscape ? '14.5px' : '20px'};
     }
     .density-compact .summary-bar {
-      font-size: 7pt;
-      padding: 2px 6px;
-      margin-top: 2px;
+      font-size: 7.5pt;
+      padding: 2.5px 6px;
+      margin-top: 3px;
     }
     .density-compact .signatures {
-      margin-top: 5px;
+      margin-top: 6px;
       font-size: 7.5pt;
-      line-height: 1.2;
+      line-height: 1.25;
     }
     .density-compact .sig-box { min-width: 170px; }
-    .density-compact .sig-name { margin-top: 2px; }
+    .density-compact .sig-name { margin-top: 3px; }
     .density-compact .sig-date { margin-top: 2px; font-size: 7pt; }
     .density-compact .footer {
-      margin-top: 2px;
+      margin-top: 5px;
       padding-top: 2px;
-      font-size: 6.5pt;
+      font-size: 7pt;
     }
 
     /* Medium Density (26-33 students) */
@@ -6602,8 +6622,8 @@ function printAttendanceCheckRoster(students, params) {
     }
     .density-medium table.roster-table td {
       padding: 2px 3px;
-      font-size: 7.5pt;
-      height: 18px;
+      font-size: 8pt;
+      height: ${isLandscape ? '18px' : '24px'};
     }
     .density-medium .summary-bar {
       font-size: 7.5pt;
@@ -6626,13 +6646,21 @@ function printAttendanceCheckRoster(students, params) {
     }
     .density-standard table.roster-table td {
       padding: 3px 3px;
-      font-size: 8pt;
-      height: 22px;
+      font-size: 8.5pt;
+      height: ${isLandscape ? '22px' : '28px'};
+    }
+    .density-standard .signatures {
+      margin-top: 14px;
+      font-size: 8.5pt;
+    }
+    .density-standard .footer {
+      margin-top: 8px;
+      font-size: 7.5pt;
     }
 
     /* Cell layout classes for Attendance Check */
     .cell-num { text-align: center; font-weight: 600; }
-    .cell-code { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .cell-code { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; font-size: 7pt; }
     .cell-name { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px !important; }
     .cell-slot { border: 1px solid #94A3B8 !important; padding: 0 !important; }
     .cell-total { border: 1px solid #94A3B8 !important; text-align: center; }
@@ -6653,6 +6681,8 @@ function printAttendanceCheckRoster(students, params) {
         margin: 0 !important;
         padding: 0 !important;
         background: #FFFFFF !important;
+        width: 100% !important;
+        height: 100% !important;
       }
       .print-page-wrapper {
         max-width: 100% !important;
@@ -6660,16 +6690,27 @@ function printAttendanceCheckRoster(students, params) {
         margin: 0 !important;
         padding: 0 !important;
         box-shadow: none !important;
+        background: transparent !important;
       }
       .roster-page {
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: ${isLandscape ? '198mm' : '284mm'} !important;
+        max-height: ${isLandscape ? '198mm' : '284mm'} !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
       .roster-page:not(:last-child) {
         page-break-after: always !important;
         break-after: page !important;
+      }
+      .page-bottom-block {
+        margin-top: auto !important;
       }
       table.roster-table {
         width: 100% !important;
@@ -6820,56 +6861,60 @@ function printOfficialStudentRoster(students, params) {
 
     return `
       <div class="roster-page density-${density}" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
-        ${headerHtml}
+        <div class="page-top-block">
+          ${headerHtml}
 
-        <div class="meta-bar">
-          <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
-          <div><b>ประจำปีการศึกษา:</b> ${escapeHTML(year)}</div>
-          <div><b>ครูประจำชั้น:</b> ${escapeHTML(hrTeacher || '...................................................')}</div>
-          <div><b>จำนวนนักเรียน:</b> ${tCount} คน</div>
-        </div>
-
-        <table class="roster-table">
-          <thead>
-            <tr>
-              <th class="th-num">เลขที่</th>
-              <th class="th-code">รหัสประจำตัว</th>
-              <th class="th-name">ชื่อ - นามสกุล</th>
-              <th class="th-gender">เพศ</th>
-              <th class="th-nid">เลขประจำตัวประชาชน</th>
-              <th class="th-dob">วัน/เดือน/ปีเกิด</th>
-              <th class="th-parent">ชื่อผู้ปกครอง</th>
-              <th class="th-phone">เบอร์โทรศัพท์</th>
-              <th class="th-status">สถานะ</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
-
-        <div class="summary-bar">
-          <div>สถิตินักเรียน: ชาย <b>${mCount}</b> คน &nbsp;|&nbsp; หญิง <b>${fCount}</b> คน &nbsp;|&nbsp; รวมทั้งสิ้น <b>${tCount}</b> คน</div>
-          <div>ชั้นมัธยมศึกษาปีที่ <b>${escapeHTML(room)}</b></div>
-        </div>
-
-        <div class="signatures">
-          <div class="sig-box">
-            <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
-            <div class="sig-name">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
-            <div class="sig-date">วันที่ .......... / .......... / ................</div>
+          <div class="meta-bar">
+            <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
+            <div><b>ประจำปีการศึกษา:</b> ${escapeHTML(year)}</div>
+            <div><b>ครูประจำชั้น:</b> ${escapeHTML(hrTeacher || '...................................................')}</div>
+            <div><b>จำนวนนักเรียน:</b> ${tCount} คน</div>
           </div>
-          <div class="sig-box">
-            <div>ลงชื่อ ................................................................</div>
-            <div class="sig-name" style="font-weight:700;">( นายอธิการ สุขศรี )</div>
-            <div class="sig-role">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-            <div class="sig-date">วันที่ .......... / .......... / ................</div>
+
+          <table class="roster-table">
+            <thead>
+              <tr>
+                <th class="th-num">เลขที่</th>
+                <th class="th-code">รหัสประจำตัว</th>
+                <th class="th-name">ชื่อ - นามสกุล</th>
+                <th class="th-gender">เพศ</th>
+                <th class="th-nid">เลขประจำตัวประชาชน</th>
+                <th class="th-dob">วัน/เดือน/ปีเกิด</th>
+                <th class="th-parent">ชื่อผู้ปกครอง</th>
+                <th class="th-phone">เบอร์โทรศัพท์</th>
+                <th class="th-status">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div class="summary-bar">
+            <div>สถิตินักเรียน: ชาย <b>${mCount}</b> คน &nbsp;|&nbsp; หญิง <b>${fCount}</b> คน &nbsp;|&nbsp; รวมทั้งสิ้น <b>${tCount}</b> คน</div>
+            <div>ชั้นมัธยมศึกษาปีที่ <b>${escapeHTML(room)}</b></div>
           </div>
         </div>
 
-        <div class="footer">
-          <div>ระบบ MHC Smart School • โรงเรียนมหาชัยพิทยาคาร</div>
-          <div>พิมพ์เมื่อ: ${printDate} • พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ</div>
+        <div class="page-bottom-block">
+          <div class="signatures">
+            <div class="sig-box">
+              <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
+              <div class="sig-name">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
+              <div class="sig-date">วันที่ .......... / .......... / ................</div>
+            </div>
+            <div class="sig-box">
+              <div>ลงชื่อ ................................................................</div>
+              <div class="sig-name" style="font-weight:700;">( นายอธิการ สุขศรี )</div>
+              <div class="sig-role">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="sig-date">วันที่ .......... / .......... / ................</div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <div>ระบบ MHC Smart School • โรงเรียนมหาชัยพิทยาคาร</div>
+            <div>พิมพ์เมื่อ: ${printDate} • พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ</div>
+          </div>
         </div>
       </div>
     `;
@@ -6921,6 +6966,19 @@ function printOfficialStudentRoster(students, params) {
       margin-bottom: 24px;
       page-break-inside: avoid;
       break-inside: avoid;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: ${isLandscape ? '198mm' : '284mm'};
+      box-sizing: border-box;
+    }
+    .page-top-block {
+      flex: 1 0 auto;
+    }
+    .page-bottom-block {
+      flex: 0 0 auto;
+      margin-top: auto;
+      padding-top: 4px;
     }
 
     /* Standard Header */
@@ -7011,9 +7069,9 @@ function printOfficialStudentRoster(students, params) {
 
     /* Footer */
     .footer {
-      margin-top: 10px;
+      margin-top: 6px;
       padding-top: 3px;
-      border-top: 1px solid #E2E8F0;
+      border-top: 1px solid #CBD5E1;
       display: flex;
       justify-content: space-between;
       font-size: 7.5pt;
@@ -7022,45 +7080,45 @@ function printOfficialStudentRoster(students, params) {
     }
 
     /* Density Overrides */
-    /* Compact Density (>= 34 students, e.g. ม.3) */
+    /* Compact Density (>= 34 students, e.g. ม.3 ที่มี 39 คน) */
     .density-compact .meta-bar {
       font-size: 7.5pt;
-      padding: 2px 6px;
+      padding: 2.5px 6px;
       margin-top: 2px;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
     }
     .density-compact table.roster-table {
       margin-top: 2px;
     }
     .density-compact table.roster-table th {
-      padding: 2px 1px;
+      padding: 2.5px 1px;
       font-size: 7pt;
       line-height: 1.15;
     }
     .density-compact table.roster-table td {
       padding: 1px 2px;
-      font-size: 7.2pt;
+      font-size: 7.5pt;
       line-height: 1.15;
-      height: 15px;
+      height: ${isLandscape ? '14.5px' : '20px'};
     }
     .density-compact .summary-bar {
-      font-size: 7pt;
-      padding: 2px 6px;
-      margin-top: 2px;
+      font-size: 7.5pt;
+      padding: 2.5px 6px;
+      margin-top: 3px;
     }
     .density-compact .signatures {
-      margin-top: 5px;
+      margin-top: 6px;
       font-size: 7.5pt;
-      line-height: 1.2;
+      line-height: 1.25;
     }
     .density-compact .sig-box { min-width: 170px; }
-    .density-compact .sig-name { margin-top: 2px; }
+    .density-compact .sig-name { margin-top: 3px; }
     .density-compact .sig-role { margin-top: 1px; font-size: 7pt; }
     .density-compact .sig-date { margin-top: 2px; font-size: 7pt; }
     .density-compact .footer {
-      margin-top: 2px;
+      margin-top: 5px;
       padding-top: 2px;
-      font-size: 6.5pt;
+      font-size: 7pt;
     }
 
     /* Medium Density (26-33 students) */
@@ -7074,8 +7132,8 @@ function printOfficialStudentRoster(students, params) {
     }
     .density-medium table.roster-table td {
       padding: 2px 3px;
-      font-size: 7.5pt;
-      height: 18px;
+      font-size: 8pt;
+      height: ${isLandscape ? '18px' : '24px'};
     }
     .density-medium .summary-bar {
       font-size: 7.5pt;
@@ -7098,16 +7156,24 @@ function printOfficialStudentRoster(students, params) {
     }
     .density-standard table.roster-table td {
       padding: 3px 3px;
-      font-size: 8pt;
-      height: 22px;
+      font-size: 8.5pt;
+      height: ${isLandscape ? '22px' : '28px'};
+    }
+    .density-standard .signatures {
+      margin-top: 14px;
+      font-size: 8.5pt;
+    }
+    .density-standard .footer {
+      margin-top: 8px;
+      font-size: 7.5pt;
     }
 
     /* Cell layout classes for Official Roster */
     .cell-num { text-align: center; font-weight: 600; }
-    .cell-code { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .cell-code { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; font-size: 7pt; }
     .cell-name { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px !important; }
     .cell-gender { text-align: center; }
-    .cell-nid { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; font-size: 90%; }
+    .cell-nid { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; font-size: 7pt; }
     .cell-dob { text-align: center; white-space: nowrap; }
     .cell-parent { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px !important; }
     .cell-phone { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; }
@@ -7130,6 +7196,8 @@ function printOfficialStudentRoster(students, params) {
         margin: 0 !important;
         padding: 0 !important;
         background: #FFFFFF !important;
+        width: 100% !important;
+        height: 100% !important;
       }
       .print-page-wrapper {
         max-width: 100% !important;
@@ -7137,16 +7205,27 @@ function printOfficialStudentRoster(students, params) {
         margin: 0 !important;
         padding: 0 !important;
         box-shadow: none !important;
+        background: transparent !important;
       }
       .roster-page {
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: ${isLandscape ? '198mm' : '284mm'} !important;
+        max-height: ${isLandscape ? '198mm' : '284mm'} !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
       .roster-page:not(:last-child) {
         page-break-after: always !important;
         break-after: page !important;
+      }
+      .page-bottom-block {
+        margin-top: auto !important;
       }
       table.roster-table {
         width: 100% !important;
