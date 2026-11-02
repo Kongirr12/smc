@@ -5921,6 +5921,32 @@ function openDownloadRosterModal(targetClassroom) {
           </div>
         </div>
 
+        <!-- Page Orientation & Fit Settings -->
+        <div id="rosterPrintSettings" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-weight:700;font-size:12px;color:#166534;margin-bottom:6px;">
+            <i class='bx bx-printer text-emerald-600'></i> ตัวเลือกการพิมพ์ / จัดหน้ากระดาษ A4:
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <label style="font-size:11px;color:#166534;display:block;margin-bottom:2px;font-weight:600;">ทิศทางหน้ากระดาษ:</label>
+              <select id="roster_orientation" class="form-input" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #86EFAC;font-size:12px;background:white;">
+                <option value="portrait" selected>📄 แนวตั้ง (Portrait - แนะนำ)</option>
+                <option value="landscape">📑 แนวนอน (Landscape)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;color:#166534;display:block;margin-bottom:2px;font-weight:600;">การจัดหน้า (Fit Mode):</label>
+              <select id="roster_fit_mode" class="form-input" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #86EFAC;font-size:12px;background:white;">
+                <option value="auto_fit" selected>✨ พอดี 1 หน้าอัตโนมัติ (Smart Auto-Fit)</option>
+                <option value="standard">📏 ขนาดมาตรฐาน (Standard)</option>
+              </select>
+            </div>
+          </div>
+          <div style="font-size:10.5px;color:#15803D;margin-top:5px;line-height:1.3;">
+            <i class='bx bx-info-circle'></i> ระบบ Auto-Fit จะปรับขนาดตัวอักษรและความสูงแถวอัตโนมัติตามจำนวนนักเรียน (ห้องที่มีนักเรียนมาก เช่น ม.3 จำนวน 39 คน จะพอดีใน 1 หน้า A4 ทันที ไม่ล้นไปหน้าที่ 2)
+          </div>
+        </div>
+
         <!-- Extra Fields for Attendance Check Form -->
         <div id="rosterCheckExtraFields" style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
           <div style="font-weight:700;font-size:12px;color:#3730A3;margin-bottom:6px;">
@@ -5950,14 +5976,16 @@ function openDownloadRosterModal(targetClassroom) {
     `,
     didOpen: () => {
       const radios = document.querySelectorAll('input[name="roster_fmt"]');
+      const printBox = document.getElementById('rosterPrintSettings');
       const extraBox = document.getElementById('rosterCheckExtraFields');
       const optLabels = document.querySelectorAll('.roster-fmt-opt');
 
       const updateUI = () => {
         const val = document.querySelector('input[name="roster_fmt"]:checked')?.value;
-        if (extraBox) {
-          extraBox.style.display = (val === 'attendance_check') ? 'block' : 'none';
-        }
+        const isPrint = (val === 'attendance_check' || val === 'official_roster');
+        if (printBox) printBox.style.display = isPrint ? 'block' : 'none';
+        if (extraBox) extraBox.style.display = (val === 'attendance_check') ? 'block' : 'none';
+
         optLabels.forEach(lbl => {
           const inp = lbl.querySelector('input');
           if (inp && inp.checked) {
@@ -5987,6 +6015,8 @@ function openDownloadRosterModal(targetClassroom) {
       const year = document.getElementById('roster_year')?.value.trim() || currentYear;
       const semester = document.getElementById('roster_semester')?.value || '1';
       const format = document.querySelector('input[name="roster_fmt"]:checked')?.value || 'attendance_check';
+      const orientation = document.getElementById('roster_orientation')?.value || 'portrait';
+      const fitMode = document.getElementById('roster_fit_mode')?.value || 'auto_fit';
       const subjectName = document.getElementById('roster_subject')?.value.trim() || '';
       const teacherName = document.getElementById('roster_teacher')?.value.trim() || '';
       const periodSlots = parseInt(document.getElementById('roster_slots')?.value, 10) || 20;
@@ -5996,6 +6026,8 @@ function openDownloadRosterModal(targetClassroom) {
         year,
         semester,
         format,
+        orientation,
+        fitMode,
         subjectName,
         teacherName,
         periodSlots
@@ -6235,6 +6267,9 @@ function printAttendanceCheckRoster(students, params) {
   const subjectName = params.subjectName || '';
   const teacherInput = params.teacherName || '';
   const isAll = (params.classroom === '__ALL__');
+  const orientation = params.orientation || 'portrait';
+  const isLandscape = (orientation === 'landscape');
+  const fitMode = params.fitMode || 'auto_fit';
 
   const grouped = {};
   students.forEach(s => {
@@ -6264,25 +6299,59 @@ function printAttendanceCheckRoster(students, params) {
     });
     const tCount = roomStudents.length;
 
+    // Smart Adaptive Density Engine
+    let density = 'standard';
+    if (fitMode === 'auto_fit') {
+      if (isLandscape) {
+        if (tCount >= 34) density = 'compact';
+        else if (tCount >= 25) density = 'medium';
+        else density = 'standard';
+      } else {
+        if (tCount >= 34) density = 'compact';
+        else if (tCount >= 26) density = 'medium';
+        else density = 'standard';
+      }
+    }
+
     const rowsHtml = roomStudents.map((s, idx) => `
       <tr>
-        <td style="text-align:center; font-weight:600; padding:4px 2px;">${s.student_number || (idx + 1)}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.student_id || s.student_code || '-')}</td>
-        <td style="text-align:left; font-weight:600; padding:4px 6px; white-space:nowrap;">${escapeHTML(formatStudentFullName(s))}</td>
-        ${Array(slots).fill('<td style="border:1px solid #94A3B8; padding:0; height:24px;"></td>').join('')}
-        <td style="border:1px solid #94A3B8; text-align:center;"></td>
-        <td style="border:1px solid #94A3B8; text-align:center;"></td>
+        <td class="cell-num">${s.student_number || (idx + 1)}</td>
+        <td class="cell-code">${escapeHTML(s.student_id || s.student_code || '-')}</td>
+        <td class="cell-name">${escapeHTML(formatStudentFullName(s))}</td>
+        ${Array(slots).fill('<td class="cell-slot"></td>').join('')}
+        <td class="cell-total"></td>
+        <td class="cell-rem"></td>
       </tr>
     `).join('');
 
-    return `
-      <div class="roster-page" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
-        <div class="header">
-          <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
-          <div class="title">โรงเรียนมหาชัยพิทยาคาร</div>
-          <div class="subtitle">แบบบันทึกการเช็คชื่อและการจัดการเรียนรู้ / บันทึกคะแนน</div>
-          <div style="font-size:9pt; color:#475569; margin-top:1px;">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม (สพม.มหาสารคาม)</div>
+    const headerHtml = (density === 'compact') ? `
+      <div class="header header-compact">
+        <div class="compact-header-bar">
+          <div class="compact-logo-group">
+            <img src="${schoolLogoUrl}" class="compact-logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
+            <div>
+              <div class="compact-title">โรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="compact-subtitle">แบบบันทึกการเช็คชื่อและการจัดการเรียนรู้ / บันทึกคะแนน</div>
+            </div>
+          </div>
+          <div class="compact-meta-right">
+            <div>สพม.มหาสารคาม • ภาคเรียนที่ ${escapeHTML(semester)}/${escapeHTML(year)}</div>
+            <div><b>ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</b> (รวม ${tCount} คน)</div>
+          </div>
         </div>
+      </div>
+    ` : `
+      <div class="header header-standard">
+        <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
+        <div class="title">โรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="subtitle">แบบบันทึกการเช็คชื่อและการจัดการเรียนรู้ / บันทึกคะแนน</div>
+        <div class="org-sub">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม (สพม.มหาสารคาม)</div>
+      </div>
+    `;
+
+    return `
+      <div class="roster-page density-${density}" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
+        ${headerHtml}
 
         <div class="meta-bar">
           <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
@@ -6294,15 +6363,15 @@ function printAttendanceCheckRoster(students, params) {
         <table class="roster-table">
           <thead>
             <tr>
-              <th rowspan="2" style="width:36px;">เลขที่</th>
-              <th rowspan="2" style="width:70px;">รหัสประจำตัว</th>
-              <th rowspan="2" style="min-width:165px; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
-              <th colspan="${slots}" style="text-align:center; padding:3px 0;">บันทึกเวลาเรียน / บันทึกคะแนน (ครั้งที่ / สัปดาห์ที่ / วันที่)</th>
-              <th rowspan="2" style="width:42px;">รวม</th>
-              <th rowspan="2" style="width:65px;">หมายเหตุ</th>
+              <th rowspan="2" class="th-num">เลขที่</th>
+              <th rowspan="2" class="th-code">รหัสประจำตัว</th>
+              <th rowspan="2" class="th-name">ชื่อ - นามสกุล</th>
+              <th colspan="${slots}" class="th-slots">บันทึกเวลาเรียน / บันทึกคะแนน (ครั้งที่ / สัปดาห์ที่ / วันที่)</th>
+              <th rowspan="2" class="th-total">รวม</th>
+              <th rowspan="2" class="th-rem">หมายเหตุ</th>
             </tr>
             <tr>
-              ${Array.from({ length: slots }, (_, i) => `<th style="width:23px; font-size:7.5pt; font-weight:normal; padding:2px 0;">${i + 1}</th>`).join('')}
+              ${Array.from({ length: slots }, (_, i) => `<th class="th-slot-num">${i + 1}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -6316,15 +6385,15 @@ function printAttendanceCheckRoster(students, params) {
         </div>
 
         <div class="signatures">
-          <div style="text-align:center; min-width:210px;">
+          <div class="sig-box">
             <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
-            <div style="margin-top:5px; font-weight:600;">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
-            <div style="margin-top:4px; font-size:8pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+            <div class="sig-name">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
+            <div class="sig-date">วันที่ .......... / .......... / ................</div>
           </div>
-          <div style="text-align:center; min-width:210px;">
+          <div class="sig-box">
             <div>ลงชื่อ ................................................................ ครูผู้สอน</div>
-            <div style="margin-top:5px; font-weight:600;">( ${escapeHTML(displayTeacher || '................................................................')} )</div>
-            <div style="margin-top:4px; font-size:8pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+            <div class="sig-name">( ${escapeHTML(displayTeacher || '................................................................')} )</div>
+            <div class="sig-date">วันที่ .......... / .......... / ................</div>
           </div>
         </div>
 
@@ -6344,35 +6413,282 @@ function printAttendanceCheckRoster(students, params) {
   <title>${escapeHTML(docTitle)}</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap">
   <style>
-    @page { size: A4 portrait; margin: 8mm 8mm 8mm 8mm; }
+    @page {
+      size: A4 ${orientation};
+      margin: ${isLandscape ? '5mm 7mm 5mm 7mm' : '5mm 6mm 5mm 6mm'};
+    }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
-    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .print-page-wrapper { max-width: 205mm; margin: 15px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; box-sizing: border-box; }
-    .roster-page { margin-bottom: 20px; }
-    .header { text-align: center; margin-bottom: 8px; }
-    .logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
-    .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; }
-    .subtitle { font-size: 10.5pt; font-weight: 600; color: #334155; margin: 1px 0 0 0; }
-    .meta-bar { font-size: 8.5pt; color: #334155; margin-top: 4px; padding: 5px 8px; background: #F1F5F9; border-radius: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; border: 1px solid #CBD5E1; }
-    table.roster-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8pt; table-layout: auto; }
-    table.roster-table th { background: #F1F5F9; color: #1E293B; border: 1px solid #64748B; padding: 3px 2px; font-weight: bold; text-align: center; }
-    table.roster-table td { border: 1px solid #94A3B8; padding: 3px 3px; vertical-align: middle; }
-    table.roster-table tr:nth-child(even) { background: #FAFAFA; }
-    .summary-bar { margin-top: 8px; padding: 5px 8px; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 8.5pt; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-    .signatures { margin-top: 22px; display: flex; justify-content: space-around; page-break-inside: avoid; break-inside: avoid; gap: 16px; font-size: 8.5pt; }
-    .footer { margin-top: 16px; padding-top: 4px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; }
+    html, body {
+      font-family: 'Sarabun', 'Prompt', sans-serif;
+      font-size: 8.5pt;
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+      background: #F8FAFC;
+    }
+    .no-print {
+      position: sticky;
+      top: 0;
+      background: #1E293B;
+      color: white;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 9999;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .print-page-wrapper {
+      max-width: ${isLandscape ? '285mm' : '205mm'};
+      margin: 15px auto;
+      padding: ${isLandscape ? '6mm 8mm' : '5mm 7mm'};
+      background: #ffffff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .roster-page {
+      margin-bottom: 24px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Standard Header */
+    .header-standard { text-align: center; margin-bottom: 6px; }
+    .header-standard .logo { width: 44px; height: 44px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
+    .header-standard .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; line-height: 1.2; }
+    .header-standard .subtitle { font-size: 10pt; font-weight: 600; color: #334155; margin: 1px 0 0 0; line-height: 1.2; }
+    .header-standard .org-sub { font-size: 8.5pt; color: #475569; margin-top: 1px; }
+
+    /* Compact Header */
+    .header-compact { margin-bottom: 4px; }
+    .compact-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1.5px solid #334155;
+      padding-bottom: 3px;
+    }
+    .compact-logo-group { display: flex; align-items: center; gap: 8px; }
+    .compact-logo { width: 28px; height: 28px; object-fit: contain; }
+    .compact-title { font-size: 11pt; font-weight: bold; color: #0F172A; line-height: 1.15; }
+    .compact-subtitle { font-size: 8pt; font-weight: 600; color: #334155; line-height: 1.15; }
+    .compact-meta-right { text-align: right; font-size: 7.5pt; color: #475569; line-height: 1.2; }
+
+    /* Meta Bar */
+    .meta-bar {
+      font-size: 8.5pt;
+      color: #334155;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: #F1F5F9;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      border: 1px solid #CBD5E1;
+    }
+
+    /* Table Base */
+    table.roster-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 5px;
+      table-layout: fixed;
+    }
+    table.roster-table th {
+      background: #F1F5F9;
+      color: #1E293B;
+      border: 1px solid #475569;
+      font-weight: bold;
+      text-align: center;
+    }
+    table.roster-table td {
+      border: 1px solid #64748B;
+      vertical-align: middle;
+    }
+    table.roster-table tr:nth-child(even) { background: #F8FAFC; }
+
+    /* Summary Bar */
+    .summary-bar {
+      margin-top: 6px;
+      padding: 4px 8px;
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Signatures */
+    .signatures {
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-around;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      gap: 16px;
+      font-size: 8.5pt;
+    }
+    .sig-box { text-align: center; min-width: 200px; }
+    .sig-name { margin-top: 4px; font-weight: 600; }
+    .sig-date { margin-top: 3px; font-size: 8pt; color: #64748B; }
+
+    /* Footer */
+    .footer {
+      margin-top: 10px;
+      padding-top: 3px;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: #64748B;
+      page-break-inside: avoid;
+    }
+
+    /* Density Overrides */
+    /* Compact Density (>= 34 students, e.g. ม.3) */
+    .density-compact .meta-bar {
+      font-size: 7.5pt;
+      padding: 2px 6px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+    .density-compact table.roster-table {
+      margin-top: 2px;
+    }
+    .density-compact table.roster-table th {
+      padding: 2px 1px;
+      font-size: 7pt;
+      line-height: 1.15;
+    }
+    .density-compact table.roster-table td {
+      padding: 1px 2px;
+      font-size: 7.2pt;
+      line-height: 1.15;
+      height: 15px;
+    }
+    .density-compact .summary-bar {
+      font-size: 7pt;
+      padding: 2px 6px;
+      margin-top: 2px;
+    }
+    .density-compact .signatures {
+      margin-top: 5px;
+      font-size: 7.5pt;
+      line-height: 1.2;
+    }
+    .density-compact .sig-box { min-width: 170px; }
+    .density-compact .sig-name { margin-top: 2px; }
+    .density-compact .sig-date { margin-top: 2px; font-size: 7pt; }
+    .density-compact .footer {
+      margin-top: 2px;
+      padding-top: 2px;
+      font-size: 6.5pt;
+    }
+
+    /* Medium Density (26-33 students) */
+    .density-medium .meta-bar {
+      font-size: 8pt;
+      padding: 3px 6px;
+    }
+    .density-medium table.roster-table th {
+      padding: 3px 2px;
+      font-size: 7.5pt;
+    }
+    .density-medium table.roster-table td {
+      padding: 2px 3px;
+      font-size: 7.5pt;
+      height: 18px;
+    }
+    .density-medium .summary-bar {
+      font-size: 7.5pt;
+      padding: 3px 6px;
+      margin-top: 4px;
+    }
+    .density-medium .signatures {
+      margin-top: 10px;
+      font-size: 8pt;
+    }
+    .density-medium .footer {
+      margin-top: 6px;
+      font-size: 7pt;
+    }
+
+    /* Standard Density (<= 25 students) */
+    .density-standard table.roster-table th {
+      padding: 4px 3px;
+      font-size: 8pt;
+    }
+    .density-standard table.roster-table td {
+      padding: 3px 3px;
+      font-size: 8pt;
+      height: 22px;
+    }
+
+    /* Cell layout classes for Attendance Check */
+    .cell-num { text-align: center; font-weight: 600; }
+    .cell-code { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .cell-name { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px !important; }
+    .cell-slot { border: 1px solid #94A3B8 !important; padding: 0 !important; }
+    .cell-total { border: 1px solid #94A3B8 !important; text-align: center; }
+    .cell-rem { border: 1px solid #94A3B8 !important; text-align: center; }
+
+    /* Column Widths */
+    .th-num { width: 26px; }
+    .th-code { width: ${isLandscape ? '65px' : '52px'}; }
+    .th-name { width: ${isLandscape ? '170px' : '135px'}; text-align: left !important; padding-left: 6px !important; }
+    .th-slots { text-align: center; padding: 2px 0; }
+    .th-slot-num { width: auto; font-size: 7pt; font-weight: normal; padding: 1px 0; }
+    .th-total { width: ${isLandscape ? '36px' : '26px'}; }
+    .th-rem { width: ${isLandscape ? '55px' : '38px'}; }
+
     @media print {
       .no-print { display: none !important; }
-      html, body { margin: 0 !important; padding: 0 !important; background: #FFFFFF !important; }
-      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
-      .roster-page { margin-bottom: 0 !important; }
-      .roster-page:not(:last-child) { page-break-after: always !important; break-after: page !important; }
-      table.roster-table { width: 100% !important; border-collapse: collapse !important; }
-      table.roster-table th { background: #E2E8F0 !important; border: 1px solid #475569 !important; }
-      table.roster-table td { border: 1px solid #64748B !important; }
-      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-      thead { display: table-header-group !important; }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #FFFFFF !important;
+      }
+      .print-page-wrapper {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+      }
+      .roster-page {
+        margin: 0 !important;
+        padding: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .roster-page:not(:last-child) {
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+      table.roster-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      table.roster-table th {
+        background: #E2E8F0 !important;
+        border: 1px solid #475569 !important;
+      }
+      table.roster-table td {
+        border: 1px solid #64748B !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
     }
   </style>
 </head>
@@ -6380,7 +6696,7 @@ function printAttendanceCheckRoster(students, params) {
   <div class="no-print">
     <div style="display:flex; align-items:center; gap:8px;">
       <strong style="font-size:13px;">ตัวอย่างก่อนพิมพ์: ${escapeHTML(docTitle)}</strong>
-      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
+      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 ${isLandscape ? 'แนวนอน' : 'แนวตั้ง'} • ${fitMode === 'auto_fit' ? 'Auto-Fit พอดี 1 หน้า' : 'ขนาดมาตรฐาน'}</span>
     </div>
     <div style="display:flex; gap:8px;">
       <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
@@ -6418,6 +6734,9 @@ function printOfficialStudentRoster(students, params) {
 
   const year = params.year || '2569';
   const isAll = (params.classroom === '__ALL__');
+  const orientation = params.orientation || 'portrait';
+  const isLandscape = (orientation === 'landscape');
+  const fitMode = params.fitMode || 'auto_fit';
 
   const grouped = {};
   students.forEach(s => {
@@ -6446,28 +6765,62 @@ function printOfficialStudentRoster(students, params) {
     });
     const tCount = roomStudents.length;
 
+    // Smart Adaptive Density Engine
+    let density = 'standard';
+    if (fitMode === 'auto_fit') {
+      if (isLandscape) {
+        if (tCount >= 34) density = 'compact';
+        else if (tCount >= 25) density = 'medium';
+        else density = 'standard';
+      } else {
+        if (tCount >= 34) density = 'compact';
+        else if (tCount >= 26) density = 'medium';
+        else density = 'standard';
+      }
+    }
+
     const rowsHtml = roomStudents.map((s, idx) => `
       <tr>
-        <td style="text-align:center; font-weight:600; padding:4px 2px;">${s.student_number || (idx + 1)}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.student_id || s.student_code || '-')}</td>
-        <td style="text-align:left; font-weight:600; padding:4px 6px; white-space:nowrap;">${escapeHTML(formatStudentFullName(s))}</td>
-        <td style="text-align:center; padding:4px 2px; font-size:8.5pt;">${s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : '-')}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.national_id || '-')}</td>
-        <td style="text-align:center; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.birth_date || '-')}</td>
-        <td style="text-align:left; padding:4px 4px; font-size:8.5pt;">${escapeHTML(s.parent_name || '-')}</td>
-        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.parent_phone || '-')}</td>
-        <td style="text-align:center; font-size:8pt; padding:4px 2px;">${escapeHTML(s.status === 'active' ? 'ปกติ' : (s.status || '-'))}</td>
+        <td class="cell-num">${s.student_number || (idx + 1)}</td>
+        <td class="cell-code">${escapeHTML(s.student_id || s.student_code || '-')}</td>
+        <td class="cell-name">${escapeHTML(formatStudentFullName(s))}</td>
+        <td class="cell-gender">${s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : '-')}</td>
+        <td class="cell-nid">${escapeHTML(s.national_id || '-')}</td>
+        <td class="cell-dob">${escapeHTML(s.birth_date || '-')}</td>
+        <td class="cell-parent">${escapeHTML(s.parent_name || '-')}</td>
+        <td class="cell-phone">${escapeHTML(s.parent_phone || '-')}</td>
+        <td class="cell-status">${escapeHTML(s.status === 'active' ? 'ปกติ' : (s.status || '-'))}</td>
       </tr>
     `).join('');
 
-    return `
-      <div class="roster-page" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
-        <div class="header">
-          <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
-          <div class="title">โรงเรียนมหาชัยพิทยาคาร</div>
-          <div class="subtitle">ใบรายชื่อนักเรียนประจำชั้น (Official Student Roster)</div>
-          <div style="font-size:9pt; color:#475569; margin-top:1px;">สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม (สพม.มหาสารคาม)</div>
+    const headerHtml = (density === 'compact') ? `
+      <div class="header header-compact">
+        <div class="compact-header-bar">
+          <div class="compact-logo-group">
+            <img src="${schoolLogoUrl}" class="compact-logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
+            <div>
+              <div class="compact-title">โรงเรียนมหาชัยพิทยาคาร</div>
+              <div class="compact-subtitle">ใบรายชื่อนักเรียนประจำชั้น (Official Student Roster)</div>
+            </div>
+          </div>
+          <div class="compact-meta-right">
+            <div>สพม.มหาสารคาม • ปีการศึกษา ${escapeHTML(year)}</div>
+            <div><b>ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</b> (รวม ${tCount} คน)</div>
+          </div>
         </div>
+      </div>
+    ` : `
+      <div class="header header-standard">
+        <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
+        <div class="title">โรงเรียนมหาชัยพิทยาคาร</div>
+        <div class="subtitle">ใบรายชื่อนักเรียนประจำชั้น (Official Student Roster)</div>
+        <div class="org-sub">สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม (สพม.มหาสารคาม)</div>
+      </div>
+    `;
+
+    return `
+      <div class="roster-page density-${density}" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
+        ${headerHtml}
 
         <div class="meta-bar">
           <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
@@ -6479,15 +6832,15 @@ function printOfficialStudentRoster(students, params) {
         <table class="roster-table">
           <thead>
             <tr>
-              <th style="width:36px;">เลขที่</th>
-              <th style="width:72px;">รหัสประจำตัว</th>
-              <th style="min-width:160px; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
-              <th style="width:40px;">เพศ</th>
-              <th style="width:115px;">เลขประจำตัวประชาชน</th>
-              <th style="width:85px;">วัน/เดือน/ปีเกิด</th>
-              <th style="min-width:130px; text-align:left; padding-left:6px;">ชื่อผู้ปกครอง</th>
-              <th style="width:90px;">เบอร์โทรศัพท์</th>
-              <th style="width:55px;">สถานะ</th>
+              <th class="th-num">เลขที่</th>
+              <th class="th-code">รหัสประจำตัว</th>
+              <th class="th-name">ชื่อ - นามสกุล</th>
+              <th class="th-gender">เพศ</th>
+              <th class="th-nid">เลขประจำตัวประชาชน</th>
+              <th class="th-dob">วัน/เดือน/ปีเกิด</th>
+              <th class="th-parent">ชื่อผู้ปกครอง</th>
+              <th class="th-phone">เบอร์โทรศัพท์</th>
+              <th class="th-status">สถานะ</th>
             </tr>
           </thead>
           <tbody>
@@ -6501,16 +6854,16 @@ function printOfficialStudentRoster(students, params) {
         </div>
 
         <div class="signatures">
-          <div style="text-align:center; min-width:220px;">
+          <div class="sig-box">
             <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
-            <div style="margin-top:5px; font-weight:600;">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
-            <div style="margin-top:4px; font-size:8.5pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+            <div class="sig-name">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
+            <div class="sig-date">วันที่ .......... / .......... / ................</div>
           </div>
-          <div style="text-align:center; min-width:220px;">
+          <div class="sig-box">
             <div>ลงชื่อ ................................................................</div>
-            <div style="margin-top:5px; font-weight:700;">( นายอธิการ สุขศรี )</div>
-            <div style="margin-top:2px;">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
-            <div style="margin-top:4px; font-size:8.5pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+            <div class="sig-name" style="font-weight:700;">( นายอธิการ สุขศรี )</div>
+            <div class="sig-role">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+            <div class="sig-date">วันที่ .......... / .......... / ................</div>
           </div>
         </div>
 
@@ -6530,35 +6883,289 @@ function printOfficialStudentRoster(students, params) {
   <title>${escapeHTML(docTitle)}</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap">
   <style>
-    @page { size: A4 portrait; margin: 8mm 8mm 8mm 8mm; }
+    @page {
+      size: A4 ${orientation};
+      margin: ${isLandscape ? '5mm 7mm 5mm 7mm' : '5mm 6mm 5mm 6mm'};
+    }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
-    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-    .print-page-wrapper { max-width: 205mm; margin: 15px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; box-sizing: border-box; }
-    .roster-page { margin-bottom: 20px; }
-    .header { text-align: center; margin-bottom: 8px; }
-    .logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
-    .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; }
-    .subtitle { font-size: 10.5pt; font-weight: 600; color: #334155; margin: 1px 0 0 0; }
-    .meta-bar { font-size: 8.5pt; color: #334155; margin-top: 4px; padding: 5px 8px; background: #F1F5F9; border-radius: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; border: 1px solid #CBD5E1; }
-    table.roster-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8pt; table-layout: auto; }
-    table.roster-table th { background: #F1F5F9; color: #1E293B; border: 1px solid #64748B; padding: 4px 3px; font-weight: bold; text-align: center; }
-    table.roster-table td { border: 1px solid #94A3B8; padding: 3px 3px; vertical-align: middle; }
-    table.roster-table tr:nth-child(even) { background: #FAFAFA; }
-    .summary-bar { margin-top: 8px; padding: 5px 8px; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 8.5pt; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-    .signatures { margin-top: 24px; display: flex; justify-content: space-around; page-break-inside: avoid; break-inside: avoid; gap: 16px; font-size: 8.5pt; }
-    .footer { margin-top: 16px; padding-top: 4px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; }
+    html, body {
+      font-family: 'Sarabun', 'Prompt', sans-serif;
+      font-size: 8.5pt;
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+      background: #F8FAFC;
+    }
+    .no-print {
+      position: sticky;
+      top: 0;
+      background: #1E293B;
+      color: white;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 9999;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .print-page-wrapper {
+      max-width: ${isLandscape ? '285mm' : '205mm'};
+      margin: 15px auto;
+      padding: ${isLandscape ? '6mm 8mm' : '5mm 7mm'};
+      background: #ffffff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .roster-page {
+      margin-bottom: 24px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Standard Header */
+    .header-standard { text-align: center; margin-bottom: 6px; }
+    .header-standard .logo { width: 44px; height: 44px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
+    .header-standard .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; line-height: 1.2; }
+    .header-standard .subtitle { font-size: 10pt; font-weight: 600; color: #334155; margin: 1px 0 0 0; line-height: 1.2; }
+    .header-standard .org-sub { font-size: 8.5pt; color: #475569; margin-top: 1px; }
+
+    /* Compact Header */
+    .header-compact { margin-bottom: 4px; }
+    .compact-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1.5px solid #334155;
+      padding-bottom: 3px;
+    }
+    .compact-logo-group { display: flex; align-items: center; gap: 8px; }
+    .compact-logo { width: 28px; height: 28px; object-fit: contain; }
+    .compact-title { font-size: 11pt; font-weight: bold; color: #0F172A; line-height: 1.15; }
+    .compact-subtitle { font-size: 8pt; font-weight: 600; color: #334155; line-height: 1.15; }
+    .compact-meta-right { text-align: right; font-size: 7.5pt; color: #475569; line-height: 1.2; }
+
+    /* Meta Bar */
+    .meta-bar {
+      font-size: 8.5pt;
+      color: #334155;
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: #F1F5F9;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      border: 1px solid #CBD5E1;
+    }
+
+    /* Table Base */
+    table.roster-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 5px;
+      table-layout: fixed;
+    }
+    table.roster-table th {
+      background: #F1F5F9;
+      color: #1E293B;
+      border: 1px solid #475569;
+      font-weight: bold;
+      text-align: center;
+    }
+    table.roster-table td {
+      border: 1px solid #64748B;
+      vertical-align: middle;
+    }
+    table.roster-table tr:nth-child(even) { background: #F8FAFC; }
+
+    /* Summary Bar */
+    .summary-bar {
+      margin-top: 6px;
+      padding: 4px 8px;
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Signatures */
+    .signatures {
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-around;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      gap: 16px;
+      font-size: 8.5pt;
+    }
+    .sig-box { text-align: center; min-width: 200px; }
+    .sig-name { margin-top: 4px; font-weight: 600; }
+    .sig-role { margin-top: 2px; }
+    .sig-date { margin-top: 3px; font-size: 8pt; color: #64748B; }
+
+    /* Footer */
+    .footer {
+      margin-top: 10px;
+      padding-top: 3px;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: #64748B;
+      page-break-inside: avoid;
+    }
+
+    /* Density Overrides */
+    /* Compact Density (>= 34 students, e.g. ม.3) */
+    .density-compact .meta-bar {
+      font-size: 7.5pt;
+      padding: 2px 6px;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+    .density-compact table.roster-table {
+      margin-top: 2px;
+    }
+    .density-compact table.roster-table th {
+      padding: 2px 1px;
+      font-size: 7pt;
+      line-height: 1.15;
+    }
+    .density-compact table.roster-table td {
+      padding: 1px 2px;
+      font-size: 7.2pt;
+      line-height: 1.15;
+      height: 15px;
+    }
+    .density-compact .summary-bar {
+      font-size: 7pt;
+      padding: 2px 6px;
+      margin-top: 2px;
+    }
+    .density-compact .signatures {
+      margin-top: 5px;
+      font-size: 7.5pt;
+      line-height: 1.2;
+    }
+    .density-compact .sig-box { min-width: 170px; }
+    .density-compact .sig-name { margin-top: 2px; }
+    .density-compact .sig-role { margin-top: 1px; font-size: 7pt; }
+    .density-compact .sig-date { margin-top: 2px; font-size: 7pt; }
+    .density-compact .footer {
+      margin-top: 2px;
+      padding-top: 2px;
+      font-size: 6.5pt;
+    }
+
+    /* Medium Density (26-33 students) */
+    .density-medium .meta-bar {
+      font-size: 8pt;
+      padding: 3px 6px;
+    }
+    .density-medium table.roster-table th {
+      padding: 3px 2px;
+      font-size: 7.5pt;
+    }
+    .density-medium table.roster-table td {
+      padding: 2px 3px;
+      font-size: 7.5pt;
+      height: 18px;
+    }
+    .density-medium .summary-bar {
+      font-size: 7.5pt;
+      padding: 3px 6px;
+      margin-top: 4px;
+    }
+    .density-medium .signatures {
+      margin-top: 10px;
+      font-size: 8pt;
+    }
+    .density-medium .footer {
+      margin-top: 6px;
+      font-size: 7pt;
+    }
+
+    /* Standard Density (<= 25 students) */
+    .density-standard table.roster-table th {
+      padding: 4px 3px;
+      font-size: 8pt;
+    }
+    .density-standard table.roster-table td {
+      padding: 3px 3px;
+      font-size: 8pt;
+      height: 22px;
+    }
+
+    /* Cell layout classes for Official Roster */
+    .cell-num { text-align: center; font-weight: 600; }
+    .cell-code { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .cell-name { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px !important; }
+    .cell-gender { text-align: center; }
+    .cell-nid { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; font-size: 90%; }
+    .cell-dob { text-align: center; white-space: nowrap; }
+    .cell-parent { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px !important; }
+    .cell-phone { text-align: center; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .cell-status { text-align: center; font-size: 90%; }
+
+    /* Column Widths for Official Roster */
+    .th-num { width: 26px; }
+    .th-code { width: 52px; }
+    .th-name { width: ${isLandscape ? '170px' : '135px'}; text-align: left !important; padding-left: 6px !important; }
+    .th-gender { width: 26px; }
+    .th-nid { width: ${isLandscape ? '110px' : '92px'}; }
+    .th-dob { width: ${isLandscape ? '80px' : '66px'}; }
+    .th-parent { width: ${isLandscape ? '140px' : '110px'}; text-align: left !important; padding-left: 6px !important; }
+    .th-phone { width: ${isLandscape ? '85px' : '72px'}; }
+    .th-status { width: 36px; }
+
     @media print {
       .no-print { display: none !important; }
-      html, body { margin: 0 !important; padding: 0 !important; background: #FFFFFF !important; }
-      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
-      .roster-page { margin-bottom: 0 !important; }
-      .roster-page:not(:last-child) { page-break-after: always !important; break-after: page !important; }
-      table.roster-table { width: 100% !important; border-collapse: collapse !important; }
-      table.roster-table th { background: #E2E8F0 !important; border: 1px solid #475569 !important; }
-      table.roster-table td { border: 1px solid #64748B !important; }
-      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-      thead { display: table-header-group !important; }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #FFFFFF !important;
+      }
+      .print-page-wrapper {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+      }
+      .roster-page {
+        margin: 0 !important;
+        padding: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .roster-page:not(:last-child) {
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+      table.roster-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      table.roster-table th {
+        background: #E2E8F0 !important;
+        border: 1px solid #475569 !important;
+      }
+      table.roster-table td {
+        border: 1px solid #64748B !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      thead {
+        display: table-header-group !important;
+      }
     }
   </style>
 </head>
@@ -6566,7 +7173,7 @@ function printOfficialStudentRoster(students, params) {
   <div class="no-print">
     <div style="display:flex; align-items:center; gap:8px;">
       <strong style="font-size:13px;">ตัวอย่างก่อนพิมพ์: ${escapeHTML(docTitle)}</strong>
-      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
+      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 ${isLandscape ? 'แนวนอน' : 'แนวตั้ง'} • ${fitMode === 'auto_fit' ? 'Auto-Fit พอดี 1 หน้า' : 'ขนาดมาตรฐาน'}</span>
     </div>
     <div style="display:flex; gap:8px;">
       <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
