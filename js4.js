@@ -467,6 +467,9 @@ function quickDownloadReport(reportType, title) {
 }
 
 function openReportDialog(reportType, title) {
+  if (reportType === 'students_by_grade' && typeof window.openDownloadRosterModal === 'function') {
+    return window.openDownloadRosterModal();
+  }
   const rDef = (typeof SYSTEM_REPORT_DEFINITIONS !== 'undefined' ? SYSTEM_REPORT_DEFINITIONS : []).find(x => x.id === reportType) || {};
   const today = new Date().toISOString().slice(0, 10);
   const monthAgo = (() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 10); })();

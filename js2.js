@@ -137,8 +137,11 @@ function formatStudentFullName(s) {
 function renderStudents(container) {
   container.innerHTML = `
     ${pageHeader('ข้อมูลนักเรียน', 'bxs-user-detail', `
+      <button class="btn btn-light text-indigo-600 border-indigo-200 hover:bg-indigo-50 font-medium" onclick="openDownloadRosterModal(StudentsState.classroom)" title="ดาวน์โหลด/พิมพ์ใบรายชื่อนักเรียน (เลือกห้องเรียนและรูปแบบได้)">
+        <i class='bx bxs-file-doc text-base'></i> ดาวน์โหลดใบรายชื่อ
+      </button>
       <button class="btn btn-light" onclick="exportStudents()">
-        <i class='bx bx-download'>\x3c/i> Export
+        <i class='bx bx-download'>\x3c/i> Export ทั้งหมด
       \x3c/button>
       ${APP.role !== 'teacher' ? `
       <button class="btn btn-purple" onclick="openPromotionWizard()">
@@ -1797,7 +1800,11 @@ function renderAttendance(container) {
   const currentTab = AttendanceState.tab || 'record';
 
   container.innerHTML = `
-    ${pageHeader('การเข้าเรียน', 'bxs-check-square', '')}
+    ${pageHeader('การเข้าเรียน', 'bxs-check-square', `
+      <button class="btn btn-light text-indigo-600 border-indigo-200 hover:bg-indigo-50 font-medium" onclick="openDownloadRosterModal(AttendanceState.classroom)" title="ดาวน์โหลด/พิมพ์ใบรายชื่อสำหรับเช็คชื่อ">
+        <i class='bx bxs-file-doc text-base'></i> ใบรายชื่อ
+      </button>
+    `)}
 
     <div class="page-card">
       <div class="page-card-body">
@@ -5764,3 +5771,834 @@ function triggerSyncPersonnelWithUsers() {
   });
 }
 window.triggerSyncPersonnelWithUsers = triggerSyncPersonnelWithUsers;
+
+/* ============================================================
+ *  STUDENT ROSTER GENERATOR & DOWNLOADER — ระบบดาวน์โหลดและพิมพ์ใบรายชื่อนักเรียน
+ *  โรงเรียนมหาชัยพิทยาคาร | ผู้อำนวยการ: นายอธิการ สุขศรี | ผู้จัดทำ: ครูก้องนที อุ่นเจริญ
+ * ============================================================ */
+
+function getAvailableClassroomsList() {
+  let list = [];
+  if (typeof StudentsState !== 'undefined' && StudentsState.distinct && Array.isArray(StudentsState.distinct.classrooms)) {
+    list = StudentsState.distinct.classrooms;
+  }
+  if (!list.length && typeof AttendanceState !== 'undefined' && Array.isArray(AttendanceState.classrooms)) {
+    list = AttendanceState.classrooms;
+  }
+  if (!list.length && typeof CLS !== 'undefined' && Array.isArray(CLS.rooms) && CLS.rooms.length) {
+    list = CLS.rooms.map(r => r.name);
+  }
+  if (!list.length && window._apiCache) {
+    const c1 = window._apiCache.get('getClassroomsForDropdown');
+    const c2 = window._apiCache.get('getClassrooms');
+    if (c1 && Array.isArray(c1.data)) list = c1.data;
+    else if (c2 && Array.isArray(c2.data)) list = c2.data;
+  }
+  if (!list.length) {
+    list = ['ม.1/1', 'ม.1/2', 'ม.2/1', 'ม.2/2', 'ม.3/1', 'ม.3/2', 'ม.4/1', 'ม.4/2', 'ม.5/1', 'ม.5/2', 'ม.6/1', 'ม.6/2'];
+  }
+  return Array.from(new Set(list.filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+}
+
+function sortRosterStudents(students) {
+  return (students || []).slice().sort((a, b) => {
+    const roomA = String(a.classroom || '');
+    const roomB = String(b.classroom || '');
+    if (roomA !== roomB) return roomA.localeCompare(roomB, 'th', { numeric: true });
+
+    const numA = parseInt(a.student_number, 10);
+    const numB = parseInt(b.student_number, 10);
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+    if (!isNaN(numA)) return -1;
+    if (!isNaN(numB)) return 1;
+
+    const gRankA = (a.gender === 'male' || (a.prefix && (a.prefix.includes('ชาย') || a.prefix.includes('นาย')))) ? 1 : 2;
+    const gRankB = (b.gender === 'male' || (b.prefix && (b.prefix.includes('ชาย') || b.prefix.includes('นาย')))) ? 1 : 2;
+    if (gRankA !== gRankB) return gRankA - gRankB;
+
+    return String(a.first_name || '').localeCompare(String(b.first_name || ''), 'th');
+  });
+}
+
+function getHomeroomTeacherName(roomName) {
+  if (!roomName) return '';
+  const autoMap = (typeof window !== 'undefined' && window._mhcClassroomTeachersMap) ? window._mhcClassroomTeachersMap : null;
+  if (autoMap && autoMap.byClassroom && autoMap.byClassroom[roomName]) {
+    return autoMap.byClassroom[roomName].name || '';
+  }
+  if (typeof CLS !== 'undefined' && Array.isArray(CLS.rooms)) {
+    const found = CLS.rooms.find(r => r.name === roomName);
+    if (found && found.teacher_name) return found.teacher_name;
+  }
+  return '';
+}
+
+function openDownloadRosterModal(targetClassroom) {
+  if (typeof ensureClassroomTeachersMap === 'function') {
+    try { ensureClassroomTeachersMap(); } catch(_) {}
+  }
+
+  const classrooms = getAvailableClassroomsList();
+  const config = (typeof APP !== 'undefined' && APP.dashboardData && APP.dashboardData.config) || {};
+  const currentYear = config.academic_year || (new Date().getFullYear() + 543);
+  const currentSem = config.semester || '1';
+  const currentTeacherName = (typeof APP !== 'undefined' && APP.user && APP.user.name) || '';
+
+  const preselected = targetClassroom || (typeof StudentsState !== 'undefined' ? StudentsState.classroom : '') || '';
+
+  Swal.fire({
+    title: '<div class="flex items-center justify-center gap-2 text-indigo-700 dark:text-indigo-400 font-bold text-lg"><i class="bx bxs-file-doc text-2xl"></i> ดาวน์โหลด / พิมพ์ใบรายชื่อนักเรียน</div>',
+    width: 600,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bx bx-download text-base"></i> ดาวน์โหลด / สร้างเอกสาร',
+    cancelButtonText: 'ยกเลิก',
+    showCloseButton: true,
+    confirmButtonColor: '#4F46E5',
+    focusConfirm: false,
+    html: `
+      <div style="text-align:left; font-family:'Prompt', sans-serif;">
+        <div style="margin-bottom:12px;">
+          <label class="form-label" style="font-weight:600;font-size:12px;color:#334155;display:block;margin-bottom:4px;">
+            <i class='bx bxs-school text-indigo-600'></i> เลือกระดับชั้น / ห้องเรียน:
+          </label>
+          <select id="roster_classroom" class="form-input" style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #CBD5E1;font-size:13px;background:#F8FAFC;">
+            <option value="__ALL__" ${preselected === '__ALL__' ? 'selected' : ''}>🌟 ทุกห้องเรียน (รวมทั้งโรงเรียน / แยกตามห้อง)</option>
+            ${classrooms.map(c => `<option value="${escapeHTML(c)}" ${preselected === c ? 'selected' : ''}>ชั้น ${escapeHTML(c)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label class="form-label" style="font-weight:600;font-size:12px;color:#334155;display:block;margin-bottom:4px;">
+              ปีการศึกษา:
+            </label>
+            <input type="text" id="roster_year" value="${escapeHTML(String(currentYear))}" class="form-input" style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #CBD5E1;font-size:13px;background:#F8FAFC;">
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:600;font-size:12px;color:#334155;display:block;margin-bottom:4px;">
+              ภาคเรียนที่:
+            </label>
+            <select id="roster_semester" class="form-input" style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #CBD5E1;font-size:13px;background:#F8FAFC;">
+              <option value="1" ${String(currentSem) === '1' ? 'selected' : ''}>ภาคเรียนที่ 1</option>
+              <option value="2" ${String(currentSem) === '2' ? 'selected' : ''}>ภาคเรียนที่ 2</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label class="form-label" style="font-weight:600;font-size:12px;color:#334155;display:block;margin-bottom:6px;">
+            <i class='bx bx-category text-indigo-600'></i> เลือกรูปแบบใบรายชื่อ:
+          </label>
+          <div style="display:grid;grid-template-columns:1fr;gap:8px;" id="rosterFormatSelector">
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #4F46E5;border-radius:12px;cursor:pointer;background:#EEF2FF;transition:all .15s;" class="roster-fmt-opt">
+              <input type="radio" name="roster_fmt" value="attendance_check" checked style="margin-top:3px;accent-color:#4F46E5;">
+              <div>
+                <div style="font-weight:700;font-size:13px;color:#1E293B;">📋 แบบฟอร์มเช็คชื่อ / บันทึกคะแนน (A4 Printable / PDF)</div>
+                <div style="font-size:11px;color:#64748B;">ตารางรายชื่อพร้อมช่องตารางสำหรับเช็คชื่อ 20 ช่อง หรือกรอกคะแนนเก็บ หัวเอกสารราชการโรงเรียนมหาชัยพิทยาคาร</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:12px;cursor:pointer;background:#F8FAFC;transition:all .15s;" class="roster-fmt-opt">
+              <input type="radio" name="roster_fmt" value="official_roster" style="margin-top:3px;accent-color:#4F46E5;">
+              <div>
+                <div style="font-weight:700;font-size:13px;color:#1E293B;">📄 ใบรายชื่อนักเรียนทางการ (Official Roster A4 / PDF)</div>
+                <div style="font-size:11px;color:#64748B;">แสดงเลขที่, รหัสประจำตัว, ชื่อ-สกุล, เลขบัตร ปชช., วันเกิด, ผู้ปกครอง พร้อมช่องลงนาม ผอ. นายอธิการ สุขศรี</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:12px;cursor:pointer;background:#F8FAFC;transition:all .15s;" class="roster-fmt-opt">
+              <input type="radio" name="roster_fmt" value="excel" style="margin-top:3px;accent-color:#4F46E5;">
+              <div>
+                <div style="font-weight:700;font-size:13px;color:#1E293B;">📊 ไฟล์ดาวน์โหลด Excel (.xlsx)</div>
+                <div style="font-size:11px;color:#64748B;">จัดเป็นสเปรดชีต Excel เรียงตามห้องและเลขที่อย่างเป็นระเบียบ นำไปใช้งานหรือคำนวณต่อได้ทันที</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:12px;cursor:pointer;background:#F8FAFC;transition:all .15s;" class="roster-fmt-opt">
+              <input type="radio" name="roster_fmt" value="csv" style="margin-top:3px;accent-color:#4F46E5;">
+              <div>
+                <div style="font-weight:700;font-size:13px;color:#1E293B;">📑 ไฟล์ CSV (UTF-8 with BOM)</div>
+                <div style="font-size:11px;color:#64748B;">สำหรับนำเข้าสู่ระบบ SGS หรือโปรแกรมภายนอก ตัวอักษรภาษาไทยไม่เพี้ยน</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Extra Fields for Attendance Check Form -->
+        <div id="rosterCheckExtraFields" style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-weight:700;font-size:12px;color:#3730A3;margin-bottom:6px;">
+            <i class='bx bx-slider-alt'></i> ตัวเลือกเพิ่มเติมสำหรับแบบฟอร์มเช็คชื่อ/บันทึกคะแนน:
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+            <div>
+              <label style="font-size:11px;color:#4338CA;display:block;margin-bottom:2px;">กลุ่มสาระ / รายวิชา:</label>
+              <input type="text" id="roster_subject" placeholder="เช่น คณิตศาสตร์พื้นฐาน หรือเว้นว่าง" class="form-input" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #A5B4FC;font-size:12px;background:white;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:#4338CA;display:block;margin-bottom:2px;">ครูผู้สอน / ครูประจำชั้น:</label>
+              <input type="text" id="roster_teacher" value="${escapeHTML(currentTeacherName)}" placeholder="ชื่อครูผู้สอน" class="form-input" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #A5B4FC;font-size:12px;background:white;">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label style="font-size:11px;color:#4338CA;white-space:nowrap;">จำนวนช่องเช็คชื่อ:</label>
+            <select id="roster_slots" style="padding:4px 8px;border-radius:6px;border:1px solid #A5B4FC;font-size:12px;background:white;">
+              <option value="20" selected>20 ช่อง (มาตรฐาน)</option>
+              <option value="25">25 ช่อง</option>
+              <option value="30">30 ช่อง</option>
+              <option value="15">15 ช่อง</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    `,
+    didOpen: () => {
+      const radios = document.querySelectorAll('input[name="roster_fmt"]');
+      const extraBox = document.getElementById('rosterCheckExtraFields');
+      const optLabels = document.querySelectorAll('.roster-fmt-opt');
+
+      const updateUI = () => {
+        const val = document.querySelector('input[name="roster_fmt"]:checked')?.value;
+        if (extraBox) {
+          extraBox.style.display = (val === 'attendance_check') ? 'block' : 'none';
+        }
+        optLabels.forEach(lbl => {
+          const inp = lbl.querySelector('input');
+          if (inp && inp.checked) {
+            lbl.style.borderColor = '#4F46E5';
+            lbl.style.background = '#EEF2FF';
+          } else {
+            lbl.style.borderColor = '#E2E8F0';
+            lbl.style.background = '#F8FAFC';
+          }
+        });
+      };
+
+      radios.forEach(r => r.addEventListener('change', updateUI));
+      optLabels.forEach(lbl => {
+        lbl.addEventListener('click', (e) => {
+          const inp = lbl.querySelector('input');
+          if (inp && e.target !== inp) {
+            inp.checked = true;
+            updateUI();
+          }
+        });
+      });
+      updateUI();
+    },
+    preConfirm: () => {
+      const classroom = document.getElementById('roster_classroom')?.value || '__ALL__';
+      const year = document.getElementById('roster_year')?.value.trim() || currentYear;
+      const semester = document.getElementById('roster_semester')?.value || '1';
+      const format = document.querySelector('input[name="roster_fmt"]:checked')?.value || 'attendance_check';
+      const subjectName = document.getElementById('roster_subject')?.value.trim() || '';
+      const teacherName = document.getElementById('roster_teacher')?.value.trim() || '';
+      const periodSlots = parseInt(document.getElementById('roster_slots')?.value, 10) || 20;
+
+      return {
+        classroom,
+        year,
+        semester,
+        format,
+        subjectName,
+        teacherName,
+        periodSlots
+      };
+    }
+  }).then(r => {
+    if (!r.isConfirmed || !r.value) return;
+    processRosterDownload(r.value);
+  });
+}
+
+function processRosterDownload(params) {
+  const { classroom, year, semester, format } = params;
+  showLoading('กำลังจัดเตรียมข้อมูลใบรายชื่อ...');
+
+  const onLoaded = (rawStudents) => {
+    hideLoading();
+    if (!rawStudents || !rawStudents.length) {
+      return showToast('warning', 'ไม่พบข้อมูลนักเรียนตามเงื่อนไขที่เลือก');
+    }
+
+    const activeStudents = rawStudents.filter(s => !s.status || s.status === 'active');
+    const sorted = sortRosterStudents(activeStudents.length ? activeStudents : rawStudents);
+
+    if (format === 'excel') {
+      exportRosterToExcel(sorted, params);
+    } else if (format === 'csv') {
+      exportRosterToCSV(sorted, params);
+    } else if (format === 'attendance_check') {
+      printAttendanceCheckRoster(sorted, params);
+    } else if (format === 'official_roster') {
+      printOfficialStudentRoster(sorted, params);
+    }
+  };
+
+  if (classroom && classroom !== '__ALL__') {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+          onLoaded(res.data);
+        } else {
+          google.script.run
+            .withSuccessHandler(res2 => {
+              const list = (res2 && res2.status === 'success' && Array.isArray(res2.data)) ? res2.data : [];
+              onLoaded(list);
+            })
+            .withFailureHandler(err2 => {
+              hideLoading();
+              showToast('error', err2.message || 'ไม่สามารถโหลดรายชื่อได้');
+            })
+            .getStudents({ classroom: classroom, academic_year: year, status: 'active', per_page: 500 }, APP.token);
+        }
+      })
+      .withFailureHandler(() => {
+        google.script.run
+          .withSuccessHandler(res2 => {
+            const list = (res2 && res2.status === 'success' && Array.isArray(res2.data)) ? res2.data : [];
+            onLoaded(list);
+          })
+          .withFailureHandler(err2 => {
+            hideLoading();
+            showToast('error', err2.message || 'ไม่สามารถโหลดรายชื่อได้');
+          })
+          .getStudents({ classroom: classroom, academic_year: year, status: 'active', per_page: 500 }, APP.token);
+      })
+      .getClassroomStudents(classroom, year, APP.token);
+  } else {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.status === 'success' && Array.isArray(res.data)) {
+          onLoaded(res.data);
+        } else {
+          hideLoading();
+          showToast('error', (res && res.message) || 'ไม่พบข้อมูลนักเรียน');
+        }
+      })
+      .withFailureHandler(err => {
+        hideLoading();
+        showToast('error', err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      })
+      .getStudents({ classroom: '', academic_year: year, status: 'active', per_page: 3000 }, APP.token);
+  }
+}
+
+function exportRosterToExcel(students, params) {
+  if (!students || students.length === 0) {
+    return showToast('warning', 'ไม่มีข้อมูลนักเรียนสำหรับส่งออก');
+  }
+
+  const isAll = (params.classroom === '__ALL__');
+  const year = params.year || '2569';
+
+  const grouped = {};
+  students.forEach(s => {
+    const c = (s.classroom || 'ไม่ระบุห้อง').trim();
+    if (!grouped[c]) grouped[c] = [];
+    grouped[c].push(s);
+  });
+  const classNames = Object.keys(grouped).sort((a, b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+
+  if (typeof XLSX !== 'undefined' && XLSX.utils && typeof XLSX.utils.book_new === 'function') {
+    const wb = XLSX.utils.book_new();
+
+    const allRows = [];
+    classNames.forEach(c => {
+      grouped[c].forEach((s, i) => {
+        allRows.push({
+          'ชั้นเรียน': s.classroom || c,
+          'เลขที่': s.student_number || (i + 1),
+          'รหัสประจำตัว': s.student_id || s.student_code || '',
+          'เลขประจำตัวประชาชน': s.national_id || '',
+          'คำนำหน้า': s.prefix || '',
+          'ชื่อ': s.first_name || '',
+          'นามสกุล': s.last_name || '',
+          'ชื่อ - นามสกุล': formatStudentFullName(s),
+          'เพศ': s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : (s.gender || '')),
+          'วันเกิด': s.birth_date || '',
+          'ชื่อผู้ปกครอง': s.parent_name || '',
+          'เบอร์โทรผู้ปกครอง': s.parent_phone || '',
+          'สถานะ': s.status === 'active' ? 'กำลังศึกษา' : (s.status || '')
+        });
+      });
+    });
+
+    const wsAll = XLSX.utils.json_to_sheet(allRows);
+    wsAll['!cols'] = [
+      { wch: 10 }, { wch: 8 }, { wch: 14 }, { wch: 18 },
+      { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 28 },
+      { wch: 8 }, { wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 12 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsAll, isAll ? 'รายชื่อรวมทุกชั้น' : `ชั้น_${classNames[0]}`);
+
+    if (isAll && classNames.length > 1) {
+      classNames.forEach(c => {
+        const roomRows = grouped[c].map((s, i) => ({
+          'เลขที่': s.student_number || (i + 1),
+          'รหัสประจำตัว': s.student_id || s.student_code || '',
+          'เลขประจำตัวประชาชน': s.national_id || '',
+          'คำนำหน้า': s.prefix || '',
+          'ชื่อ': s.first_name || '',
+          'นามสกุล': s.last_name || '',
+          'ชื่อ - นามสกุล': formatStudentFullName(s),
+          'เพศ': s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : (s.gender || '')),
+          'วันเกิด': s.birth_date || '',
+          'ชื่อผู้ปกครอง': s.parent_name || '',
+          'เบอร์โทรผู้ปกครอง': s.parent_phone || '',
+          'สถานะ': s.status === 'active' ? 'กำลังศึกษา' : (s.status || '')
+        }));
+        const wsRoom = XLSX.utils.json_to_sheet(roomRows);
+        wsRoom['!cols'] = [
+          { wch: 8 }, { wch: 14 }, { wch: 18 },
+          { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 28 },
+          { wch: 8 }, { wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 12 }
+        ];
+        const safeSheetName = ('ห้อง_' + c.replace(/[\/\\?*:[\]]/g, '-')).slice(0, 31);
+        XLSX.utils.book_append_sheet(wb, wsRoom, safeSheetName);
+      });
+    }
+
+    const fileName = isAll
+      ? `ใบรายชื่อนักเรียน_ทุกระดับชั้น_ปี${year}.xlsx`
+      : `ใบรายชื่อนักเรียน_ชั้น${classNames[0].replace('/', '-')}_ปี${year}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showToast('success', `ดาวน์โหลดไฟล์ Excel เรียบร้อยแล้ว`);
+  } else {
+    const headers = ['ชั้นเรียน', 'เลขที่', 'รหัสนักเรียน', 'ชื่อ - สกุล', 'เพศ', 'เลขบัตรประชาชน', 'ผู้ปกครอง', 'เบอร์โทร'];
+    const rows = students.map((s, i) => [
+      s.classroom || '',
+      s.student_number || (i + 1),
+      s.student_id || s.student_code || '',
+      formatStudentFullName(s),
+      s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : ''),
+      s.national_id || '',
+      s.parent_name || '',
+      s.parent_phone || ''
+    ]);
+    const fileName = isAll
+      ? `ใบรายชื่อนักเรียน_ทุกระดับชั้น_ปี${year}.xls`
+      : `ใบรายชื่อนักเรียน_ชั้น${(params.classroom || 'ห้อง').replace('/', '-')}_ปี${year}.xls`;
+    exportToExcel(headers, rows, fileName);
+    showToast('success', `ดาวน์โหลดไฟล์ Excel เรียบร้อยแล้ว`);
+  }
+}
+
+function exportRosterToCSV(students, params) {
+  if (!students || students.length === 0) {
+    return showToast('warning', 'ไม่มีข้อมูลนักเรียนสำหรับส่งออก');
+  }
+  const year = params.year || '2569';
+  const isAll = (params.classroom === '__ALL__');
+  const headers = ['ลำดับ', 'ชั้นเรียน', 'เลขที่', 'รหัสประจำตัว', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'ชื่อเต็ม', 'เพศ', 'เลขประจำตัวประชาชน', 'วันเกิด', 'ผู้ปกครอง', 'เบอร์โทรศัพท์', 'สถานะ'];
+  const rows = students.map((s, i) => [
+    i + 1,
+    s.classroom || '',
+    s.student_number || (i + 1),
+    s.student_id || s.student_code || '',
+    s.prefix || '',
+    s.first_name || '',
+    s.last_name || '',
+    formatStudentFullName(s),
+    s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : (s.gender || '')),
+    s.national_id || '',
+    s.birth_date || '',
+    s.parent_name || '',
+    s.parent_phone || '',
+    s.status === 'active' ? 'กำลังศึกษา' : (s.status || '')
+  ]);
+
+  let csvContent = '\uFEFF';
+  csvContent += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\r\n';
+  rows.forEach(r => {
+    csvContent += r.map(c => `"${String(c == null ? '' : c).replace(/"/g, '""')}"`).join(',') + '\r\n';
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const filename = isAll
+    ? `ใบรายชื่อนักเรียน_ทุกระดับชั้น_ปี${year}.csv`
+    : `ใบรายชื่อนักเรียน_ชั้น${(params.classroom || 'ห้อง').replace('/', '-')}_ปี${year}.csv`;
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('success', `ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว`);
+}
+
+function printAttendanceCheckRoster(students, params) {
+  const schoolLogoUrl = (typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL)
+    || (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo)
+    || localStorage.getItem('cached_school_logo')
+    || 'school-logo.png';
+
+  const year = params.year || '2569';
+  const semester = params.semester || '1';
+  const slots = parseInt(params.periodSlots, 10) || 20;
+  const subjectName = params.subjectName || '';
+  const teacherInput = params.teacherName || '';
+  const isAll = (params.classroom === '__ALL__');
+
+  const grouped = {};
+  students.forEach(s => {
+    const c = (s.classroom || 'ไม่ระบุห้อง').trim();
+    if (!grouped[c]) grouped[c] = [];
+    grouped[c].push(s);
+  });
+  const classNames = Object.keys(grouped).sort((a, b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+
+  const printDate = new Date().toLocaleDateString('th-TH', {
+    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  }) + ' น.';
+
+  const pagesHtml = classNames.map((room, rIdx) => {
+    const isLast = (rIdx === classNames.length - 1);
+    const roomStudents = grouped[room];
+    const hrTeacher = getHomeroomTeacherName(room);
+    const displayTeacher = teacherInput || hrTeacher;
+
+    let mCount = 0, fCount = 0;
+    roomStudents.forEach(s => {
+      const g = (s.gender || '').toLowerCase();
+      const p = (s.prefix || '');
+      if (g === 'male' || p.includes('ชาย') || p.includes('นาย')) mCount++;
+      else if (g === 'female' || p.includes('หญิง') || p.includes('นางสาว')) fCount++;
+      else mCount++;
+    });
+    const tCount = roomStudents.length;
+
+    const rowsHtml = roomStudents.map((s, idx) => `
+      <tr>
+        <td style="text-align:center; font-weight:600; padding:4px 2px;">${s.student_number || (idx + 1)}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.student_id || s.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; padding:4px 6px; white-space:nowrap;">${escapeHTML(formatStudentFullName(s))}</td>
+        ${Array(slots).fill('<td style="border:1px solid #94A3B8; padding:0; height:24px;"></td>').join('')}
+        <td style="border:1px solid #94A3B8; text-align:center;"></td>
+        <td style="border:1px solid #94A3B8; text-align:center;"></td>
+      </tr>
+    `).join('');
+
+    return `
+      <div class="roster-page" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
+        <div class="header">
+          <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
+          <div class="title">โรงเรียนมหาชัยพิทยาคาร</div>
+          <div class="subtitle">แบบบันทึกการเช็คชื่อและการจัดการเรียนรู้ / บันทึกคะแนน</div>
+          <div style="font-size:9pt; color:#475569; margin-top:1px;">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม (สพม.มหาสารคาม)</div>
+        </div>
+
+        <div class="meta-bar">
+          <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
+          <div><b>ภาคเรียนที่:</b> ${escapeHTML(semester)} / ${escapeHTML(year)}</div>
+          <div><b>รายวิชา:</b> ${escapeHTML(subjectName || '...................................................')}</div>
+          <div><b>ครูผู้สอน:</b> ${escapeHTML(displayTeacher || '...................................................')}</div>
+        </div>
+
+        <table class="roster-table">
+          <thead>
+            <tr>
+              <th rowspan="2" style="width:36px;">เลขที่</th>
+              <th rowspan="2" style="width:70px;">รหัสประจำตัว</th>
+              <th rowspan="2" style="min-width:165px; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
+              <th colspan="${slots}" style="text-align:center; padding:3px 0;">บันทึกเวลาเรียน / บันทึกคะแนน (ครั้งที่ / สัปดาห์ที่ / วันที่)</th>
+              <th rowspan="2" style="width:42px;">รวม</th>
+              <th rowspan="2" style="width:65px;">หมายเหตุ</th>
+            </tr>
+            <tr>
+              ${Array.from({ length: slots }, (_, i) => `<th style="width:23px; font-size:7.5pt; font-weight:normal; padding:2px 0;">${i + 1}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div class="summary-bar">
+          <div>สถิตินักเรียน: ชาย <b>${mCount}</b> คน &nbsp;|&nbsp; หญิง <b>${fCount}</b> คน &nbsp;|&nbsp; รวมทั้งสิ้น <b>${tCount}</b> คน</div>
+          <div>ห้องเรียน: <b>ชั้น ${escapeHTML(room)}</b></div>
+        </div>
+
+        <div class="signatures">
+          <div style="text-align:center; min-width:210px;">
+            <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
+            <div style="margin-top:5px; font-weight:600;">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
+            <div style="margin-top:4px; font-size:8pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+          </div>
+          <div style="text-align:center; min-width:210px;">
+            <div>ลงชื่อ ................................................................ ครูผู้สอน</div>
+            <div style="margin-top:5px; font-weight:600;">( ${escapeHTML(displayTeacher || '................................................................')} )</div>
+            <div style="margin-top:4px; font-size:8pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>ระบบ MHC Smart School • โรงเรียนมหาชัยพิทยาคาร</div>
+          <div>พิมพ์เมื่อ: ${printDate} • พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const docTitle = `แบบฟอร์มเช็คชื่อ_${isAll ? 'ทุกระดับชั้น' : ('ชั้น_' + classNames[0])}_ปี${year}`;
+  const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHTML(docTitle)}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap">
+  <style>
+    @page { size: A4 portrait; margin: 8mm 8mm 8mm 8mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
+    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .print-page-wrapper { max-width: 205mm; margin: 15px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; box-sizing: border-box; }
+    .roster-page { margin-bottom: 20px; }
+    .header { text-align: center; margin-bottom: 8px; }
+    .logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
+    .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; }
+    .subtitle { font-size: 10.5pt; font-weight: 600; color: #334155; margin: 1px 0 0 0; }
+    .meta-bar { font-size: 8.5pt; color: #334155; margin-top: 4px; padding: 5px 8px; background: #F1F5F9; border-radius: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; border: 1px solid #CBD5E1; }
+    table.roster-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8pt; table-layout: auto; }
+    table.roster-table th { background: #F1F5F9; color: #1E293B; border: 1px solid #64748B; padding: 3px 2px; font-weight: bold; text-align: center; }
+    table.roster-table td { border: 1px solid #94A3B8; padding: 3px 3px; vertical-align: middle; }
+    table.roster-table tr:nth-child(even) { background: #FAFAFA; }
+    .summary-bar { margin-top: 8px; padding: 5px 8px; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 8.5pt; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .signatures { margin-top: 22px; display: flex; justify-content: space-around; page-break-inside: avoid; break-inside: avoid; gap: 16px; font-size: 8.5pt; }
+    .footer { margin-top: 16px; padding-top: 4px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; }
+    @media print {
+      .no-print { display: none !important; }
+      html, body { margin: 0 !important; padding: 0 !important; background: #FFFFFF !important; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      .roster-page { margin-bottom: 0 !important; }
+      .roster-page:not(:last-child) { page-break-after: always !important; break-after: page !important; }
+      table.roster-table { width: 100% !important; border-collapse: collapse !important; }
+      table.roster-table th { background: #E2E8F0 !important; border: 1px solid #475569 !important; }
+      table.roster-table td { border: 1px solid #64748B !important; }
+      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+      thead { display: table-header-group !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <strong style="font-size:13px;">ตัวอย่างก่อนพิมพ์: ${escapeHTML(docTitle)}</strong>
+      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+        🖨 พิมพ์เอกสาร
+      </button>
+      <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
+        ปิด
+      </button>
+    </div>
+  </div>
+
+  <div class="print-page-wrapper">
+    ${pagesHtml}
+  </div>
+</body>
+</html>`;
+
+  if (typeof openHTMLDocument === 'function') {
+    openHTMLDocument(html, docTitle);
+  } else {
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }
+  }
+}
+
+function printOfficialStudentRoster(students, params) {
+  const schoolLogoUrl = (typeof window !== 'undefined' && window.OFFICIAL_SCHOOL_LOGO_DATA_URL)
+    || (typeof APP !== 'undefined' && APP.dashboardData?.config?.school_logo)
+    || localStorage.getItem('cached_school_logo')
+    || 'school-logo.png';
+
+  const year = params.year || '2569';
+  const isAll = (params.classroom === '__ALL__');
+
+  const grouped = {};
+  students.forEach(s => {
+    const c = (s.classroom || 'ไม่ระบุห้อง').trim();
+    if (!grouped[c]) grouped[c] = [];
+    grouped[c].push(s);
+  });
+  const classNames = Object.keys(grouped).sort((a, b) => String(a).localeCompare(String(b), 'th', { numeric: true }));
+
+  const printDate = new Date().toLocaleDateString('th-TH', {
+    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  }) + ' น.';
+
+  const pagesHtml = classNames.map((room, rIdx) => {
+    const isLast = (rIdx === classNames.length - 1);
+    const roomStudents = grouped[room];
+    const hrTeacher = getHomeroomTeacherName(room);
+
+    let mCount = 0, fCount = 0;
+    roomStudents.forEach(s => {
+      const g = (s.gender || '').toLowerCase();
+      const p = (s.prefix || '');
+      if (g === 'male' || p.includes('ชาย') || p.includes('นาย')) mCount++;
+      else if (g === 'female' || p.includes('หญิง') || p.includes('นางสาว')) fCount++;
+      else mCount++;
+    });
+    const tCount = roomStudents.length;
+
+    const rowsHtml = roomStudents.map((s, idx) => `
+      <tr>
+        <td style="text-align:center; font-weight:600; padding:4px 2px;">${s.student_number || (idx + 1)}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.student_id || s.student_code || '-')}</td>
+        <td style="text-align:left; font-weight:600; padding:4px 6px; white-space:nowrap;">${escapeHTML(formatStudentFullName(s))}</td>
+        <td style="text-align:center; padding:4px 2px; font-size:8.5pt;">${s.gender === 'male' ? 'ชาย' : (s.gender === 'female' ? 'หญิง' : '-')}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.national_id || '-')}</td>
+        <td style="text-align:center; font-size:8.5pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.birth_date || '-')}</td>
+        <td style="text-align:left; padding:4px 4px; font-size:8.5pt;">${escapeHTML(s.parent_name || '-')}</td>
+        <td style="text-align:center; font-family:'Courier New', monospace; font-size:8pt; padding:4px 2px; white-space:nowrap;">${escapeHTML(s.parent_phone || '-')}</td>
+        <td style="text-align:center; font-size:8pt; padding:4px 2px;">${escapeHTML(s.status === 'active' ? 'ปกติ' : (s.status || '-'))}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <div class="roster-page" style="${isLast ? '' : 'page-break-after:always; break-after:page;'}">
+        <div class="header">
+          <img src="${schoolLogoUrl}" class="logo" alt="ตราโรงเรียน" onerror="this.onerror=null; this.src='school-logo.png';">
+          <div class="title">โรงเรียนมหาชัยพิทยาคาร</div>
+          <div class="subtitle">ใบรายชื่อนักเรียนประจำชั้น (Official Student Roster)</div>
+          <div style="font-size:9pt; color:#475569; margin-top:1px;">สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษามหาสารคาม (สพม.มหาสารคาม)</div>
+        </div>
+
+        <div class="meta-bar">
+          <div><b>ระดับชั้น:</b> ชั้นมัธยมศึกษาปีที่ ${escapeHTML(room)}</div>
+          <div><b>ประจำปีการศึกษา:</b> ${escapeHTML(year)}</div>
+          <div><b>ครูประจำชั้น:</b> ${escapeHTML(hrTeacher || '...................................................')}</div>
+          <div><b>จำนวนนักเรียน:</b> ${tCount} คน</div>
+        </div>
+
+        <table class="roster-table">
+          <thead>
+            <tr>
+              <th style="width:36px;">เลขที่</th>
+              <th style="width:72px;">รหัสประจำตัว</th>
+              <th style="min-width:160px; text-align:left; padding-left:8px;">ชื่อ - นามสกุล</th>
+              <th style="width:40px;">เพศ</th>
+              <th style="width:115px;">เลขประจำตัวประชาชน</th>
+              <th style="width:85px;">วัน/เดือน/ปีเกิด</th>
+              <th style="min-width:130px; text-align:left; padding-left:6px;">ชื่อผู้ปกครอง</th>
+              <th style="width:90px;">เบอร์โทรศัพท์</th>
+              <th style="width:55px;">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div class="summary-bar">
+          <div>สถิตินักเรียน: ชาย <b>${mCount}</b> คน &nbsp;|&nbsp; หญิง <b>${fCount}</b> คน &nbsp;|&nbsp; รวมทั้งสิ้น <b>${tCount}</b> คน</div>
+          <div>ชั้นมัธยมศึกษาปีที่ <b>${escapeHTML(room)}</b></div>
+        </div>
+
+        <div class="signatures">
+          <div style="text-align:center; min-width:220px;">
+            <div>ลงชื่อ ................................................................ ครูประจำชั้น</div>
+            <div style="margin-top:5px; font-weight:600;">( ${escapeHTML(hrTeacher || '................................................................')} )</div>
+            <div style="margin-top:4px; font-size:8.5pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+          </div>
+          <div style="text-align:center; min-width:220px;">
+            <div>ลงชื่อ ................................................................</div>
+            <div style="margin-top:5px; font-weight:700;">( นายอธิการ สุขศรี )</div>
+            <div style="margin-top:2px;">ผู้อำนวยการโรงเรียนมหาชัยพิทยาคาร</div>
+            <div style="margin-top:4px; font-size:8.5pt; color:#64748B;">วันที่ .......... / .......... / ................</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>ระบบ MHC Smart School • โรงเรียนมหาชัยพิทยาคาร</div>
+          <div>พิมพ์เมื่อ: ${printDate} • พัฒนาระบบโดย ครูก้องนที อุ่นเจริญ</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const docTitle = `ใบรายชื่อนักเรียนทางการ_${isAll ? 'ทุกระดับชั้น' : ('ชั้น_' + classNames[0])}_ปี${year}`;
+  const html = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHTML(docTitle)}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap">
+  <style>
+    @page { size: A4 portrait; margin: 8mm 8mm 8mm 8mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Sarabun', 'Prompt', sans-serif; font-size: 9pt; color: #0F172A; margin: 0; padding: 0; background: #F8FAFC; }
+    .no-print { position: sticky; top: 0; background: #1E293B; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .print-page-wrapper { max-width: 205mm; margin: 15px auto; padding: 8mm 10mm; background: #ffffff; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-radius: 4px; box-sizing: border-box; }
+    .roster-page { margin-bottom: 20px; }
+    .header { text-align: center; margin-bottom: 8px; }
+    .logo { width: 48px; height: 48px; object-fit: contain; margin: 0 auto 3px auto; display: block; }
+    .title { font-size: 13pt; font-weight: bold; margin: 0; color: #1E293B; }
+    .subtitle { font-size: 10.5pt; font-weight: 600; color: #334155; margin: 1px 0 0 0; }
+    .meta-bar { font-size: 8.5pt; color: #334155; margin-top: 4px; padding: 5px 8px; background: #F1F5F9; border-radius: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; border: 1px solid #CBD5E1; }
+    table.roster-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8pt; table-layout: auto; }
+    table.roster-table th { background: #F1F5F9; color: #1E293B; border: 1px solid #64748B; padding: 4px 3px; font-weight: bold; text-align: center; }
+    table.roster-table td { border: 1px solid #94A3B8; padding: 3px 3px; vertical-align: middle; }
+    table.roster-table tr:nth-child(even) { background: #FAFAFA; }
+    .summary-bar { margin-top: 8px; padding: 5px 8px; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 8.5pt; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .signatures { margin-top: 24px; display: flex; justify-content: space-around; page-break-inside: avoid; break-inside: avoid; gap: 16px; font-size: 8.5pt; }
+    .footer { margin-top: 16px; padding-top: 4px; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748B; page-break-inside: avoid; }
+    @media print {
+      .no-print { display: none !important; }
+      html, body { margin: 0 !important; padding: 0 !important; background: #FFFFFF !important; }
+      .print-page-wrapper { max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      .roster-page { margin-bottom: 0 !important; }
+      .roster-page:not(:last-child) { page-break-after: always !important; break-after: page !important; }
+      table.roster-table { width: 100% !important; border-collapse: collapse !important; }
+      table.roster-table th { background: #E2E8F0 !important; border: 1px solid #475569 !important; }
+      table.roster-table td { border: 1px solid #64748B !important; }
+      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+      thead { display: table-header-group !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <strong style="font-size:13px;">ตัวอย่างก่อนพิมพ์: ${escapeHTML(docTitle)}</strong>
+      <span style="font-size:11px; opacity:0.85; background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:4px;">A4 แนวตั้ง</span>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button onclick="try{if(window.parent&&window.parent.triggerInAppPrint){window.parent.triggerInAppPrint();}else{window.print();}}catch(_){window.print();}" style="background:#4F46E5; color:white; border:none; padding:7px 16px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+        🖨 พิมพ์เอกสาร
+      </button>
+      <button onclick="window.close()" style="background:#475569; color:white; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
+        ปิด
+      </button>
+    </div>
+  </div>
+
+  <div class="print-page-wrapper">
+    ${pagesHtml}
+  </div>
+</body>
+</html>`;
+
+  if (typeof openHTMLDocument === 'function') {
+    openHTMLDocument(html, docTitle);
+  } else {
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }
+  }
+}
+
+window.openDownloadRosterModal = openDownloadRosterModal;
+window.processRosterDownload = processRosterDownload;
+window.exportRosterToExcel = exportRosterToExcel;
+window.exportRosterToCSV = exportRosterToCSV;
+window.printAttendanceCheckRoster = printAttendanceCheckRoster;
+window.printOfficialStudentRoster = printOfficialStudentRoster;

@@ -13,6 +13,9 @@ function renderClassroomMgmt(container) {
 
   container.innerHTML = `
     ${pageHeader('จัดการห้องเรียน', 'bxs-school', `
+      <button class="btn btn-light text-indigo-600 border-indigo-200 hover:bg-indigo-50 font-medium" onclick="openDownloadRosterModal()" title="ดาวน์โหลด/พิมพ์ใบรายชื่อนักเรียน">
+        <i class='bx bxs-file-doc text-base'></i> ดาวน์โหลดใบรายชื่อ
+      </button>
       ${APP.role !== 'teacher' ? `<button class="btn btn-purple" onclick="openPromotionWizard()"><i class='bx bx-up-arrow-circle'></i> ระบบเลื่อนชั้นเรียน</button><button class="btn btn-blue" onclick="openClassroomForm()"><i class='bx bx-plus'></i> เพิ่มห้องเรียน</button>` : ''}
     `)}
     <div class="page-card">
@@ -112,6 +115,9 @@ function renderCLS() {
       <div class="cls-bar-bg"><div class="cls-bar" style="width:${pct}%;"></div></div>
       <div style="font-size:11px;color:#94A3B8;text-align:right;margin-bottom:12px;">${pct}%</div>
       <div class="cls-actions">
+        <button class="btn btn-light" style="color:#4F46E5;padding:8px 10px;" onclick="openDownloadRosterModal('${escapeHTML(r.name)}')" title="ดาวน์โหลด/พิมพ์ใบรายชื่อห้อง ${escapeHTML(r.name)}">
+          <i class='bx bxs-file-doc'></i> ใบรายชื่อ
+        </button>
         ${APP.role !== 'teacher' ? `<button class="btn btn-light" style="flex:1;" onclick="openClassroomForm('${escapeHTML(r.id)}')" ><i class='bx bx-edit'></i> แก้ไข</button>` : ''}
         <button class="btn btn-blue" style="flex:1;" onclick="openClassroomStudents('${escapeHTML(r.id)}','${escapeHTML(r.name)}','${escapeHTML(String(r.academic_year))}')">
           <i class='bx bxs-user-detail'></i> นักเรียน
@@ -295,6 +301,9 @@ function showClassroomStudentDialog(roomId, roomName, ay, students) {
         </div>
         ${students.length ? `
           <div id="clsNormalToolbar" style="display:flex;gap:6px;">
+            <button type="button" class="btn btn-light" style="padding:4px 10px;font-size:12px;color:#4F46E5;font-weight:600;" onclick="openDownloadRosterModal('${escapeHTML(roomName)}')">
+              <i class='bx bxs-file-doc'></i> ใบรายชื่อ
+            </button>
             <button type="button" class="btn btn-light" style="padding:4px 10px;font-size:12px;" onclick="toggleEditStudentNumbers(true)">
               <i class='bx bx-edit-alt'></i> แก้ไขเลขที่
             </button>
