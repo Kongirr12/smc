@@ -388,6 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (icon) icon.className = 'bx bx-sun';
   }
   applyChartTheme(isDark);
+
+  try {
+    if (window.innerWidth > 860 && localStorage.getItem('MHC_SIDEBAR_COLLAPSED') === '1') {
+      document.body.classList.add('sidebar-collapsed');
+    }
+  } catch (_) {}
 });
 
 /* ============================================================
@@ -534,6 +540,16 @@ function navigate(page, options = {}) {
     : `${pageTitle} — MHC Smart School`;
 
   toggleSidebar(false);
+
+  // จัดการโหมดแสดงผลหน้าเว็บเชื่อมต่อภายนอก (Embedded Iframe: Full-Height & Wide View)
+  const isExtPage = (typeof page === 'string') && (page.startsWith('ext_') || page === 'budget') && (page !== 'ext_sgs');
+  if (isExtPage) {
+    document.body.classList.add('page-external-active');
+  } else {
+    document.body.classList.remove('page-external-active');
+    // ล้างสถานะ Maximize เดิมเมื่อเปลี่ยนหน้า
+    document.querySelectorAll('.ext-iframe-wrapper.is-maximized').forEach(el => el.classList.remove('is-maximized'));
+  }
 
   // ทำลาย charts เดิม
   Object.keys(APP.charts).forEach(k => {
@@ -2062,24 +2078,172 @@ function renderBudget(container) {
 
 function renderIframe(container, url, title) {
   const safeTitle = (typeof escapeHTML === 'function') ? escapeHTML(title) : (title || '');
+  const uniqueId = 'ext_' + Math.random().toString(36).substring(2, 9);
+  const frameId = 'iframe_' + uniqueId;
+  const savedZoom = localStorage.getItem('MHC_EXT_ZOOM') || '100';
+  const isSidebarCollapsed = document.body.classList.contains('sidebar-collapsed');
+
   container.innerHTML = `
-    <div style="width: 100%; height: calc(100vh - 140px); display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); background: var(--bg-surface);">
-      <div style="padding: 10px 16px; background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-          <i class='bx bx-window-open text-indigo-600 text-lg'></i>
-          <span style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeTitle}</span>
+    <div id="extWrapper_${uniqueId}" class="ext-iframe-wrapper">
+      <div class="ext-iframe-toolbar">
+        <div class="ext-iframe-toolbar-left">
+          <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(79,70,229,0.1); display: flex; align-items: center; justify-content: center; color: var(--primary); flex-shrink: 0;">
+              <i class='bx bx-window-open text-base'></i>
+            </div>
+            <div>
+              <span class="ext-title" style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 360px;">${safeTitle}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-ext-tool hide-mobile" onclick="toggleExtSidebar()" title="ซ่อนหรือแสดงเมนูข้าง เพื่อขยายพื้นที่แสดงผลให้กว้างขึ้น">
+            <i class='bx bx-sidebar text-base'></i>
+            <span class="ext-btn-sidebar-label">${isSidebarCollapsed ? 'แสดงเมนู' : 'พับเมนูข้าง'}</span>
+          </button>
         </div>
-        <a href="${url}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 5px 12px; text-decoration: none; border-radius: 8px; white-space: nowrap; background: var(--primary); color: #FFFFFF; font-weight: 600; box-shadow: 0 1px 3px rgba(79,70,229,0.3); transition: all 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
-          <i class='bx bx-link-external'></i> เปิดเต็มจอ
-        </a>
+
+        <div class="ext-iframe-toolbar-right">
+          <!-- Zoom Controls -->
+          <div class="ext-zoom-control" title="ปรับขนาดการแสดงผลของเว็บแอป (ซูม)">
+            <i class='bx bx-zoom-in text-slate-400'></i>
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;" class="hide-mobile">ซูม:</span>
+            <select class="ext-zoom-select" onchange="setExtIframeZoom(this.value, '${frameId}')">
+              <option value="95" ${savedZoom === '95' ? 'selected' : ''}>95%</option>
+              <option value="100" ${savedZoom === '100' ? 'selected' : ''}>100% (ปกติ)</option>
+              <option value="105" ${savedZoom === '105' ? 'selected' : ''}>105%</option>
+              <option value="110" ${savedZoom === '110' ? 'selected' : ''}>110% (ใหญ่ขึ้น)</option>
+              <option value="115" ${savedZoom === '115' ? 'selected' : ''}>115%</option>
+              <option value="120" ${savedZoom === '120' ? 'selected' : ''}>120% (ใหญ่พิเศษ)</option>
+              <option value="125" ${savedZoom === '125' ? 'selected' : ''}>125%</option>
+              <option value="130" ${savedZoom === '130' ? 'selected' : ''}>130%</option>
+            </select>
+          </div>
+
+          <!-- Reload Button -->
+          <button type="button" class="btn-ext-tool" onclick="reloadExtIframe('${frameId}')" title="รีเฟรช / โหลดหน้านี้ใหม่">
+            <i class='bx bx-refresh text-base'></i>
+            <span class="hide-mobile">รีเฟรช</span>
+          </button>
+
+          <!-- In-App Maximize Fullscreen Toggle -->
+          <button type="button" id="extMaxBtn_${uniqueId}" class="btn-ext-tool btn-ext-maximize" onclick="toggleExtMaximize('${uniqueId}')" title="ขยายเต็มหน้าจอ 100% (กด Esc เพื่อย่อกลับ)">
+            <i id="extMaxIcon_${uniqueId}" class='bx bx-fullscreen text-base'></i>
+            <span id="extMaxText_${uniqueId}">ขยายเต็มจอ</span>
+          </button>
+
+          <!-- Open in New Tab -->
+          <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn-ext-tool btn-ext-link" title="เปิดในแท็บใหม่ของบราวเซอร์">
+            <i class='bx bx-link-external text-base'></i>
+            <span class="hide-mobile">เปิดแท็บใหม่</span>
+          </a>
+        </div>
       </div>
-      <iframe src="${url}" 
-              style="flex: 1; width: 100%; height: 100%; border: none;" 
-              title="${safeTitle}"
-              allow="camera; microphone; geolocation; clipboard-read; clipboard-write;"></iframe>
+
+      <div class="ext-iframe-body">
+        <iframe id="${frameId}" 
+                src="${url}" 
+                class="ext-iframe-element" 
+                title="${safeTitle}"
+                allow="camera; microphone; geolocation; clipboard-read; clipboard-write; autoplay; fullscreen;"
+                loading="lazy"></iframe>
+      </div>
     </div>
   `;
+
+  // Apply initial saved zoom if not 100%
+  if (savedZoom !== '100') {
+    setTimeout(() => {
+      setExtIframeZoom(savedZoom, frameId);
+    }, 80);
+  }
 }
+
+window.toggleExtMaximize = function(uniqueId) {
+  const wrap = document.getElementById('extWrapper_' + uniqueId);
+  const btnText = document.getElementById('extMaxText_' + uniqueId);
+  const btnIcon = document.getElementById('extMaxIcon_' + uniqueId);
+  if (!wrap) return;
+
+  const isMax = wrap.classList.toggle('is-maximized');
+  if (isMax) {
+    if (btnText) btnText.textContent = 'ย่อกลับ (Esc)';
+    if (btnIcon) btnIcon.className = 'bx bx-collapse-alt text-base';
+    // Attach Esc listener
+    const onKeyDown = function(e) {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        wrap.classList.remove('is-maximized');
+        if (btnText) btnText.textContent = 'ขยายเต็มจอ';
+        if (btnIcon) btnIcon.className = 'bx bx-fullscreen text-base';
+        window.removeEventListener('keydown', onKeyDown);
+        wrap._escHandler = null;
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    wrap._escHandler = onKeyDown;
+  } else {
+    if (btnText) btnText.textContent = 'ขยายเต็มจอ';
+    if (btnIcon) btnIcon.className = 'bx bx-fullscreen text-base';
+    if (wrap._escHandler) {
+      window.removeEventListener('keydown', wrap._escHandler);
+      wrap._escHandler = null;
+    }
+  }
+};
+
+window.toggleExtSidebar = function() {
+  const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+  try {
+    localStorage.setItem('MHC_SIDEBAR_COLLAPSED', isCollapsed ? '1' : '0');
+  } catch (_) {}
+  document.querySelectorAll('.ext-btn-sidebar-label').forEach(el => {
+    el.textContent = isCollapsed ? 'แสดงเมนู' : 'พับเมนูข้าง';
+  });
+};
+
+window.setExtIframeZoom = function(val, frameId) {
+  const frame = document.getElementById(frameId);
+  if (!frame) return;
+  const factor = parseFloat(val) / 100 || 1.0;
+  try {
+    localStorage.setItem('MHC_EXT_ZOOM', val);
+  } catch (_) {}
+
+  // Sync all zoom dropdowns
+  document.querySelectorAll('.ext-zoom-select').forEach(sel => {
+    if (sel.value !== String(val)) sel.value = String(val);
+  });
+
+  if ('zoom' in frame.style) {
+    frame.style.zoom = factor;
+    frame.style.width = '100%';
+    frame.style.height = '100%';
+    frame.style.transform = 'none';
+  } else {
+    frame.style.width = (100 / factor) + '%';
+    frame.style.height = (100 / factor) + '%';
+    frame.style.transform = `scale(${factor})`;
+    frame.style.transformOrigin = '0 0';
+  }
+};
+
+window.reloadExtIframe = function(frameId) {
+  const frame = document.getElementById(frameId);
+  if (!frame) return;
+  const currentSrc = frame.src;
+  frame.src = 'about:blank';
+  setTimeout(() => {
+    frame.src = currentSrc;
+  }, 60);
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'กำลังรีเฟรชระบบ...',
+      showConfirmButton: false,
+      timer: 1200
+    });
+  }
+};
 
 /* ============================================================
  *  EXTERNAL ADDONS: โปรแกรมช่วยกรอกคะแนน SGS (AutoGrade v1.0.3)
@@ -2394,57 +2558,92 @@ function renderExtOnesqa(container) {
     localStorage.setItem('MHC_ONESQA_URL', defaultUrl);
   }
 
+  const uniqueId = 'onesqa_' + Math.random().toString(36).substring(2, 9);
+  const frameId = 'onesqaFrame';
+  const savedZoom = localStorage.getItem('MHC_EXT_ZOOM') || '100';
+  const isSidebarCollapsed = document.body.classList.contains('sidebar-collapsed');
+
   container.innerHTML = `
-    <div class="flex flex-col gap-3" style="min-height: calc(100vh - 120px);">
-      <!-- Header Toolbar -->
-      <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white flex items-center justify-center text-xl shadow-md shadow-blue-500/20">
-            <i class='bx bxs-award'></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h2 class="font-bold text-slate-800 dark:text-slate-100 text-base">ระบบงานประกันคุณภาพภายนอก สมศ.</h2>
-              <span class="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">รอบที่ 6 (พ.ศ. 2572 – 2576)</span>
+    <div id="extWrapper_${uniqueId}" class="ext-iframe-wrapper">
+      <div class="ext-iframe-toolbar">
+        <div class="ext-iframe-toolbar-left">
+          <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #2563EB, #06B6D4); display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0;">
+              <i class='bx bxs-award text-base'></i>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
-              คลังร่องรอยหลักฐาน • ครูส่งงานได้ทันทีโดยไม่ต้องล็อกอิน • พัฒนาโดย ครูก้องนที อุ่นเจริญ
-            </p>
+            <div>
+              <span class="ext-title" style="font-weight: 700; font-size: 13.5px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">ระบบงานประกันคุณภาพภายนอก สมศ. <span class="hide-mobile text-xs font-normal text-emerald-600">(รอบที่ 6)</span></span>
+            </div>
           </div>
+          <button type="button" class="btn-ext-tool hide-mobile" onclick="toggleExtSidebar()" title="ซ่อนหรือแสดงเมนูข้าง เพื่อขยายพื้นที่แสดงผลให้กว้างขึ้น">
+            <i class='bx bx-sidebar text-base'></i>
+            <span class="ext-btn-sidebar-label">${isSidebarCollapsed ? 'แสดงเมนู' : 'พับเมนูข้าง'}</span>
+          </button>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button class="btn btn-ghost text-xs px-3 py-2" onclick="setExtOnesqaUrl()" title="ตั้งค่า URL เว็บแอป">
-            <i class='bx bx-cog mr-1'></i> ตั้งค่า URL
+        <div class="ext-iframe-toolbar-right">
+          <!-- Zoom Controls -->
+          <div class="ext-zoom-control" title="ปรับขนาดการแสดงผลของเว็บแอป (ซูม)">
+            <i class='bx bx-zoom-in text-slate-400'></i>
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;" class="hide-mobile">ซูม:</span>
+            <select class="ext-zoom-select" onchange="setExtIframeZoom(this.value, '${frameId}')">
+              <option value="95" ${savedZoom === '95' ? 'selected' : ''}>95%</option>
+              <option value="100" ${savedZoom === '100' ? 'selected' : ''}>100% (ปกติ)</option>
+              <option value="105" ${savedZoom === '105' ? 'selected' : ''}>105%</option>
+              <option value="110" ${savedZoom === '110' ? 'selected' : ''}>110% (ใหญ่ขึ้น)</option>
+              <option value="115" ${savedZoom === '115' ? 'selected' : ''}>115%</option>
+              <option value="120" ${savedZoom === '120' ? 'selected' : ''}>120% (ใหญ่พิเศษ)</option>
+              <option value="125" ${savedZoom === '125' ? 'selected' : ''}>125%</option>
+              <option value="130" ${savedZoom === '130' ? 'selected' : ''}>130%</option>
+            </select>
+          </div>
+
+          <!-- URL Config Button -->
+          <button type="button" class="btn-ext-tool" onclick="setExtOnesqaUrl()" title="ตั้งค่า URL เว็บแอป สมศ.">
+            <i class='bx bx-cog text-base'></i>
+            <span class="hide-mobile">ตั้งค่า URL</span>
           </button>
-          <button class="btn btn-ghost text-xs px-3 py-2" onclick="refreshExtOnesqa()" title="รีโหลดหน้าระบบ">
-            <i class='bx bx-refresh mr-1'></i> รีเฟรช
+
+          <!-- Reload Button -->
+          <button type="button" class="btn-ext-tool" onclick="reloadExtIframe('${frameId}')" title="รีเฟรชระบบ สมศ.">
+            <i class='bx bx-refresh text-base'></i>
+            <span class="hide-mobile">รีเฟรช</span>
           </button>
-          <a class="btn btn-blue text-xs px-3 py-2 font-semibold" href="${savedUrl}" target="_blank" title="เปิดในแท็บใหม่แบบเต็มหน้าจอ">
-            <i class='bx bx-link-external mr-1'></i> เปิดเต็มจอ
+
+          <!-- In-App Maximize Fullscreen Toggle -->
+          <button type="button" id="extMaxBtn_${uniqueId}" class="btn-ext-tool btn-ext-maximize" onclick="toggleExtMaximize('${uniqueId}')" title="ขยายเต็มหน้าจอ 100% (กด Esc เพื่อย่อกลับ)">
+            <i id="extMaxIcon_${uniqueId}" class='bx bx-fullscreen text-base'></i>
+            <span id="extMaxText_${uniqueId}">ขยายเต็มจอ</span>
+          </button>
+
+          <!-- Open in New Tab -->
+          <a href="${savedUrl}" target="_blank" rel="noopener noreferrer" class="btn-ext-tool btn-ext-link" title="เปิดในแท็บใหม่">
+            <i class='bx bx-link-external text-base'></i>
+            <span class="hide-mobile">เปิดแท็บใหม่</span>
           </a>
         </div>
       </div>
 
-      <!-- Iframe Container -->
-      <div class="flex-1 w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden" style="min-height: calc(100vh - 200px); display: flex;">
-        <iframe id="onesqaFrame" src="${savedUrl}" 
-                style="flex: 1; width: 100%; height: 100%; min-height: calc(100vh - 205px); border: none;" 
-                allow="camera; microphone; clipboard-write;"
-                title="ระบบงานประกันคุณภาพภายนอก สมศ."></iframe>
+      <div class="ext-iframe-body">
+        <iframe id="${frameId}" 
+                src="${savedUrl}" 
+                class="ext-iframe-element" 
+                title="ระบบงานประกันคุณภาพภายนอก สมศ."
+                allow="camera; microphone; geolocation; clipboard-read; clipboard-write; autoplay; fullscreen;"
+                loading="lazy"></iframe>
       </div>
     </div>
   `;
+
+  if (savedZoom !== '100') {
+    setTimeout(() => {
+      setExtIframeZoom(savedZoom, frameId);
+    }, 80);
+  }
 }
 
 function refreshExtOnesqa() {
-  const f = document.getElementById('onesqaFrame');
-  if (f) {
-    f.src = f.src;
-    if (typeof Swal !== 'undefined') {
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'รีเฟรชระบบ สมศ. แล้ว', showConfirmButton: false, timer: 1500 });
-    }
-  }
+  reloadExtIframe('onesqaFrame');
 }
 
 function setExtOnesqaUrl() {
