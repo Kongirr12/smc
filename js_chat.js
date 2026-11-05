@@ -224,6 +224,80 @@ function sendChatMessageAction(content, type = 'text') {
   }
 }
 
+/* ─── ทำความสะอาดและตัดชื่อผู้ใช้งานที่ซ้ำซ้อนกันในห้องแชท (Deduplication Engine) ─── */
+function deduplicateChatUsers(users) {
+  if (!Array.isArray(users) || users.length === 0) return [];
+  const map = new Map();
+
+  function normKey(name) {
+    if (!name) return '';
+    return String(name)
+      .replace(/^(นาย|นางสาว|นาง|ด\.ช\.|ด\.ญ\.|ครู|ผอ\.|รอง\s*ผอ\.)\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  users.forEach(u => {
+    if (!u || !u.name) return;
+    const key = normKey(u.name);
+    if (!key) return;
+
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, Object.assign({}, u));
+    } else {
+      // รวมสถานะออนไลน์และกิจกรรมล่าสุด
+      existing.isOnline = existing.isOnline || !!u.isOnline;
+      existing.lastActive = Math.max(existing.lastActive || 0, u.lastActive || 0);
+
+      // เลือกตำแหน่งที่เฉพาะเจาะจง (ตำแหน่ง ครู, ครูผู้สอน, ผู้บริหาร ดีกว่า "เจ้าหน้าที่")
+      const p1 = existing.position || '';
+      const p2 = u.position || '';
+      if ((p1 === 'เจ้าหน้าที่' || !p1) && p2 && p2 !== 'เจ้าหน้าที่') {
+        existing.position = p2;
+      } else if (p2.includes('ผู้บริหาร') && !p1.includes('ผู้บริหาร')) {
+        existing.position = p2;
+      }
+
+      // รูปประจำตัว: เลือกรูปที่ไม่ว่าง
+      if (!existing.avatar && u.avatar) existing.avatar = u.avatar;
+
+      // สิทธิ์ ผอ./Admin
+      if (u.isDirector || (u.role && (u.role === 'admin' || u.role === 'director'))) {
+        existing.isDirector = existing.isDirector || !!u.isDirector;
+        existing.role = u.role || existing.role;
+      }
+
+      // ชื่อทางการ: ถ้ามีชื่อที่ยาวกว่าหรือมีคำนำหน้าให้ใช้ชื่อที่สมบูรณ์
+      if (u.name.length > existing.name.length) {
+        existing.name = u.name;
+      }
+
+      // จัดเก็บ Aliases ID
+      if (!existing.aliases) existing.aliases = [existing.id];
+      if (u.id && !existing.aliases.includes(u.id)) {
+        existing.aliases.push(u.id);
+      }
+      if (u.role === 'admin' || (u.id && !existing.id)) {
+        existing.id = u.id;
+      }
+    }
+  });
+
+  const roster = Array.from(map.values());
+  // จัดเรียง: ผู้อำนวยการ -> คนที่ออนไลน์อยู่ -> เรียงชื่อตามตัวอักษร ก-ฮ
+  roster.sort((a, b) => {
+    if (a.isDirector) return -1;
+    if (b.isDirector) return 1;
+    if (a.isOnline && !b.isOnline) return -1;
+    if (!a.isOnline && b.isOnline) return 1;
+    return (a.name || '').localeCompare(b.name || '', 'th');
+  });
+
+  return roster;
+}
+
 /* ─── ดึงข้อมูลผู้ใช้งานที่กำลังออนไลน์ (Online Roster) ───────────────── */
 function fetchOnlineUsersList(callback) {
   const token = typeof APP !== 'undefined' ? APP.token : '';
@@ -231,9 +305,10 @@ function fetchOnlineUsersList(callback) {
     google.script.run
       .withSuccessHandler(res => {
         if (res && res.status === 'success') {
-          APP_CHAT.onlineUsers = res.users || [];
-          APP_CHAT.onlineCount = res.onlineCount || 0;
-          updateOnlineCountBadges(APP_CHAT.onlineCount);
+          APP_CHAT.onlineUsers = deduplicateChatUsers(res.users || []);
+          const actualCount = APP_CHAT.onlineUsers.filter(u => u.isOnline).length;
+          APP_CHAT.onlineCount = actualCount;
+          updateOnlineCountBadges(actualCount);
           if (typeof callback === 'function') callback(APP_CHAT.onlineUsers);
           renderOnlineUsersTab();
           renderFullPageContacts();
@@ -393,7 +468,7 @@ function renderOnlineUsersTab() {
   const container = document.getElementById('chatFloatingOnlineListArea');
   if (!container) return;
 
-  const users = APP_CHAT.onlineUsers || [];
+  const users = deduplicateChatUsers(APP_CHAT.onlineUsers || []);
   if (users.length === 0) {
     container.innerHTML = `
       <div class="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400">
@@ -465,7 +540,7 @@ function renderContactsTab(filterQuery = '') {
   const container = document.getElementById('chatFloatingContactsArea');
   if (!container) return;
 
-  const users = APP_CHAT.onlineUsers || [];
+  const users = deduplicateChatUsers(APP_CHAT.onlineUsers || []);
   const q = filterQuery.trim().toLowerCase();
   const filtered = q ? users.filter(u => (u.name||'').toLowerCase().includes(q) || (u.position||'').toLowerCase().includes(q)) : users;
   const myId = (typeof APP !== 'undefined' && APP.user) ? APP.user.id : '';
@@ -958,7 +1033,7 @@ function renderFullPageContacts(filterQuery = '') {
   const container = document.getElementById('chatFullPageRosterArea');
   if (!container) return;
 
-  const users = APP_CHAT.onlineUsers || [];
+  const users = deduplicateChatUsers(APP_CHAT.onlineUsers || []);
   const q = (filterQuery || '').trim().toLowerCase();
   const filtered = q ? users.filter(u => (u.name||'').toLowerCase().includes(q) || (u.position||'').toLowerCase().includes(q)) : users;
   const myId = (typeof APP !== 'undefined' && APP.user) ? APP.user.id : '';
