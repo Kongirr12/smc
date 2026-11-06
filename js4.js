@@ -2947,10 +2947,10 @@ function generateCalendarPrintHTML(options) {
         const timeStr = e.start_time ? (e.end_time ? `${safeEscape(e.start_time)} - ${safeEscape(e.end_time)} น.` : `${safeEscape(e.start_time)} น.`) : 'ตลอดวัน';
         tableRows += `
           <tr>
-            <td style="text-align:center; width:36px;">${idx + 1}</td>
-            <td style="white-space:nowrap; width:135px; font-weight:600;">${formatRange(e.start_date, e.end_date)}</td>
-            <td style="white-space:nowrap; width:95px; text-align:center;">${timeStr}</td>
-            <td style="width:80px; text-align:center;">
+            <td style="text-align:center; width:48px; white-space:nowrap; padding:4px 2px;">${idx + 1}</td>
+            <td style="white-space:nowrap; width:130px; font-weight:600; text-align:center;">${formatRange(e.start_date, e.end_date)}</td>
+            <td style="white-space:nowrap; width:90px; text-align:center;">${timeStr}</td>
+            <td style="width:75px; text-align:center; white-space:nowrap;">
               <span class="type-tag" style="background:${t.bg}; color:${t.color}; border:1px solid ${t.border};">${t.label}</span>
             </td>
             <td>
@@ -2993,10 +2993,10 @@ function generateCalendarPrintHTML(options) {
         <table class="event-table">
           <thead>
             <tr>
-              <th style="width:36px; text-align:center;">ลำดับ</th>
-              <th style="width:135px;">วัน/เดือน/ปี</th>
-              <th style="width:95px; text-align:center;">เวลา</th>
-              <th style="width:80px; text-align:center;">ประเภท</th>
+              <th style="width:48px; text-align:center; white-space:nowrap; padding:5px 4px;">ลำดับ</th>
+              <th style="width:130px; text-align:center; white-space:nowrap;">วัน/เดือน/ปี</th>
+              <th style="width:90px; text-align:center; white-space:nowrap;">เวลา</th>
+              <th style="width:75px; text-align:center; white-space:nowrap;">ประเภท</th>
               <th>กิจกรรม / รายละเอียด</th>
               <th style="width:130px;">สถานที่</th>
               <th style="width:120px;">หมายเหตุ / ผู้รับผิดชอบ</th>
