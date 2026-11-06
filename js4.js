@@ -2725,7 +2725,7 @@ function generateCalendarPrintHTML(options) {
       let gridRows = '';
       let dayCounter = 1;
       const totalWeeks = Math.ceil((startDay + daysInMonth) / 7);
-      const cellHeight = (totalWeeks === 6) ? '82px' : '100px';
+      const cellHeight = (totalWeeks === 6) ? '72px' : '86px';
       const maxPillsPerCell = (totalWeeks === 6) ? 3 : 4;
 
       for (let week = 0; week < totalWeeks; week++) {
@@ -2775,11 +2775,11 @@ function generateCalendarPrintHTML(options) {
 
       // Compact Event Schedule (Right Column) - Sized proportionally for A4 Landscape
       let rightEventsHTML = '';
-      const maxEventRows = (totalWeeks === 6) ? 9 : 10;
+      const maxEventRows = (totalWeeks === 6) ? 8 : 9;
 
       if (monthEvents.length === 0) {
         let noteLinesHTML = '';
-        const emptyLinesCount = (totalWeeks === 6) ? 6 : 7;
+        const emptyLinesCount = (totalWeeks === 6) ? 5 : 6;
         for (let l = 0; l < emptyLinesCount; l++) {
           noteLinesHTML += '<div class="notes-line"></div>';
         }
@@ -2831,8 +2831,8 @@ function generateCalendarPrintHTML(options) {
         }
 
         let notesSection = '';
-        if (displayEvents.length < 7) {
-          const linesNeeded = Math.max(2, 7 - displayEvents.length);
+        if (displayEvents.length < 6) {
+          const linesNeeded = Math.max(2, 6 - displayEvents.length);
           let noteLinesHTML = '';
           for (let l = 0; l < linesNeeded; l++) {
             noteLinesHTML += '<div class="notes-line"></div>';
@@ -3054,9 +3054,9 @@ function generateCalendarPrintHTML(options) {
       box-sizing: border-box;
       width: 100%;
       max-width: 100%;
-      height: 188mm;
-      min-height: 188mm;
-      max-height: 188mm;
+      height: 178mm;
+      min-height: 178mm;
+      max-height: 178mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -3468,16 +3468,16 @@ function generateCalendarPrintHTML(options) {
     }
     .sig-box {
       text-align: center;
-      font-size: 9.5px;
-      line-height: 1.35;
+      font-size: 9px;
+      line-height: 1.3;
       min-width: 180px;
       max-width: 320px;
       flex: 1;
     }
     .sig-stamp-zone {
-      height: 34px;
-      min-height: 34px;
-      max-height: 34px;
+      height: 24px;
+      min-height: 24px;
+      max-height: 24px;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -3487,14 +3487,16 @@ function generateCalendarPrintHTML(options) {
       white-space: nowrap;
     }
 
-    /* Footer: Positioned right near the bottom margin */
+    /* Footer: Positioned right near the bottom margin with safe clearance */
     .print-footer {
       margin-top: 4px !important;
       padding-top: 3px !important;
+      padding-bottom: 2px !important;
       border-top: 1px solid #CBD5E1;
       display: flex;
       justify-content: space-between;
       font-size: 8px;
+      line-height: 1.3;
       color: #64748B;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
@@ -3527,9 +3529,9 @@ function generateCalendarPrintHTML(options) {
       .grid-month-page {
         width: 100% !important;
         max-width: 100% !important;
-        height: 188mm !important;
-        min-height: 188mm !important;
-        max-height: 188mm !important;
+        height: 178mm !important;
+        min-height: 178mm !important;
+        max-height: 178mm !important;
         overflow: hidden !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
@@ -3620,6 +3622,7 @@ function generateCalendarPrintHTML(options) {
         flex-shrink: 0 !important;
         margin-top: 4px !important;
         padding-top: 3px !important;
+        padding-bottom: 2px !important;
       }
     }
   </style>
