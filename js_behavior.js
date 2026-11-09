@@ -34,13 +34,13 @@ function renderBehavior(container) {
     </div>
 
     <style>
-      .risk-card { background:white;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px 16px;
+      .risk-card { background:var(--bg-surface, white);border:1.5px solid var(--border, #E2E8F0);border-radius:14px;padding:14px 16px;
                    display:flex;align-items:center;gap:12px;transition:box-shadow .2s; }
       .risk-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
       .risk-high   { border-left:4px solid #DC2626; }
       .risk-medium { border-left:4px solid #F59E0B; }
       .risk-low    { border-left:4px solid #10B981; }
-      .score-pill  { padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700; }
+      .score-pill  { padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700; white-space:nowrap; }
       .score-pos   { background:#DCFCE7;color:#15803D; }
       .score-neg   { background:#FEE2E2;color:#B91C1C; }
       .score-zero  { background:#F1F5F9;color:#64748B; }
@@ -49,6 +49,9 @@ function renderBehavior(container) {
                      border:1px solid #E2E8F0; }
       .bhv-badge-pos { background:#DCFCE7;color:#15803D;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700; }
       .bhv-badge-neg { background:#FEE2E2;color:#B91C1C;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700; }
+      html.dark-mode .risk-card { background: #1E293B !important; border-color: #334155 !important; }
+      html.dark-mode .bhv-stat-card { background: #1E293B !important; border-color: #334155 !important; }
+      html.dark-mode .bhv-event { background: #1E293B !important; border-color: #334155 !important; }
     </style>
   `;
   if (BHV.summary && BHV.presets) {
@@ -120,11 +123,11 @@ function renderBhvSummary() {
         ${atRisk.map(s => `
           <div class="risk-card risk-${s.risk_level}" onclick="openBehaviorHistory(${JSON.stringify(s.student_id)},${JSON.stringify(s.name)})" style="cursor:pointer;">
             ${avatarHTML(s.photo, s.name, 40)}
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:14px;">${escapeHTML(s.name)}</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:700;font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(s.name)}</div>
               <div style="font-size:12px;color:#94A3B8;">${escapeHTML(s.classroom||'-')} • ${s.events} เหตุการณ์</div>
             </div>
-            <div style="text-align:right;">
+            <div style="text-align:right; flex-shrink:0;">
               <div class="score-pill ${s.total_score>0?'score-pos':s.total_score<0?'score-neg':'score-zero'}">
                 ${s.total_score > 0 ? '+' : ''}${s.total_score} คะแนน
               </div>
@@ -194,12 +197,21 @@ function renderBhvSummary() {
 
 function bhvStat(icon, color, count, label) {
   return `
-    <div style="background:white;border:1.5px solid #E2E8F0;border-radius:14px;padding:16px;text-align:center;">
+    <div class="bhv-stat-card" style="background:var(--bg-surface, white);border:1.5px solid var(--border, #E2E8F0);border-radius:14px;padding:16px;text-align:center;">
       <i class='bx ${icon}' style="font-size:28px;color:${color};"></i>
-      <div style="font-size:24px;font-weight:800;color:#0F172A;margin-top:4px;">${count}</div>
+      <div style="font-size:24px;font-weight:800;color:var(--text-primary, #0F172A);margin-top:4px;">${count}</div>
       <div style="font-size:12px;color:#94A3B8;">${label}</div>
     </div>`;
 }
+
+let _bhvSearchTimer = null;
+function onBhvSearchInput() {
+  clearTimeout(_bhvSearchTimer);
+  _bhvSearchTimer = setTimeout(() => {
+    loadBhvHistory();
+  }, 250);
+}
+window.onBhvSearchInput = onBhvSearchInput;
 
 /* ---------- History Tab ---------- */
 function renderBhvHistory() {
@@ -208,7 +220,7 @@ function renderBhvHistory() {
   el.innerHTML = `
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       <input type="text" id="bhvSearchInput" class="form-input" placeholder="ค้นหาชื่อนักเรียน..."
-             style="max-width:240px;" oninput="loadBhvHistory()">
+             style="max-width:240px;" oninput="onBhvSearchInput()">
       <select id="bhvTypeFilter" class="form-input" style="width:140px;" onchange="loadBhvHistory()">
         <option value="">ทุกประเภท</option>
         <option value="positive">ดี</option>

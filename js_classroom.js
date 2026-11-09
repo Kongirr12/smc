@@ -54,7 +54,7 @@ function renderClassroomMgmt(container) {
       .cls-meta span { font-weight: 600; color: #3730A3; }
       .cls-bar-bg { height: 6px; background:#F1F5F9; border-radius:9px; margin: 8px 0 14px; overflow:hidden; }
       .cls-bar    { height: 6px; background: linear-gradient(90deg,#4F46E5,#60A5FA); border-radius:9px; transition:width .5s; }
-      .cls-actions { display: flex; gap: 6px; }
+      .cls-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       .cls-badge {
         position: absolute; top: 14px; right: 14px;
         font-size: 11px; font-weight: 700; padding: 3px 10px;

@@ -97,6 +97,49 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ─── Global Mobile Touch & Speed Optimization ───────────────── */
+button,
+a,
+input,
+select,
+textarea,
+.btn,
+.icon-btn,
+.stat-card,
+.quick-action-btn,
+.att-mobile-card,
+.cls-card,
+.risk-card,
+.scard-preview,
+.tab-pill button,
+.bottom-nav-item,
+.sgs-tab-btn,
+.sgs-mode-pill {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* GPU Hardware Acceleration for Smooth Scrolling & Transitions */
+.stat-card,
+.quick-action-btn,
+.cls-card,
+.risk-card,
+.att-mobile-card,
+.scard-preview {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, box-shadow;
+}
+
+/* Content Visibility Optimization for Long Card Lists */
+.att-mobile-card,
+.scard-preview,
+.risk-card,
+.bhv-event {
+  content-visibility: auto;
+  contain-intrinsic-size: 80px;
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(79,70,229,.2); border-radius: 10px; }
@@ -1146,19 +1189,138 @@ select {
   .stat-card .value {
     font-size: 18px !important;
     line-height: 1.15;
+    word-break: break-word !important;
   }
   .stat-card .label {
-    font-size: 10.5px !important;
+    font-size: 11px !important;
+    white-space: normal !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    line-height: 1.25 !important;
+    min-height: 28px !important;
+  }
+  .stat-card .trend {
+    font-size: 9.5px !important;
+    margin-top: 5px !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .stat-card .trend {
+
+  /* Attendance KPI Cards on mobile */
+  .att-kpi-card {
+    padding: 12px 10px !important;
+    border-radius: 12px !important;
+  }
+  .att-kpi-top {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    margin-bottom: 4px !important;
+  }
+  .att-kpi-label {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    flex: 1 1 auto !important;
+  }
+  .att-kpi-badge {
+    font-size: 9.5px !important;
+    padding: 1px 6px !important;
+    white-space: nowrap !important;
+  }
+  .att-kpi-num {
+    font-size: 19px !important;
+    line-height: 1.2 !important;
+  }
+  .att-kpi-sub {
     font-size: 10px !important;
-    margin-top: 6px !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25 !important;
+  }
+
+  /* Attendance Scope Switcher horizontal touch-scroll */
+  .att-scope-container {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    padding: 3px !important;
+  }
+  .att-scope-container::-webkit-scrollbar { display: none; }
+  .att-scope-pill {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    font-size: 11.5px !important;
+    padding: 5px 9px !important;
+  }
+
+  /* Classroom card actions: 2x2 grid on mobile */
+  .cls-card {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+  .cls-card .cls-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  .cls-card .cls-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    padding: 7px 6px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Student Card Preview Grid 2 columns */
+  #cardGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .scard-preview {
+    padding: 10px 8px !important;
+    border-radius: 10px !important;
+  }
+  .scard-preview .scard-print-btn {
+    top: 4px !important;
+    right: 4px !important;
+  }
+
+  /* Behavior risk cards */
+  .risk-card {
+    padding: 12px 10px !important;
+    gap: 8px !important;
+  }
+  .risk-card > div:nth-child(2) {
+    min-width: 0 !important;
+  }
+  .risk-card > div:nth-child(3) {
+    flex-shrink: 0 !important;
+  }
+  .score-pill {
+    white-space: nowrap !important;
+  }
+
+  /* Mobile floating chat responsive placement */
+  #mhcChatFloatingWindow {
+    right: max(8px, var(--sar)) !important;
+    left: max(8px, var(--sal)) !important;
+    width: auto !important;
+    max-width: none !important;
+    bottom: calc(64px + var(--sab)) !important;
+    height: calc(100dvh - 120px) !important;
+    max-height: none !important;
+  }
+
+  /* Ensure Grade inputs never trigger iOS Safari auto-zoom */
+  #gradeTable .grade-input,
+  .grade-input,
+  .ql-select {
+    font-size: 16px !important;
   }
   .btn {
     font-size: 12.5px !important;
@@ -1197,9 +1359,14 @@ select {
   }
 }
 
+@media (max-width: 360px) {
+  .stat-grid { grid-template-columns: 1fr !important; }
+  .att-kpi-grid { grid-template-columns: 1fr !important; }
+  .bhv-stat-grid { grid-template-columns: 1fr !important; }
+}
+
 @media (max-width: 340px) {
   .topbar .page-title { display: none !important; }
-  .stat-grid { grid-template-columns: 1fr !important; }
   .topbar .actions { gap: 2px !important; }
   .topbar .icon-btn { width: 32px !important; height: 32px !important; font-size: 15px !important; }
 }

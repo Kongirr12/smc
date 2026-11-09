@@ -21,7 +21,7 @@ function renderStudentCard(container) {
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
           <input type="text" id="cardSearch" placeholder="ค้นหาชื่อ/รหัส..."
                  style="padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;max-width:220px;"
-                 oninput="filterCards()">
+                 oninput="onCardSearchInput()">
           <select id="cardClassFilter"
                   style="padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-family:inherit;font-size:13px;width:160px;"
                   onchange="filterCards()">
@@ -48,7 +48,7 @@ function renderStudentCard(container) {
             ✕ ปิด
           </button>
         </div>
-        <div id="cardPrintArea" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+        <div id="cardPrintArea" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;"></div>
       </div>
     </div>
 
@@ -113,6 +113,15 @@ function getFilteredStudents() {
     return (!q || name.includes(q)) && (!cls || s.classroom === cls);
   });
 }
+
+let _cardFilterTimer = null;
+function onCardSearchInput() {
+  clearTimeout(_cardFilterTimer);
+  _cardFilterTimer = setTimeout(() => {
+    filterCards();
+  }, 180);
+}
+window.onCardSearchInput = onCardSearchInput;
 
 function filterCards() {
   const list = getFilteredStudents();

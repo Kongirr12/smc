@@ -385,7 +385,34 @@ function switchChatConversation(recipientId, recipientName, position, avatar, is
 
   // โหลดข้อความใหม่ของห้องนี้
   loadChatMessages(recipientId, false);
+
+  // บนมือถือ (<640px) ให้สลับมุมมองไปยังหน้าต่างสนทนาอัตโนมัติ
+  showMobileChatThread();
 }
+
+/* ─── ควบคุมการสลับมุมมอง รายชื่อ / ห้องแชท บนหน้าจอมือถือ (<640px) ───── */
+function showMobileChatThread() {
+  const rosterCol = document.getElementById('chatFullPageRosterCol');
+  const threadCol = document.getElementById('chatFullPageThreadCol');
+  if (rosterCol && threadCol && window.innerWidth < 640) {
+    rosterCol.classList.add('hidden');
+    threadCol.classList.remove('hidden');
+    threadCol.classList.add('flex');
+    setTimeout(() => scrollChatToBottom(false), 60);
+  }
+}
+window.showMobileChatThread = showMobileChatThread;
+
+function showMobileChatRoster() {
+  const rosterCol = document.getElementById('chatFullPageRosterCol');
+  const threadCol = document.getElementById('chatFullPageThreadCol');
+  if (rosterCol && threadCol) {
+    rosterCol.classList.remove('hidden');
+    threadCol.classList.add('hidden');
+    threadCol.classList.remove('flex');
+  }
+}
+window.showMobileChatRoster = showMobileChatRoster;
 
 /* ─── เรนเดอร์รายการข้อความใน Floating Messenger ─────────────────── */
 function renderChatMessagesList() {
@@ -918,7 +945,7 @@ function renderChat(container) {
       <div class="flex-1 flex min-h-0 overflow-hidden">
         
         <!-- Left Column: Contacts & Online Roster (320px) -->
-        <div class="w-full sm:w-80 md:w-88 border-r border-slate-200 flex flex-col bg-slate-50/50 flex-shrink-0">
+        <div id="chatFullPageRosterCol" class="w-full sm:w-80 md:w-88 border-r border-slate-200 flex flex-col bg-slate-50/50 flex-shrink-0">
           
           <!-- Search Box -->
           <div class="p-3 border-b border-slate-200 bg-white">
@@ -937,22 +964,27 @@ function renderChat(container) {
         </div>
 
         <!-- Right Column: Active Conversation Feed -->
-        <div class="hidden sm:flex flex-1 flex-col bg-slate-50 min-h-0">
+        <div id="chatFullPageThreadCol" class="hidden sm:flex flex-1 flex-col bg-slate-50 min-h-0">
           
           <!-- Conversation Header -->
-          <div class="p-3.5 px-5 bg-white border-b border-slate-200 flex items-center justify-between flex-shrink-0 shadow-2xs">
-            <div class="flex items-center gap-3">
-              <div id="chatFullPageRecipientAvatar">
+          <div class="p-3.5 px-3 sm:px-5 bg-white border-b border-slate-200 flex items-center justify-between flex-shrink-0 shadow-2xs">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+              <!-- Mobile Back Button to Contacts -->
+              <button type="button" class="sm:hidden -ml-1 p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center gap-0.5 text-xs font-bold shrink-0 transition-colors" onclick="showMobileChatRoster()" title="กลับไปรายชื่อ">
+                <i class='bx bx-chevron-left text-2xl'></i>
+                <span class="text-xs">รายชื่อ</span>
+              </button>
+              <div id="chatFullPageRecipientAvatar" class="shrink-0">
                 ${APP_CHAT.activeRecipient === 'all'
-                  ? `<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center font-bold text-lg shadow-xs"><i class='bx bxs-school'></i></div>`
-                  : getChatAvatarHtml(APP_CHAT.recipientInfo, 'w-10 h-10', 'text-sm')}
+                  ? `<div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-xs"><i class='bx bxs-school'></i></div>`
+                  : getChatAvatarHtml(APP_CHAT.recipientInfo, 'w-9 h-9 sm:w-10 sm:h-10', 'text-sm')}
               </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h2 id="chatFullPageRecipientName" class="text-sm font-bold text-slate-800">${escapeHTML(APP_CHAT.recipientInfo.name)}</h2>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 truncate">
+                  <h2 id="chatFullPageRecipientName" class="text-xs sm:text-sm font-bold text-slate-800 truncate">${escapeHTML(APP_CHAT.recipientInfo.name)}</h2>
                   <span id="chatFullPageRecipientBadge"></span>
                 </div>
-                <div id="chatFullPageRecipientSub" class="text-xs text-slate-500">${escapeHTML(APP_CHAT.recipientInfo.position)}</div>
+                <div id="chatFullPageRecipientSub" class="text-[11px] sm:text-xs text-slate-500 truncate">${escapeHTML(APP_CHAT.recipientInfo.position)}</div>
               </div>
             </div>
 

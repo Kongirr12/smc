@@ -901,6 +901,22 @@ function isEntryForTeacher(entry, teacherId) {
   return false;
 }
 
+function setSchedMobileDay(dayNo, view) {
+  SchedState.mobileDay = Number(dayNo);
+  if (view === 'class') renderClassView();
+  else if (view === 'teacher') renderTeacherView();
+  else renderSchedTab();
+}
+window.setSchedMobileDay = setSchedMobileDay;
+
+function toggleSchedMobileMode(view) {
+  SchedState.forceTable = !SchedState.forceTable;
+  if (view === 'class') renderClassView();
+  else if (view === 'teacher') renderTeacherView();
+  else renderSchedTab();
+}
+window.toggleSchedMobileMode = toggleSchedMobileMode;
+
 function buildScheduleGrid(view) {
   const periods = SchedState.periods;
   if (!periods || periods.length === 0) {
@@ -1001,8 +1017,115 @@ function buildScheduleGrid(view) {
       \x3c/tr>`;
   }).join('');
 
+  // Default mobile day to current day of week (1=Mon ... 5=Fri)
+  if (!SchedState.mobileDay) {
+    const dow = new Date().getDay();
+    SchedState.mobileDay = (dow >= 1 && dow <= 5) ? dow : 1;
+  }
+  const curMobileDay = SchedState.mobileDay || 1;
+  const curDayObj = DAYS.find(d => d.no === curMobileDay) || DAYS[0];
+
+  // Mobile cards for the selected day
+  const mobileCardsHtml = periods.map(p => {
+    if (p.is_break) {
+      return `
+        <div class="sched-mobile-card break flex items-center justify-between p-3 rounded-xl bg-slate-100/90 border border-dashed border-slate-300 text-slate-500 mb-2">
+          <div class="flex items-center gap-2">
+            <i class='bx bx-coffee text-base text-amber-600'>\x3c/i>
+            <span class="text-xs font-bold">${escapeHTML(p.label)}\x3c/span>
+          </div>
+          <span class="text-[11px] font-mono opacity-80">${p.start} - ${p.end}\x3c/span>
+        </div>`;
+    }
+
+    const entryList = (grid[curMobileDay] && grid[curMobileDay][p.no]) || [];
+    const isEmpty = entryList.length === 0;
+    const canEdit = APP.role === 'admin';
+
+    if (isEmpty) {
+      const clickHandlerEmpty = canEdit ? `onclick="openEntryForm(${curMobileDay}, ${p.no}, '${view}')"` : '';
+      return `
+        <div class="sched-mobile-card empty p-3 rounded-xl border border-dashed border-slate-200 bg-white mb-2 flex items-center justify-between ${canEdit ? 'cursor-pointer hover:border-indigo-400' : ''}" ${clickHandlerEmpty}>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-md bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold">${p.no}\x3c/span>
+            <span class="text-xs text-slate-400">คาบว่าง (ไม่มีการเรียนการสอน)\x3c/span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono text-slate-400">${p.start} - ${p.end}\x3c/span>
+            ${canEdit ? `<i class='bx bx-plus text-indigo-500 text-base'>\x3c/i>` : ''}
+          </div>
+        </div>`;
+    }
+
+    return entryList.map(e => {
+      const clickHandlerFilled = canEdit ? `onclick="openEntryForm(${curMobileDay}, ${p.no}, '${view}')"` : '';
+      const subjectTitle = (e.subject_code ? `${e.subject_code} ` : '') + (e.subject_name || e.activity_label || '');
+      const teacherInfo = (e.teacher_short || e.teacher_name || '');
+      const isCoTaught = teacherInfo && String(e.teacher_id || '').includes(',');
+
+      return `
+        <div class="sched-mobile-card filled p-3 rounded-xl border mb-2 shadow-2xs relative overflow-hidden transition-all ${canEdit ? 'cursor-pointer' : ''}"
+             style="border-color:${e.color}40; background:${e.color}0D; border-left:4px solid ${e.color};" ${clickHandlerFilled}>
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold text-white shrink-0" style="background:${e.color};">คาบ ${p.no}\x3c/span>
+              <h4 class="text-xs sm:text-sm font-bold text-slate-900 truncate">${escapeHTML(subjectTitle)}\x3c/h4>
+            </div>
+            <span class="text-[11px] font-mono text-slate-500 shrink-0 font-semibold">${p.start} - ${p.end}\x3c/span>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 mt-1.5">
+            ${view === 'class'
+              ? (teacherInfo ? `<span class="flex items-center gap-1"><i class='bx bx-user text-indigo-500'>\x3c/i> ${escapeHTML(teacherInfo)}\x3c/span>` : '')
+              : (e.classroom && e.classroom !== 'กิจกรรม' ? `<span class="flex items-center gap-1 font-semibold text-slate-800"><i class='bx bxs-school text-indigo-500'>\x3c/i> ชั้น ${escapeHTML(e.classroom)}\x3c/span>` : '')
+            }
+            ${view === 'teacher' && isCoTaught
+              ? `<span class="flex items-center gap-1 text-indigo-600 font-medium"><i class='bx bxs-group'>\x3c/i> ผู้สอนร่วม: ${escapeHTML(teacherInfo)}\x3c/span>`
+              : ''
+            }
+            ${e.room_name ? `<span class="flex items-center gap-1 text-slate-500"><i class='bx bx-door-open text-emerald-600'>\x3c/i> ${escapeHTML(e.room_name)}\x3c/span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }).join('');
+
+  const showMobileCards = !SchedState.forceTable;
+
   return `
-    <div style="overflow-x:auto;">
+    <!-- Mobile Day Selector & Mode Toggle (Visible on screens < 640px) -->
+    <div class="sm:hidden mb-3">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+          <i class='bx bx-calendar text-indigo-600 text-sm'>\x3c/i>
+          <span>${showMobileCards ? `ตารางวัน${curDayObj.label}` : 'ตารางรวมรายสัปดาห์'}\x3c/span>
+        </span>
+        <button type="button" class="btn btn-sm btn-light py-1 px-2.5 text-xs text-indigo-600 font-bold border border-indigo-200 rounded-lg flex items-center gap-1"
+                onclick="toggleSchedMobileMode('${view}')">
+          <i class='bx ${showMobileCards ? 'bx-grid-alt' : 'bx-list-ul'}'>\x3c/i>
+          <span>${showMobileCards ? 'ดูตารางรวม' : 'ดูรายวัน'}\x3c/span>
+        </button>
+      </div>
+
+      ${showMobileCards ? `
+        <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar mb-3">
+          ${DAYS.map(d => `
+            <button type="button" class="flex-1 min-w-[54px] py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center ${curMobileDay === d.no ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-200'}"
+                    onclick="setSchedMobileDay(${d.no}, '${view}')">
+              ${d.label}
+            \x3c/button>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Mobile Vertical Cards View (Mobile only, when showMobileCards is true) -->
+    ${showMobileCards ? `
+      <div class="sm:hidden sched-mobile-view mb-4">
+        ${mobileCardsHtml}
+      </div>
+    ` : ''}
+
+    <!-- Desktop / Full Table View -->
+    <div class="${showMobileCards ? 'hidden sm:block' : 'block'}" style="overflow-x:auto;">
       <table class="sched-grid">
         <thead>
           <tr class="sched-header-row">

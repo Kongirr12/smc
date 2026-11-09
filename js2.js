@@ -2472,10 +2472,10 @@ function renderAttendanceList() {
       <div class="flex items-center gap-1.5 justify-between sm:justify-end bg-slate-50 dark:bg-slate-800/60 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
         <span class="text-[11px] font-bold text-slate-500 shrink-0 mr-1">เช็คด่วน:</span>
         <div class="grid grid-cols-4 gap-1 w-full sm:w-auto">
-          <button class="btn btn-light text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('present')">มา</button>
-          <button class="btn btn-light text-rose-700 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 hover:bg-rose-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('absent')">ขาด</button>
-          <button class="btn btn-light text-amber-700 dark:text-amber-400 bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 hover:bg-amber-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('leave')">ลา</button>
-          <button class="btn btn-light text-indigo-700 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 px-2 py-1 text-xs font-bold text-center" onclick="setAllAttendance('late')">สาย</button>
+          <button class="btn btn-light text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 px-2 py-1 text-xs font-bold text-center min-h-[38px] active:scale-95 transition-transform" onclick="setAllAttendance('present')">มา</button>
+          <button class="btn btn-light text-rose-700 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 hover:bg-rose-100 px-2 py-1 text-xs font-bold text-center min-h-[38px] active:scale-95 transition-transform" onclick="setAllAttendance('absent')">ขาด</button>
+          <button class="btn btn-light text-amber-700 dark:text-amber-400 bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 hover:bg-amber-100 px-2 py-1 text-xs font-bold text-center min-h-[38px] active:scale-95 transition-transform" onclick="setAllAttendance('leave')">ลา</button>
+          <button class="btn btn-light text-indigo-700 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 px-2 py-1 text-xs font-bold text-center min-h-[38px] active:scale-95 transition-transform" onclick="setAllAttendance('late')">สาย</button>
         </div>
       </div>
     </div>
@@ -2543,7 +2543,7 @@ function renderAttendanceList() {
 
     <!-- Attendance Summary Footer -->
     <div class="att-summary-footer flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800">
-      <div class="grid grid-cols-5 gap-1.5 text-xs text-slate-600 sm:flex sm:flex-wrap">
+      <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-xs text-slate-600 sm:flex sm:flex-wrap">
         <div class="att-summary-pill" style="background:#DCFCE7;color:#15803D;">
           <span>มา</span> <b id="cntPresent">0</b>
         </div>
@@ -2779,7 +2779,7 @@ function setAllAttendance(status) {
   });
 
   // Fast batch DOM update
-  document.querySelectorAll('.att-mobile-card').forEach(c => c.setAttribute('data-status', status));
+  document.querySelectorAll('.att-mobile-card, tr[data-row]').forEach(c => c.setAttribute('data-status', status));
   document.querySelectorAll('.att-status-btn').forEach(btn => {
     const bStatus = btn.getAttribute('data-status');
     const bColor = btn.getAttribute('data-color');
