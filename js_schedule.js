@@ -206,8 +206,9 @@ function loadSchedData(silent) {
     // ถ้าเป็นครู → เลือกตัวเองอัตโนมัติ
     if (APP.role === 'teacher' && Array.isArray(SchedState.teachers)) {
       const own = SchedState.teachers.find(t =>
-        t.personnel_id && APP.user && APP.user.username &&
-        String(t.personnel_id).toLowerCase() === String(APP.user.username).toLowerCase()
+        (t.personnel_id && APP.user && APP.user.username && String(t.personnel_id).toLowerCase() === String(APP.user.username).toLowerCase()) ||
+        (t.id && APP.user && (t.id === APP.user.id || t.id === APP.user.personnel_id)) ||
+        (t.name && APP.user && APP.user.name && t.name.trim() === APP.user.name.trim())
       );
       if (own) SchedState.teacher_id = own.id;
     }
@@ -757,13 +758,24 @@ function onClassroomChange() {
 function renderTeacherView() {
   const area = document.getElementById('schedContent');
   if (!area) return;
+
+  // Auto-detect teacher if not yet selected
+  if (!SchedState.teacher_id && APP.role === 'teacher' && Array.isArray(SchedState.teachers)) {
+    const own = SchedState.teachers.find(t =>
+      (t.personnel_id && APP.user && APP.user.username && String(t.personnel_id).toLowerCase() === String(APP.user.username).toLowerCase()) ||
+      (t.id && APP.user && (t.id === APP.user.id || t.id === APP.user.personnel_id)) ||
+      (t.name && APP.user && APP.user.name && t.name.trim() === APP.user.name.trim())
+    );
+    if (own) SchedState.teacher_id = own.id;
+  }
+
   area.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <div class="flex items-center gap-2 w-full sm:w-auto">
         <span class="text-sm font-semibold text-slate-600 whitespace-nowrap">ครูผู้สอน:\x3c/span>
         <select id="schedTeacher" class="sched-select flex-1 sm:flex-initial" onchange="onTeacherChange()" style="min-width:200px;">
           <option value="">-- เลือกครูเพื่อดูรายบุคคล --\x3c/option>
-          ${SchedState.teachers.map(t => `<option value="${t.id}" ${SchedState.teacher_id===t.id?'selected':''}>${escapeHTML(t.name)}\x3c/option>`).join('')}
+          ${SchedState.teachers.map(t => `<option value="${t.id}" ${String(SchedState.teacher_id)===String(t.id)?'selected':''}>${escapeHTML(t.name)}\x3c/option>`).join('')}
         \x3c/select>
       \x3c/div>
       <div class="flex-1">\x3c/div>
@@ -871,21 +883,44 @@ function buildAllView() {
 /* ============================================================
  *  GRID BUILDER — ใช้ร่วมกัน (class + teacher view)
  * ============================================================ */
+function isEntryForTeacher(entry, teacherId) {
+  if (!entry || !entry.teacher_id || !teacherId) return false;
+  const targetId = String(teacherId).trim();
+  const tIds = Array.isArray(entry.teacher_id)
+    ? entry.teacher_id.map(s => String(s).trim())
+    : String(entry.teacher_id).split(',').map(s => s.trim()).filter(Boolean);
+
+  if (tIds.includes(targetId)) return true;
+
+  // Fallback matching by personnel_id or name if teacher object exists
+  const currentTeacherObj = (SchedState.teachers || []).find(t => String(t.id) === targetId);
+  if (currentTeacherObj) {
+    if (currentTeacherObj.personnel_id && tIds.includes(String(currentTeacherObj.personnel_id).trim())) return true;
+    if (entry.teacher_name && currentTeacherObj.name && String(entry.teacher_name).includes(currentTeacherObj.name)) return true;
+  }
+  return false;
+}
+
 function buildScheduleGrid(view) {
   const periods = SchedState.periods;
   if (!periods || periods.length === 0) {
     return '<div class="empty-state"><i class="bx bxs-time-five">\x3c/i>ยังไม่ได้ตั้งค่าคาบเรียน — ไปที่แท็บ "ตั้งค่าคาบเรียน" ก่อน\x3c/div>';
   }
 
-  // สร้าง Map: day → period_no → entry
+  // สร้าง Map: day → period_no → entry list
   const grid = {};
   DAYS.forEach(d => { grid[d.no] = {}; });
 
   const filtered = view === 'class'
     ? SchedState.entries.filter(e => e.classroom === SchedState.classroom)
-    : SchedState.entries.filter(e => e.teacher_id === SchedState.teacher_id);
+    : SchedState.entries.filter(e => isEntryForTeacher(e, SchedState.teacher_id));
 
-  filtered.forEach(e => { if (grid[e.day]) grid[e.day][e.period_no] = e; });
+  filtered.forEach(e => {
+    if (grid[e.day]) {
+      if (!grid[e.day][e.period_no]) grid[e.day][e.period_no] = [];
+      grid[e.day][e.period_no].push(e);
+    }
+  });
 
   // Header row (Periods)
   const headerCells = periods.map(p => `
@@ -901,8 +936,8 @@ function buildScheduleGrid(view) {
         return `<td style="background:#F8FAFC; border-left:1px dashed #E2E8F0; border-right:1px dashed #E2E8F0; text-align:center; color:#94A3B8; font-size:11px; vertical-align:middle; width:40px;">\x3c/td>`;
       }
 
-      const e = grid[d.no][p.no];
-      const isEmpty = !e;
+      const entryList = grid[d.no][p.no] || [];
+      const isEmpty = entryList.length === 0;
       const canEdit = APP.role === 'admin';
       const isDragMode = view === 'class' && SchedState.dragDropMode && canEdit;
       
@@ -923,31 +958,37 @@ function buildScheduleGrid(view) {
           \x3c/td>`;
       }
       
-      const cellContent = view === 'class'
-        ? `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-           ${e.activity_label ? '' : `<div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>`}
-           ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`
-        : `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-           ${e.classroom !== 'กิจกรรม' ? `<div class="entry-teacher">${escapeHTML(e.classroom)}\x3c/div>` : ''}
-           ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
+      const cardsHtml = entryList.map(e => {
+        const cellContent = view === 'class'
+          ? `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
+             ${e.activity_label ? '' : `<div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>`}
+             ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`
+          : `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
+             ${e.classroom && e.classroom !== 'กิจกรรม' ? `<div class="entry-teacher font-semibold">${escapeHTML(e.classroom)}\x3c/div>` : ''}
+             ${(e.teacher_short || e.teacher_name) && String(e.teacher_id || '').includes(',') ? `<div class="entry-coteachers" style="font-size:9.5px; color:#4F46E5; margin-top:2px; line-height:1.2;" title="ครูผู้สอนร่วม: ${escapeHTML(e.teacher_name || '')}"><i class='bx bxs-group' style="font-size:10px; margin-right:2px;">\x3c/i>${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>` : ''}
+             ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
-      const dragCardAttrs = isDragMode
-        ? `draggable="true" ondragstart="onDragGridEntryStart(event, ${d.no}, ${p.no})" ondragend="onDragEndSchedule(event)" ondblclick="openEntryForm(${d.no},${p.no}, '${view}')" title="ลากเพื่อย้าย/สลับ หรือดับเบิ้ลคลิกเพื่อแก้ไข"`
-        : '';
+        const dragCardAttrs = isDragMode
+          ? `draggable="true" ondragstart="onDragGridEntryStart(event, ${d.no}, ${p.no})" ondragend="onDragEndSchedule(event)" ondblclick="openEntryForm(${d.no},${p.no}, '${view}')" title="ลากเพื่อย้าย/สลับ หรือดับเบิ้ลคลิกเพื่อแก้ไข"`
+          : '';
 
-      const delBtnHtml = isDragMode
-        ? `<button type="button" class="btn-card-del" title="ลบวิชานี้ออกจากคาบ" onclick="deleteGridEntryInDragMode(event, ${d.no}, ${p.no})"><i class='bx bx-x'>\x3c/i>\x3c/button>`
-        : '';
+        const delBtnHtml = isDragMode
+          ? `<button type="button" class="btn-card-del" title="ลบวิชานี้ออกจากคาบ" onclick="deleteGridEntryInDragMode(event, ${d.no}, ${p.no})"><i class='bx bx-x'>\x3c/i>\x3c/button>`
+          : '';
 
-      return `
-        <td class="sched-cell filled ${isDragMode ? 'in-drag-mode' : ''}" ${clickHandlerFilled} ${dropHandlers}>
-          <div class="entry-card ${isDragMode ? 'is-draggable' : ''}" ${dragCardAttrs} style="border-color:${e.color}; background:${e.color}18;">
+        return `
+          <div class="entry-card ${isDragMode ? 'is-draggable' : ''}" ${dragCardAttrs} style="border-color:${e.color}; background:${e.color}18; margin-bottom:${entryList.length > 1 ? '3px' : '0'};">
             <div class="entry-bar" style="background:${e.color};">\x3c/div>
             <div class="entry-body">
               ${delBtnHtml}
               ${cellContent}
             \x3c/div>
-          \x3c/div>
+          \x3c/div>`;
+      }).join('');
+
+      return `
+        <td class="sched-cell filled ${isDragMode ? 'in-drag-mode' : ''}" ${clickHandlerFilled} ${dropHandlers}>
+          ${cardsHtml}
         \x3c/td>`;
     }).join('');
 
@@ -1096,8 +1137,8 @@ function openEntryForm(day, periodNo, viewType = 'class') {
   if (viewType === 'class') {
     existing = SchedState.entries.find(e => e.classroom === SchedState.classroom && e.day === Number(day) && e.period_no === Number(periodNo));
   } else {
-    // teacher view: หา entry แรกของครูคนนี้ในคาบนี้
-    existing = SchedState.entries.find(e => e.teacher_id && e.teacher_id.split(',').map(s=>s.trim()).includes(SchedState.teacher_id) && e.day === Number(day) && e.period_no === Number(periodNo));
+    // teacher view: หา entry แรกของครูคนนี้ในคาบนี้ (รองรับครูสอนร่วม / PLC หลายคน)
+    existing = SchedState.entries.find(e => isEntryForTeacher(e, SchedState.teacher_id) && e.day === Number(day) && e.period_no === Number(periodNo));
   }
   
   const e = existing || {};
