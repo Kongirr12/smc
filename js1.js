@@ -948,15 +948,17 @@ function renderDashboard(container) {
     <!-- Rest of Dashboard: Finance & Announcements -->
     <div class="dash-row mt-4">
       <div class="dash-card">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 m-0 flex items-center gap-1.5 text-left">
-            <i class="bx bxs-megaphone text-primary"></i>
-            <span>ประกาศและกิจกรรม</span>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900" id="announceMonthBadge">
+        <div class="flex items-start sm:items-center justify-between gap-2 mb-3 flex-wrap">
+          <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+            <h3 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 m-0 flex items-center gap-1.5">
+              <i class="bx bxs-megaphone text-primary"></i>
+              <span>ประกาศและกิจกรรม</span>
+            </h3>
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900 shrink-0" id="announceMonthBadge">
               เดือน${['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'][new Date().getMonth()+1]}
             </span>
-          </h3>
-          <a href="#" onclick="event.preventDefault(); navigate('calendar');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5" title="ไปที่ปฏิทินและข่าวสาร">
+          </div>
+          <a href="#" onclick="event.preventDefault(); navigate('calendar');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5 shrink-0 ml-auto" title="ไปที่ปฏิทินและข่าวสาร">
             ดูทั้งหมด <i class="bx bx-chevron-right"></i>
           </a>
         </div>
@@ -966,19 +968,33 @@ function renderDashboard(container) {
       </div>
 
       <div class="dash-card">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 m-0 flex items-center gap-1.5 text-left">
+        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <h3 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 m-0 flex items-center gap-1.5 text-left">
             <i class="bx bx-wallet text-primary"></i>
             <span>สรุปรายรับ - รายจ่าย</span>
           </h3>
-          <a href="#" onclick="event.preventDefault(); navigate('finance');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5">
+          <a href="#" onclick="event.preventDefault(); navigate('finance');" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-0.5 shrink-0" title="ไปที่ระบบการเงิน">
             ดูทั้งหมด <i class="bx bx-chevron-right"></i>
           </a>
         </div>
-        <div class="chart-box" style="height:170px;"><canvas id="chartFinance"></canvas></div>
+        <div class="chart-box finance-chart-box"><canvas id="chartFinance"></canvas></div>
+        <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+          <div class="text-center p-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+            <div class="text-[10px] sm:text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0"></span> รายรับรวม
+            </div>
+            <div class="text-xs sm:text-sm font-bold text-emerald-700 dark:text-emerald-300 truncate" id="dashIncomeVal">฿0</div>
+          </div>
+          <div class="text-center p-1.5 rounded-lg bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
+            <div class="text-[10px] sm:text-[11px] font-medium text-rose-700 dark:text-rose-400 flex items-center justify-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block shrink-0"></span> รายจ่ายรวม
+            </div>
+            <div class="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 truncate" id="dashExpenseVal">฿0</div>
+          </div>
+        </div>
         <div class="text-center mt-2">
-          <div class="text-xs text-slate-500">คงเหลือสุทธิ</div>
-          <div class="text-lg font-bold text-blue-600" id="netBalance">฿0</div>
+          <div class="text-[11px] text-slate-500 dark:text-slate-400">คงเหลือสุทธิ</div>
+          <div class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400 truncate" id="netBalance">฿0</div>
         </div>
       </div>
     </div>
@@ -1097,9 +1113,9 @@ function renderDashboardData(d) {
         }]
       },
       options: {
-        responsive: true, maintainAspectRatio: false, cutout: '70%',
+        responsive: true, maintainAspectRatio: false, cutout: '68%',
         plugins: {
-          legend: { position: 'bottom', labels: { color: chartLegendColor, font: { family: 'Sarabun', size: 12 }, padding: 12, boxWidth: 12 } },
+          legend: { position: 'bottom', labels: { color: chartLegendColor, font: { family: 'Sarabun', size: 11 }, padding: 8, boxWidth: 10 } },
           tooltip: { callbacks: { label: c => c.label + ': ' + formatMoney(c.parsed) } }
         }
       }
@@ -1107,6 +1123,10 @@ function renderDashboardData(d) {
   }
   const netBal = document.getElementById('netBalance');
   if (netBal) netBal.textContent = formatMoney(d.stats.balance);
+  const incEl = document.getElementById('dashIncomeVal');
+  if (incEl) incEl.textContent = formatMoney(d.finance ? (d.finance.income || 0) : 0);
+  const expEl = document.getElementById('dashExpenseVal');
+  if (expEl) expEl.textContent = formatMoney(d.finance ? (d.finance.expense || 0) : 0);
 
   // ประกาศและกิจกรรมประจำเดือน (กรองเฉพาะเดือนปัจจุบันตามความต้องการของผู้ใช้)
   renderDashboardAnnouncements(
@@ -1226,23 +1246,23 @@ function renderDashboardAnnouncements(events, targetDate = new Date()) {
     const dateStr = formatEventDateThai(e.start_date || e.date, e.end_date);
 
     return `
-      <div class="announce-item cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 p-2.5 rounded-xl transition-all"
+      <div class="announce-item cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 p-2 sm:p-2.5 rounded-xl transition-all"
            onclick="navigate('calendar')"
            title="คลิกเพื่อดูรายละเอียดในปฏิทินและข่าวสาร">
         <div class="icn" style="background:${t.bg}; color:${t.color}; border: 1.5px solid ${t.color}35;">
           <i class='bx ${t.icon}'></i>
         </div>
         <div style="flex:1; min-width:0;">
-          <div class="flex items-center justify-between gap-2 mb-0.5">
-            <div class="title truncate font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <div class="flex items-center justify-between gap-1.5 sm:gap-2 mb-0.5">
+            <div class="title truncate font-bold text-slate-800 dark:text-slate-100 text-xs sm:text-sm">
               ${escapeHTML(e.title || '(ไม่มีหัวข้อ)')}
             </div>
             <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style="background:${t.bg}; color:${t.color};">
               ${t.label}
             </span>
           </div>
-          <div class="meta text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
-            <span class="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+          <div class="meta text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 sm:gap-1.5 flex-wrap">
+            <span class="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300 shrink-0">
               <i class='bx bx-calendar-event text-primary'></i>
               ${dateStr}
             </span>
