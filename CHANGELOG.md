@@ -3,7 +3,20 @@
 รายการบันทึกการปรับปรุง พัฒนาฟีเจอร์ และแก้ไขปัญหาของระบบ **MHC Smart School**  
 สำหรับรายละเอียดเชิงลึกของแต่ละเวอร์ชัน สามารถอ่านได้ในโฟลเดอร์ [`version_history/`](./version_history/README.md)
 
-## [v3.3.53] - 2026-11-10 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+## [v3.3.54] - 2026-11-10 (เวอร์ชันพัฒนาล่าสุด / Latest Production Release)
+### 📄 ปรับระยะขอบหน้าพิมพ์ไม่ให้ชิดขอบ และดึงส่วนลายเซ็นขึ้นชิดติดตาราง (Schedule Print Margin Breathing Room & Tight Signatures)
+- **เขยิบตารางและส่วนหัวไม่ให้ชิดขอบกระดาษ (Header & Table Inset from Edges):**
+  - ปรับระยะขอบของหน้ากระดาษพิมพ์ใน `@page` เป็น `size: A4 landscape; margin: 12mm 16mm 10mm 16mm;` พร้อมกำหนด `padding-top: 4mm` และ `max-width: 255mm` สำหรับ `.schedule-page`
+  - ทำให้หัวเอกสาร (โลโก้โรงเรียน, ชื่อชั้นเรียน/ครู, ภาคเรียน) และตัวตารางเรียน/ตารางสอน มีระยะเว้นขอบที่พอดี ไม่ชิดติดขอบกระดาษทั้งด้านบน ซ้าย และขวา ดูเป็นระเบียบเรียบร้อยตามมาตรฐานเอกสารราชการ
+- **ดึงกล่องลงนามขึ้นมาติดแนบใต้ตาราง (Signatures Attached Directly Beneath Table):**
+  - ยกเลิกการใช้ Flex Container ที่มีความสูงคงที่ใน `@media print` ซึ่งเคยทำให้กล่องลายเซ็นถูกดันลงไปกองที่ขอบล่างสุดของกระดาษ
+  - ปรับระยะห่างระหว่างท้ายตารางและกล่องลงนาม 3 ท่านให้ชิดติดตาราง (`margin-top: 8px !important;`) ต่อเนื่องกันทันทีตามที่ผู้ใช้ต้องการ
+  - ครอบคลุมทั้งตารางเรียนประจำชั้น (`generateSchedulePrintHTML`), ตารางสอนรายบุคคล (`generateTeacherScheduleHTML`), และโหมดพิมพ์ทั้งหมด (`generateAllSchedulesPrintHTML`)
+- **PWA Service Worker:** อัปเดต Cache Name เป็น `mhc-smart-school-v3.3.54` พร้อมอัปเดต Query String `?v=3.3.54` ใน `index.html`
+
+---
+
+## [v3.3.53] - 2026-11-10
 ### 🖨️ จัดกึ่งกลางหน้ากระดาษ A4 แนวนอน และปรับผู้ลงนามมาตรฐาน 3 ท่านในตารางเรียนและตารางสอน (Schedule Print Centering & 3 Standard Signers)
 - **จัดกึ่งกลางหน้ากระดาษและบาลานซ์ระยะขอบตอนสั่งพิมพ์ (Print Layout Centering & Symmetrical Spacing):**
   - **แก้ไขปัญหาตารางกองด้านบนและเหลือพื้นที่ว่างด้านล่างมากเกินไป:** ในหน้าพิมพ์ตารางเรียน (`generateSchedulePrintHTML`), ตารางสอน (`generateTeacherScheduleHTML`), และพิมพ์รวมทั้งหมด (`generateAllSchedulesPrintHTML`) ปรับโครงสร้าง CSS สำหรับการพิมพ์ `@media print`:
