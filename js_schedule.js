@@ -203,14 +203,24 @@ function loadSchedData(silent) {
     if (!SchedState.classroom && SchedState.classrooms && SchedState.classrooms.length > 0) {
       SchedState.classroom = SchedState.classrooms[0];
     }
-    // ถ้าเป็นครู → เลือกตัวเองอัตโนมัติ
-    if (APP.role === 'teacher' && Array.isArray(SchedState.teachers)) {
-      const own = SchedState.teachers.find(t =>
-        (t.personnel_id && APP.user && APP.user.username && String(t.personnel_id).toLowerCase() === String(APP.user.username).toLowerCase()) ||
-        (t.id && APP.user && (t.id === APP.user.id || t.id === APP.user.personnel_id)) ||
-        (t.name && APP.user && APP.user.name && t.name.trim() === APP.user.name.trim())
-      );
-      if (own) SchedState.teacher_id = own.id;
+    // ถ้าเป็นครู / เจ้าหน้าที่ / รอง ผอ. / ผอ. → ตรวจหาโปรไฟล์ตัวเองอัตโนมัติ
+    if (Array.isArray(SchedState.teachers) && APP.user) {
+      if (['teacher', 'staff', 'deputy', 'director'].includes(APP.role) || !SchedState.teacher_id) {
+        const uName = (APP.user.name || '').trim();
+        const uUser = (APP.user.username || '').toLowerCase().trim();
+        const own = SchedState.teachers.find(t => {
+          if (!t) return false;
+          if (t.id && (t.id === APP.user.id || t.id === APP.user.personnel_id)) return true;
+          if (t.personnel_id && String(t.personnel_id).toLowerCase().trim() === uUser) return true;
+          if (t.name && uName && (t.name.trim() === uName || t.name.includes(uName) || uName.includes(t.name.trim()))) return true;
+          if (APP.role === 'director' && (String(t.personnel_id).toLowerCase() === 'director' || (t.name && (t.name.includes('อธิการ') || t.name.includes('สุขศรี'))))) return true;
+          if (APP.role === 'deputy' && (String(t.personnel_id).toLowerCase() === 'deputy' || (t.name && (t.name.includes('สันติ') || t.name.includes('อุดคำ'))))) return true;
+          return false;
+        });
+        if (own && (!SchedState.teacher_id || APP.role === 'teacher')) {
+          SchedState.teacher_id = own.id;
+        }
+      }
     }
     renderSchedTab();
   };
@@ -293,7 +303,7 @@ function renderClassView() {
       \x3c/div>
       <div class="flex-1">\x3c/div>
       ${SchedState.classroom ? `
-        ${APP.role === 'admin' ? `
+        ${['admin', 'director', 'deputy', 'staff'].includes(APP.role) ? `
         <label style="display:flex; align-items:center; gap:6px; cursor:pointer; background:#F1F5F9; padding:6px 12px; border-radius:8px; margin-right:8px; border:1px solid #E2E8F0;">
           <input type="checkbox" id="toggleDragDrop" ${SchedState.dragDropMode ? 'checked' : ''} onchange="toggleDragDropMode(this.checked)" style="accent-color:#4F46E5; width:16px; height:16px; cursor:pointer;">
           <span style="font-size:13px; font-weight:600; color:#475569;">โหมด Drag & Drop</span>
@@ -311,7 +321,7 @@ function renderClassView() {
         <button class="btn btn-light" onclick="exportClassScheduleXLS()">
           <i class='bx bx-download'>\x3c/i> Excel
         \x3c/button>
-        ${APP.role === 'admin' ? `
+        ${['admin', 'director', 'deputy', 'staff'].includes(APP.role) ? `
         <button class="btn btn-light text-danger"  onclick="clearClassScheduleConfirm()">
           <i class='bx bx-trash'>\x3c/i> ล้างตาราง
         \x3c/button>
@@ -759,23 +769,32 @@ function renderTeacherView() {
   const area = document.getElementById('schedContent');
   if (!area) return;
 
-  // Auto-detect teacher if not yet selected
-  if (!SchedState.teacher_id && APP.role === 'teacher' && Array.isArray(SchedState.teachers)) {
-    const own = SchedState.teachers.find(t =>
-      (t.personnel_id && APP.user && APP.user.username && String(t.personnel_id).toLowerCase() === String(APP.user.username).toLowerCase()) ||
-      (t.id && APP.user && (t.id === APP.user.id || t.id === APP.user.personnel_id)) ||
-      (t.name && APP.user && APP.user.name && t.name.trim() === APP.user.name.trim())
-    );
+  // Auto-detect teacher/personnel if not yet selected
+  if (!SchedState.teacher_id && Array.isArray(SchedState.teachers) && APP.user) {
+    const uName = (APP.user.name || '').trim();
+    const uUser = (APP.user.username || '').toLowerCase().trim();
+    const own = SchedState.teachers.find(t => {
+      if (!t) return false;
+      if (t.id && (t.id === APP.user.id || t.id === APP.user.personnel_id)) return true;
+      if (t.personnel_id && String(t.personnel_id).toLowerCase().trim() === uUser) return true;
+      if (t.name && uName && (t.name.trim() === uName || t.name.includes(uName) || uName.includes(t.name.trim()))) return true;
+      if (APP.role === 'director' && (String(t.personnel_id).toLowerCase() === 'director' || (t.name && (t.name.includes('อธิการ') || t.name.includes('สุขศรี'))))) return true;
+      if (APP.role === 'deputy' && (String(t.personnel_id).toLowerCase() === 'deputy' || (t.name && (t.name.includes('สันติ') || t.name.includes('อุดคำ'))))) return true;
+      return false;
+    });
     if (own) SchedState.teacher_id = own.id;
   }
 
   area.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <div class="flex items-center gap-2 w-full sm:w-auto">
-        <span class="text-sm font-semibold text-slate-600 whitespace-nowrap">ครูผู้สอน:\x3c/span>
+        <span class="text-sm font-semibold text-slate-600 whitespace-nowrap">ครู / ผู้สอน:\x3c/span>
         <select id="schedTeacher" class="sched-select flex-1 sm:flex-initial" onchange="onTeacherChange()" style="min-width:200px;">
-          <option value="">-- เลือกครูเพื่อดูรายบุคคล --\x3c/option>
-          ${SchedState.teachers.map(t => `<option value="${t.id}" ${String(SchedState.teacher_id)===String(t.id)?'selected':''}>${escapeHTML(t.name)}\x3c/option>`).join('')}
+          <option value="">-- เลือกครู / บุคลากรเพื่อดูรายบุคคล --\x3c/option>
+          ${SchedState.teachers.map(t => {
+            const roleBadge = t.position ? ` (${escapeHTML(t.position)})` : (t.department ? ` (${escapeHTML(t.department)})` : '');
+            return `<option value="${t.id}" ${String(SchedState.teacher_id)===String(t.id)?'selected':''}>${escapeHTML(t.name)}${roleBadge}\x3c/option>`;
+          }).join('')}
         \x3c/select>
       \x3c/div>
       <div class="flex-1">\x3c/div>
@@ -954,7 +973,7 @@ function buildScheduleGrid(view) {
 
       const entryList = grid[d.no][p.no] || [];
       const isEmpty = entryList.length === 0;
-      const canEdit = APP.role === 'admin';
+      const canEdit = ['admin', 'director', 'deputy', 'staff'].includes(APP.role);
       const isDragMode = view === 'class' && SchedState.dragDropMode && canEdit;
       
       const dropHandlers = isDragMode 
@@ -1040,7 +1059,7 @@ function buildScheduleGrid(view) {
 
     const entryList = (grid[curMobileDay] && grid[curMobileDay][p.no]) || [];
     const isEmpty = entryList.length === 0;
-    const canEdit = APP.role === 'admin';
+    const canEdit = ['admin', 'director', 'deputy', 'staff'].includes(APP.role);
 
     if (isEmpty) {
       const clickHandlerEmpty = canEdit ? `onclick="openEntryForm(${curMobileDay}, ${p.no}, '${view}')"` : '';
@@ -1358,8 +1377,8 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
           \x3c/div>
 
           <div class="col-span-12">
-            <label class="form-label">ครูผู้สอน <span class="text-xs text-slate-400">(เลือกได้หลายคน หรือเว้นว่างได้)\x3c/span>\x3c/label>
-            <input type="text" id="ef_teacher_search" class="form-input" style="margin-bottom:5px; font-size:12px; padding:4px 8px;" placeholder="ค้นหาครู..." onkeyup="
+            <label class="form-label">ครูผู้สอน / ผู้รับผิดชอบ <span class="text-xs text-slate-400">(เลือกได้หลายคน หรือเว้นว่างได้)\x3c/span>\x3c/label>
+            <input type="text" id="ef_teacher_search" class="form-input" style="margin-bottom:5px; font-size:12px; padding:4px 8px;" placeholder="ค้นหาชื่อ, ตำแหน่ง หรือฝ่าย..." onkeyup="
               const q = this.value.toLowerCase();
               document.querySelectorAll('.tc-item').forEach(el => {
                 if(el.innerText.toLowerCase().includes(q)) el.style.display='block'; else el.style.display='none';
@@ -1368,8 +1387,9 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
             <div style="max-height:120px; overflow-y:auto; border:1.5px solid #E2E8F0; border-radius:8px; padding:5px; background:#F8FAFC;">
               ${SchedState.teachers.map(t => {
                 const selected = defaultTeacherIds.includes(t.id) ? 'checked' : '';
+                const roleBadge = t.position ? ` (${escapeHTML(t.position)})` : (t.department ? ` (${escapeHTML(t.department)})` : '');
                 return `<label class="tc-item" style="display:block; font-size:12px; margin-bottom:3px; cursor:pointer; padding:2px;">
-                  <input type="checkbox" name="ef_teacher_ids" value="${t.id}" ${selected}> ${escapeHTML(t.name)}${t.department?` (${escapeHTML(t.department)})`:''}
+                  <input type="checkbox" name="ef_teacher_ids" value="${t.id}" ${selected}> ${escapeHTML(t.name)}${roleBadge}
                 \x3c/label>`;
               }).join('')}
             \x3c/div>

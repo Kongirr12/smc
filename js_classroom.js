@@ -245,7 +245,7 @@ function openClassroomForm(id) {
       });
     })
     .withFailureHandler(() => CLS.teachers = [])
-    .getPersonnel({ type:'teacher', per_page:200 }, APP.token);
+    .getPersonnel({ per_page:300 }, APP.token);
 }
 
 function filterTeacherDropdown(q, idx) {
