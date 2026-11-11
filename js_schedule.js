@@ -395,7 +395,13 @@ function buildSubjectPalette() {
   let relevant = SchedState.subjects.filter(s => {
     if (!s.grade_level) return true;
     const sGrade = normalizeGradeLevel(s.grade_level);
-    return sGrade === targetGrade || String(s.grade_level).trim() === clsMatch;
+    if (sGrade === targetGrade || String(s.grade_level).trim() === clsMatch) return true;
+    if (s.subject_type === 'activity' || s.subject_group === 'กิจกรรมพัฒนาผู้เรียน') return true;
+    const gStr = String(s.grade_level).trim();
+    if (gStr.includes('ทุก') || gStr.includes('รวม') || gStr.includes('กิจกรรม')) return true;
+    if (['ม.1','ม.2','ม.3'].includes(targetGrade) && (gStr.includes('ม.ต้น') || gStr.includes('1-3') || gStr.includes('1-ม.3'))) return true;
+    if (['ม.4','ม.5','ม.6'].includes(targetGrade) && (gStr.includes('ม.ปลาย') || gStr.includes('4-6') || gStr.includes('4-ม.6'))) return true;
+    return false;
   });
   
   if (relevant.length === 0) {
@@ -903,11 +909,11 @@ function buildAllView() {
  *  GRID BUILDER — ใช้ร่วมกัน (class + teacher view)
  * ============================================================ */
 function isEntryForTeacher(entry, teacherId) {
-  if (!entry || !entry.teacher_id || !teacherId) return false;
+  if (!entry || !teacherId) return false;
   const targetId = String(teacherId).trim();
   const tIds = Array.isArray(entry.teacher_id)
     ? entry.teacher_id.map(s => String(s).trim())
-    : String(entry.teacher_id).split(',').map(s => s.trim()).filter(Boolean);
+    : String(entry.teacher_id || '').split(',').map(s => s.trim()).filter(Boolean);
 
   if (tIds.includes(targetId)) return true;
 
@@ -917,6 +923,16 @@ function isEntryForTeacher(entry, teacherId) {
     if (currentTeacherObj.personnel_id && tIds.includes(String(currentTeacherObj.personnel_id).trim())) return true;
     if (entry.teacher_name && currentTeacherObj.name && String(entry.teacher_name).includes(currentTeacherObj.name)) return true;
   }
+
+  // Fallback: ถ้าวิชานี้ในตารางผูกกับครูคนนี้ในระบบวิชาการ
+  if (entry.subject_id && Array.isArray(SchedState.subjects)) {
+    const sub = SchedState.subjects.find(s => String(s.id) === String(entry.subject_id));
+    if (sub && sub.teacher_id) {
+      const subTIds = String(sub.teacher_id).split(',').map(s => s.trim()).filter(Boolean);
+      if (subTIds.includes(targetId)) return true;
+    }
+  }
+
   return false;
 }
 
@@ -994,13 +1010,20 @@ function buildScheduleGrid(view) {
       }
       
       const cardsHtml = entryList.map(e => {
+        const subDisplay = (e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}\x3c/span>` : '') + 
+                           escapeHTML(e.subject_name || e.activity_label || '');
+        const actBadge = (e.subject_name && e.activity_label && e.activity_label !== e.subject_name)
+          ? `<div class="text-[9.5px] opacity-85 text-indigo-700 font-normal leading-tight">(${escapeHTML(e.activity_label)})\x3c/div>`
+          : '';
+        const teacherDisplay = escapeHTML(e.teacher_short || e.teacher_name || '');
+
         const cellContent = view === 'class'
-          ? `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-             ${e.activity_label ? '' : `<div class="entry-teacher">${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>`}
+          ? `<div class="entry-subject">${subDisplay}${actBadge}\x3c/div>
+             ${teacherDisplay ? `<div class="entry-teacher">${teacherDisplay}\x3c/div>` : ''}
              ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`
-          : `<div class="entry-subject">${e.subject_code ? `<span class="text-[10px] opacity-70 block">${escapeHTML(e.subject_code)}</span>` : ''}${escapeHTML(e.subject_name || e.activity_label || '')}\x3c/div>
-             ${e.classroom && e.classroom !== 'กิจกรรม' ? `<div class="entry-teacher font-semibold">${escapeHTML(e.classroom)}\x3c/div>` : ''}
-             ${(e.teacher_short || e.teacher_name) && String(e.teacher_id || '').includes(',') ? `<div class="entry-coteachers" style="font-size:9.5px; color:#4F46E5; margin-top:2px; line-height:1.2;" title="ครูผู้สอนร่วม: ${escapeHTML(e.teacher_name || '')}"><i class='bx bxs-group' style="font-size:10px; margin-right:2px;">\x3c/i>${escapeHTML(e.teacher_short || e.teacher_name || '')}\x3c/div>` : ''}
+          : `<div class="entry-subject">${subDisplay}${actBadge}\x3c/div>
+             ${e.classroom && e.classroom !== 'กิจกรรม' ? `<div class="entry-teacher font-semibold">${escapeHTML(e.classroom)}\x3c/div>` : (e.classroom === 'กิจกรรม' ? `<div class="entry-teacher text-slate-400" style="font-size:10px;">กิจกรรม\x3c/div>` : '')}
+             ${teacherDisplay && String(e.teacher_id || '').includes(',') ? `<div class="entry-coteachers" style="font-size:9.5px; color:#4F46E5; margin-top:2px; line-height:1.2;" title="ครูผู้สอนร่วม: ${escapeHTML(e.teacher_name || '')}"><i class='bx bxs-group' style="font-size:10px; margin-right:2px;">\x3c/i>${teacherDisplay}\x3c/div>` : ''}
              ${e.room_name ? `<div class="entry-room"><i class='bx bx-door-open'>\x3c/i>${escapeHTML(e.room_name)}\x3c/div>` : ''}`;
 
         const dragCardAttrs = isDragMode
@@ -1288,17 +1311,22 @@ function openEntryForm(day, periodNo, viewType = 'class') {
   const isHomeroom = period && period.is_homeroom;
 
   const filterSubjectsForView = (allSubjects) => {
+    if (!Array.isArray(allSubjects)) return [];
     if (viewType !== 'class') return allSubjects;
     const clsMatch = SchedState.classroom || '';
     const targetGrade = normalizeGradeLevel(clsMatch);
     let filtered = allSubjects.filter(s => {
       if (!s.grade_level) return true;
       const sGrade = normalizeGradeLevel(s.grade_level);
-      return sGrade === targetGrade || String(s.grade_level).trim() === clsMatch;
+      if (sGrade === targetGrade || String(s.grade_level).trim() === clsMatch) return true;
+      if (s.subject_type === 'activity' || s.subject_group === 'กิจกรรมพัฒนาผู้เรียน') return true;
+      const gStr = String(s.grade_level).trim();
+      if (gStr.includes('ทุก') || gStr.includes('รวม') || gStr.includes('กิจกรรม')) return true;
+      if (['ม.1','ม.2','ม.3'].includes(targetGrade) && (gStr.includes('ม.ต้น') || gStr.includes('1-3') || gStr.includes('1-ม.3'))) return true;
+      if (['ม.4','ม.5','ม.6'].includes(targetGrade) && (gStr.includes('ม.ปลาย') || gStr.includes('4-6') || gStr.includes('4-ม.6'))) return true;
+      return false;
     });
-    const curSem = String(SchedState.semester || '1').trim();
-    const semFiltered = filtered.filter(s => !s.semester || String(s.semester).trim() === '' || String(s.semester).trim() === curSem);
-    return semFiltered.length > 0 ? semFiltered : filtered;
+    return filtered.length > 0 ? filtered : allSubjects;
   };
 
   if (SchedState.subjects && SchedState.subjects.length > 0) {
@@ -1320,10 +1348,53 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
   const periodLabel = period ? (period.label + ' (' + period.start + '–' + period.end + ')') : 'คาบ ' + periodNo;
 
   // ถ้าเพิ่มจาก teacher view ให้เลือกครูตัวเองเป็น default
-  let defaultTeacherIds = e.teacher_id ? e.teacher_id.split(',').map(s=>s.trim()) : [];
+  let defaultTeacherIds = e.teacher_id ? String(e.teacher_id).split(',').map(s=>s.trim()).filter(Boolean) : [];
   if (!isEdit && viewType === 'teacher' && SchedState.teacher_id) {
     defaultTeacherIds = [SchedState.teacher_id];
   }
+
+  const clsMatch = SchedState.classroom || '';
+  const targetGrade = normalizeGradeLevel(clsMatch);
+
+  // แยกกลุ่มวิชา: 1) วิชาประจำชั้น 2) กิจกรรมพัฒนาผู้เรียน/PLC/ชุมนุม 3) อื่นๆ
+  const classSubjects = [];
+  const activitySubjects = [];
+  const otherSubjects = [];
+
+  (subjects || []).forEach(s => {
+    const isAct = (s.subject_type === 'activity') || 
+                  (s.subject_group === 'กิจกรรมพัฒนาผู้เรียน') || 
+                  (s.subject_name && (s.subject_name.includes('กิจกรรม') || s.subject_name.includes('ชุมนุม') || s.subject_name.includes('ลูกเสือ') || s.subject_name.includes('แนะแนว') || s.subject_name.toUpperCase().includes('PLC')));
+    const sGrade = normalizeGradeLevel(s.grade_level);
+    const isGradeMatch = sGrade === targetGrade || String(s.grade_level || '').trim() === clsMatch;
+
+    if (isAct) {
+      activitySubjects.push(s);
+    } else if (isGradeMatch) {
+      classSubjects.push(s);
+    } else {
+      otherSubjects.push(s);
+    }
+  });
+
+  const renderSubjectOpt = s => {
+    const tInfo = s.teacher_name ? ` (ครู: ${escapeHTML(s.teacher_name)})` : '';
+    const gInfo = s.grade_level ? ` · ${escapeHTML(s.grade_level)}` : '';
+    const isSel = (e.subject_id === s.id) || (!e.subject_id && e.activity_label && s.subject_name && s.subject_name.trim().toLowerCase() === e.activity_label.trim().toLowerCase());
+    return `<option value="${s.id}"
+                    data-color="${SUBJECT_COLORS[s.subject_group]||'#64748B'}"
+                    data-group="${escapeHTML(s.subject_group||'')}"
+                    data-teachers="${escapeHTML(s.teacher_id||'')}"
+                    data-name="${escapeHTML(s.subject_name||'')}"
+                    ${isSel ? 'selected' : ''}>
+              ${escapeHTML(s.subject_code ? s.subject_code + ' ' : '')}${escapeHTML(s.subject_name || '')}${tInfo}${gInfo}
+            \x3c/option>`;
+  };
+
+  const activityPresets = Array.from(new Set([
+    'กิจกรรมแนะแนว', 'กิจกรรมลูกเสือ-เนตรนารี', 'กิจกรรมชุมนุม', 'กิจกรรมเพื่อสังคมและสาธารณประโยชน์', 'PLC ชุมชนแห่งการเรียนรู้ทางวิชาชีพ', 'กิจกรรมโฮมรูม',
+    ...activitySubjects.map(s => s.subject_name).filter(Boolean)
+  ]));
 
   Swal.fire({
     title: (isEdit ? 'แก้ไข' : 'เพิ่ม') + ' — วัน' + dayLabel.label + ' ' + periodLabel,
@@ -1353,27 +1424,38 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
           ` : ''}
 
           <div class="col-span-12">
-            <label class="form-label">รายวิชา <span class="text-xs text-slate-400">(เว้นว่างถ้าเป็นกิจกรรม)\x3c/span>\x3c/label>
+            <label class="form-label">รายวิชา / กิจกรรมที่มีครูผู้สอน <span class="text-xs text-slate-400">(เลือกวิชาหรือกิจกรรมที่ลงทะเบียนไว้)\x3c/span>\x3c/label>
             <select id="ef_subject_id" class="form-input" onchange="onSubjectSelect()">
-              <option value="">— ไม่มีวิชา / กิจกรรม —\x3c/option>
-              ${subjects.map(s => `
-                <option value="${s.id}"
-                        data-color="${SUBJECT_COLORS[s.subject_group]||'#64748B'}"
-                        data-group="${escapeHTML(s.subject_group||'')}"
-                        data-teachers="${escapeHTML(s.teacher_id||'')}"
-                        ${e.subject_id===s.id?'selected':''}>
-                  ${escapeHTML(s.subject_code||'')} ${escapeHTML(s.subject_name||'')}
-                  ${s.grade_level ? `· ${escapeHTML(s.grade_level)}` : ''}
-                \x3c/option>
-              `).join('')}
+              <option value="">— ไม่มีวิชา / กิจกรรมที่กำหนดเอง —\x3c/option>
+              ${classSubjects.length > 0 ? `
+                <optgroup label="📚 รายวิชาประจำชั้น ${escapeHTML(targetGrade || clsMatch)}">
+                  ${classSubjects.map(renderSubjectOpt).join('')}
+                \x3c/optgroup>
+              ` : ''}
+              ${activitySubjects.length > 0 ? `
+                <optgroup label="🎯 กิจกรรมพัฒนาผู้เรียน / PLC / ชุมนุม / กิจกรรมเฉพาะครู">
+                  ${activitySubjects.map(renderSubjectOpt).join('')}
+                \x3c/optgroup>
+              ` : ''}
+              ${otherSubjects.length > 0 ? `
+                <optgroup label="📖 รายวิชาอื่นๆ ทั้งหมด">
+                  ${otherSubjects.map(renderSubjectOpt).join('')}
+                \x3c/optgroup>
+              ` : ''}
             \x3c/select>
           \x3c/div>
 
           <div class="col-span-12">
-            <label class="form-label">ชื่อกิจกรรม <span class="text-xs text-slate-400">(ถ้าไม่เลือกวิชา)\x3c/span>\x3c/label>
+            <label class="form-label">ชื่อกิจกรรม / ป้ายกำกับคาบ <span class="text-xs text-slate-400">(พิมพ์ชื่อ เช่น แนะแนว, ชุมนุม, PLC หรือปล่อยว่างถ้าเลือกวิชาแล้ว)\x3c/span>\x3c/label>
             <input type="text" id="ef_activity_label" class="form-input"
-                   placeholder="เช่น กิจกรรมแนะแนว, ชุมนุม, LHR"
-                   value="${escapeHTML(e.activity_label||'')}">
+                   placeholder="เช่น กิจกรรมแนะแนว, ชุมนุม, PLC, โฮมรูม"
+                   value="${escapeHTML(e.activity_label||'')}"
+                   list="sched_activity_presets"
+                   oninput="onActivityInput()">
+            <datalist id="sched_activity_presets">
+              ${activityPresets.map(p => `<option value="${escapeHTML(p)}">\x3c/option>`).join('')}
+            \x3c/datalist>
+            <div id="ef_activity_hint" class="text-[11px] text-slate-500 mt-1">\x3c/div>
           \x3c/div>
 
           <div class="col-span-12">
@@ -1440,19 +1522,50 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
         Swal.showValidationMessage('กรุณาระบุกลุ่มผู้เรียน / ชั้นเรียน');
         return false;
       }
+
+      let subId = document.getElementById('ef_subject_id').value;
+      const actLabel = (document.getElementById('ef_activity_label').value || '').trim();
+      const checkedTeacherIds = Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked')).map(el => el.value);
+
+      // Smart match: ถ้าไม่ได้เลือก subject_id แต่กรอกชื่อกิจกรรม ให้พยายามผูกกับรายวิชาที่มีครูคนนั้นๆ หรือวิชากิจกรรมในระบบ
+      if (!subId && actLabel && Array.isArray(SchedState.subjects)) {
+        let matchedSub = null;
+        if (checkedTeacherIds.length > 0) {
+          matchedSub = SchedState.subjects.find(s => {
+            const sName = (s.subject_name || '').trim().toLowerCase();
+            const tMatch = checkedTeacherIds.some(tid => String(s.teacher_id||'').includes(tid));
+            return tMatch && (sName === actLabel.toLowerCase() || sName.includes(actLabel.toLowerCase()) || actLabel.toLowerCase().includes(sName));
+          });
+        }
+        if (!matchedSub) {
+          matchedSub = SchedState.subjects.find(s => {
+            const sName = (s.subject_name || '').trim().toLowerCase();
+            return sName === actLabel.toLowerCase();
+          });
+        }
+        if (matchedSub) {
+          subId = matchedSub.id;
+        }
+      }
+
+      if (!subId && !actLabel) {
+        Swal.showValidationMessage('กรุณาเลือกรายวิชา หรือระบุชื่อกิจกรรม');
+        return false;
+      }
       
       return {
+        id            : e.id || '',
         classroom     : finalClassroom,
         day           : Number(day),
-      period_no     : Number(periodNo),
-      academic_year : SchedState.academic_year,
-      semester      : SchedState.semester,
-      subject_id    : document.getElementById('ef_subject_id').value,
-      activity_label: document.getElementById('ef_activity_label').value,
-      teacher_id    : Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked')).map(el => el.value).join(','),
-      room_id       : document.getElementById('ef_room_id').value,
-      color         : document.getElementById('ef_color').value || '#4F46E5',
-      note          : document.getElementById('ef_note').value
+        period_no     : Number(periodNo),
+        academic_year : SchedState.academic_year,
+        semester      : SchedState.semester,
+        subject_id    : subId,
+        activity_label: actLabel,
+        teacher_id    : checkedTeacherIds.join(','),
+        room_id       : document.getElementById('ef_room_id').value,
+        color         : document.getElementById('ef_color').value || '#4F46E5',
+        note          : document.getElementById('ef_note').value
       };
     }
   }).then(r => {
@@ -1467,13 +1580,15 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
           if (res.status === 'success') {
             showToast('success', 'ลบคาบสำเร็จ');
             SchedState.entries = SchedState.entries.filter(x => !(
-              x.classroom === targetClassroom &&
-              x.day === Number(day) &&
-              x.period_no === Number(periodNo)
+              (e.id && x.id === e.id) ||
+              (x.classroom === targetClassroom &&
+               Number(x.day) === Number(day) &&
+               Number(x.period_no) === Number(periodNo))
             ));
             
             if (viewType === 'class') renderClassView();
             else renderTeacherView();
+            setTimeout(() => { loadSchedData(); }, 300);
           } else showToast('error', res.message);
         })
         .deleteScheduleEntry(targetClassroom, day, periodNo, SchedState.academic_year, SchedState.semester, APP.token);
@@ -1499,27 +1614,56 @@ function showEntryForm(day, periodNo, period, dayLabel, e, subjects, isHomeroom,
           showToast('success', res.message || 'บันทึกตารางสอนสำเร็จ');
         }
 
-        // อัพเดต local state (แทนที่ตัวเก่าถ้าแก้ไข หรือเพิ่มใหม่)
-        const targetClassroom = viewType === 'teacher' ? r.value.classroom : SchedState.classroom;
+        // อัพเดต local state ทันที พร้อมเสริมข้อมูลชื่อวิชาและชื่อครูให้ครบถ้วน 100%
+        const targetClassroom = viewType === 'teacher' ? (r.value && r.value.classroom) : SchedState.classroom;
         
         if (res.data) {
+          const sub = (SchedState.subjects || []).find(s => String(s.id) === String(res.data.subject_id)) || {};
+          const tIds = res.data.teacher_id ? String(res.data.teacher_id).split(',').map(s=>s.trim()).filter(Boolean) : [];
+          const tNames = [], tShorts = [];
+          tIds.forEach(tid => {
+            const t = (SchedState.teachers || []).find(x => String(x.id) === String(tid));
+            if (t) {
+              tNames.push(t.name);
+              tShorts.push(t.first_name || t.name);
+            }
+          });
+          const room = (SchedState.rooms || []).find(r => String(r.id) === String(res.data.room_id)) || {};
+          
+          const enrichedEntry = Object.assign({}, res.data, {
+            subject_name  : sub.subject_name || res.data.subject_name || res.data.activity_label || '',
+            subject_code  : sub.subject_code || res.data.subject_code || '',
+            subject_group : sub.subject_group || res.data.subject_group || '',
+            teacher_name  : tNames.length > 0 ? tNames.join(', ') : (res.data.teacher_name || sub.teacher_name || ''),
+            teacher_short : tShorts.length > 0 ? tShorts.join(', ') : (res.data.teacher_short || sub.teacher_name || ''),
+            room_name     : room.name || res.data.room_name || '',
+            color         : res.data.color || SUBJECT_COLORS[sub.subject_group] || '#4F46E5'
+          });
+
           const idx = SchedState.entries.findIndex(x =>
-            x.classroom === targetClassroom &&
-            x.day === Number(day) &&
-            x.period_no === Number(periodNo)
+            (res.data.id && x.id === res.data.id) ||
+            (x.classroom === targetClassroom &&
+             Number(x.day) === Number(day) &&
+             Number(x.period_no) === Number(periodNo))
           );
-          if (idx >= 0) SchedState.entries[idx] = res.data;
-          else          SchedState.entries.push(res.data);
+          if (idx >= 0) SchedState.entries[idx] = enrichedEntry;
+          else          SchedState.entries.push(enrichedEntry);
         } else if (res.message === 'ลบคาบสำเร็จ') {
           SchedState.entries = SchedState.entries.filter(x => !(
-            x.classroom === targetClassroom &&
-            x.day === Number(day) &&
-            x.period_no === Number(periodNo)
+            (e.id && x.id === e.id) ||
+            (x.classroom === targetClassroom &&
+             Number(x.day) === Number(day) &&
+             Number(x.period_no) === Number(periodNo))
           ));
         }
 
         if (viewType === 'class') renderClassView();
         else renderTeacherView();
+
+        // Background server sync to keep state fully updated
+        setTimeout(() => {
+          loadSchedData();
+        }, 300);
       })
       .withFailureHandler(err => { hideLoading(); Swal.fire({ icon:'error', text:err.message||err }); })
       .saveScheduleEntry(r.value, APP.token);
@@ -1540,14 +1684,86 @@ function onSubjectSelect() {
   }
   const tIds = (opt.dataset.teachers || '').split(',').map(x => x.trim()).filter(Boolean);
   if (tIds.length > 0) {
-    const checked = Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked'));
-    if (checked.length === 0) {
+    document.querySelectorAll('input[name="ef_teacher_ids"]').forEach(cb => {
+      cb.checked = tIds.includes(cb.value);
+    });
+  }
+  const actInput = document.getElementById('ef_activity_label');
+  const actHint = document.getElementById('ef_activity_hint');
+  if (sel.value) {
+    if (actInput && opt.dataset.name) {
+      if (opt.dataset.group === 'กิจกรรมพัฒนาผู้เรียน' || (opt.dataset.name && opt.dataset.name.includes('กิจกรรม'))) {
+        if (!actInput.value) actInput.value = opt.dataset.name;
+      }
+    }
+    if (actHint) actHint.innerHTML = `<span class="text-emerald-600 font-medium"><i class='bx bx-check-circle'>\x3c/i> บันทึกเป็นรายวิชา: ${escapeHTML(opt.dataset.name || '')}\x3c/span>`;
+  } else {
+    if (actHint) actHint.innerHTML = '';
+  }
+}
+window.onSubjectSelect = onSubjectSelect;
+
+function onActivityInput() {
+  const actInput = document.getElementById('ef_activity_label');
+  const sel = document.getElementById('ef_subject_id');
+  const actHint = document.getElementById('ef_activity_hint');
+  if (!actInput || !sel) return;
+
+  const val = actInput.value.trim().toLowerCase();
+  if (!val) {
+    if (actHint) actHint.innerHTML = '';
+    return;
+  }
+
+  // ค้นหารายวิชาในระบบที่ชื่อตรงกับที่พิมพ์
+  const checkedTeacherIds = Array.from(document.querySelectorAll('input[name="ef_teacher_ids"]:checked')).map(el => el.value);
+  let matched = null;
+
+  if (checkedTeacherIds.length > 0 && Array.isArray(SchedState.subjects)) {
+    matched = SchedState.subjects.find(s => {
+      const sName = (s.subject_name || '').trim().toLowerCase();
+      const tMatch = checkedTeacherIds.some(tid => String(s.teacher_id||'').includes(tid));
+      return tMatch && (sName === val || sName.includes(val) || val.includes(sName));
+    });
+  }
+
+  if (!matched && Array.isArray(SchedState.subjects)) {
+    matched = SchedState.subjects.find(s => {
+      const sName = (s.subject_name || '').trim().toLowerCase();
+      return sName === val || sName.includes(val) || val.includes(sName);
+    });
+  }
+
+  if (matched) {
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === matched.id) {
+        sel.selectedIndex = i;
+        if (matched.subject_group && SUBJECT_COLORS[matched.subject_group]) {
+          const color = SUBJECT_COLORS[matched.subject_group];
+          document.getElementById('ef_color').value = color;
+          document.querySelectorAll('.color-dot').forEach(el => {
+            el.style.borderColor = el.dataset.color === color ? '#0F172A' : 'transparent';
+          });
+        }
+        break;
+      }
+    }
+    const tIds = (matched.teacher_id || '').split(',').map(x => x.trim()).filter(Boolean);
+    if (tIds.length > 0) {
       document.querySelectorAll('input[name="ef_teacher_ids"]').forEach(cb => {
         if (tIds.includes(cb.value)) cb.checked = true;
       });
     }
+    if (actHint) {
+      actHint.innerHTML = `<span class="text-emerald-600 font-medium"><i class='bx bx-check-circle'>\x3c/i> ตรวจพบและเชื่อมโยงกับรายวิชา: <b>${escapeHTML(matched.subject_code ? matched.subject_code + ' ' : '')}${escapeHTML(matched.subject_name || '')}</b>\x3c/span>`;
+    }
+  } else {
+    if (actHint) {
+      actHint.innerHTML = `<span class="text-slate-400">บันทึกเป็นชื่อกิจกรรมเฉพาะคาบนี้\x3c/span>`;
+    }
   }
 }
+window.onActivityInput = onActivityInput;
 
 function selectSchedColor(color) {
   document.getElementById('ef_color').value = color;
